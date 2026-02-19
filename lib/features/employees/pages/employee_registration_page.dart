@@ -383,8 +383,6 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
     }
   }
 
-  static final _accentColor = Color(0xFF00897B);
-
   /// Красивое поле ввода
   Widget _buildTextField({
     required TextEditingController controller,
@@ -399,38 +397,33 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryGreen.withOpacity(0.08),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
         maxLength: maxLength,
         enabled: enabled,
-        style: TextStyle(fontSize: 16.sp, color: Color(0xFF1A1A1A)),
+        style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.9)),
+        cursorColor: AppColors.gold,
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
-          labelStyle: TextStyle(color: AppColors.primaryGreen.withOpacity(0.7)),
-          hintStyle: TextStyle(color: Colors.grey[400]),
+          labelStyle: TextStyle(color: AppColors.gold.withOpacity(0.7)),
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.25)),
           prefixIcon: Container(
             margin: EdgeInsets.all(12.w),
             padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
-              color: AppColors.primaryGreen.withOpacity(0.1),
+              color: AppColors.gold.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10.r),
             ),
-            child: Icon(icon, color: AppColors.primaryGreen, size: 20),
+            child: Icon(icon, color: AppColors.gold, size: 20),
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: Colors.transparent,
           counterText: '',
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16.r),
@@ -438,16 +431,17 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16.r),
-            borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
+            borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16.r),
-            borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
+            borderSide: BorderSide(color: AppColors.gold, width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16.r),
-            borderSide: BorderSide(color: Colors.red),
+            borderSide: BorderSide(color: AppColors.error),
           ),
+          errorStyle: TextStyle(color: AppColors.errorLight),
           contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
         ),
         validator: validator,
@@ -475,7 +469,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
                   padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppColors.primaryGreen, _accentColor],
+                      colors: [AppColors.gold, AppColors.darkGold],
                     ),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
@@ -497,15 +491,9 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
           Container(
             padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
+              color: Colors.white.withOpacity(0.07),
               borderRadius: BorderRadius.circular(20.r),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 15,
-                  offset: Offset(0, 5),
-                ),
-              ],
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Column(children: children),
           ),
@@ -517,16 +505,14 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              AppColors.primaryGreen,
-              Color(0xFF00695C),
-              Color(0xFF00796B),
-            ],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
         child: SafeArea(
@@ -541,6 +527,9 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
                   child: ListView(
                     padding: EdgeInsets.all(16.w),
                     children: [
+                      // Визуальный заголовок формы
+                      _buildFormHeader(),
+
                       // Секция: Личные данные
                       _buildSection(
                         title: 'Личные данные',
@@ -720,6 +709,70 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
     );
   }
 
+  Widget _buildFormHeader() {
+    return Container(
+      margin: EdgeInsets.only(bottom: 24.h),
+      padding: EdgeInsets.all(20.w),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.15),
+            Colors.white.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.white.withOpacity(0.25), Colors.white.withOpacity(0.1)],
+              ),
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: Icon(
+              _isEditing ? Icons.edit_note : Icons.person_add_alt_1,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isEditing ? 'Редактирование данных' : 'Регистрация сотрудника',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  _isEditing
+                      ? 'Измените необходимые поля и сохраните'
+                      : 'Заполните все обязательные поля для регистрации нового сотрудника',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 12.sp,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAppBar() {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 12.h),
@@ -727,8 +780,9 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
               icon: Icon(Icons.arrow_back, color: Colors.white),
@@ -772,6 +826,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
             Expanded(
               child: _buildRoleCard(
                 title: 'Сотрудник',
+                description: 'Базовые права',
                 icon: Icons.person,
                 isSelected: _selectedRole == 'employee',
                 onTap: _isLoading ? null : () {
@@ -786,6 +841,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
             Expanded(
               child: _buildRoleCard(
                 title: 'Админ',
+                description: 'Полный доступ',
                 icon: Icons.admin_panel_settings,
                 isSelected: _selectedRole == 'admin',
                 onTap: _isLoading ? null : () {
@@ -802,29 +858,30 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
         // Чекбокс заведующего
         Container(
           decoration: BoxDecoration(
-            color: _isManager ? Colors.purple.withOpacity(0.1) : Colors.grey.withOpacity(0.05),
+            color: _isManager ? AppColors.gold.withOpacity(0.1) : Colors.white.withOpacity(0.04),
             borderRadius: BorderRadius.circular(12.r),
             border: Border.all(
-              color: _isManager ? Colors.purple : Colors.grey.withOpacity(0.2),
+              color: _isManager ? AppColors.gold : Colors.white.withOpacity(0.1),
             ),
           ),
           child: CheckboxListTile(
             title: Text(
               'Заведующий(ая)',
-              style: TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.9)),
             ),
             subtitle: Text(
               'Расширенные права управления',
-              style: TextStyle(fontSize: 12.sp),
+              style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
             ),
             value: _isManager,
             onChanged: _isLoading ? null : (value) {
               setState(() => _isManager = value ?? false);
             },
-            activeColor: Colors.purple,
+            activeColor: AppColors.gold,
+            checkColor: AppColors.night,
             secondary: Icon(
               Icons.supervisor_account,
-              color: _isManager ? Colors.purple : Colors.grey,
+              color: _isManager ? AppColors.gold : Colors.white.withOpacity(0.4),
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12.r),
@@ -837,6 +894,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
 
   Widget _buildRoleCard({
     required String title,
+    required String description,
     required IconData icon,
     required bool isSelected,
     VoidCallback? onTap,
@@ -845,21 +903,21 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       onTap: onTap,
       child: AnimatedContainer(
         duration: Duration(milliseconds: 200),
-        padding: EdgeInsets.all(16.w),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.h),
         decoration: BoxDecoration(
           gradient: isSelected
-              ? LinearGradient(colors: [AppColors.primaryGreen, _accentColor])
+              ? LinearGradient(colors: [AppColors.emerald, AppColors.emeraldLight])
               : null,
-          color: isSelected ? null : Colors.grey.withOpacity(0.05),
+          color: isSelected ? null : Colors.white.withOpacity(0.04),
           borderRadius: BorderRadius.circular(16.r),
           border: Border.all(
-            color: isSelected ? AppColors.primaryGreen : Colors.grey.withOpacity(0.2),
+            color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.1),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primaryGreen.withOpacity(0.3),
+                    color: AppColors.gold.withOpacity(0.2),
                     blurRadius: 8,
                     offset: Offset(0, 4),
                   ),
@@ -868,18 +926,35 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
-              size: 32,
-              color: isSelected ? Colors.white : Colors.grey,
+            Container(
+              padding: EdgeInsets.all(10.w),
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.white.withOpacity(0.2) : AppColors.gold.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Icon(
+                icon,
+                size: 28,
+                color: isSelected ? Colors.white : AppColors.gold,
+              ),
             ),
-            SizedBox(height: 8),
+            SizedBox(height: 10),
             Text(
               title,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.white : Colors.grey[700],
+                fontSize: 14.sp,
+                color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
               ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 11.sp,
+                color: isSelected ? Colors.white.withOpacity(0.7) : Colors.white.withOpacity(0.4),
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -905,35 +980,36 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
           // Заголовок
           Row(
             children: [
-              Icon(icon, size: 18, color: AppColors.primaryGreen),
+              Icon(icon, size: 18, color: AppColors.gold),
               SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 14.sp,
+                  color: Colors.white.withOpacity(0.9),
                 ),
               ),
               if (required) ...[
                 SizedBox(width: 4),
-                Text('*', style: TextStyle(color: Colors.red)),
+                Text('*', style: TextStyle(color: AppColors.error)),
               ],
               Spacer(),
               if (hasPhoto)
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: AppColors.success.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.check_circle, size: 14, color: Colors.green),
+                      Icon(Icons.check_circle, size: 14, color: AppColors.success),
                       SizedBox(width: 4),
                       Text(
                         'Загружено',
-                        style: TextStyle(fontSize: 11.sp, color: Colors.green, fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 11.sp, color: AppColors.success, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -988,31 +1064,68 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
                           ),
                         ],
                       ),
-                      child: Icon(Icons.edit, size: 18, color: AppColors.primaryGreen),
+                      child: Icon(Icons.edit, size: 18, color: AppColors.gold),
                     ),
                   ),
                 ),
               ],
             )
           else
-            Row(
-              children: [
-                Expanded(
-                  child: _buildPhotoButton(
-                    icon: Icons.camera_alt,
-                    label: 'Камера',
-                    onTap: () => _pickImage(ImageSource.camera, photoType),
-                  ),
+            Container(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(16.r),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1.5,
                 ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: _buildPhotoButton(
-                    icon: Icons.photo_library,
-                    label: 'Галерея',
-                    onTap: () => _pickImage(ImageSource.gallery, photoType),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: AppColors.gold.withOpacity(0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.add_a_photo,
+                      size: 28,
+                      color: AppColors.gold.withOpacity(0.5),
+                    ),
                   ),
-                ),
-              ],
+                  SizedBox(height: 12),
+                  Text(
+                    'Добавьте фото',
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      color: Colors.white.withOpacity(0.4),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildPhotoButton(
+                          icon: Icons.camera_alt,
+                          label: 'Камера',
+                          onTap: () => _pickImage(ImageSource.camera, photoType),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: _buildPhotoButton(
+                          icon: Icons.photo_library,
+                          label: 'Галерея',
+                          onTap: () => _pickImage(ImageSource.gallery, photoType),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
         ],
       ),
@@ -1025,7 +1138,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
     required VoidCallback onTap,
   }) {
     return Material(
-      color: AppColors.primaryGreen.withOpacity(0.1),
+      color: AppColors.gold.withOpacity(0.1),
       borderRadius: BorderRadius.circular(12.r),
       child: InkWell(
         onTap: _isLoading ? null : onTap,
@@ -1035,12 +1148,12 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 20, color: AppColors.primaryGreen),
+              Icon(icon, size: 20, color: AppColors.gold),
               SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
-                  color: AppColors.primaryGreen,
+                  color: AppColors.gold,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1056,12 +1169,12 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       height: 56,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primaryGreen, _accentColor],
+          colors: [AppColors.gold, AppColors.darkGold],
         ),
         borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryGreen.withOpacity(0.4),
+            color: AppColors.gold.withOpacity(0.3),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),

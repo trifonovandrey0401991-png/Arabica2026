@@ -221,23 +221,32 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
     }
 
-    final morningStart = parseTime(_shiftSettings!.morningStartTime);
-    final morningEnd = parseTime(_shiftSettings!.morningEndTime);
-    final eveningStart = parseTime(_shiftSettings!.eveningStartTime);
-    final eveningEnd = parseTime(_shiftSettings!.eveningEndTime);
+    final morningStartMinutes = _timeToMinutes(parseTime(_shiftSettings!.morningStartTime));
+    final morningEndMinutes = _timeToMinutes(parseTime(_shiftSettings!.morningEndTime));
+    final eveningStartMinutes = _timeToMinutes(parseTime(_shiftSettings!.eveningStartTime));
+    final eveningEndMinutes = _timeToMinutes(parseTime(_shiftSettings!.eveningEndTime));
 
-    final morningStartMinutes = morningStart.hour * 60 + morningStart.minute;
-    final morningEndMinutes = morningEnd.hour * 60 + morningEnd.minute;
-    final eveningStartMinutes = eveningStart.hour * 60 + eveningStart.minute;
-    final eveningEndMinutes = eveningEnd.hour * 60 + eveningEnd.minute;
-
-    if (currentMinutes >= morningStartMinutes && currentMinutes < morningEndMinutes) {
+    if (_isInTimeRange(currentMinutes, morningStartMinutes, morningEndMinutes)) {
       return 'morning';
-    } else if (currentMinutes >= eveningStartMinutes && currentMinutes < eveningEndMinutes) {
+    } else if (_isInTimeRange(currentMinutes, eveningStartMinutes, eveningEndMinutes)) {
       return 'evening';
     }
 
     return null; // Вне интервалов
+  }
+
+  int _timeToMinutes(TimeOfDay time) => time.hour * 60 + time.minute;
+
+  /// Проверка попадания в интервал с поддержкой перехода через полночь
+  /// Например: start=23:01 (1381), end=13:00 (780) — переход через полночь
+  bool _isInTimeRange(int current, int start, int end) {
+    if (start <= end) {
+      // Обычный интервал (например 14:00 - 23:00)
+      return current >= start && current < end;
+    } else {
+      // Интервал через полночь (например 23:01 - 13:00)
+      return current >= start || current < end;
+    }
   }
 
   /// Обработка pending и failed отчётов из уже загруженных данных (без доп. запросов)

@@ -37,15 +37,17 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
         ShiftAiVerificationService.getModelStatus(),
       ]);
 
-      setState(() {
-        _products = results[0] as List<ShiftTrainingProduct>;
-        _groups = results[1] as List<String>;
-        _stats = results[2] as Map<String, dynamic>;
-        _modelStatus = results[3] as Map<String, dynamic>;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _products = results[0] as List<ShiftTrainingProduct>;
+          _groups = results[1] as List<String>;
+          _stats = results[2] as Map<String, dynamic>;
+          _modelStatus = results[3] as Map<String, dynamic>;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ошибка загрузки: $e')),
@@ -72,12 +74,14 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
 
     if (!success) {
       // Откат при ошибке
-      setState(() {
-        final index = _products.indexWhere((p) => p.barcode == product.barcode);
-        if (index != -1) {
-          _products[index] = product.copyWith(isAiActive: !newValue);
-        }
-      });
+      if (mounted) {
+        setState(() {
+          final index = _products.indexWhere((p) => p.barcode == product.barcode);
+          if (index != -1) {
+            _products[index] = product.copyWith(isAiActive: !newValue);
+          }
+        });
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

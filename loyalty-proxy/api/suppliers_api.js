@@ -10,6 +10,8 @@ const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { requireAuth } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SUPPLIERS_DIR = `${DATA_DIR}/suppliers`;
@@ -17,7 +19,7 @@ const USE_DB = process.env.USE_DB_SUPPLIERS === 'true';
 
 function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
   // GET /api/suppliers - получить всех поставщиков
-  app.get('/api/suppliers', async (req, res) => {
+  app.get('/api/suppliers', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/suppliers');
       let suppliers;
@@ -52,6 +54,9 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
         });
       }
 
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(suppliers, req.query, 'suppliers'));
+      }
       res.json({ success: true, suppliers });
     } catch (error) {
       console.error('Ошибка получения поставщиков:', error);
@@ -60,7 +65,7 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
   });
 
   // GET /api/suppliers/:id - получить поставщика по ID
-  app.get('/api/suppliers/:id', async (req, res) => {
+  app.get('/api/suppliers/:id', requireAuth, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       console.log('GET /api/suppliers:', id);
@@ -88,10 +93,8 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
   });
 
   // POST /api/suppliers - создать нового поставщика
-  app.post('/api/suppliers', async (req, res) => {
+  app.post('/api/suppliers', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-
       console.log('POST /api/suppliers:', JSON.stringify(req.body).substring(0, 200));
 
       // Валидация обязательных полей
@@ -161,10 +164,8 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
   });
 
   // PUT /api/suppliers/:id - обновить поставщика
-  app.put('/api/suppliers/:id', async (req, res) => {
+  app.put('/api/suppliers/:id', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-
       const id = sanitizeId(req.params.id);
       console.log('PUT /api/suppliers:', id);
 
@@ -239,10 +240,8 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
   });
 
   // DELETE /api/suppliers/:id - удалить поставщика
-  app.delete('/api/suppliers/:id', async (req, res) => {
+  app.delete('/api/suppliers/:id', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/suppliers:', id);
 

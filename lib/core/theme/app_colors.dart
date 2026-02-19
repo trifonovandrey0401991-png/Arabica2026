@@ -65,7 +65,15 @@ class AppColors {
   static const Color teal800 = Color(0xFF00695C);
 
   // ═══════════════════════════════════════════════════
+  // Warm Amber / Gold Extended
+  // ═══════════════════════════════════════════════════
+  static const Color goldLight = Color(0xFFE8C84A);
+  static const Color warmAmber = Color(0xFFD4A017);
+  static const Color warmAmberLight = Color(0xFFE6B422);
+
+  // ═══════════════════════════════════════════════════
   // UI Misc
   // ═══════════════════════════════════════════════════
   static const Color darkGray = Color(0xFF333333);
+  static const Color neutral = Color(0xFF9E9E9E);
 }

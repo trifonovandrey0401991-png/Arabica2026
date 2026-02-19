@@ -28,6 +28,9 @@ class CoffeeMachinePointsSettings extends PointsSettingsBase {
   /// Конец временного окна для сдачи после вечерней смены
   final String eveningEndTime;
 
+  /// Таймаут проверки админом (часы)
+  final int adminReviewTimeoutHours;
+
   @override
   final DateTime? createdAt;
 
@@ -43,6 +46,7 @@ class CoffeeMachinePointsSettings extends PointsSettingsBase {
     this.morningEndTime = '12:00',
     this.eveningStartTime = '14:00',
     this.eveningEndTime = '22:00',
+    this.adminReviewTimeoutHours = 4,
     this.createdAt,
     this.updatedAt,
   });
@@ -57,6 +61,7 @@ class CoffeeMachinePointsSettings extends PointsSettingsBase {
       morningEndTime: json['morningEndTime'] ?? '12:00',
       eveningStartTime: json['eveningStartTime'] ?? '14:00',
       eveningEndTime: json['eveningEndTime'] ?? '22:00',
+      adminReviewTimeoutHours: json['adminReviewTimeoutHours'] ?? 4,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -76,6 +81,7 @@ class CoffeeMachinePointsSettings extends PointsSettingsBase {
     'morningEndTime': morningEndTime,
     'eveningStartTime': eveningStartTime,
     'eveningEndTime': eveningEndTime,
+    'adminReviewTimeoutHours': adminReviewTimeoutHours,
     if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
     if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
   };
@@ -100,6 +106,7 @@ class CoffeeMachinePointsSettings extends PointsSettingsBase {
     String? morningEndTime,
     String? eveningStartTime,
     String? eveningEndTime,
+    int? adminReviewTimeoutHours,
   }) {
     return CoffeeMachinePointsSettings(
       id: id,
@@ -110,6 +117,7 @@ class CoffeeMachinePointsSettings extends PointsSettingsBase {
       morningEndTime: morningEndTime ?? this.morningEndTime,
       eveningStartTime: eveningStartTime ?? this.eveningStartTime,
       eveningEndTime: eveningEndTime ?? this.eveningEndTime,
+      adminReviewTimeoutHours: adminReviewTimeoutHours ?? this.adminReviewTimeoutHours,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

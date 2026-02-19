@@ -12,6 +12,7 @@ const db = require('../utils/db');
 const { calculateReferralPointsWithMilestone } = require('./referrals_api');
 const { calculateFullEfficiency, initBatchCache, clearBatchCache, calculateFullEfficiencyCached } = require('../efficiency_calc');
 const { withLock } = require('../utils/file_lock');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_RATING_WHEEL === 'true';
 
@@ -518,7 +519,7 @@ module.exports = function setupRatingWheelAPI(app) {
   // =====================================================
 
   // GET /api/ratings - получить рейтинг всех сотрудников за месяц
-  app.get('/api/ratings', async (req, res) => {
+  app.get('/api/ratings', requireAuth, async (req, res) => {
     try {
       const month = req.query.month || getCurrentMonth();
       const forceRefresh = req.query.forceRefresh === 'true';
@@ -602,7 +603,7 @@ module.exports = function setupRatingWheelAPI(app) {
   });
 
   // GET /api/ratings/:employeeId - получить рейтинг сотрудника за несколько месяцев
-  app.get('/api/ratings/:employeeId', async (req, res) => {
+  app.get('/api/ratings/:employeeId', requireAuth, async (req, res) => {
     try {
       const { employeeId } = req.params;
       const monthsCount = parseInt(req.query.months) || 3;
@@ -668,7 +669,7 @@ module.exports = function setupRatingWheelAPI(app) {
   });
 
   // DELETE /api/ratings/cache - очистить кэш рейтингов
-  app.delete('/api/ratings/cache', async (req, res) => {
+  app.delete('/api/ratings/cache', requireAuth, async (req, res) => {
     try {
       const month = req.query.month; // Если не указан - удалить все
       console.log(`🗑️ DELETE /api/ratings/cache month=${month || 'all'}`);
@@ -716,7 +717,7 @@ module.exports = function setupRatingWheelAPI(app) {
   });
 
   // POST /api/ratings/calculate - пересчитать и сохранить рейтинг
-  app.post('/api/ratings/calculate', async (req, res) => {
+  app.post('/api/ratings/calculate', requireAuth, async (req, res) => {
     try {
       const month = req.query.month || getCurrentMonth();
       console.log(`🔄 POST /api/ratings/calculate month=${month}`);
@@ -760,7 +761,7 @@ module.exports = function setupRatingWheelAPI(app) {
   // =====================================================
 
   // GET /api/fortune-wheel/settings - получить настройки секторов
-  app.get('/api/fortune-wheel/settings', async (req, res) => {
+  app.get('/api/fortune-wheel/settings', requireAuth, async (req, res) => {
     try {
       console.log('🎡 GET /api/fortune-wheel/settings');
 
@@ -808,7 +809,7 @@ module.exports = function setupRatingWheelAPI(app) {
   });
 
   // POST /api/fortune-wheel/settings - обновить настройки секторов (используется приложением)
-  app.post('/api/fortune-wheel/settings', async (req, res) => {
+  app.post('/api/fortune-wheel/settings', requireAuth, async (req, res) => {
     try {
       const { sectors, topEmployeesCount } = req.body;
       console.log('🎡 POST /api/fortune-wheel/settings');
@@ -856,7 +857,7 @@ module.exports = function setupRatingWheelAPI(app) {
   });
 
   // PUT /api/fortune-wheel/settings - обновить настройки секторов
-  app.put('/api/fortune-wheel/settings', async (req, res) => {
+  app.put('/api/fortune-wheel/settings', requireAuth, async (req, res) => {
     try {
       const { sectors, topEmployeesCount } = req.body;
       console.log('🎡 PUT /api/fortune-wheel/settings');
@@ -904,7 +905,7 @@ module.exports = function setupRatingWheelAPI(app) {
   });
 
   // GET /api/fortune-wheel/spins/:employeeId - получить доступные прокрутки
-  app.get('/api/fortune-wheel/spins/:employeeId', async (req, res) => {
+  app.get('/api/fortune-wheel/spins/:employeeId', requireAuth, async (req, res) => {
     try {
       const { employeeId } = req.params;
       console.log(`🎡 GET /api/fortune-wheel/spins/${employeeId}`);
@@ -977,7 +978,7 @@ module.exports = function setupRatingWheelAPI(app) {
   });
 
   // POST /api/fortune-wheel/spin - прокрутить колесо
-  app.post('/api/fortune-wheel/spin', async (req, res) => {
+  app.post('/api/fortune-wheel/spin', requireAuth, async (req, res) => {
     try {
       const { employeeId, employeeName } = req.body;
       console.log(`🎡 POST /api/fortune-wheel/spin employee=${employeeId}`);
@@ -1121,7 +1122,7 @@ module.exports = function setupRatingWheelAPI(app) {
   });
 
   // GET /api/fortune-wheel/history - история прокруток
-  app.get('/api/fortune-wheel/history', async (req, res) => {
+  app.get('/api/fortune-wheel/history', requireAuth, async (req, res) => {
     try {
       const month = req.query.month || getCurrentMonth();
       console.log(`🎡 GET /api/fortune-wheel/history month=${month}`);
@@ -1160,7 +1161,7 @@ module.exports = function setupRatingWheelAPI(app) {
   });
 
   // PATCH /api/fortune-wheel/history/:id/process - отметить приз обработанным
-  app.patch('/api/fortune-wheel/history/:id/process', async (req, res) => {
+  app.patch('/api/fortune-wheel/history/:id/process', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const { adminName, month } = req.body;

@@ -9,6 +9,7 @@ const path = require('path');
 const { isAdminPhone } = require('../utils/admin_cache');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const { requireAuth } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -129,7 +130,7 @@ if (!String.prototype.padLeft) {
 
 function setupShiftTransfersAPI(app) {
   // ===== GET ALL SHIFT TRANSFERS =====
-  app.get('/api/shift-transfers', async (req, res) => {
+  app.get('/api/shift-transfers', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/shift-transfers');
       const { shopAddress, status, employeeName } = req.query;
@@ -164,7 +165,7 @@ function setupShiftTransfersAPI(app) {
   });
 
   // ===== GET EMPLOYEE REQUESTS (incoming - broadcast or addressed to this employee) =====
-  app.get('/api/shift-transfers/employee/:employeeId', async (req, res) => {
+  app.get('/api/shift-transfers/employee/:employeeId', requireAuth, async (req, res) => {
     try {
       const { employeeId } = req.params;
       console.log('GET /api/shift-transfers/employee/:employeeId', employeeId);
@@ -204,7 +205,7 @@ function setupShiftTransfersAPI(app) {
   });
 
   // ===== GET EMPLOYEE OUTGOING REQUESTS =====
-  app.get('/api/shift-transfers/employee/:employeeId/outgoing', async (req, res) => {
+  app.get('/api/shift-transfers/employee/:employeeId/outgoing', requireAuth, async (req, res) => {
     try {
       const { employeeId } = req.params;
       console.log('GET /api/shift-transfers/employee/:employeeId/outgoing', employeeId);
@@ -222,7 +223,7 @@ function setupShiftTransfersAPI(app) {
   });
 
   // ===== GET EMPLOYEE UNREAD COUNT =====
-  app.get('/api/shift-transfers/employee/:employeeId/unread-count', async (req, res) => {
+  app.get('/api/shift-transfers/employee/:employeeId/unread-count', requireAuth, async (req, res) => {
     try {
       const { employeeId } = req.params;
       console.log('GET /api/shift-transfers/employee/:employeeId/unread-count', employeeId);
@@ -250,7 +251,7 @@ function setupShiftTransfersAPI(app) {
   });
 
   // ===== GET ADMIN REQUESTS (with acceptances, waiting for approval) =====
-  app.get('/api/shift-transfers/admin', async (req, res) => {
+  app.get('/api/shift-transfers/admin', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/shift-transfers/admin');
 
@@ -271,7 +272,7 @@ function setupShiftTransfersAPI(app) {
   });
 
   // ===== GET ADMIN UNREAD COUNT =====
-  app.get('/api/shift-transfers/admin/unread-count', async (req, res) => {
+  app.get('/api/shift-transfers/admin/unread-count', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/shift-transfers/admin/unread-count');
 
@@ -289,7 +290,7 @@ function setupShiftTransfersAPI(app) {
   });
 
   // ===== CREATE SHIFT TRANSFER REQUEST =====
-  app.post('/api/shift-transfers', async (req, res) => {
+  app.post('/api/shift-transfers', requireAuth, async (req, res) => {
     try {
       const transfer = req.body;
       console.log('POST /api/shift-transfers:', transfer.fromEmployeeName, '->', transfer.toEmployeeName || 'всем');
@@ -331,7 +332,7 @@ function setupShiftTransfersAPI(app) {
   });
 
   // ===== GET SINGLE SHIFT TRANSFER =====
-  app.get('/api/shift-transfers/:requestId', async (req, res) => {
+  app.get('/api/shift-transfers/:requestId', requireAuth, async (req, res) => {
     try {
       const { requestId } = req.params;
       const requests = await loadShiftTransfers();
@@ -348,7 +349,7 @@ function setupShiftTransfersAPI(app) {
   });
 
   // ===== EMPLOYEE ACCEPTS REQUEST (добавляется в массив acceptedBy) =====
-  app.put('/api/shift-transfers/:requestId/accept', async (req, res) => {
+  app.put('/api/shift-transfers/:requestId/accept', requireAuth, async (req, res) => {
     try {
       const { requestId } = req.params;
       const { employeeId, employeeName } = req.body;
@@ -427,7 +428,7 @@ function setupShiftTransfersAPI(app) {
   });
 
   // ===== EMPLOYEE REJECTS REQUEST =====
-  app.put('/api/shift-transfers/:requestId/reject', async (req, res) => {
+  app.put('/api/shift-transfers/:requestId/reject', requireAuth, async (req, res) => {
     try {
       const { requestId } = req.params;
       const { employeeId, employeeName } = req.body;
@@ -478,7 +479,7 @@ function setupShiftTransfersAPI(app) {
   });
 
   // ===== ADMIN APPROVES REQUEST (выбирает одного из принявших) =====
-  app.put('/api/shift-transfers/:requestId/approve', async (req, res) => {
+  app.put('/api/shift-transfers/:requestId/approve', requireAuth, async (req, res) => {
     try {
       const { requestId } = req.params;
       const { selectedEmployeeId } = req.body; // ID выбранного сотрудника
@@ -567,7 +568,7 @@ function setupShiftTransfersAPI(app) {
   });
 
   // ===== ADMIN DECLINES REQUEST =====
-  app.put('/api/shift-transfers/:requestId/decline', async (req, res) => {
+  app.put('/api/shift-transfers/:requestId/decline', requireAuth, async (req, res) => {
     try {
       const { requestId } = req.params;
       console.log('PUT /api/shift-transfers/:requestId/decline:', requestId);
@@ -598,7 +599,7 @@ function setupShiftTransfersAPI(app) {
   });
 
   // ===== MARK AS READ =====
-  app.put('/api/shift-transfers/:requestId/read', async (req, res) => {
+  app.put('/api/shift-transfers/:requestId/read', requireAuth, async (req, res) => {
     try {
       const { requestId } = req.params;
       const { phone } = req.body;
@@ -632,7 +633,7 @@ function setupShiftTransfersAPI(app) {
   });
 
   // ===== DELETE SHIFT TRANSFER =====
-  app.delete('/api/shift-transfers/:requestId', async (req, res) => {
+  app.delete('/api/shift-transfers/:requestId', requireAuth, async (req, res) => {
     try {
       const { requestId } = req.params;
       console.log('DELETE /api/shift-transfers:', requestId);

@@ -7,6 +7,8 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { requireAuth } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -401,7 +403,7 @@ async function generateDailyPendingShifts() {
 function setupPendingAPI(app) {
   // ===== PENDING RECOUNT REPORTS =====
 
-  app.get('/api/pending-recount-reports', async (req, res) => {
+  app.get('/api/pending-recount-reports', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/pending-recount-reports');
       const { shopAddress, employeeName } = req.query;
@@ -430,13 +432,16 @@ function setupPendingAPI(app) {
       }
 
       reports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(reports, req.query, 'reports'));
+      }
       res.json({ success: true, reports });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.post('/api/pending-recount-reports', async (req, res) => {
+  app.post('/api/pending-recount-reports', requireAuth, async (req, res) => {
     try {
       const report = req.body;
       console.log('POST /api/pending-recount-reports:', report.shopAddress);
@@ -457,7 +462,7 @@ function setupPendingAPI(app) {
     }
   });
 
-  app.get('/api/pending-recount-reports/:reportId', async (req, res) => {
+  app.get('/api/pending-recount-reports/:reportId', requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
       const filePath = path.join(PENDING_RECOUNT_DIR, `${reportId}.json`);
@@ -473,7 +478,7 @@ function setupPendingAPI(app) {
     }
   });
 
-  app.put('/api/pending-recount-reports/:reportId', async (req, res) => {
+  app.put('/api/pending-recount-reports/:reportId', requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
       const updates = req.body;
@@ -493,7 +498,7 @@ function setupPendingAPI(app) {
     }
   });
 
-  app.delete('/api/pending-recount-reports/:reportId', async (req, res) => {
+  app.delete('/api/pending-recount-reports/:reportId', requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
       const filePath = path.join(PENDING_RECOUNT_DIR, `${reportId}.json`);
@@ -512,7 +517,7 @@ function setupPendingAPI(app) {
   // ===== PENDING SHIFT REPORTS =====
 
   // Get pending shift reports - auto-generates for today if needed
-  app.get('/api/pending-shift-reports', async (req, res) => {
+  app.get('/api/pending-shift-reports', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/pending-shift-reports');
       const todayStr = getTodayStr();
@@ -558,6 +563,9 @@ function setupPendingAPI(app) {
         return a.shiftType === 'morning' ? -1 : 1;
       });
 
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(reports, req.query, 'reports'));
+      }
       res.json({ success: true, reports, date: todayStr });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -566,7 +574,7 @@ function setupPendingAPI(app) {
 
   // Generate pending shifts for today (manual trigger)
   // UPDATED: Now processes penalties for yesterday before generating new shifts
-  app.post('/api/pending-shift-reports/generate', async (req, res) => {
+  app.post('/api/pending-shift-reports/generate', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/pending-shift-reports/generate');
 
@@ -595,7 +603,7 @@ function setupPendingAPI(app) {
   });
 
   // NEW: Manual endpoint to process penalties for a specific date
-  app.post('/api/pending-shift-reports/process-penalties', async (req, res) => {
+  app.post('/api/pending-shift-reports/process-penalties', requireAuth, async (req, res) => {
     try {
       const { date } = req.body;
       const targetDate = date || getYesterdayStr();
@@ -614,7 +622,7 @@ function setupPendingAPI(app) {
     }
   });
 
-  app.post('/api/pending-shift-reports', async (req, res) => {
+  app.post('/api/pending-shift-reports', requireAuth, async (req, res) => {
     try {
       const report = req.body;
       console.log('POST /api/pending-shift-reports:', report.shopAddress);
@@ -635,7 +643,7 @@ function setupPendingAPI(app) {
     }
   });
 
-  app.get('/api/pending-shift-reports/:reportId', async (req, res) => {
+  app.get('/api/pending-shift-reports/:reportId', requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
       const filePath = path.join(PENDING_SHIFT_DIR, `${reportId}.json`);
@@ -651,7 +659,7 @@ function setupPendingAPI(app) {
     }
   });
 
-  app.put('/api/pending-shift-reports/:reportId', async (req, res) => {
+  app.put('/api/pending-shift-reports/:reportId', requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
       const updates = req.body;
@@ -672,7 +680,7 @@ function setupPendingAPI(app) {
   });
 
   // Mark shift as completed
-  app.post('/api/pending-shift-reports/:reportId/complete', async (req, res) => {
+  app.post('/api/pending-shift-reports/:reportId/complete', requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
       const { completedBy } = req.body;
@@ -694,7 +702,7 @@ function setupPendingAPI(app) {
     }
   });
 
-  app.delete('/api/pending-shift-reports/:reportId', async (req, res) => {
+  app.delete('/api/pending-shift-reports/:reportId', requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
       const filePath = path.join(PENDING_SHIFT_DIR, `${reportId}.json`);
@@ -712,7 +720,7 @@ function setupPendingAPI(app) {
 
   // ===== PENDING SHIFT HANDOVER REPORTS =====
 
-  app.get('/api/pending-shift-handover-reports', async (req, res) => {
+  app.get('/api/pending-shift-handover-reports', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/pending-shift-handover-reports');
 
@@ -727,7 +735,7 @@ function setupPendingAPI(app) {
     }
   });
 
-  app.post('/api/pending-shift-handover-reports', async (req, res) => {
+  app.post('/api/pending-shift-handover-reports', requireAuth, async (req, res) => {
     try {
       const report = req.body;
       console.log('POST /api/pending-shift-handover-reports');
@@ -751,7 +759,7 @@ function setupPendingAPI(app) {
     }
   });
 
-  app.delete('/api/pending-shift-handover-reports/:reportId', async (req, res) => {
+  app.delete('/api/pending-shift-handover-reports/:reportId', requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
       console.log('DELETE /api/pending-shift-handover-reports:', reportId);

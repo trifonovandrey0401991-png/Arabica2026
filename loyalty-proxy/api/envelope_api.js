@@ -13,6 +13,7 @@ const { sanitizeId, fileExists } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_ENVELOPE === 'true';
 
@@ -146,7 +147,7 @@ function setupEnvelopeAPI(app) {
   // ========== ENVELOPE QUESTIONS ==========
 
   // GET /api/envelope-questions - получить все вопросы
-  app.get('/api/envelope-questions', async (req, res) => {
+  app.get('/api/envelope-questions', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/envelope-questions');
       const files = await fsp.readdir(ENVELOPE_QUESTIONS_DIR);
@@ -172,7 +173,7 @@ function setupEnvelopeAPI(app) {
   });
 
   // GET /api/envelope-questions/:id - получить один вопрос
-  app.get('/api/envelope-questions/:id', async (req, res) => {
+  app.get('/api/envelope-questions/:id', requireAuth, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       const sanitizedId2 = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -193,7 +194,7 @@ function setupEnvelopeAPI(app) {
   });
 
   // POST /api/envelope-questions - создать вопрос
-  app.post('/api/envelope-questions', async (req, res) => {
+  app.post('/api/envelope-questions', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/envelope-questions:', JSON.stringify(req.body).substring(0, 200));
 
@@ -226,7 +227,7 @@ function setupEnvelopeAPI(app) {
   });
 
   // PUT /api/envelope-questions/:id - обновить вопрос
-  app.put('/api/envelope-questions/:id', async (req, res) => {
+  app.put('/api/envelope-questions/:id', requireAuth, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       console.log('PUT /api/envelope-questions:', id);
@@ -266,7 +267,7 @@ function setupEnvelopeAPI(app) {
   });
 
   // DELETE /api/envelope-questions/:id - удалить вопрос
-  app.delete('/api/envelope-questions/:id', async (req, res) => {
+  app.delete('/api/envelope-questions/:id', requireAuth, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/envelope-questions:', id);
@@ -291,7 +292,7 @@ function setupEnvelopeAPI(app) {
   // ========== ENVELOPE REPORTS ==========
 
   // GET /api/envelope-reports - получить все отчеты
-  app.get('/api/envelope-reports', async (req, res) => {
+  app.get('/api/envelope-reports', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/envelope-reports:', req.query);
       let { shopAddress, status, fromDate, toDate } = req.query;
@@ -374,7 +375,7 @@ function setupEnvelopeAPI(app) {
   });
 
   // GET /api/envelope-reports/expired - получить просроченные отчеты
-  app.get('/api/envelope-reports/expired', async (req, res) => {
+  app.get('/api/envelope-reports/expired', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/envelope-reports/expired');
 
@@ -423,7 +424,7 @@ function setupEnvelopeAPI(app) {
   });
 
   // GET /api/envelope-reports/:id - получить один отчет
-  app.get('/api/envelope-reports/:id', async (req, res) => {
+  app.get('/api/envelope-reports/:id', requireAuth, async (req, res) => {
     try {
       const rawId = decodeURIComponent(req.params.id);
       console.log('GET /api/envelope-reports/:id', rawId);
@@ -459,7 +460,7 @@ function setupEnvelopeAPI(app) {
   });
 
   // POST /api/envelope-reports - создать новый отчет
-  app.post('/api/envelope-reports', async (req, res) => {
+  app.post('/api/envelope-reports', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/envelope-reports:', JSON.stringify(req.body).substring(0, 300));
 
@@ -496,7 +497,7 @@ function setupEnvelopeAPI(app) {
   });
 
   // PUT /api/envelope-reports/:id - обновить отчет
-  app.put('/api/envelope-reports/:id', async (req, res) => {
+  app.put('/api/envelope-reports/:id', requireAuth, async (req, res) => {
     try {
       const rawId = decodeURIComponent(req.params.id);
       console.log('PUT /api/envelope-reports/:id', rawId);
@@ -560,7 +561,7 @@ function setupEnvelopeAPI(app) {
   });
 
   // PUT /api/envelope-reports/:id/confirm - подтвердить отчет с оценкой (только админ)
-  app.put('/api/envelope-reports/:id/confirm', async (req, res) => {
+  app.put('/api/envelope-reports/:id/confirm', requireAuth, async (req, res) => {
     try {
       // Подтверждение отчёта — только админ
       if (!req.user || !req.user.isAdmin) {
@@ -620,7 +621,7 @@ function setupEnvelopeAPI(app) {
   });
 
   // DELETE /api/envelope-reports/:id - удалить отчет (только админ)
-  app.delete('/api/envelope-reports/:id', async (req, res) => {
+  app.delete('/api/envelope-reports/:id', requireAuth, async (req, res) => {
     try {
       // Удаление отчёта — только админ
       if (!req.user || !req.user.isAdmin) {
@@ -657,7 +658,7 @@ function setupEnvelopeAPI(app) {
   // ========== ENVELOPE PENDING/FAILED ==========
 
   // GET /api/envelope-pending - получить pending отчеты
-  app.get('/api/envelope-pending', async (req, res) => {
+  app.get('/api/envelope-pending', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/envelope-pending');
       const pendingDir = `${DATA_DIR}/envelope-pending`;
@@ -692,7 +693,7 @@ function setupEnvelopeAPI(app) {
   });
 
   // GET /api/envelope-failed - получить failed отчеты
-  app.get('/api/envelope-failed', async (req, res) => {
+  app.get('/api/envelope-failed', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/envelope-failed');
       const pendingDir = `${DATA_DIR}/envelope-pending`;

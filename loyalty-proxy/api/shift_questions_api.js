@@ -10,6 +10,8 @@ const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_SHIFT_QUESTIONS === 'true';
 
@@ -25,7 +27,7 @@ const SHIFT_QUESTIONS_DIR = `${DATA_DIR}/shift-questions`;
 
 function setupShiftQuestionsAPI(app, { upload } = {}) {
   // Получить все вопросы (отсортированные по order)
-  app.get('/api/shift-questions', async (req, res) => {
+  app.get('/api/shift-questions', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/shift-questions:', req.query);
 
@@ -65,6 +67,9 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
         });
       }
 
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(filteredQuestions, req.query, 'questions'));
+      }
       res.json({
         success: true,
         questions: filteredQuestions
@@ -79,7 +84,7 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
   });
 
   // Получить один вопрос по ID
-  app.get('/api/shift-questions/:questionId', async (req, res) => {
+  app.get('/api/shift-questions/:questionId', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
 
@@ -116,7 +121,7 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
   });
 
   // Создать новый вопрос
-  app.post('/api/shift-questions', async (req, res) => {
+  app.post('/api/shift-questions', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/shift-questions:', JSON.stringify(req.body).substring(0, 200));
 
@@ -176,7 +181,7 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
   });
 
   // Обновить вопрос
-  app.put('/api/shift-questions/:questionId', async (req, res) => {
+  app.put('/api/shift-questions/:questionId', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -231,7 +236,7 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
 
   // Загрузить эталонное фото для вопроса
   if (upload) {
-    app.post('/api/shift-questions/:questionId/reference-photo', upload.single('photo'), async (req, res) => {
+    app.post('/api/shift-questions/:questionId/reference-photo', requireAuth, upload.single('photo'), async (req, res) => {
       try {
         const { questionId } = req.params;
         const { shopAddress } = req.body;
@@ -294,7 +299,7 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
   }
 
   // Изменить порядок вопросов (массовое обновление order)
-  app.patch('/api/shift-questions/reorder', async (req, res) => {
+  app.patch('/api/shift-questions/reorder', requireAuth, async (req, res) => {
     try {
       const { orders } = req.body; // [{id, order}, ...]
       if (!Array.isArray(orders)) {
@@ -331,7 +336,7 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
   });
 
   // Удалить вопрос
-  app.delete('/api/shift-questions/:questionId', async (req, res) => {
+  app.delete('/api/shift-questions/:questionId', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');

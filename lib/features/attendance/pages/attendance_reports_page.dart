@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
-import 'package:intl/intl.dart';
 import '../models/shop_attendance_summary.dart';
-import '../models/pending_attendance_model.dart';
 import '../services/attendance_report_service.dart';
 import '../../../core/services/report_notification_service.dart';
 import 'attendance_month_page.dart';
@@ -24,8 +22,6 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   // Данные для вкладок
   List<EmployeeAttendanceSummary> _employeesSummary = [];
   List<ShopAttendanceSummary> _shopsSummary = [];
-  List<PendingAttendanceReport> _pendingReports = [];
-  List<PendingAttendanceReport> _failedReports = [];
 
   bool _isLoading = true;
   String? _error;
@@ -38,7 +34,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _loadAllData();
     // Отмечаем уведомления как просмотренные
     ReportNotificationService.markAllAsViewed(reportType: ReportType.attendance);
@@ -60,16 +56,12 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
       final results = await Future.wait([
         AttendanceReportService.getEmployeesSummary(),
         AttendanceReportService.getShopsSummary(),
-        AttendanceReportService.getPendingReports(),
-        AttendanceReportService.getFailedReports(),
       ]);
 
       if (mounted) {
         setState(() {
           _employeesSummary = results[0] as List<EmployeeAttendanceSummary>;
           _shopsSummary = results[1] as List<ShopAttendanceSummary>;
-          _pendingReports = results[2] as List<PendingAttendanceReport>;
-          _failedReports = results[3] as List<PendingAttendanceReport>;
           _isLoading = false;
         });
       }
@@ -156,45 +148,17 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   Widget _buildTabButtons() {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 16.w),
-      child: Column(
+      child: Row(
         children: [
-          // Первый ряд кнопок
-          Row(
-            children: [
-              Expanded(child: _buildTabButton(0, 'По сотрудникам', Icons.people)),
-              SizedBox(width: 8),
-              Expanded(child: _buildTabButton(1, 'По магазинам', Icons.store)),
-            ],
-          ),
-          SizedBox(height: 8),
-          // Второй ряд кнопок
-          Row(
-            children: [
-              Expanded(
-                child: _buildTabButton(
-                  2,
-                  'Ожидание (${_pendingReports.length})',
-                  Icons.hourglass_empty,
-                  badgeColor: _pendingReports.isNotEmpty ? Colors.orange : null,
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: _buildTabButton(
-                  3,
-                  'Не отмечены (${_failedReports.length})',
-                  Icons.warning_amber,
-                  badgeColor: _failedReports.isNotEmpty ? Colors.red : null,
-                ),
-              ),
-            ],
-          ),
+          Expanded(child: _buildTabButton(0, 'По сотрудникам', Icons.people)),
+          SizedBox(width: 8),
+          Expanded(child: _buildTabButton(1, 'По магазинам', Icons.store)),
         ],
       ),
     );
   }
 
-  Widget _buildTabButton(int index, String label, IconData icon, {Color? badgeColor}) {
+  Widget _buildTabButton(int index, String label, IconData icon) {
     final isSelected = _tabController.index == index;
     return GestureDetector(
       onTap: () {
@@ -215,16 +179,6 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (badgeColor != null)
-              Container(
-                width: 8,
-                height: 8,
-                margin: EdgeInsets.only(right: 6.w),
-                decoration: BoxDecoration(
-                  color: badgeColor,
-                  shape: BoxShape.circle,
-                ),
-              ),
             Icon(
               icon,
               size: 18,
@@ -264,8 +218,6 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
       children: [
         _buildEmployeesTab(),
         _buildShopsTab(),
-        _buildPendingTab(),
-        _buildFailedTab(),
       ],
     );
   }
@@ -681,298 +633,6 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
           ),
         );
       },
-    );
-  }
-
-  // ==================== ВКЛАДКА 3: ОЖИДАНИЕ (pending) ====================
-
-  Widget _buildPendingTab() {
-    if (_pendingReports.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle, size: 64, color: Colors.white.withOpacity(0.5)),
-            SizedBox(height: 16),
-            Text(
-              'Нет ожидающих отчётов',
-              style: TextStyle(color: Colors.white, fontSize: 16.sp),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Сейчас не время для отметки',
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14.sp),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadAllData,
-      color: AppColors.gold,
-      backgroundColor: AppColors.emeraldDark,
-      child: ListView.builder(
-        padding: EdgeInsets.all(16.w),
-        itemCount: _pendingReports.length,
-        itemBuilder: (context, index) => _buildPendingCard(_pendingReports[index]),
-      ),
-    );
-  }
-
-  Widget _buildPendingCard(PendingAttendanceReport report) {
-    final deadline = DateFormat('HH:mm').format(report.deadline);
-    final timeLeft = report.timeUntilDeadline;
-    final minutesLeft = timeLeft.inMinutes;
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(16.w),
-        child: Row(
-          children: [
-            // Иконка
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.hourglass_empty, color: Colors.orange),
-            ),
-            SizedBox(width: 16),
-            // Инфо
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    report.shopName.isNotEmpty ? report.shopName : report.shopAddress,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15.sp,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    report.shopAddress,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
-                      fontSize: 13.sp,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4.r),
-                        ),
-                        child: Text(
-                          report.shiftTypeDisplay,
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Icon(Icons.timer, size: 14, color: Colors.white.withOpacity(0.4)),
-                      SizedBox(width: 4),
-                      Text(
-                        'до $deadline',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
-                          fontSize: 12.sp,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // Осталось времени
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-              decoration: BoxDecoration(
-                color: minutesLeft <= 30
-                    ? Colors.red.withOpacity(0.1)
-                    : Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(
-                  color: minutesLeft <= 30 ? Colors.red : Colors.orange,
-                ),
-              ),
-              child: Text(
-                minutesLeft > 60 ? '${(minutesLeft / 60).floor()} ч' : '$minutesLeft мин',
-                style: TextStyle(
-                  color: minutesLeft <= 30 ? Colors.red : Colors.orange,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14.sp,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ==================== ВКЛАДКА 4: НЕ ОТМЕЧЕНЫ (failed) ====================
-
-  Widget _buildFailedTab() {
-    if (_failedReports.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle, size: 64, color: Colors.white.withOpacity(0.5)),
-            SizedBox(height: 16),
-            Text(
-              'Все магазины отметились',
-              style: TextStyle(color: Colors.white, fontSize: 16.sp),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Нет пропущенных отчётов',
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14.sp),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadAllData,
-      color: AppColors.gold,
-      backgroundColor: AppColors.emeraldDark,
-      child: ListView.builder(
-        padding: EdgeInsets.all(16.w),
-        itemCount: _failedReports.length,
-        itemBuilder: (context, index) => _buildFailedCard(_failedReports[index]),
-      ),
-    );
-  }
-
-  Widget _buildFailedCard(PendingAttendanceReport report) {
-    final failedAt = report.failedAt != null
-        ? DateFormat('HH:mm').format(report.failedAt!)
-        : '—';
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: Colors.red.withOpacity(0.3)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(16.w),
-        child: Row(
-          children: [
-            // Иконка
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.cancel, color: Colors.red),
-            ),
-            SizedBox(width: 16),
-            // Инфо
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    report.shopName.isNotEmpty ? report.shopName : report.shopAddress,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15.sp,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    report.shopAddress,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
-                      fontSize: 13.sp,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4.r),
-                        ),
-                        child: Text(
-                          report.shiftTypeDisplay,
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Icon(Icons.schedule, size: 14, color: Colors.white.withOpacity(0.4)),
-                      SizedBox(width: 4),
-                      Text(
-                        'дедлайн: $failedAt',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
-                          fontSize: 12.sp,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // Статус
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(color: Colors.red),
-              ),
-              child: Text(
-                'Пропущен',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12.sp,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

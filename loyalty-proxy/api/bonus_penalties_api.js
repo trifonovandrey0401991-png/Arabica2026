@@ -11,6 +11,7 @@ const { sanitizeId, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const USE_DB = process.env.USE_DB_BONUS_PENALTIES === 'true';
@@ -64,7 +65,7 @@ function getPreviousMonth() {
 
 function setupBonusPenaltiesAPI(app) {
   // GET /api/bonus-penalties - получить премии/штрафы за месяц
-  app.get('/api/bonus-penalties', async (req, res) => {
+  app.get('/api/bonus-penalties', requireAuth, async (req, res) => {
     try {
       const month = req.query.month || getCurrentMonth();
       const employeeId = req.query.employeeId;
@@ -150,9 +151,8 @@ function setupBonusPenaltiesAPI(app) {
   });
 
   // POST /api/bonus-penalties - создать премию/штраф
-  app.post('/api/bonus-penalties', async (req, res) => {
+  app.post('/api/bonus-penalties', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const { employeeId, employeeName, type, amount, comment, adminName } = req.body;
 
       console.log(`📤 POST /api/bonus-penalties: ${type} ${amount} для ${employeeName}`);
@@ -229,9 +229,8 @@ function setupBonusPenaltiesAPI(app) {
   });
 
   // DELETE /api/bonus-penalties/:id - удалить премию/штраф
-  app.delete('/api/bonus-penalties/:id', async (req, res) => {
+  app.delete('/api/bonus-penalties/:id', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const id = sanitizeId(req.params.id);
       const month = req.query.month || getCurrentMonth();
 
@@ -271,7 +270,7 @@ function setupBonusPenaltiesAPI(app) {
   });
 
   // GET /api/bonus-penalties/summary/:employeeId - получить сводку для сотрудника
-  app.get('/api/bonus-penalties/summary/:employeeId', async (req, res) => {
+  app.get('/api/bonus-penalties/summary/:employeeId', requireAuth, async (req, res) => {
     try {
       const { employeeId } = req.params;
 

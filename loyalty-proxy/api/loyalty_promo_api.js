@@ -9,6 +9,7 @@ const fsp = require('fs').promises;
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_LOYALTY_PROMO === 'true';
 
@@ -17,7 +18,7 @@ const LOYALTY_PROMO_FILE = `${DATA_DIR}/loyalty-promo.json`;
 
 function setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals } = {}) {
   // GET /api/loyalty-promo - получить настройки акции
-  app.get('/api/loyalty-promo', async (req, res) => {
+  app.get('/api/loyalty-promo', requireAuth, async (req, res) => {
     try {
       let settings = {
         promoText: 'При покупке 9 напитков 10-й бесплатно',
@@ -43,7 +44,7 @@ function setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals } = {}) {
   });
 
   // POST /api/loyalty-promo - сохранить настройки акции (только админ)
-  app.post('/api/loyalty-promo', async (req, res) => {
+  app.post('/api/loyalty-promo', requireAuth, async (req, res) => {
     try {
       const { promoText, pointsRequired, drinksToGive, employeePhone } = req.body;
 

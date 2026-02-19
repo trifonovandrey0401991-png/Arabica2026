@@ -671,6 +671,8 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
         if (!mounted) return;
 
         Navigator.of(context).popUntil((route) => route.isFirst);
+        // НЕ вызываем setState после popUntil — страница уходит из дерева
+        return;
       }
     } catch (e) {
       if (mounted) {
@@ -683,11 +685,9 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
           ),
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
     }
+    // Сбрасываем _isSubmitting только если остались на странице
+    if (mounted) setState(() => _isSubmitting = false);
   }
 
   @override

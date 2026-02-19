@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../employees/services/user_role_service.dart';
 import '../models/cigarette_training_model.dart';
 import '../services/cigarette_vision_service.dart';
 import '../../employees/pages/employees_page.dart';
@@ -86,8 +87,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   }
 
   Future<void> _initTabController() async {
+    final roleData = await UserRoleService.loadUserRole();
+    final role = roleData?.role ?? '';
     final prefs = await SharedPreferences.getInstance();
-    final role = prefs.getString('user_role') ?? '';
     final shopAddress = prefs.getString('selectedShopAddress');
 
     // Загружаем магазины для диалога выбора
@@ -318,7 +320,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           color: Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(20.r),
           border: Border.all(
-            color: Colors.red.withOpacity(0.3),
+            color: AppColors.error.withOpacity(0.3),
             width: 1,
           ),
         ),
@@ -1694,20 +1696,20 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                       decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.2),
+                        color: AppColors.amber.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(6.r),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.hourglass_empty, size: 12, color: Colors.amber[300]),
+                          Icon(Icons.hourglass_empty, size: 12, color: AppColors.amberLight),
                           SizedBox(width: 3),
                           Text(
                             '+${product.pendingCountingPhotosCount}',
                             style: TextStyle(
                               fontSize: 11.sp,
                               fontWeight: FontWeight.bold,
-                              color: Colors.amber[300],
+                              color: AppColors.amberLight,
                             ),
                           ),
                         ],
@@ -1965,7 +1967,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.amber.withOpacity(0.5)),
+        border: Border.all(color: AppColors.amber.withOpacity(0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1987,15 +1989,15 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           // Бейдж "Ожидает"
           Container(
             padding: EdgeInsets.symmetric(vertical: 4.h),
-            color: Colors.amber.withOpacity(0.2),
+            color: AppColors.amber.withOpacity(0.2),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.hourglass_empty, size: 12, color: Colors.amber),
+                Icon(Icons.hourglass_empty, size: 12, color: AppColors.amber),
                 SizedBox(width: 4),
                 Text(
                   'Ожидает',
-                  style: TextStyle(fontSize: 10.sp, color: Colors.amber, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 10.sp, color: AppColors.amber, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -2013,13 +2015,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         setDialogState(() {});
                         _loadData(); // Обновить данные
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Фото подтверждено'), backgroundColor: Colors.green),
+                          SnackBar(content: Text('Фото подтверждено'), backgroundColor: AppColors.success),
                         );
                         Navigator.pop(context); // Закрыть диалог для обновления
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
+                      backgroundColor: AppColors.success,
                       padding: EdgeInsets.symmetric(vertical: 6.h),
                       minimumSize: Size.zero,
                     ),
@@ -2035,13 +2037,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         setDialogState(() {});
                         _loadData();
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Фото отклонено'), backgroundColor: Colors.orange),
+                          SnackBar(content: Text('Фото отклонено'), backgroundColor: AppColors.warning),
                         );
                         Navigator.pop(context);
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
+                      backgroundColor: AppColors.error,
                       padding: EdgeInsets.symmetric(vertical: 6.h),
                       minimumSize: Size.zero,
                     ),
@@ -2127,7 +2129,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   top: 6.h,
                   right: 6.w,
                   child: Material(
-                    color: Colors.red.withOpacity(0.9),
+                    color: AppColors.error.withOpacity(0.9),
                     borderRadius: BorderRadius.circular(6.r),
                     child: InkWell(
                       onTap: () => _confirmDeleteCountingSample(sample, product, setDialogState),
@@ -2176,7 +2178,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
           children: [
-            Icon(Icons.delete_outline, color: Colors.red),
+            Icon(Icons.delete_outline, color: AppColors.error),
             SizedBox(width: 8),
             Text('Удалить фото?', style: TextStyle(color: Colors.white)),
           ],
@@ -2198,12 +2200,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 setDialogState(() {});
                 _loadData();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Фото удалено'), backgroundColor: Colors.green),
+                  SnackBar(content: Text('Фото удалено'), backgroundColor: AppColors.success),
                 );
                 Navigator.pop(context); // Закрыть диалог фото для обновления
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: Text('Удалить', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -2709,7 +2711,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Ошибка: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -3147,7 +3149,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   child: Container(
                     padding: EdgeInsets.all(4.w),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.9),
+                      color: AppColors.error.withOpacity(0.9),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -3259,7 +3261,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   _confirmDeletePhoto(sample, product);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  backgroundColor: AppColors.error,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: 12.h),
                   shape: RoundedRectangleBorder(
@@ -3294,10 +3296,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             Container(
               padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.2),
+                color: AppColors.error.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(8.r),
               ),
-              child: Icon(Icons.warning, color: Colors.red, size: 24),
+              child: Icon(Icons.warning, color: AppColors.error, size: 24),
             ),
             SizedBox(width: 12),
             Text(
@@ -3342,7 +3344,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             Text(
               'Прогресс обучения будет пересчитан.',
               style: TextStyle(
-                color: Colors.orange.withOpacity(0.8),
+                color: AppColors.warning.withOpacity(0.8),
                 fontSize: 13.sp,
               ),
             ),
@@ -3362,7 +3364,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               _deletePhoto(sample, product);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
             ),
             child: Text('Удалить'),
@@ -3399,7 +3401,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 Expanded(child: Text('Фото удалено')),
               ],
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -3428,7 +3430,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                 Expanded(child: Text('Ошибка удаления фото')),
               ],
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -3446,7 +3448,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               Expanded(child: Text('Ошибка: $e')),
             ],
           ),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
       );

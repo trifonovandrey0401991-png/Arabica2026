@@ -17,7 +17,7 @@ const fs = require('fs').promises;
 const path = require('path');
 
 const router = express.Router();
-const { addTokenToIndex, removeTokenFromIndex, removePhoneFromIndex } = require('../utils/session_middleware');
+const { addTokenToIndex, removeTokenFromIndex, removePhoneFromIndex, requireAuth, requireAdmin } = require('../utils/session_middleware');
 const { withLock } = require('../utils/file_lock');
 const { writeJsonFile } = require('../utils/async_fs');
 const { maskPhone } = require('../utils/file_helpers');
@@ -712,13 +712,8 @@ router.post('/logout', async (req, res) => {
  * Включение/выключение биометрии
  * SECURITY: Требуем авторизацию — только владелец аккаунта или админ
  */
-router.post('/enable-biometric', async (req, res) => {
+router.post('/enable-biometric', requireAuth, async (req, res) => {
   try {
-    // SECURITY: Требуем авторизацию
-    if (!req.user) {
-      return res.status(401).json({ error: 'Требуется авторизация' });
-    }
-
     const { phone, enabled } = req.body;
 
     if (!phone || enabled === undefined) {
@@ -762,13 +757,8 @@ router.post('/enable-biometric', async (req, res) => {
  * GET /api/auth/session/:phone
  * Получить информацию о сессии пользователя (только для админов)
  */
-router.get('/session/:phone', async (req, res) => {
+router.get('/session/:phone', requireAdmin, async (req, res) => {
   try {
-    // SECURITY: Только админы могут просматривать чужие сессии
-    if (!req.user || !req.user.isAdmin) {
-      return res.status(403).json({ error: 'Доступ запрещён. Требуются права администратора.' });
-    }
-
     const normalizedPhone = normalizePhone(req.params.phone);
     const filePath = path.join(SESSIONS_DIR, `${normalizedPhone}.json`);
 
@@ -846,16 +836,12 @@ router.post('/refresh-session', async (req, res) => {
  * POST /api/auth/change-pin
  * Смена PIN-кода (требуется авторизация + старый PIN)
  */
-router.post('/change-pin', async (req, res) => {
+router.post('/change-pin', requireAuth, async (req, res) => {
   try {
     const { oldPin, newPin } = req.body;
 
     if (!oldPin || !newPin) {
       return res.status(400).json({ error: 'Требуются oldPin и newPin' });
-    }
-
-    if (!req.user) {
-      return res.status(401).json({ error: 'Требуется авторизация' });
     }
 
     const normalizedPhone = normalizePhone(req.user.phone);

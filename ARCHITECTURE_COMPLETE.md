@@ -1,7 +1,7 @@
 # Arabica - Полная архитектурная документация
 
-**Версия:** 2.5.0
-**Дата обновления:** 2026-02-17
+**Версия:** 2.6.0
+**Дата обновления:** 2026-02-19
 **Автор:** Claude Code (полный архитектурный анализ + аудит безопасности + полный аудит 09.02.2026)
 **Назначение:** Исчерпывающая документация для любого IT-специалиста
 
@@ -18,7 +18,7 @@
 7. [Автоматизация (Schedulers)](#7-автоматизация-schedulers)
 8. [Система баллов и эффективности](#8-система-баллов-и-эффективности)
 9. [Роли и матрица доступа](#9-роли-и-матрица-доступа)
-10. [Структура данных (/var/www/)](#10-структура-данных)
+10. [Структура данных (PostgreSQL + /var/www/)](#10-структура-данных)
 11. [Слабые места и рекомендации](#11-слабые-места-и-рекомендации)
 12. [Карта связей модулей](#12-карта-связей-модулей)
 13. [Результаты аудита 09.02.2026](#13-результаты-аудита)
@@ -33,7 +33,7 @@
 **Arabica** — комплексная система управления сетью кофеен, включающая:
 - Мобильное приложение (Flutter) для клиентов, сотрудников и администраторов
 - Backend сервер (Node.js + Express) для API и автоматизации
-- Файловое хранилище (JSON) для всех данных
+- PostgreSQL база данных (41 таблица, ~10400 записей) + JSON файлы как fallback
 - Push-уведомления через Firebase Cloud Messaging
 - Telegram-бот для OTP авторизации
 
@@ -43,7 +43,7 @@
 |-----------|------------|--------|
 | Mobile App | Flutter (Dart) | 3.x |
 | Backend | Node.js + Express | 18+ |
-| Database | File-based JSON | - |
+| Database | PostgreSQL + JSON fallback | 14+ |
 | Push Notifications | Firebase Cloud Messaging | - |
 | Hosting | nginx + PM2 | - |
 | Domain | arabica26.ru | - |
@@ -89,11 +89,11 @@
 │                                  │                                           │
 │       ┌──────────────────────────┼──────────────────────────┐               │
 │       │                          │                          │               │
-│  ┌────▼─────┐           ┌────────▼────────┐         ┌───────▼───────┐       │
-│  │ /var/www │           │  Firebase FCM   │         │  Telegram Bot │       │
-│  │  (JSON)  │           │  (push notify)  │         │  (OTP auth)   │       │
-│  │ 103 dirs │           │                 │         │               │       │
-│  └──────────┘           └─────────────────┘         └───────────────┘       │
+│  ┌────▼─────┐  ┌────────────┐  ┌▼────────────────┐  ┌─────▼─────────┐     │
+│  │ /var/www │  │ PostgreSQL │  │  Firebase FCM   │  │  Telegram Bot │     │
+│  │  (JSON   │  │ arabica_db │  │  (push notify)  │  │  (OTP auth)   │     │
+│  │ fallback)│  │ ~40 tables │  │                 │  │               │     │
+│  └──────────┘  └────────────┘  └─────────────────┘  └───────────────┘     │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -116,6 +116,7 @@ arabica2026/
 │   │   │   ├── reports_page.dart
 │   │   │   └── role_test_page.dart
 │   │   └── services/
+│   │       ├── dashboard_batch_service.dart
 │   │       ├── my_dialogs_counter_service.dart
 │   │       └── reports_counter_service.dart
 │   ├── core/                       # Базовые сервисы и утилиты
@@ -139,30 +140,35 @@ arabica2026/
 │   │   │   ├── notification_service.dart      # Локальные уведомления
 │   │   │   ├── photo_upload_service.dart      # Загрузка фото (mobile + web)
 │   │   │   └── report_notification_service.dart # Уведомления об отчётах
-│   │   └── utils/
-│   │       ├── cache_manager.dart
-│   │       ├── date_formatter.dart
-│   │       ├── error_handler.dart    # Обработка ошибок
-│   │       ├── logger.dart
-│   │       └── phone_normalizer.dart # Нормализация телефонов
+│   │   ├── theme/
+│   │   │   └── app_colors.dart     # Цветовая схема приложения (Dark Emerald)
+│   │   ├── utils/
+│   │   │   ├── cache_manager.dart
+│   │   │   ├── date_formatter.dart
+│   │   │   ├── error_handler.dart    # Обработка ошибок
+│   │   │   ├── logger.dart
+│   │   │   └── phone_normalizer.dart # Нормализация телефонов
+│   │   └── widgets/
+│   │       └── shop_icon.dart        # Иконка магазина
 │   ├── features/                   # 35 функциональных модулей
 │   │   ├── auth/                   # Авторизация
 │   │   ├── attendance/             # Посещаемость
 │   │   ├── shifts/                 # Пересменки
 │   │   ├── ... (ещё 30 модулей)
 │   │   └── ai_training/            # ИИ распознавание (Z-отчёты, сигареты)
-│   └── shared/                     # Общие компоненты
-│       ├── dialogs/
-│       ├── widgets/
-│       └── providers/
+│   └── shared/                     # Общие компоненты (17 файлов)
+│       ├── dialogs/                # 8 диалогов (расписание, уведомления, и др.)
+│       ├── models/                 # unified_dialog_message_model.dart
+│       ├── providers/              # cart_provider.dart, order_provider.dart
+│       └── widgets/                # 6 виджетов (report_list, shop_selection, и др.)
 ├── loyalty-proxy/                  # Node.js сервер
 │   ├── index.js                    # Точка входа (middleware, schedulers, routes)
-│   ├── api/                        # 49 API модулей
-│   ├── modules/                    # Вспомогательные модули
+│   ├── api/                        # 67 API модулей
+│   ├── modules/                    # Вспомогательные модули (7 файлов)
 │   ├── services/                   # Сервисы (Telegram bot)
-│   ├── utils/                      # Утилиты (cache, pagination)
+│   ├── utils/                      # Утилиты (13 файлов: cache, db, pagination, и др.)
 │   └── efficiency_calc.js          # Расчёт эффективности
-├── test/                           # 475 тестов (97% покрытие)
+├── test/                           # 33 тестовых файла (517 unit тестов)
 ├── assets/                         # Ресурсы (изображения, шрифты)
 ├── pubspec.yaml                    # Flutter зависимости
 ├── ARCHITECTURE_COMPLETE.md        # Этот файл
@@ -593,7 +599,7 @@ class AuthCredentials {
 | 11 | Сотрудники | `employees/` | Админ | Работает | Управление |
 | 12 | Магазины | `shops/` | Клиент (карта), Админ | Работает | Локации |
 | 13 | График работы | `work_schedule/` | Сотрудник, Админ | Работает | Расписание |
-| 14 | Эффективность | `efficiency/` | Сотрудник, Админ | Работает | 12 категорий |
+| 14 | Эффективность | `efficiency/` | Сотрудник, Админ | Работает | 13 категорий |
 | 15 | Рейтинг | `rating/` | Сотрудник | Работает | Топ сотрудников |
 | 16 | Колесо удачи | `fortune_wheel/` | Сотрудник, Админ | Работает | Призы |
 | 17 | Задачи | `tasks/` | Сотрудник, Админ | Работает | Задания |
@@ -636,10 +642,10 @@ attendance/
 │   ├── attendance_service.dart         # CRUD операции
 │   └── attendance_report_service.dart  # Отчёты
 └── pages/
-    ├── attendance_page.dart            # Кнопка "Я на работе"
     ├── attendance_shop_selection_page.dart
     ├── attendance_month_page.dart      # Календарь
     ├── attendance_employee_detail_page.dart
+    ├── attendance_day_details_dialog.dart  # Детали дня
     └── attendance_reports_page.dart    # Отчёты (админ)
 ```
 
@@ -709,10 +715,12 @@ shifts/
 └── pages/
     ├── shift_shop_selection_page.dart
     ├── shift_questions_page.dart       # Анкета
+    ├── shift_questions_management_page.dart # Управление вопросами (админ)
     ├── shift_report_view_page.dart     # Просмотр отчёта
     ├── shift_reports_list_page.dart    # Список (админ)
     ├── shift_summary_report_page.dart  # Сводный отчёт
-    └── shift_photo_gallery_page.dart   # Фото
+    ├── shift_photo_gallery_page.dart   # Фото
+    └── shift_edit_dialog.dart          # Редактирование отчёта
 ```
 
 **Роли:** Сотрудник, Админ
@@ -781,7 +789,7 @@ efficiency/
 │   ├── efficiency_data_model.dart       # Данные эффективности
 │   ├── manager_efficiency_model.dart    # Эффективность менеджера
 │   ├── points_settings_model.dart       # Настройки баллов
-│   └── settings/                        # 14 типов настроек
+│   └── settings/                        # 15 типов настроек
 │       ├── attendance_points_settings.dart
 │       ├── envelope_points_settings.dart
 │       ├── shift_points_settings.dart
@@ -797,18 +805,24 @@ efficiency/
 │   ├── employees_efficiency_page.dart   # Список сотрудников
 │   ├── employee_efficiency_detail_page.dart
 │   ├── efficiency_by_shop_page.dart
+│   ├── shop_efficiency_detail_page.dart # Детали по магазину
+│   ├── efficiency_by_employee_page.dart # По сотруднику
 │   ├── efficiency_analytics_page.dart   # Аналитика
-│   └── points_settings_page.dart        # Настройки (админ)
-│       └── settings_tabs/               # 16 вкладок настроек
+│   ├── points_settings_page.dart        # Настройки (админ)
+│   └── settings_tabs/                   # 17 вкладок настроек
 └── widgets/
     ├── efficiency_common_widgets.dart
+    ├── points_settings_scaffold.dart
+    ├── rating_preview_widget.dart
+    ├── settings_save_button_widget.dart
     ├── settings_slider_widget.dart
+    ├── settings_widgets.dart
     └── time_window_picker_widget.dart
 ```
 
 **Роли:** Сотрудник (своя), Админ (всех)
 
-**12 категорий эффективности:**
+**13 категорий эффективности:**
 
 | # | Категория | Источник | Тип | Баллы |
 |---|-----------|----------|-----|-------|
@@ -824,6 +838,7 @@ efficiency/
 | 10 | tasks | tasks | Boolean | +1 за выполнение |
 | 11 | penalties | efficiency-penalties | Sum | Сумма штрафов |
 | 12 | envelope | envelope-reports | Boolean | -5 ... 0 |
+| 13 | coffeeMachine | coffee-machine-reports | Rating 1-10 | Настраиваемый |
 
 **API Endpoints:**
 
@@ -1143,9 +1158,14 @@ loyalty-proxy/
 ├── utils/
 │   ├── admin_cache.js                    # Кэш для админ-запросов
 │   ├── async_fs.js                       # Async файловые операции с locking
+│   ├── base_report_scheduler.js          # Базовый класс автоматизации отчётов
 │   ├── data_cache.js                     # Кэш employees/shops данных
+│   ├── db.js                             # PostgreSQL клиент (findById, findAll, upsert, deleteById, query, transaction)
+│   ├── db_schema.sql                     # SQL схема всех ~40 таблиц
 │   ├── file_helpers.js                   # Утилиты для файлов (sanitizeId, fileExists, maskPhone)
 │   ├── file_lock.js                      # File locking (защита от race conditions)
+│   ├── image_compress.js                 # Сжатие изображений (sharp)
+│   ├── moscow_time.js                    # Московское время (UTC+3)
 │   ├── pagination.js                     # Пагинация
 │   ├── session_middleware.js             # Session middleware (token → session index)
 │   └── test_file_lock.js                 # Тесты для file locking
@@ -1162,8 +1182,10 @@ loyalty-proxy/
 **Общая статистика:**
 - ~37000 строк JavaScript кода
 - 67 API файлов в api/ + 1 в корне (efficiency_calc.js)
+- 13 утилит в utils/ (включая db.js, db_schema.sql)
 - 10 Scheduler'ов (8 именованных + order_timeout + auto_cleanup)
 - 503+ endpoints
+- PostgreSQL: ~40 таблиц, 10400+ записей, 17MB данных
 
 ## 5.2 ПОЛНАЯ ТАБЛИЦА API ENDPOINTS (240+)
 
@@ -2248,7 +2270,7 @@ END
 
 # 8. СИСТЕМА БАЛЛОВ И ЭФФЕКТИВНОСТИ
 
-## 8.1 Обзор 12 категорий эффективности
+## 8.1 Обзор 13 категорий эффективности
 
 | № | Категория | Тип | Источник данных | Min | Max |
 |---|-----------|-----|-----------------|-----|-----|
@@ -2264,6 +2286,7 @@ END
 | 10 | Penalties (Штрафы) | Custom | efficiency-penalties/ | Variable | Variable |
 | 11 | Tasks (Задачи) | Count | tasks/ + recurring-tasks/ | 0 | Variable |
 | 12 | Envelope (Конверты) | Boolean | envelope-reports/ | -5 | 0 |
+| 13 | CoffeeMachine (Кофемашины) | Rating 1-10 | coffee-machine-reports/ | Настраиваемый | Настраиваемый |
 
 ## 8.2 Формула линейной интерполяции (Rating)
 
@@ -2476,14 +2499,14 @@ async function calculateBatchEfficiency(employees, month) {
 ```
 
 **Оптимизация:**
-- Без batch: 1000 сотрудников × 12 категорий = 12000 I/O операций
+- Без batch: 1000 сотрудников × 13 категорий = 13000 I/O операций
 - С batch: 1 загрузка всех файлов + 12000 операций в памяти
 - **Ускорение:** ~50-100x
 
 ## 8.8 Связь с Колесом Удачи
 
 ```
-Расчёт эффективности (12 категорий)
+Расчёт эффективности (13 категорий)
            ↓
    Сортировка по totalPoints
            ↓
@@ -2697,9 +2720,42 @@ async function checkManagerAccess(phone, shopAddress) {
 
 ---
 
-# 10. СТРУКТУРА ДАННЫХ (/var/www/)
+# 10. СТРУКТУРА ДАННЫХ
 
-## 10.1 Дерево директорий
+## 10.0 PostgreSQL (основное хранилище с 2026-02-17)
+
+**База данных:** `arabica_db` на localhost, пользователь `arabica_app`, peer auth
+**Всего:** ~40 таблиц, 10400+ записей, 17MB данных
+
+**Паттерн dual-write:** Данные пишутся сначала в JSON (backward compat), затем в PostgreSQL (try/catch).
+При чтении: `if (USE_DB_*) { read from DB } else { read from files }`.
+Флаги `USE_DB_*=true` (41 шт.) в pm2 env, для мгновенного rollback можно выставить `false`.
+
+**Ключевые таблицы:**
+
+| Таблица | PK | Описание |
+|---------|-----|----------|
+| `employees` | phone | Сотрудники |
+| `clients` | phone | Клиенты |
+| `shops` | address | Магазины |
+| `auth_sessions` | id (SERIAL) | Сессии (unique on phone) |
+| `auth_pins` | phone | PIN-коды |
+| `shift_reports` | id | Отчёты пересменок |
+| `recount_reports` | id | Отчёты пересчётов |
+| `envelope_reports` | id | Отчёты конвертов |
+| `shift_handover_reports` | id | Отчёты сдачи смены |
+| `rko_reports` | id | Расходные ордера |
+| `coffee_machine_reports` | id | Отчёты кофемашин |
+| `tasks` | id | Задачи |
+| `recurring_tasks` | id | Циклические задачи |
+| `app_settings` | key (unique) | Синглтон-конфиги и месячные данные |
+
+**Утилита:** `loyalty-proxy/utils/db.js` — PostgreSQL клиент
+**Схема:** `loyalty-proxy/utils/db_schema.sql` — полная DDL схема
+
+> **Важно:** JSON файлы в /var/www/ сохраняются как backup и для rollback.
+
+## 10.1 Файловое хранилище (/var/www/) — backup/fallback
 
 **104 директории**, сгруппированные по модулям:
 
@@ -3428,7 +3484,7 @@ Client broadcast ──────────────┘
 | **Сдача смены (Shift Handover)** | Передача смены следующему сотруднику с фото-отчётом |
 | **РКО** | Расходный кассовый ордер - документ о движении денег |
 | **Конверт (Envelope)** | Инкассация наличных в конце смены |
-| **Эффективность** | Числовой показатель работы сотрудника (сумма 12 категорий) |
+| **Эффективность** | Числовой показатель работы сотрудника (сумма 13 категорий) |
 | **Pending** | Ожидающий отчёт, требующий действия сотрудника |
 | **Failed** | Просроченный отчёт (штраф начислен автоматически) |
 | **Review** | Отчёт на проверке у админа |

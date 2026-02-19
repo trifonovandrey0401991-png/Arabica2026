@@ -11,7 +11,9 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const USE_DB = process.env.USE_DB_EFFICIENCY === 'true';
@@ -300,7 +302,7 @@ function setupEfficiencyPenaltiesAPI(app) {
    * GET /api/efficiency/reports-batch
    * Batch endpoint для загрузки всех отчётов за месяц одним запросом
    */
-  app.get('/api/efficiency/reports-batch', async (req, res) => {
+  app.get('/api/efficiency/reports-batch', requireAuth, async (req, res) => {
     try {
       const { month } = req.query;
 
@@ -371,7 +373,7 @@ function setupEfficiencyPenaltiesAPI(app) {
    * GET /api/efficiency-penalties
    * Получить штрафы эффективности за месяц
    */
-  app.get('/api/efficiency-penalties', async (req, res) => {
+  app.get('/api/efficiency-penalties', requireAuth, async (req, res) => {
     try {
       const { month } = req.query;
 
@@ -409,6 +411,9 @@ function setupEfficiencyPenaltiesAPI(app) {
 
       console.log(`  ✅ Загружено ${penalties.length} штрафов за ${month}`);
 
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(penalties, req.query, 'penalties'));
+      }
       res.json({
         success: true,
         month,
@@ -429,7 +434,7 @@ function setupEfficiencyPenaltiesAPI(app) {
    * (штрафы, задачи, отзывы, товарные вопросы, заказы, РКО)
    * Заменяет ~12 отдельных запросов MyEfficiencyPage одним
    */
-  app.get('/api/efficiency/supplementary-batch', async (req, res) => {
+  app.get('/api/efficiency/supplementary-batch', requireAuth, async (req, res) => {
     try {
       const { month } = req.query;
 

@@ -8,8 +8,10 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
+const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_TESTS === 'true';
 
@@ -135,11 +137,15 @@ async function assignTestPoints(result) {
 function setupTestsAPI(app) {
   // ===== TEST QUESTIONS =====
 
-  app.get('/api/test-questions', async (req, res) => {
+  app.get('/api/test-questions', requireAuth, async (req, res) => {
     try {
       if (USE_DB) {
         const rows = await db.findAll('test_questions', { orderBy: 'created_at', orderDir: 'ASC' });
-        return res.json({ success: true, questions: rows.map(r => r.data) });
+        const questions = rows.map(r => r.data);
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(questions, req.query, 'questions'));
+        }
+        return res.json({ success: true, questions });
       }
 
       const questions = [];
@@ -162,6 +168,9 @@ function setupTestsAPI(app) {
           }
         }
       }
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(questions, req.query, 'questions'));
+      }
       res.json({ success: true, questions });
     } catch (error) {
       console.error('Ошибка получения вопросов тестирования:', error);
@@ -169,7 +178,7 @@ function setupTestsAPI(app) {
     }
   });
 
-  app.post('/api/test-questions', async (req, res) => {
+  app.post('/api/test-questions', requireAdmin, async (req, res) => {
     try {
       const question = {
         id: `test_question_${Date.now()}`,
@@ -193,7 +202,7 @@ function setupTestsAPI(app) {
     }
   });
 
-  app.put('/api/test-questions/:id', async (req, res) => {
+  app.put('/api/test-questions/:id', requireAdmin, async (req, res) => {
     try {
       const safeId = sanitizeId(req.params.id);
       const questionFile = path.join(TEST_QUESTIONS_DIR, `${safeId}.json`);
@@ -226,7 +235,7 @@ function setupTestsAPI(app) {
     }
   });
 
-  app.delete('/api/test-questions/:id', async (req, res) => {
+  app.delete('/api/test-questions/:id', requireAdmin, async (req, res) => {
     try {
       const safeId = sanitizeId(req.params.id);
       const questionFile = path.join(TEST_QUESTIONS_DIR, `${safeId}.json`);
@@ -252,7 +261,7 @@ function setupTestsAPI(app) {
 
   // ===== TEST RESULTS =====
 
-  app.get('/api/test-results', async (req, res) => {
+  app.get('/api/test-results', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/test-results');
 
@@ -260,6 +269,9 @@ function setupTestsAPI(app) {
         const rows = await db.findAll('test_results', { orderBy: 'created_at', orderDir: 'DESC' });
         const results = rows.map(r => r.data);
         console.log(`✅ Найдено результатов тестов: ${results.length}`);
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(results, req.query, 'results'));
+        }
         return res.json({ success: true, results });
       }
 
@@ -279,6 +291,9 @@ function setupTestsAPI(app) {
       // Сортировка по дате (новые сначала)
       results.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
       console.log(`✅ Найдено результатов тестов: ${results.length}`);
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(results, req.query, 'results'));
+      }
       res.json({ success: true, results });
     } catch (error) {
       console.error('Ошибка получения результатов тестов:', error);
@@ -286,7 +301,7 @@ function setupTestsAPI(app) {
     }
   });
 
-  app.post('/api/test-results', async (req, res) => {
+  app.post('/api/test-results', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/test-results employee:', req.body?.employeeName, 'test:', req.body?.testId);
       const result = {
@@ -327,9 +342,9 @@ function setupTestsAPI(app) {
 
   // ===== TEST SETTINGS (duration etc.) =====
 
-  app.get('/api/test-settings', async (req, res) => {
+  app.get('/api/test-settings', requireAuth, async (req, res) => {
     try {
-      let settings = { durationMinutes: 7 };
+      let settings = { durationMinutes: 7, minimumScore: 0 };
 
       if (USE_DB) {
         const row = await db.findById('app_settings', 'test_settings', 'key');
@@ -352,14 +367,21 @@ function setupTestsAPI(app) {
     }
   });
 
-  app.post('/api/test-settings', async (req, res) => {
+  app.post('/api/test-settings', requireAdmin, async (req, res) => {
     try {
       const durationMinutes = parseInt(req.body.durationMinutes);
       if (!durationMinutes || durationMinutes < 1 || durationMinutes > 120) {
         return res.status(400).json({ success: false, error: 'durationMinutes must be between 1 and 120' });
       }
+
+      // minimumScore: 0-20 (0 = проверка отключена)
+      const rawMinScore = parseInt(req.body.minimumScore);
+      const minimumScore = (!isNaN(rawMinScore) && rawMinScore >= 0 && rawMinScore <= 20)
+        ? rawMinScore : 0;
+
       const settings = {
         durationMinutes,
+        minimumScore,
         updatedAt: new Date().toISOString(),
       };
       await writeJsonFile(TEST_SETTINGS_FILE, settings);
@@ -369,7 +391,7 @@ function setupTestsAPI(app) {
         catch (dbErr) { console.error('DB save test_settings error:', dbErr.message); }
       }
 
-      console.log(`✅ Test settings updated: ${durationMinutes} minutes`);
+      console.log(`✅ Test settings updated: ${durationMinutes} min, minimumScore: ${minimumScore}`);
       res.json({ success: true, settings });
     } catch (error) {
       console.error('Error saving test settings:', error);

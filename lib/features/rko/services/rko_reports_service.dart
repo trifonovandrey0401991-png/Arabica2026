@@ -133,6 +133,14 @@ class RKOReportsService {
     return '${ApiConstants.serverUrl}$baseEndpoint/file/$encodedFileName';
   }
 
+  /// Проверить есть ли pending РКО для магазина
+  static Future<bool> hasPendingForShop(String shopAddress) async {
+    final pendingList = await getPendingRKOs();
+    return pendingList.any((rko) =>
+      (rko as Map<String, dynamic>)['shopAddress']?.toString() == shopAddress
+    );
+  }
+
   /// Получить список всех сотрудников, у которых есть РКО
   static Future<List<String>> getEmployeesWithRKO() async {
     try {

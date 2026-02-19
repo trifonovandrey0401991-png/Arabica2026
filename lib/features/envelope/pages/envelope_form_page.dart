@@ -95,12 +95,16 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     );
   }
 
-  /// Проверка находится ли время в диапазоне
+  /// Проверка находится ли время в диапазоне (с поддержкой перехода через полночь)
   bool _isTimeInRange(TimeOfDay current, TimeOfDay start, TimeOfDay end) {
     final currentMinutes = current.hour * 60 + current.minute;
     final startMinutes = start.hour * 60 + start.minute;
     final endMinutes = end.hour * 60 + end.minute;
-    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+    if (startMinutes <= endMinutes) {
+      return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+    } else {
+      return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+    }
   }
 
   /// Проверка временного окна для сдачи конверта
@@ -171,9 +175,8 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       Logger.debug('Загружено ${_questions.length} вопросов конверта');
     } catch (e) {
       Logger.error('Ошибка загрузки данных', e);
-    } finally {
-      setState(() => _isLoading = false);
     }
+    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
@@ -518,15 +521,17 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           ),
         );
         Navigator.of(context).pop(true);
+        // НЕ вызываем setState после pop — страница уходит из дерева
+        return;
       } else {
         _showError('Ошибка отправки отчета');
       }
     } catch (e) {
       Logger.error('Ошибка отправки отчета', e);
-      _showError('Ошибка: $e');
-    } finally {
-      setState(() => _isSaving = false);
+      if (mounted) _showError('Ошибка: $e');
     }
+    // Сбрасываем _isSaving только если остались на странице
+    if (mounted) setState(() => _isSaving = false);
   }
 
   @override
@@ -613,40 +618,82 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_stepTitles[_currentStep]),
-        backgroundColor: AppColors.primaryGreen,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: _isLoading
+              ? Center(child: CircularProgressIndicator(color: AppColors.gold))
+              : Column(
+                  children: [
+                    // Header
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(8.w, 8.h, 16.w, 4.h),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: Icon(Icons.arrow_back, color: Colors.white),
+                          ),
+                          Expanded(
+                            child: Text(
+                              _stepTitles[_currentStep],
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 48),
+                        ],
+                      ),
+                    ),
+
+                    // Progress bar
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      child: Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4.r),
+                            child: LinearProgressIndicator(
+                              value: _progress,
+                              backgroundColor: Colors.white.withOpacity(0.1),
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
+                              minHeight: 4,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Шаг ${_currentStep + 1} из $_totalSteps',
+                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Content
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(16.w),
+                        child: _buildStepContent(),
+                      ),
+                    ),
+
+                    // Navigation buttons
+                    _buildNavigationButtons(),
+                  ],
+                ),
+        ),
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // Progress bar
-                LinearProgressIndicator(
-                  value: _progress,
-                  backgroundColor: Colors.grey[300],
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
-                ),
-                Padding(
-                  padding: EdgeInsets.all(8.0.w),
-                  child: Text(
-                    'Шаг ${_currentStep + 1} из $_totalSteps',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                ),
-
-                // Content
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(16.w),
-                    child: _buildStepContent(),
-                  ),
-                ),
-
-                // Navigation buttons
-                _buildNavigationButtons(),
-              ],
-            ),
     );
   }
 
@@ -1490,17 +1537,24 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                color: Colors.white.withOpacity(isBold ? 1.0 : 0.7),
+                fontSize: 14.sp,
+              ),
             ),
           ),
           Text(
             '${value.toStringAsFixed(0)} руб',
             style: TextStyle(
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-              color: isRed ? Colors.red : (isGreen ? Colors.green : null),
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+              fontSize: isBold ? 16.sp : 14.sp,
+              color: isRed
+                  ? Colors.red[300]
+                  : (isGreen ? Colors.green[400] : Colors.white),
             ),
           ),
         ],
@@ -1568,124 +1622,186 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Заголовок
         Text(
-          'Итоговый отчет',
-          style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
+          'Итоговый отчёт',
+          style: TextStyle(
+            fontSize: 20.sp,
+            fontWeight: FontWeight.bold,
+            color: AppColors.gold,
+          ),
         ),
-        SizedBox(height: 8),
+        SizedBox(height: 6),
         Text(
-          '${widget.shopAddress}',
-          style: TextStyle(color: Colors.grey[600]),
+          widget.shopAddress,
+          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
         ),
         Text(
           '${_shiftType == 'morning' ? 'Утренняя' : 'Вечерняя'} смена',
-          style: TextStyle(color: Colors.grey[600]),
+          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
         ),
-        SizedBox(height: 16),
+        SizedBox(height: 20),
 
         // ООО секция
-        Card(
-          color: Colors.blue[50],
-          child: Padding(
-            padding: EdgeInsets.all(16.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ООО',
-                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
-                ),
-                Divider(),
-                _buildSummaryRow('Выручка:', _oooRevenue),
-                _buildSummaryRow('Наличные:', _oooCash),
-                if (_oooExpenses.isNotEmpty) ...[
-                  SizedBox(height: 8),
-                  Text('Расходы:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ..._oooExpenses.map((e) => Padding(
-                    padding: EdgeInsets.only(left: 8.w, top: 4.h),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('- ${e.supplierName}'),
-                        Text(
-                          '-${e.amount.toStringAsFixed(0)} руб',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ],
-                    ),
-                  )),
-                ],
-                Divider(),
-                _buildSummaryRow('В конверте:', _oooEnvelopeAmount, isBold: true, isGreen: true),
-              ],
-            ),
+        Container(
+          padding: EdgeInsets.all(16.w),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14.r),
+            border: Border.all(color: Colors.blue.withOpacity(0.3)),
           ),
-        ),
-        SizedBox(height: 16),
-
-        // ИП секция
-        Card(
-          color: Colors.orange[50],
-          child: Padding(
-            padding: EdgeInsets.all(16.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ИП',
-                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
-                ),
-                Divider(),
-                _buildSummaryRow('Выручка:', _ipRevenue),
-                _buildSummaryRow('Наличные:', _ipCash),
-                if (_expenses.isNotEmpty) ...[
-                  SizedBox(height: 8),
-                  Text('Расходы:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ..._expenses.map((e) => Padding(
-                    padding: EdgeInsets.only(left: 8.w, top: 4.h),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('- ${e.supplierName}'),
-                        Text(
-                          '-${e.amount.toStringAsFixed(0)} руб',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.business, color: Colors.blue[300], size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'ООО',
+                    style: TextStyle(
+                      fontSize: 17.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-                  )),
+                  ),
                 ],
-                Divider(),
-                _buildSummaryRow('В конверте:', _ipEnvelopeAmount, isBold: true, isGreen: true),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(height: 16),
-
-        // Итого
-        Card(
-          color: AppColors.primaryGreen.withOpacity(0.1),
-          child: Padding(
-            padding: EdgeInsets.all(16.w),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+              ),
+              Divider(color: Colors.white.withOpacity(0.15), height: 20),
+              _buildSummaryRow('Выручка:', _oooRevenue),
+              _buildSummaryRow('Наличные:', _oooCash),
+              if (_oooExpenses.isNotEmpty) ...[
+                SizedBox(height: 8),
                 Text(
-                  'ИТОГО В КОНВЕРТАХ:',
-                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  '${_totalEnvelopeAmount.toStringAsFixed(0)} руб',
+                  'Расходы:',
                   style: TextStyle(
-                    fontSize: 24.sp,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primaryGreen,
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 14.sp,
                   ),
                 ),
+                ..._oooExpenses.map((e) => Padding(
+                  padding: EdgeInsets.only(left: 8.w, top: 4.h),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '- ${e.supplierName}',
+                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13.sp),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '-${e.amount.toStringAsFixed(0)} руб',
+                        style: TextStyle(color: Colors.red[300], fontSize: 13.sp),
+                      ),
+                    ],
+                  ),
+                )),
               ],
-            ),
+              Divider(color: Colors.white.withOpacity(0.15), height: 20),
+              _buildSummaryRow('В конверте:', _oooEnvelopeAmount, isBold: true, isGreen: true),
+            ],
+          ),
+        ),
+        SizedBox(height: 14),
+
+        // ИП секция
+        Container(
+          padding: EdgeInsets.all(16.w),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14.r),
+            border: Border.all(color: Colors.orange.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.person, color: Colors.orange[300], size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'ИП',
+                    style: TextStyle(
+                      fontSize: 17.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              Divider(color: Colors.white.withOpacity(0.15), height: 20),
+              _buildSummaryRow('Выручка:', _ipRevenue),
+              _buildSummaryRow('Наличные:', _ipCash),
+              if (_expenses.isNotEmpty) ...[
+                SizedBox(height: 8),
+                Text(
+                  'Расходы:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 14.sp,
+                  ),
+                ),
+                ..._expenses.map((e) => Padding(
+                  padding: EdgeInsets.only(left: 8.w, top: 4.h),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '- ${e.supplierName}',
+                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13.sp),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '-${e.amount.toStringAsFixed(0)} руб',
+                        style: TextStyle(color: Colors.red[300], fontSize: 13.sp),
+                      ),
+                    ],
+                  ),
+                )),
+              ],
+              Divider(color: Colors.white.withOpacity(0.15), height: 20),
+              _buildSummaryRow('В конверте:', _ipEnvelopeAmount, isBold: true, isGreen: true),
+            ],
+          ),
+        ),
+        SizedBox(height: 14),
+
+        // Итого
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+          decoration: BoxDecoration(
+            color: AppColors.gold.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(14.r),
+            border: Border.all(color: AppColors.gold.withOpacity(0.4)),
+          ),
+          child: Column(
+            children: [
+              Text(
+                'ИТОГО В КОНВЕРТАХ',
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.gold.withOpacity(0.8),
+                  letterSpacing: 1,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                '${_totalEnvelopeAmount.toStringAsFixed(0)} руб',
+                style: TextStyle(
+                  fontSize: 28.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.gold,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -1693,17 +1809,13 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   }
 
   Widget _buildNavigationButtons() {
+    final isLastStep = _currentStep == _totalSteps - 1;
+
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            blurRadius: 4,
-            offset: Offset(0, -2),
-          ),
-        ],
+        color: Colors.black.withOpacity(0.3),
+        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
       ),
       child: Row(
         children: [
@@ -1711,45 +1823,45 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _prevStep,
-                icon: Icon(Icons.arrow_back),
-                label: Text('Назад'),
+                icon: Icon(Icons.arrow_back, color: Colors.white, size: 18),
+                label: Text('Назад', style: TextStyle(color: Colors.white)),
                 style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                  side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                 ),
               ),
             ),
-          if (_currentStep > 0) SizedBox(width: 16),
+          if (_currentStep > 0) SizedBox(width: 12),
           Expanded(
-            child: _currentStep == _totalSteps - 1
-                ? ElevatedButton.icon(
-                    onPressed: _isSaving ? null : _submitReport,
-                    icon: _isSaving
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Icon(Icons.check),
-                    label: Text(_isSaving ? 'Отправка...' : 'Отправить'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 16.h),
+            flex: 2,
+            child: ElevatedButton.icon(
+              onPressed: isLastStep
+                  ? (_isSaving ? null : _submitReport)
+                  : _nextStep,
+              icon: _isSaving
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : Icon(
+                      isLastStep ? Icons.check : Icons.arrow_forward,
+                      color: Colors.white,
+                      size: 18,
                     ),
-                  )
-                : ElevatedButton.icon(
-                    onPressed: _nextStep,
-                    icon: Icon(Icons.arrow_forward),
-                    label: Text('Далее'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 16.h),
-                    ),
-                  ),
+              label: Text(
+                isLastStep
+                    ? (_isSaving ? 'Отправка...' : 'Отправить')
+                    : 'Далее',
+                style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w600),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isLastStep ? AppColors.gold : AppColors.emerald,
+                padding: EdgeInsets.symmetric(vertical: 14.h),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+              ),
+            ),
           ),
         ],
       ),

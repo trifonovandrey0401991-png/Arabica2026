@@ -41,12 +41,17 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
     );
   }
 
-  /// Проверка находится ли время в диапазоне
+  /// Проверка находится ли время в диапазоне (с поддержкой перехода через полночь)
   bool _isTimeInRange(TimeOfDay current, TimeOfDay start, TimeOfDay end) {
     final currentMinutes = current.hour * 60 + current.minute;
     final startMinutes = start.hour * 60 + start.minute;
     final endMinutes = end.hour * 60 + end.minute;
-    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+    if (startMinutes <= endMinutes) {
+      return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+    } else {
+      // Переход через полночь (например 23:01 - 13:00)
+      return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+    }
   }
 
   /// Определить текущий тип смены на основе настроек

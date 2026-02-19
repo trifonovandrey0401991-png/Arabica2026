@@ -156,7 +156,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
     setState(() => _isLoading = true);
 
     try {
-      final chat = await EmployeeChatService.getOrCreateShopChat(shop.address);
+      final chat = await EmployeeChatService.getOrCreateShopChat(shop.address, phone: widget.userPhone);
 
       if (chat != null && mounted) {
         Navigator.pop(context, chat);

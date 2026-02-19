@@ -3,6 +3,7 @@ import '../models/cleanup_category.dart';
 import '../services/cleanup_service.dart' show CleanupService, DiskInfo;
 import '../widgets/cleanup_period_dialog.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница очистки исторических данных сервера.
 class DataCleanupPage extends StatefulWidget {
@@ -18,19 +19,10 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
   bool _isLoading = true;
   String? _error;
 
-  // Gradient colors
-  static final _primaryGradient = [Color(0xFF667eea), Color(0xFF764ba2)];
-  static final _storageGreenGradient = [Color(0xFF11998e), Color(0xFF38ef7d)];
-  static final _storageOrangeGradient = [Color(0xFFf7971e), Color(0xFFffd200)];
-  static final _storageRedGradient = [Color(0xFFeb3349), Color(0xFFf45c43)];
-  static final _categoryGradients = [
-    [Color(0xFF4facfe), Color(0xFF00f2fe)],
-    [Color(0xFF43e97b), Color(0xFF38f9d7)],
-    [Color(0xFFfa709a), Color(0xFFfee140)],
-    [Color(0xFF667eea), Color(0xFF764ba2)],
-    [Color(0xFFf093fb), Color(0xFFf5576c)],
-    [Color(0xFF4facfe), Color(0xFF00f2fe)],
-  ];
+  // Gradient colors — Dark Emerald + Gold theme
+  static final _storageGreenGradient = [AppColors.emeraldGreen, AppColors.emeraldGreenLight];
+  static final _storageOrangeGradient = [AppColors.warmAmber, AppColors.warmAmberLight];
+  static final _storageRedGradient = [AppColors.error, AppColors.errorLight];
 
   @override
   void initState() {
@@ -86,206 +78,184 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
     return _storageRedGradient;
   }
 
-  List<Color> _getCategoryGradient(int index) {
-    return _categoryGradients[index % _categoryGradients.length];
+  Color _getCategoryAccent(int index) {
+    const accents = [
+      AppColors.gold,
+      AppColors.emeraldGreenLight,
+      AppColors.warmAmber,
+      AppColors.info,
+      AppColors.purpleLight,
+      AppColors.goldLight,
+    ];
+    return accents[index % accents.length];
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F7FA),
-      body: CustomScrollView(
-        slivers: [
-          // Gradient AppBar
-          SliverAppBar(
-            expandedHeight: 140,
-            floating: false,
-            pinned: true,
-            backgroundColor: _primaryGradient[0],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: _primaryGradient,
-                  ),
-                ),
-                child: SafeArea(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(16.r),
-                        ),
-                        child: Icon(
-                          Icons.cleaning_services_rounded,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Очистка Историй',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                    ],
-                  ),
-                ),
-              ),
+      backgroundColor: AppColors.night,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: Text('Очистка Историй'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          Container(
+            margin: EdgeInsets.only(right: 8.w),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
+            child: IconButton(
+              icon: Icon(Icons.refresh, color: AppColors.gold),
+              onPressed: _loadStats,
+              tooltip: 'Обновить',
             ),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.refresh, color: Colors.white),
-                onPressed: _loadStats,
-                tooltip: 'Обновить',
-              ),
-            ],
-          ),
-          // Body
-          SliverToBoxAdapter(
-            child: _buildBody(),
           ),
         ],
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: _buildBody(),
+        ),
       ),
     );
   }
 
   Widget _buildBody() {
     if (_isLoading) {
-      return SizedBox(
-        height: 300,
-        child: Center(
-          child: CircularProgressIndicator(),
-        ),
+      return Center(
+        child: CircularProgressIndicator(color: AppColors.gold),
       );
     }
 
     if (_error != null) {
-      return Container(
-        padding: EdgeInsets.all(32.w),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20.r),
-              ),
-              child: Icon(Icons.error_outline, size: 40, color: Colors.red[400]),
-            ),
-            SizedBox(height: 20),
-            Text(
-              _error!,
-              style: TextStyle(fontSize: 16.sp, color: Colors.grey[600]),
-            ),
-            SizedBox(height: 20),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: _primaryGradient),
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: ElevatedButton(
-                onPressed: _loadStats,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.w),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20.r),
+                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
                 ),
-                child: Text(
-                  'Повторить',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                child: Icon(Icons.error_outline, size: 36, color: AppColors.errorLight),
+              ),
+              SizedBox(height: 20),
+              Text(
+                _error!,
+                style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.6)),
+              ),
+              SizedBox(height: 20),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [AppColors.gold, AppColors.darkGold]),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: ElevatedButton(
+                  onPressed: _loadStats,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
+                  ),
+                  child: Text(
+                    'Повторить',
+                    style: TextStyle(color: AppColors.night, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
 
     if (_categories.isEmpty) {
-      return Container(
-        padding: EdgeInsets.all(32.w),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: _storageGreenGradient),
-                borderRadius: BorderRadius.circular(20.r),
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.w),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(20.r),
+                  border: Border.all(color: AppColors.emeraldGreen.withOpacity(0.3)),
+                ),
+                child: Icon(Icons.check_circle_outline, size: 36, color: AppColors.emeraldGreenLight),
               ),
-              child: Icon(Icons.check_circle_outline, size: 40, color: Colors.white),
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Нет данных для очистки',
-              style: TextStyle(fontSize: 16.sp, color: Colors.grey[600]),
-            ),
-          ],
+              SizedBox(height: 20),
+              Text(
+                'Нет данных для очистки',
+                style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.6)),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     return RefreshIndicator(
       onRefresh: _loadStats,
-      child: Padding(
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
+      child: ListView(
         padding: EdgeInsets.all(16.w),
-        child: Column(
-          children: [
-            _buildStorageWidget(),
-            SizedBox(height: 16),
-            // Section header
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 8.h),
-              child: Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: _primaryGradient,
-                      ),
-                      borderRadius: BorderRadius.circular(2.r),
+        children: [
+          _buildStorageWidget(),
+          SizedBox(height: 16),
+          // Section header
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 8.h),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [AppColors.gold, AppColors.darkGold],
                     ),
+                    borderRadius: BorderRadius.circular(2.r),
                   ),
-                  SizedBox(width: 12),
-                  Text(
-                    'Категории данных',
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2D3748),
-                    ),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Категории данных',
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white.withOpacity(0.9),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            SizedBox(height: 8),
-            ...List.generate(_categories.length, (index) {
-              return _buildCategoryCard(_categories[index], index);
-            }),
-          ],
-        ),
+          ),
+          SizedBox(height: 8),
+          ...List.generate(_categories.length, (index) {
+            return _buildCategoryCard(_categories[index], index);
+          }),
+        ],
       ),
     );
   }
@@ -344,21 +314,15 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24.r),
-        boxShadow: [
-          BoxShadow(
-            color: storageGradient[0].withOpacity(0.2),
-            blurRadius: 20,
-            offset: Offset(0, 10),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
         children: [
           // Gradient header
           Container(
-            padding: EdgeInsets.all(20.w),
+            padding: EdgeInsets.all(18.w),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -366,8 +330,8 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                 colors: storageGradient,
               ),
               borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(24.r),
-                topRight: Radius.circular(24.r),
+                topLeft: Radius.circular(20.r),
+                topRight: Radius.circular(20.r),
               ),
             ),
             child: Column(
@@ -375,15 +339,15 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                 Row(
                   children: [
                     Container(
-                      width: 56,
-                      height: 56,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(16.r),
+                        borderRadius: BorderRadius.circular(14.r),
                       ),
-                      child: Icon(Icons.storage, color: Colors.white, size: 28),
+                      child: Icon(Icons.storage, color: Colors.white, size: 24),
                     ),
-                    SizedBox(width: 16),
+                    SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,7 +355,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                           Text(
                             'Хранилище сервера',
                             style: TextStyle(
-                              fontSize: 18.sp,
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -399,12 +363,12 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                           SizedBox(height: 4),
                           Row(
                             children: [
-                              Icon(statusIcon, color: Colors.white.withOpacity(0.9), size: 16),
-                              SizedBox(width: 6),
+                              Icon(statusIcon, color: Colors.white.withOpacity(0.9), size: 14),
+                              SizedBox(width: 5),
                               Text(
                                 statusText,
                                 style: TextStyle(
-                                  fontSize: 14.sp,
+                                  fontSize: 13.sp,
                                   color: Colors.white.withOpacity(0.9),
                                 ),
                               ),
@@ -414,15 +378,15 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                       ),
                     ),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12.r),
+                        borderRadius: BorderRadius.circular(10.r),
                       ),
                       child: Text(
                         '${(usagePercent * 100).toStringAsFixed(0)}%',
                         style: TextStyle(
-                          fontSize: 20.sp,
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -430,13 +394,13 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                     ),
                   ],
                 ),
-                SizedBox(height: 20),
+                SizedBox(height: 16),
                 // Progress bar
                 Container(
-                  height: 12,
+                  height: 10,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(6.r),
+                    color: Colors.white.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(5.r),
                   ),
                   child: Align(
                     alignment: Alignment.centerLeft,
@@ -445,29 +409,28 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(6.r),
+                          borderRadius: BorderRadius.circular(5.r),
                         ),
                       ),
                     ),
                   ),
                 ),
-                SizedBox(height: 12),
-                // Size info
+                SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       'Занято: ${formatSize(usedBytes)}',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14.sp,
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 13.sp,
                       ),
                     ),
                     Text(
                       'Всего: ${formatSize(totalBytes)}',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14.sp,
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 13.sp,
                       ),
                     ),
                   ],
@@ -477,7 +440,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
           ),
           // Stats footer
           Padding(
-            padding: EdgeInsets.all(16.w),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -485,37 +448,37 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                   icon: Icons.folder,
                   label: 'Категорий',
                   value: '${_categories.length}',
-                  gradient: _categoryGradients[0],
+                  color: AppColors.gold,
                 ),
                 Container(
                   width: 1,
-                  height: 40,
-                  color: Colors.grey[200],
+                  height: 36,
+                  color: Colors.white.withOpacity(0.1),
                 ),
                 _buildStatItem(
                   icon: Icons.insert_drive_file,
                   label: 'Файлов',
                   value: _formatNumber(totalFiles),
-                  gradient: _categoryGradients[1],
+                  color: AppColors.emeraldGreenLight,
                 ),
                 Container(
                   width: 1,
-                  height: 40,
-                  color: Colors.grey[200],
+                  height: 36,
+                  color: Colors.white.withOpacity(0.1),
                 ),
                 if (_diskInfo != null)
                   _buildStatItem(
                     icon: Icons.sd_storage,
                     label: 'Свободно',
                     value: formatSize(_diskInfo!.availableBytes),
-                    gradient: _storageGreenGradient,
+                    color: AppColors.info,
                   )
                 else
                   _buildStatItem(
                     icon: Icons.data_usage,
                     label: 'Данные',
                     value: formatSize(usedBytes),
-                    gradient: _categoryGradients[2],
+                    color: AppColors.warmAmber,
                   ),
               ],
             ),
@@ -529,33 +492,33 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
     required IconData icon,
     required String label,
     required String value,
-    required List<Color> gradient,
+    required Color color,
   }) {
     return Column(
       children: [
         Container(
-          width: 36,
-          height: 36,
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: gradient),
+            color: color.withOpacity(0.15),
             borderRadius: BorderRadius.circular(10.r),
           ),
-          child: Icon(icon, size: 18, color: Colors.white),
+          child: Icon(icon, size: 17, color: color),
         ),
-        SizedBox(height: 8),
+        SizedBox(height: 6),
         Text(
           value,
           style: TextStyle(
-            fontSize: 16.sp,
+            fontSize: 15.sp,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF2D3748),
+            color: Colors.white.withOpacity(0.9),
           ),
         ),
         Text(
           label,
           style: TextStyle(
             fontSize: 11.sp,
-            color: Colors.grey[600],
+            color: Colors.white.withOpacity(0.4),
           ),
         ),
       ],
@@ -570,56 +533,40 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
   }
 
   Widget _buildCategoryCard(CleanupCategory category, int index) {
-    final gradient = _getCategoryGradient(index);
+    final accent = _getCategoryAccent(index);
 
     return Container(
-      margin: EdgeInsets.only(bottom: 16.h),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [
-          BoxShadow(
-            color: gradient[0].withOpacity(0.15),
-            blurRadius: 15,
-            offset: Offset(0, 5),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16.r),
         child: InkWell(
           onTap: () => _showCleanupDialog(category),
-          borderRadius: BorderRadius.circular(20.r),
+          borderRadius: BorderRadius.circular(16.r),
           child: Padding(
-            padding: EdgeInsets.all(16.w),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
-                // Gradient icon
+                // Icon
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 46,
+                  height: 46,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: gradient,
-                    ),
-                    borderRadius: BorderRadius.circular(16.r),
-                    boxShadow: [
-                      BoxShadow(
-                        color: gradient[0].withOpacity(0.4),
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
+                    color: accent.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(14.r),
                   ),
                   child: Icon(
                     Icons.folder_outlined,
-                    color: Colors.white,
-                    size: 28,
+                    color: accent,
+                    size: 24,
                   ),
                 ),
-                SizedBox(width: 16),
+                SizedBox(width: 14),
                 // Info
                 Expanded(
                   child: Column(
@@ -628,42 +575,42 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                       Text(
                         category.name,
                         style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2D3748),
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.9),
                         ),
                       ),
-                      SizedBox(height: 8),
+                      SizedBox(height: 6),
                       Row(
                         children: [
                           _buildInfoChip(
                             icon: Icons.storage,
                             label: category.formattedSize,
-                            gradient: gradient,
+                            color: accent,
                           ),
-                          SizedBox(width: 8),
+                          SizedBox(width: 6),
                           _buildInfoChip(
                             icon: Icons.description_outlined,
                             label: '${category.count} файлов',
-                            gradient: gradient,
+                            color: accent,
                           ),
                         ],
                       ),
                       if (category.oldestDate != null || category.newestDate != null) ...[
-                        SizedBox(height: 8),
+                        SizedBox(height: 6),
                         Row(
                           children: [
                             Icon(
                               Icons.calendar_today,
-                              size: 14,
-                              color: Colors.grey[500],
+                              size: 12,
+                              color: Colors.white.withOpacity(0.3),
                             ),
-                            SizedBox(width: 6),
+                            SizedBox(width: 5),
                             Text(
                               _formatDateRange(category.oldestDate, category.newestDate),
                               style: TextStyle(
-                                fontSize: 12.sp,
-                                color: Colors.grey[600],
+                                fontSize: 11.sp,
+                                color: Colors.white.withOpacity(0.4),
                               ),
                             ),
                           ],
@@ -674,15 +621,16 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
                 ),
                 // Arrow
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
-                    color: gradient[0].withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12.r),
+                    color: accent.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     Icons.chevron_right,
-                    color: gradient[0],
+                    color: accent,
+                    size: 20,
                   ),
                 ),
               ],
@@ -696,30 +644,25 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
   Widget _buildInfoChip({
     required IconData icon,
     required String label,
-    required List<Color> gradient,
+    required Color color,
   }) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            gradient[0].withOpacity(0.1),
-            gradient[1].withOpacity(0.1),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20.r),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8.r),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: gradient[0]),
-          SizedBox(width: 6),
+          Icon(icon, size: 12, color: color),
+          SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
-              fontSize: 12.sp,
+              fontSize: 11.sp,
               fontWeight: FontWeight.w500,
-              color: gradient[0],
+              color: color,
             ),
           ),
         ],

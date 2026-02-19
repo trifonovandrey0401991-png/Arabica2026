@@ -69,7 +69,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Настройки сохранены'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
         widget.onSettingsChanged?.call();
@@ -77,7 +77,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка сохранения настроек'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -161,7 +161,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
               title: 'Вопросы пересчёта',
               subtitle: 'Текущий каталог (список из пересчёта)',
               icon: Icons.quiz,
-              iconColor: Colors.blue,
+              iconColor: AppColors.info,
             ),
             SizedBox(height: 8),
 
@@ -171,7 +171,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
               title: 'Мастер-каталог',
               subtitle: 'Единый каталог для всех магазинов (в разработке)',
               icon: Icons.inventory_2,
-              iconColor: Colors.orange,
+              iconColor: AppColors.warning,
               isDisabled: true, // Пока недоступен
             ),
           ],
@@ -228,7 +228,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
             // Icon
             Icon(
               icon,
-              color: isDisabled ? Colors.grey : iconColor,
+              color: isDisabled ? AppColors.neutral : iconColor,
               size: 28,
             ),
             SizedBox(width: 12),
@@ -244,7 +244,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                         title,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: isDisabled ? Colors.grey : null,
+                          color: isDisabled ? AppColors.neutral : null,
                         ),
                       ),
                       if (isDisabled) ...[
@@ -327,7 +327,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
             // Крупный план
             _buildSettingRow(
               icon: Icons.crop_free,
-              iconColor: Colors.blue,
+              iconColor: AppColors.info,
               title: 'Крупный план (шаблоны)',
               subtitle: '1-3 пачки вблизи',
               value: _requiredRecountPhotos,
@@ -342,7 +342,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
             // Выкладка (на магазин)
             _buildSettingRow(
               icon: Icons.grid_view,
-              iconColor: Colors.orange,
+              iconColor: AppColors.warning,
               title: 'Выкладка (на магазин)',
               subtitle: 'Каждый магазин должен добавить свои фото',
               value: _requiredDisplayPhotosPerShop,
@@ -421,7 +421,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                     ? () => onChanged(value - 1)
                     : null,
                 icon: Icon(Icons.remove_circle_outline),
-                color: Colors.red,
+                color: AppColors.error,
               ),
               Container(
                 width: 40,
@@ -439,7 +439,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                     ? () => onChanged(value + 1)
                     : null,
                 icon: Icon(Icons.add_circle_outline),
-                color: Colors.green,
+                color: AppColors.success,
               ),
             ],
           ),
@@ -525,10 +525,10 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: AppColors.info.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
-                child: Icon(Icons.photo_camera, color: Colors.blue),
+                child: Icon(Icons.photo_camera, color: AppColors.info),
               ),
               SizedBox(width: 12),
 
@@ -639,7 +639,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
               ),
 
               // Стрелка
-              Icon(Icons.chevron_right, color: Colors.grey),
+              Icon(Icons.chevron_right, color: AppColors.neutral),
             ],
           ),
         ),
@@ -725,7 +725,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: Text('Удалить'),
           ),
         ],
@@ -745,14 +745,14 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Фото удалено'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка удаления'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -775,7 +775,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
             child: Text('Подтвердить'),
           ),
         ],
@@ -795,14 +795,14 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Фото добавлено в обучение'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка подтверждения'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -825,7 +825,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: Text('Отклонить'),
           ),
         ],
@@ -845,14 +845,14 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Фото отклонено'),
-            backgroundColor: Colors.orange,
+            backgroundColor: AppColors.warning,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка отклонения'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -861,10 +861,12 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.pop(context, _hasChanges);
-        return false;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          Navigator.pop(context, _hasChanges);
+        }
       },
       child: Scaffold(
         appBar: AppBar(
@@ -942,7 +944,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
                   'counting-pending',
                   'Ожидание ($pendingCount)',
                   Icons.hourglass_empty,
-                  badgeColor: Colors.amber,
+                  badgeColor: AppColors.amber,
                 ),
             ],
           ),
@@ -1009,22 +1011,22 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
 
     switch (sample.type) {
       case TrainingSampleType.recount:
-        badgeColor = Colors.blue;
+        badgeColor = AppColors.info;
         badgeIcon = Icons.crop_free;
         badgeText = 'Крупный';
         break;
       case TrainingSampleType.display:
-        badgeColor = Colors.orange;
+        badgeColor = AppColors.warning;
         badgeIcon = Icons.grid_view;
         badgeText = 'Выкладка';
         break;
       case TrainingSampleType.counting:
-        badgeColor = Colors.green;
+        badgeColor = AppColors.success;
         badgeIcon = Icons.calculate;
         badgeText = 'Пересчёт';
         break;
       case TrainingSampleType.countingPending:
-        badgeColor = Colors.amber;
+        badgeColor = AppColors.amber;
         badgeIcon = Icons.hourglass_empty;
         badgeText = 'Ожидание';
         break;
@@ -1044,7 +1046,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
             errorWidget: (context, error, stackTrace) {
               return Container(
                 color: Colors.grey[200],
-                child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                child: Icon(Icons.broken_image, size: 48, color: AppColors.neutral),
               );
             },
           ),
@@ -1114,7 +1116,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                 decoration: BoxDecoration(
-                  color: Colors.green,
+                  color: AppColors.success,
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Text(
@@ -1137,7 +1139,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
                     children: [
                       // Одобрить
                       Material(
-                        color: Colors.green,
+                        color: AppColors.success,
                         borderRadius: BorderRadius.circular(20.r),
                         child: InkWell(
                           onTap: () => _approvePendingSample(sample),
@@ -1151,7 +1153,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
                       SizedBox(width: 8),
                       // Отклонить
                       Material(
-                        color: Colors.red,
+                        color: AppColors.error,
                         borderRadius: BorderRadius.circular(20.r),
                         child: InkWell(
                           onTap: () => _rejectPendingSample(sample),
@@ -1165,7 +1167,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
                     ],
                   )
                 : Material(
-                    color: Colors.red,
+                    color: AppColors.error,
                     borderRadius: BorderRadius.circular(20.r),
                     child: InkWell(
                       onTap: () => _deleteSample(sample),

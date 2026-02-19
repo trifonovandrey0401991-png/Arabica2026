@@ -13,6 +13,7 @@ const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_TRAINING === 'true';
 
@@ -65,7 +66,7 @@ const uploadTrainingArticleMedia = multer({
 
 function setupTrainingAPI(app) {
   // GET /api/training-articles
-  app.get('/api/training-articles', async (req, res) => {
+  app.get('/api/training-articles', requireAuth, async (req, res) => {
     try {
       if (USE_DB) {
         const rows = await db.findAll('training_articles', { orderBy: 'created_at', orderDir: 'DESC' });
@@ -100,9 +101,8 @@ function setupTrainingAPI(app) {
   });
 
   // POST /api/training-articles
-  app.post('/api/training-articles', async (req, res) => {
+  app.post('/api/training-articles', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const article = {
         id: `training_article_${Date.now()}`,
         group: req.body.group,
@@ -135,9 +135,8 @@ function setupTrainingAPI(app) {
   });
 
   // PUT /api/training-articles/:id
-  app.put('/api/training-articles/:id', async (req, res) => {
+  app.put('/api/training-articles/:id', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const safeId = sanitizeId(req.params.id);
       const articleFile = path.join(TRAINING_ARTICLES_DIR, `${safeId}.json`);
       if (!isPathSafe(TRAINING_ARTICLES_DIR, articleFile)) {
@@ -172,9 +171,8 @@ function setupTrainingAPI(app) {
   });
 
   // DELETE /api/training-articles/:id
-  app.delete('/api/training-articles/:id', async (req, res) => {
+  app.delete('/api/training-articles/:id', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const safeId = sanitizeId(req.params.id);
       const articleFile = path.join(TRAINING_ARTICLES_DIR, `${safeId}.json`);
       if (!isPathSafe(TRAINING_ARTICLES_DIR, articleFile)) {
@@ -198,9 +196,8 @@ function setupTrainingAPI(app) {
   });
 
   // Загрузка изображения для статьи обучения
-  app.post('/api/training-articles/upload-image', uploadTrainingArticleMedia.single('image'), (req, res) => {
+  app.post('/api/training-articles/upload-image', requireAuth, uploadTrainingArticleMedia.single('image'), (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       if (!req.file) {
         return res.status(400).json({ success: false, error: 'Файл не загружен' });
       }
@@ -220,9 +217,8 @@ function setupTrainingAPI(app) {
   });
 
   // Удаление изображения статьи обучения
-  app.delete('/api/training-articles/delete-image/:filename', async (req, res) => {
+  app.delete('/api/training-articles/delete-image/:filename', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const filename = path.basename(req.params.filename);
       const filePath = path.join(TRAINING_ARTICLES_MEDIA_DIR, filename);
 

@@ -11,6 +11,7 @@ const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const dataCache = require('../utils/data_cache');
 const db = require('../utils/db');
+const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
@@ -66,7 +67,7 @@ function parseBool(value) {
 function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse, invalidateCache } = {}) {
 
   // GET /api/employees - получить всех сотрудников
-  app.get('/api/employees', async (req, res) => {
+  app.get('/api/employees', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/employees');
       let employees;
@@ -127,7 +128,7 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
   });
 
   // GET /api/employees/:id - получить сотрудника по ID
-  app.get('/api/employees/:id', async (req, res) => {
+  app.get('/api/employees/:id', requireAuth, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       console.log('GET /api/employees:', id);
@@ -155,13 +156,8 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
   });
 
   // POST /api/employees - создать нового сотрудника
-  app.post('/api/employees', async (req, res) => {
+  app.post('/api/employees', requireAdmin, async (req, res) => {
     try {
-      // Только админ может создавать сотрудников
-      if (!req.user || !req.user.isAdmin) {
-        return res.status(403).json({ success: false, error: 'Доступ запрещён: требуются права администратора' });
-      }
-
       console.log('POST /api/employees:', JSON.stringify(req.body).substring(0, 200));
 
       // Валидация обязательных полей
@@ -251,13 +247,8 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
   });
 
   // PUT /api/employees/:id - обновить сотрудника
-  app.put('/api/employees/:id', async (req, res) => {
+  app.put('/api/employees/:id', requireAdmin, async (req, res) => {
     try {
-      // Только админ может редактировать сотрудников
-      if (!req.user || !req.user.isAdmin) {
-        return res.status(403).json({ success: false, error: 'Доступ запрещён: требуются права администратора' });
-      }
-
       const id = sanitizeId(req.params.id);
       console.log('PUT /api/employees:', id);
 
@@ -350,13 +341,8 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
   });
 
   // DELETE /api/employees/:id - удалить сотрудника
-  app.delete('/api/employees/:id', async (req, res) => {
+  app.delete('/api/employees/:id', requireAdmin, async (req, res) => {
     try {
-      // Только админ может удалять сотрудников
-      if (!req.user || !req.user.isAdmin) {
-        return res.status(403).json({ success: false, error: 'Доступ запрещён: требуются права администратора' });
-      }
-
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/employees:', id);
 

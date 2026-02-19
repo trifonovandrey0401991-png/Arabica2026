@@ -13,6 +13,7 @@ const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_TASKS === 'true';
 
@@ -514,9 +515,8 @@ function setupTasksAPI(app) {
   // ===== TASKS =====
 
   // POST /api/tasks - Create a task
-  app.post('/api/tasks', async (req, res) => {
+  app.post('/api/tasks', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const task = req.body;
       console.log('POST /api/tasks:', task.title);
 
@@ -605,7 +605,7 @@ function setupTasksAPI(app) {
   });
 
   // GET /api/tasks - Get all tasks
-  app.get('/api/tasks', async (req, res) => {
+  app.get('/api/tasks', requireAuth, async (req, res) => {
     try {
       const { month, createdBy } = req.query;
       console.log('GET /api/tasks', { month, createdBy });
@@ -637,7 +637,7 @@ function setupTasksAPI(app) {
   });
 
   // GET /api/tasks/:id - Get a single task with its assignments
-  app.get('/api/tasks/:id', async (req, res) => {
+  app.get('/api/tasks/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       console.log('GET /api/tasks/:id', id);
@@ -662,7 +662,7 @@ function setupTasksAPI(app) {
   // ===== TASK ASSIGNMENTS =====
 
   // GET /api/task-assignments - Get assignments (filtered)
-  app.get('/api/task-assignments', async (req, res) => {
+  app.get('/api/task-assignments', requireAuth, async (req, res) => {
     try {
       const { assigneeId, status, month, taskId } = req.query;
       console.log('GET /api/task-assignments', { assigneeId, status, month, taskId });
@@ -712,7 +712,7 @@ function setupTasksAPI(app) {
   });
 
   // POST /api/task-assignments/:id/respond - Respond to a task
-  app.post('/api/task-assignments/:id/respond', async (req, res) => {
+  app.post('/api/task-assignments/:id/respond', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const { responseText, responsePhotos } = req.body;
@@ -772,7 +772,7 @@ function setupTasksAPI(app) {
   });
 
   // POST /api/task-assignments/:id/decline - Decline a task
-  app.post('/api/task-assignments/:id/decline', async (req, res) => {
+  app.post('/api/task-assignments/:id/decline', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const { reason } = req.body;
@@ -820,9 +820,8 @@ function setupTasksAPI(app) {
   });
 
   // POST /api/task-assignments/:id/review - Review a task (admin)
-  app.post('/api/task-assignments/:id/review', async (req, res) => {
+  app.post('/api/task-assignments/:id/review', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const { id } = req.params;
       const { approved, reviewedBy, reviewComment } = req.body;
       console.log('POST /api/task-assignments/:id/review', id, { approved, reviewedBy });
@@ -870,7 +869,7 @@ function setupTasksAPI(app) {
   });
 
   // GET /api/task-assignments/stats - Get statistics for reports
-  app.get('/api/task-assignments/stats', async (req, res) => {
+  app.get('/api/task-assignments/stats', requireAuth, async (req, res) => {
     try {
       const { month } = req.query;
       console.log('GET /api/task-assignments/stats', { month });
@@ -904,7 +903,7 @@ function setupTasksAPI(app) {
   });
 
   // GET /api/task-assignments/unviewed-expired-count - Count unviewed expired tasks
-  app.get('/api/task-assignments/unviewed-expired-count', async (req, res) => {
+  app.get('/api/task-assignments/unviewed-expired-count', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/task-assignments/unviewed-expired-count');
 
@@ -926,9 +925,8 @@ function setupTasksAPI(app) {
   });
 
   // POST /api/task-assignments/mark-expired-viewed - Mark all expired tasks as viewed
-  app.post('/api/task-assignments/mark-expired-viewed', async (req, res) => {
+  app.post('/api/task-assignments/mark-expired-viewed', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       console.log('POST /api/task-assignments/mark-expired-viewed');
 
       await ensureDir(TASK_ASSIGNMENTS_DIR);

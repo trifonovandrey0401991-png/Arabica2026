@@ -9,6 +9,8 @@ const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_JOB_APPLICATIONS === 'true';
 
@@ -174,7 +176,7 @@ async function sendPushToAdmins(title, body) {
 
 module.exports = function setupJobApplicationsAPI(app) {
   // GET /api/job-applications - получить все заявки
-  app.get('/api/job-applications', async (req, res) => {
+  app.get('/api/job-applications', requireAuth, async (req, res) => {
     try {
       console.log('📥 GET /api/job-applications');
 
@@ -182,6 +184,9 @@ module.exports = function setupJobApplicationsAPI(app) {
         const rows = await db.findAll('job_applications', { orderBy: 'created_at', orderDir: 'DESC' });
         const applications = rows.map(dbToJobApp);
         const unviewedCount = rows.filter(r => !r.is_viewed).length;
+        if (isPaginationRequested(req.query)) {
+          return res.json({ ...createPaginatedResponse(applications, req.query, 'applications'), unviewedCount });
+        }
         return res.json({ success: true, applications, unviewedCount });
       }
 
@@ -213,6 +218,9 @@ module.exports = function setupJobApplicationsAPI(app) {
       // Сортируем по дате создания (новые первые)
       applications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+      if (isPaginationRequested(req.query)) {
+        return res.json({ ...createPaginatedResponse(applications, req.query, 'applications'), unviewedCount });
+      }
       res.json({ success: true, applications, unviewedCount });
     } catch (error) {
       console.error('❌ Ошибка получения заявок:', error);
@@ -221,7 +229,7 @@ module.exports = function setupJobApplicationsAPI(app) {
   });
 
   // POST /api/job-applications - создать заявку
-  app.post('/api/job-applications', async (req, res) => {
+  app.post('/api/job-applications', requireAuth, async (req, res) => {
     try {
       const { fullName, phone, preferredShift, shopAddresses } = req.body;
 
@@ -300,7 +308,7 @@ module.exports = function setupJobApplicationsAPI(app) {
   });
 
   // GET /api/job-applications/unviewed-count - получить количество непросмотренных
-  app.get('/api/job-applications/unviewed-count', async (req, res) => {
+  app.get('/api/job-applications/unviewed-count', requireAuth, async (req, res) => {
     try {
       if (USE_DB) {
         const cnt = await db.count('job_applications', { is_viewed: false });
@@ -333,7 +341,7 @@ module.exports = function setupJobApplicationsAPI(app) {
   });
 
   // PATCH /api/job-applications/:id/view - отметить как просмотренную
-  app.patch('/api/job-applications/:id/view', async (req, res) => {
+  app.patch('/api/job-applications/:id/view', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const { adminName } = req.body;
@@ -374,7 +382,7 @@ module.exports = function setupJobApplicationsAPI(app) {
   });
 
   // PATCH /api/job-applications/:id/status - обновить статус
-  app.patch('/api/job-applications/:id/status', async (req, res) => {
+  app.patch('/api/job-applications/:id/status', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
@@ -409,7 +417,7 @@ module.exports = function setupJobApplicationsAPI(app) {
   });
 
   // PATCH /api/job-applications/:id/notes - обновить комментарии
-  app.patch('/api/job-applications/:id/notes', async (req, res) => {
+  app.patch('/api/job-applications/:id/notes', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const { adminNotes } = req.body;

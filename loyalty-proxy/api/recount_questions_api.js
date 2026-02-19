@@ -10,6 +10,8 @@ const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_RECOUNT_QUESTIONS === 'true';
 
@@ -25,13 +27,17 @@ const RECOUNT_QUESTIONS_DIR = `${DATA_DIR}/recount-questions`;
 
 function setupRecountQuestionsAPI(app, { upload } = {}) {
   // Получить все вопросы пересчета
-  app.get('/api/recount-questions', async (req, res) => {
+  app.get('/api/recount-questions', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/recount-questions:', req.query);
 
       if (USE_DB) {
         const rows = await db.findAll('recount_questions', { orderBy: 'created_at', orderDir: 'ASC' });
-        return res.json({ success: true, questions: rows.map(r => r.data) });
+        const questions = rows.map(r => r.data);
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(questions, req.query, 'questions'));
+        }
+        return res.json({ success: true, questions });
       }
 
       const files = await fsp.readdir(RECOUNT_QUESTIONS_DIR);
@@ -50,6 +56,9 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
         }
       }
 
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(questions, req.query, 'questions'));
+      }
       res.json({
         success: true,
         questions: questions
@@ -64,7 +73,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
   });
 
   // Создать вопрос пересчета
-  app.post('/api/recount-questions', async (req, res) => {
+  app.post('/api/recount-questions', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/recount-questions:', JSON.stringify(req.body).substring(0, 200));
 
@@ -105,7 +114,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
   });
 
   // Обновить вопрос пересчета
-  app.put('/api/recount-questions/:questionId', async (req, res) => {
+  app.put('/api/recount-questions/:questionId', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -154,7 +163,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
 
   // Загрузить эталонное фото для вопроса пересчета
   if (upload) {
-    app.post('/api/recount-questions/:questionId/reference-photo', upload.single('photo'), async (req, res) => {
+    app.post('/api/recount-questions/:questionId/reference-photo', requireAuth, upload.single('photo'), async (req, res) => {
       try {
         const { questionId } = req.params;
         const { shopAddress } = req.body;
@@ -215,7 +224,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
   }
 
   // Удалить вопрос пересчета
-  app.delete('/api/recount-questions/:questionId', async (req, res) => {
+  app.delete('/api/recount-questions/:questionId', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -251,7 +260,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
   });
 
   // Массовая загрузка товаров пересчета (ЗАМЕНИТЬ ВСЕ)
-  app.post('/api/recount-questions/bulk-upload', async (req, res) => {
+  app.post('/api/recount-questions/bulk-upload', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/recount-questions/bulk-upload:', req.body?.products?.length, 'товаров');
 
@@ -325,7 +334,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
   });
 
   // Массовое добавление НОВЫХ товаров (только с новыми баркодами)
-  app.post('/api/recount-questions/bulk-add-new', async (req, res) => {
+  app.post('/api/recount-questions/bulk-add-new', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/recount-questions/bulk-add-new:', req.body?.products?.length, 'товаров');
 

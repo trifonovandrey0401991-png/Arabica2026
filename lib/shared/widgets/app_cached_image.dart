@@ -35,7 +35,7 @@ class AppCachedImage extends StatelessWidget {
   Widget build(BuildContext context) {
     // memCacheWidth ограничивает размер декодированного изображения в памяти
     // Без этого Flutter декодирует 1080x2424 (10 МБ RAM) для показа в 220x220
-    final int? memCacheWidth = width != null
+    final int? memCacheWidth = (width != null && width!.isFinite)
         ? (width! * MediaQuery.of(context).devicePixelRatio).toInt()
         : null;
 

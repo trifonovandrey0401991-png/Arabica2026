@@ -106,12 +106,14 @@ class SettingsSectionTitle extends StatelessWidget {
           ),
         ),
         SizedBox(width: 10),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18.sp,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF2D3436),
+        Flexible(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2D3436),
+            ),
           ),
         ),
       ],

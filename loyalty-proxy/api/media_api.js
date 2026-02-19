@@ -8,6 +8,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { compressUpload } = require('../utils/image_compress');
+const { requireAuth } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -47,7 +48,7 @@ function setupMediaAPI(app, uploadChatMedia) {
   // ===== CHAT MEDIA =====
 
   if (uploadChatMedia) {
-    app.post('/upload-media', uploadChatMedia.single('file'), compressUpload, async (req, res) => {
+    app.post('/upload-media', requireAuth, uploadChatMedia.single('file'), compressUpload, async (req, res) => {
       try {
         console.log('POST /upload-media');
         console.log('  mediaType:', req.body.mediaType || 'image');
@@ -94,7 +95,7 @@ function setupMediaAPI(app, uploadChatMedia) {
       }
     });
 
-    app.post('/upload-chat-media', uploadChatMedia.single('file'), compressUpload, async (req, res) => {
+    app.post('/upload-chat-media', requireAuth, uploadChatMedia.single('file'), compressUpload, async (req, res) => {
       try {
         console.log('POST /upload-chat-media');
 
@@ -118,7 +119,7 @@ function setupMediaAPI(app, uploadChatMedia) {
 
   // ===== APP LOGS =====
 
-  app.post('/api/app-logs', async (req, res) => {
+  app.post('/api/app-logs', requireAuth, async (req, res) => {
     try {
       const logData = req.body;
       console.log('POST /api/app-logs');
@@ -143,7 +144,7 @@ function setupMediaAPI(app, uploadChatMedia) {
     }
   });
 
-  app.get('/api/app-logs', async (req, res) => {
+  app.get('/api/app-logs', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/app-logs');
       const { date, phone, level } = req.query;

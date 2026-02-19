@@ -12,6 +12,7 @@ const { sanitizeId, fileExists } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const ordersModule = require('../modules/orders');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const ORDERS_DIR = `${DATA_DIR}/orders`;
@@ -25,7 +26,7 @@ const USE_DB = process.env.USE_DB_ORDERS === 'true';
 
 function setupOrdersAPI(app) {
   // POST /api/orders - создать заказ
-  app.post('/api/orders', async (req, res) => {
+  app.post('/api/orders', requireAuth, async (req, res) => {
     try {
       const { clientPhone, clientName, shopAddress, items, totalPrice, comment } = req.body;
       console.log('POST /api/orders clientPhone:', clientPhone, 'shop:', shopAddress);
@@ -49,7 +50,7 @@ function setupOrdersAPI(app) {
   });
 
   // GET /api/orders - получить заказы (с фильтрацией по clientPhone)
-  app.get('/api/orders', async (req, res) => {
+  app.get('/api/orders', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/orders', req.query);
       const filters = {};
@@ -72,7 +73,7 @@ function setupOrdersAPI(app) {
 
   // GET /api/orders/unviewed-count - получить количество непросмотренных заказов
   // ВАЖНО: этот route должен быть ПЕРЕД /api/orders/:id
-  app.get('/api/orders/unviewed-count', async (req, res) => {
+  app.get('/api/orders/unviewed-count', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/orders/unviewed-count');
       const counts = await ordersModule.getUnviewedOrdersCounts();
@@ -90,7 +91,7 @@ function setupOrdersAPI(app) {
 
   // POST /api/orders/mark-viewed/:type - отметить заказы как просмотренные
   // ВАЖНО: этот route должен быть ПЕРЕД /api/orders/:id
-  app.post('/api/orders/mark-viewed/:type', async (req, res) => {
+  app.post('/api/orders/mark-viewed/:type', requireAuth, async (req, res) => {
     try {
       const { type } = req.params;
       console.log('POST /api/orders/mark-viewed/' + type);
@@ -111,7 +112,7 @@ function setupOrdersAPI(app) {
   });
 
   // GET /api/orders/:id - получить заказ по ID
-  app.get('/api/orders/:id', async (req, res) => {
+  app.get('/api/orders/:id', requireAuth, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       console.log('GET /api/orders/:id', id);
@@ -143,7 +144,7 @@ function setupOrdersAPI(app) {
   });
 
   // PATCH /api/orders/:id - обновить статус заказа
-  app.patch('/api/orders/:id', async (req, res) => {
+  app.patch('/api/orders/:id', requireAuth, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       const updates = {};
@@ -163,11 +164,8 @@ function setupOrdersAPI(app) {
   });
 
   // DELETE /api/orders/:id - удалить заказ
-  app.delete('/api/orders/:id', async (req, res) => {
+  app.delete('/api/orders/:id', requireAuth, async (req, res) => {
     try {
-      // Boy Scout: добавлена проверка авторизации
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/orders/:id', id);
 

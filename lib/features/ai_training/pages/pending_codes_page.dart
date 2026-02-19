@@ -341,7 +341,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
           color: Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(20.r),
           border: Border.all(
-            color: Colors.red.withOpacity(0.3),
+            color: AppColors.error.withOpacity(0.3),
             width: 1,
           ),
         ),
@@ -776,7 +776,11 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
           ),
         ),
       ),
-    );
+    ).then((_) {
+      nameController.dispose();
+      groupTextController.dispose();
+      debounce?.cancel();
+    });
   }
 
   /// Подтвердить код
@@ -785,7 +789,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Введите название товара'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -822,7 +826,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка добавления товара'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -833,7 +837,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -887,7 +891,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Код отклонён'),
-              backgroundColor: Colors.grey,
+              backgroundColor: AppColors.neutral,
             ),
           );
         }
@@ -898,7 +902,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка удаления кода'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -909,7 +913,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -1013,7 +1017,7 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
       } else {
         setState(() => _isAssigning = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка привязки кода'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Ошибка привязки кода'), backgroundColor: AppColors.error),
         );
       }
     }

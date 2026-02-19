@@ -10,6 +10,7 @@ const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_WORK_SCHEDULE === 'true';
 
@@ -95,7 +96,7 @@ async function saveSchedule(schedule) {
 
 function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   // GET /api/work-schedule?month=YYYY-MM - получить график на месяц
-  app.get('/api/work-schedule', async (req, res) => {
+  app.get('/api/work-schedule', requireAuth, async (req, res) => {
     try {
       const month = req.query.month;
       if (!month) {
@@ -127,7 +128,7 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // GET /api/work-schedule/employee/:employeeId?month=YYYY-MM - график сотрудника
-  app.get('/api/work-schedule/employee/:employeeId', async (req, res) => {
+  app.get('/api/work-schedule/employee/:employeeId', requireAuth, async (req, res) => {
     try {
       const employeeId = req.params.employeeId;
       const month = req.query.month;
@@ -161,9 +162,8 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // POST /api/work-schedule - создать/обновить смену
-  app.post('/api/work-schedule', async (req, res) => {
+  app.post('/api/work-schedule', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const entry = req.body;
       if (!entry.month || !entry.employeeId || !entry.date || !entry.shiftType) {
         return res.status(400).json({
@@ -246,9 +246,8 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // DELETE /api/work-schedule/clear - очистить весь месяц
-  app.delete('/api/work-schedule/clear', async (req, res) => {
+  app.delete('/api/work-schedule/clear', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const month = req.query.month;
 
       if (!month) {
@@ -295,9 +294,8 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // DELETE /api/work-schedule/:entryId - удалить смену
-  app.delete('/api/work-schedule/:entryId', async (req, res) => {
+  app.delete('/api/work-schedule/:entryId', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const entryId = sanitizeId(req.params.entryId);
       const month = req.query.month;
 
@@ -334,9 +332,8 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // POST /api/work-schedule/bulk - массовое создание смен
-  app.post('/api/work-schedule/bulk', async (req, res) => {
+  app.post('/api/work-schedule/bulk', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const entries = req.body.entries;
       if (!Array.isArray(entries) || entries.length === 0) {
         return res.status(400).json({
@@ -456,9 +453,8 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // POST /api/work-schedule/template - сохранить/применить шаблон
-  app.post('/api/work-schedule/template', async (req, res) => {
+  app.post('/api/work-schedule/template', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const action = req.body.action; // 'save' или 'apply'
       const template = req.body.template;
 
@@ -492,7 +488,7 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // GET /api/work-schedule/template - получить список шаблонов
-  app.get('/api/work-schedule/template', async (req, res) => {
+  app.get('/api/work-schedule/template', requireAuth, async (req, res) => {
     try {
       const templates = [];
 

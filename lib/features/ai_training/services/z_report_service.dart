@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import '../../../core/constants/api_constants.dart';
-import '../models/z_report_sample_model.dart';
+import '../models/z_report_sample_model.dart' show ZReportParseResult;
 
 class ZReportService {
   /// Максимальный размер изображения для распознавания
@@ -85,44 +85,6 @@ class ZReportService {
     }
   }
 
-  /// Валидация данных Z-отчёта
-  static Future<ZReportValidationResult> validateZReport({
-    required String imageBase64,
-    required double totalSum,
-    required double cashSum,
-    required int ofdNotSent,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse('${ApiConstants.serverUrl}/api/z-report/validate'),
-        headers: ApiConstants.headersWithApiKey,
-        body: jsonEncode({
-          'imageBase64': imageBase64,
-          'userInput': {
-            'totalSum': totalSum,
-            'cashSum': cashSum,
-            'ofdNotSent': ofdNotSent,
-          },
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return ZReportValidationResult.fromJson(data);
-      } else {
-        return ZReportValidationResult(
-          success: false,
-          error: 'Ошибка сервера: ${response.statusCode}',
-        );
-      }
-    } catch (e) {
-      return ZReportValidationResult(
-        success: false,
-        error: 'Ошибка подключения: $e',
-      );
-    }
-  }
-
   /// Сохранить образец для обучения
   static Future<bool> saveSample({
     required String imageBase64,
@@ -135,7 +97,7 @@ class ZReportService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('${ApiConstants.serverUrl}/api/z-report/samples'),
+        Uri.parse('${ApiConstants.serverUrl}/api/z-report/training-samples'),
         headers: ApiConstants.headersWithApiKey,
         body: jsonEncode({
           'imageBase64': imageBase64,
@@ -156,35 +118,4 @@ class ZReportService {
     }
   }
 
-  /// Получить список образцов
-  static Future<List<ZReportSample>> getSamples() async {
-    try {
-      final response = await http.get(
-        Uri.parse('${ApiConstants.serverUrl}/api/z-report/samples'),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final samples = (data['samples'] as List)
-            .map((e) => ZReportSample.fromJson(e))
-            .toList();
-        return samples;
-      }
-      return [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  /// Удалить образец
-  static Future<bool> deleteSample(String id) async {
-    try {
-      final response = await http.delete(
-        Uri.parse('${ApiConstants.serverUrl}/api/z-report/samples/$id'),
-      );
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
-  }
 }

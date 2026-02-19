@@ -14,6 +14,7 @@ const { createPaginatedResponse, isPaginationRequested } = require('../utils/pag
 const { fileExists, maskPhone, sanitizePhone } = require('../utils/file_helpers');
 const { writeJsonFile, withLock } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -93,7 +94,7 @@ function verifyClientPhone(req, urlPhone) {
 function setupClientsAPI(app) {
   // ===== CLIENTS =====
 
-  app.get('/api/clients', async (req, res) => {
+  app.get('/api/clients', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/clients');
       let clients;
@@ -213,7 +214,7 @@ function setupClientsAPI(app) {
 
   // ===== CLIENT DIALOGS =====
 
-  app.get('/api/client-dialogs/:phone', async (req, res) => {
+  app.get('/api/client-dialogs/:phone', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const dialogDir = path.join(CLIENT_DIALOGS_DIR, phone);
@@ -237,7 +238,7 @@ function setupClientsAPI(app) {
     }
   });
 
-  app.get('/api/client-dialogs/:phone/shop/:shopAddress', async (req, res) => {
+  app.get('/api/client-dialogs/:phone/shop/:shopAddress', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const { shopAddress } = req.params;
@@ -257,7 +258,7 @@ function setupClientsAPI(app) {
     }
   });
 
-  app.post('/api/client-dialogs/:phone/shop/:shopAddress/messages', async (req, res) => {
+  app.post('/api/client-dialogs/:phone/shop/:shopAddress/messages', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const { shopAddress } = req.params;
@@ -297,7 +298,7 @@ function setupClientsAPI(app) {
 
   // ===== NETWORK MESSAGES =====
 
-  app.get('/api/client-dialogs/:phone/network', async (req, res) => {
+  app.get('/api/client-dialogs/:phone/network', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
 
@@ -337,7 +338,7 @@ function setupClientsAPI(app) {
     }
   });
 
-  app.post('/api/client-dialogs/:phone/network/reply', async (req, res) => {
+  app.post('/api/client-dialogs/:phone/network/reply', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const { text, imageUrl, clientName, senderPhone } = req.body;
@@ -392,7 +393,7 @@ function setupClientsAPI(app) {
     }
   });
 
-  app.post('/api/client-dialogs/:phone/network/read-by-client', async (req, res) => {
+  app.post('/api/client-dialogs/:phone/network/read-by-client', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const filePath = path.join(CLIENT_MESSAGES_NETWORK_DIR, `${phone}.json`);
@@ -425,7 +426,7 @@ function setupClientsAPI(app) {
     }
   });
 
-  app.post('/api/client-dialogs/:phone/network/read-by-admin', async (req, res) => {
+  app.post('/api/client-dialogs/:phone/network/read-by-admin', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const filePath = path.join(CLIENT_MESSAGES_NETWORK_DIR, `${phone}.json`);
@@ -460,7 +461,7 @@ function setupClientsAPI(app) {
 
   // ===== MANAGEMENT MESSAGES =====
 
-  app.get('/api/client-dialogs/:phone/management', async (req, res) => {
+  app.get('/api/client-dialogs/:phone/management', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
 
@@ -500,7 +501,7 @@ function setupClientsAPI(app) {
     }
   });
 
-  app.post('/api/client-dialogs/:phone/management/reply', async (req, res) => {
+  app.post('/api/client-dialogs/:phone/management/reply', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const { text, imageUrl, clientName, senderPhone } = req.body;
@@ -566,7 +567,7 @@ function setupClientsAPI(app) {
     }
   });
 
-  app.post('/api/client-dialogs/:phone/management/read-by-client', async (req, res) => {
+  app.post('/api/client-dialogs/:phone/management/read-by-client', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const msgType = req.query.type; // 'broadcast' | 'personal' | undefined (all)
@@ -614,7 +615,7 @@ function setupClientsAPI(app) {
     }
   });
 
-  app.post('/api/client-dialogs/:phone/management/read-by-manager', async (req, res) => {
+  app.post('/api/client-dialogs/:phone/management/read-by-manager', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
@@ -647,7 +648,7 @@ function setupClientsAPI(app) {
     }
   });
 
-  app.post('/api/client-dialogs/:phone/management/send', async (req, res) => {
+  app.post('/api/client-dialogs/:phone/management/send', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const { text, imageUrl, senderPhone } = req.body;
@@ -714,7 +715,7 @@ function setupClientsAPI(app) {
 
   // ===== CLIENT MESSAGES (legacy) =====
 
-  app.get('/api/clients/:phone/messages', async (req, res) => {
+  app.get('/api/clients/:phone/messages', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const clientDir = path.join(CLIENT_MESSAGES_DIR, phone);
@@ -742,7 +743,7 @@ function setupClientsAPI(app) {
     }
   });
 
-  app.post('/api/clients/:phone/messages', async (req, res) => {
+  app.post('/api/clients/:phone/messages', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const { shopAddress, ...message } = req.body;
@@ -822,7 +823,7 @@ function setupClientsAPI(app) {
     }
   });
 
-  app.post('/api/clients/messages/broadcast', async (req, res) => {
+  app.post('/api/clients/messages/broadcast', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/clients/messages/broadcast');
 
@@ -941,7 +942,7 @@ function setupClientsAPI(app) {
   });
 
   // GET /api/management-dialogs - Получить все диалоги "Связь с руководством" для админа
-  app.get('/api/management-dialogs', async (req, res) => {
+  app.get('/api/management-dialogs', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/management-dialogs');
 
@@ -1053,7 +1054,7 @@ function setupClientsAPI(app) {
   // ========== FREE DRINKS COUNTER (Геймификация) ==========
 
   // POST /api/clients/:phone/free-drink - увеличить счётчик бесплатных напитков
-  app.post('/api/clients/:phone/free-drink', async (req, res) => {
+  app.post('/api/clients/:phone/free-drink', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const count = parseInt(req.body.count) || 1;
@@ -1087,7 +1088,7 @@ function setupClientsAPI(app) {
   });
 
   // POST /api/clients/:phone/sync-free-drinks - синхронизировать счётчик из внешнего API
-  app.post('/api/clients/:phone/sync-free-drinks', async (req, res) => {
+  app.post('/api/clients/:phone/sync-free-drinks', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const { freeDrinksGiven } = req.body;

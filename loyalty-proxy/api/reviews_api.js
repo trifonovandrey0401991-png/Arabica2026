@@ -12,6 +12,7 @@ const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const REVIEWS_DIR = `${DATA_DIR}/reviews`;
@@ -49,7 +50,7 @@ function dbReviewToCamel(row) {
 
 function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
   // GET /api/reviews - получить отзывы (фильтр по phone)
-  app.get('/api/reviews', async (req, res) => {
+  app.get('/api/reviews', requireAuth, async (req, res) => {
     try {
       const { phone } = req.query;
       let reviews;
@@ -97,7 +98,7 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
   });
 
   // POST /api/reviews - создать отзыв
-  app.post('/api/reviews', async (req, res) => {
+  app.post('/api/reviews', requireAuth, async (req, res) => {
     try {
       const now = new Date().toISOString();
       const id = `review_${Date.now()}`;
@@ -159,7 +160,7 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
   });
 
   // GET /api/reviews/:id - получить отзыв по ID
-  app.get('/api/reviews/:id', async (req, res) => {
+  app.get('/api/reviews/:id', requireAuth, async (req, res) => {
     try {
       const safeId = sanitizeId(req.params.id);
 
@@ -190,7 +191,7 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
   });
 
   // POST /api/reviews/:id/messages - добавить сообщение в отзыв
-  app.post('/api/reviews/:id/messages', async (req, res) => {
+  app.post('/api/reviews/:id/messages', requireAuth, async (req, res) => {
     try {
       const safeId = sanitizeId(req.params.id);
 
@@ -288,7 +289,7 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
   });
 
   // POST /api/reviews/:id/mark-read - Отметить диалог как прочитанный
-  app.post('/api/reviews/:id/mark-read', async (req, res) => {
+  app.post('/api/reviews/:id/mark-read', requireAuth, async (req, res) => {
     try {
       const safeId = sanitizeId(req.params.id);
       const { readerType } = req.body;

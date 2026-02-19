@@ -18,6 +18,7 @@ import '../../features/tests/pages/test_report_page.dart';
 import '../../features/main_cash/pages/main_cash_page.dart';
 import '../../features/efficiency/pages/employees_efficiency_page.dart';
 import '../../features/tasks/pages/task_reports_page.dart';
+import '../../features/tasks/pages/my_tasks_page.dart';
 import '../../features/job_application/pages/job_applications_list_page.dart';
 import '../../features/referrals/pages/referrals_report_page.dart';
 import '../../features/fortune_wheel/pages/wheel_reports_page.dart';
@@ -46,6 +47,11 @@ import '../../features/work_schedule/services/shift_transfer_service.dart';
 import '../../features/reviews/services/review_service.dart';
 import '../../features/product_questions/services/product_question_service.dart';
 import '../../features/tasks/services/task_service.dart';
+import '../../features/tasks/services/recurring_task_service.dart';
+import '../../features/shifts/services/shift_report_service.dart';
+import '../../features/recount/services/recount_service.dart';
+import '../../features/employees/services/user_role_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/job_application/services/job_application_service.dart';
 import '../../features/referrals/services/referral_service.dart';
 import '../../features/orders/services/order_service.dart';
@@ -82,6 +88,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
   int _jobApplicationsCount = 0;
   int _referralsCount = 0;
   int _ordersCount = 0;
+  int _myTasksCount = 0;
 
   @override
   void initState() {
@@ -104,6 +111,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
       _loadJobApplicationsCount(),
       _loadReferralsCount(),
       _loadOrdersCount(),
+      _loadMyTasksCount(),
     ]);
   }
 
@@ -206,12 +214,93 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
     } catch (e) { Logger.error('Ошибка загрузки счётчика заказов', e); }
   }
 
+  Future<void> _loadMyTasksCount() async {
+    try {
+      int count = 0;
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
+      final employeeId = phone?.replaceAll(RegExp(r'[\s\+]'), '');
+
+      await Future.wait([
+        // Обычные задачи (pending/submitted)
+        () async {
+          if (employeeId == null) return;
+          try {
+            final now = DateTime.now();
+            final assignments = await TaskService.getMyAssignmentsCached(
+              assigneeId: employeeId,
+              year: now.year,
+              month: now.month,
+            );
+            count += assignments.where((a) => a.status.name == 'pending' || a.status.name == 'submitted').length;
+          } catch (_) {}
+        }(),
+        // Циклические задачи (pending)
+        () async {
+          if (phone == null) return;
+          try {
+            final cleanPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+            final now = DateTime.now();
+            final yearMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+            final instances = await RecurringTaskService.getInstancesForAssignee(
+              assigneePhone: cleanPhone,
+              yearMonth: yearMonth,
+            );
+            count += instances.where((i) => i.status == 'pending').length;
+          } catch (_) {}
+        }(),
+        // Отчёты пересменки (review) — admin only
+        () async {
+          try {
+            final role = await UserRoleService.loadUserRole();
+            if (role != null && role.isAdminOrAbove) {
+              final reports = await ShiftReportService.getReportsForCurrentUser();
+              count += reports.where((r) => r.status == 'review').length;
+            }
+          } catch (_) {}
+        }(),
+        // Отчёты пересчёта (review) — admin only
+        () async {
+          try {
+            final role = await UserRoleService.loadUserRole();
+            if (role != null && role.isAdminOrAbove) {
+              final reports = await RecountService.getReportsForCurrentUser();
+              count += reports.where((r) => r.status == 'review').length;
+            }
+          } catch (_) {}
+        }(),
+        // Конверты (pending) — admin only
+        () async {
+          try {
+            final role = await UserRoleService.loadUserRole();
+            if (role != null && role.isAdminOrAbove) {
+              final reports = await EnvelopeReportService.getReportsForCurrentUser();
+              count += reports.where((r) => r.status == 'pending').length;
+            }
+          } catch (_) {}
+        }(),
+        // Счётчики кофемашин (pending) — admin only
+        () async {
+          try {
+            final role = await UserRoleService.loadUserRole();
+            if (role != null && role.isAdminOrAbove) {
+              final reports = await CoffeeMachineReportService.getReportsForCurrentUser();
+              count += reports.where((r) => r.status == 'pending').length;
+            }
+          } catch (_) {}
+        }(),
+      ]);
+
+      if (mounted) setState(() => _myTasksCount = count);
+    } catch (e) { Logger.error('Ошибка загрузки счётчика моих задач', e); }
+  }
+
   @override
   Widget build(BuildContext context) {
     final sections = _getSections(context);
-    final pad = 10.w;
+    final pad = 12.w;
     const int cols = 4;
-    final spacing = 4.w;
+    final spacing = 5.w;
 
     return Scaffold(
       backgroundColor: AppColors.night,
@@ -253,7 +342,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
                               height: 40,
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.08),
-                                borderRadius: BorderRadius.circular(12.r),
+                                borderRadius: BorderRadius.circular(14.r),
                                 border: Border.all(color: Colors.white.withOpacity(0.1)),
                               ),
                               child: Icon(Icons.logout_rounded, color: Colors.white.withOpacity(0.8), size: 20),
@@ -270,7 +359,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
                               height: 40,
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.08),
-                                borderRadius: BorderRadius.circular(12.r),
+                                borderRadius: BorderRadius.circular(14.r),
                                 border: Border.all(color: Colors.white.withOpacity(0.1)),
                               ),
                               child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white.withOpacity(0.8), size: 20),
@@ -309,18 +398,42 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          for (final section in sections) ...[
-                            if (section['title'] != null)
+                          for (int si = 0; si < sections.length; si++) ...[
+                            if (sections[si]['title'] != null)
                               Padding(
-                                padding: EdgeInsets.only(bottom: 3.h, top: 2.h),
-                                child: Text(
-                                  section['title'] as String,
-                                  style: TextStyle(
-                                    color: AppColors.gold,
-                                    fontSize: 10.sp,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.5,
-                                  ),
+                                padding: EdgeInsets.only(bottom: 6.h, top: si == 0 ? 0 : 6.h),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 3,
+                                      height: 14.h,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [AppColors.gold, AppColors.darkGold],
+                                        ),
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Text(
+                                      sections[si]['title'] as String,
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.9),
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    SizedBox(width: 10.w),
+                                    Expanded(
+                                      child: Container(
+                                        height: 0.5,
+                                        color: Colors.white.withOpacity(0.08),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             GridView.count(
@@ -330,7 +443,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
                               mainAxisSpacing: spacing,
                               crossAxisSpacing: spacing,
                               childAspectRatio: tileW / tileH,
-                              children: (section['items'] as List<Map<String, dynamic>>).map((item) => _buildTile(
+                              children: (sections[si]['items'] as List<Map<String, dynamic>>).map((item) => _buildTile(
                                 context,
                                 icon: item['icon'] as IconData,
                                 label: item['label'] as String,
@@ -398,68 +511,110 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
     required double iconSize,
     required double fontSize,
   }) {
-    final tileColor = color ?? Colors.white.withOpacity(0.06);
-    final borderColor = color != null ? color.withOpacity(0.3) : Colors.white.withOpacity(0.1);
+    final borderColor = color != null ? color.withOpacity(0.35) : Colors.white.withOpacity(0.12);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: color != null ? tileColor.withOpacity(0.15) : tileColor,
-              borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(color: borderColor),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: iconSize,
-                  color: color ?? Colors.white.withOpacity(0.8),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14.r),
+            border: Border.all(color: borderColor, width: 1),
+            gradient: color != null
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [color.withOpacity(0.2), color.withOpacity(0.08)],
+                )
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.white.withOpacity(0.08), Colors.white.withOpacity(0.03)],
                 ),
-                SizedBox(height: 2),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 2.w),
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white.withOpacity(0.8),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(14.r),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(14.r),
+              splashColor: Colors.white.withOpacity(0.1),
+              highlightColor: Colors.white.withOpacity(0.05),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final h = constraints.maxHeight;
+                  final adaptiveIconSize = (h * 0.34).clamp(18.0, 28.0);
+                  final adaptiveFontSize = (h * 0.14).clamp(7.5, 11.0);
+                  final gap = (h * 0.06).clamp(2.0, 5.0);
+
+                  return Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 4),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Center(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Icon(
+                                icon,
+                                size: adaptiveIconSize,
+                                color: color ?? Colors.white.withOpacity(0.85),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: gap),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: adaptiveFontSize,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+                  );
+                },
+              ),
             ),
           ),
-          if (badge != null && badge > 0)
-            Positioned(
-              top: 3,
-              right: 3,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Text(
-                  badge > 99 ? '99+' : badge.toString(),
-                  style: TextStyle(
-                    color: AppColors.emerald,
-                    fontSize: 9.sp,
-                    fontWeight: FontWeight.w700,
+        ),
+        if (badge != null && badge > 0)
+          Positioned(
+            top: 3,
+            right: 3,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: Offset(0, 1),
                   ),
+                ],
+              ),
+              child: Text(
+                badge > 99 ? '99+' : badge.toString(),
+                style: TextStyle(
+                  color: AppColors.emerald,
+                  fontSize: 9.sp,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
@@ -470,31 +625,44 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 10.w),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(10.r),
-          border: Border.all(color: color.withOpacity(0.35)),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [color.withOpacity(0.18), color.withOpacity(0.08)],
         ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 26),
-            SizedBox(width: 8.w),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.95),
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: color.withOpacity(0.35)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14.r),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14.r),
+          splashColor: color.withOpacity(0.15),
+          highlightColor: color.withOpacity(0.08),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 10, horizontal: 10.w),
+            child: Row(
+              children: [
+                Icon(icon, color: color, size: 26),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.95),
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
+                Icon(Icons.arrow_forward_ios_rounded, color: color.withOpacity(0.6), size: 18),
+              ],
             ),
-            Icon(Icons.arrow_forward_ios_rounded, color: color.withOpacity(0.6), size: 18),
-          ],
+          ),
         ),
       ),
     );
@@ -658,10 +826,17 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
             'color': null,
             'badge': null,
           },
+          {
+            'icon': Icons.assignment_outlined,
+            'label': 'Задачи (упр)',
+            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => TaskManagementPage(createdBy: 'admin'))),
+            'color': null,
+            'badge': null,
+          },
         ],
       },
       // ═══════════════════════════════════════
-      // 3. МОЯ ЭФФЕКТИВНОСТЬ (3 шт.)
+      // 3. МОЯ ЭФФЕКТИВНОСТЬ (4 шт.)
       // ═══════════════════════════════════════
       {
         'title': 'Моя эффективность',
@@ -684,11 +859,14 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
             'badge': _withdrawalsCount,
           },
           {
-            'icon': Icons.assignment_outlined,
-            'label': 'Задачи (упр)',
-            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => TaskManagementPage(createdBy: 'admin'))),
+            'icon': Icons.task_alt_rounded,
+            'label': 'Мои задачи',
+            'onTap': () async {
+              await Navigator.push(context, MaterialPageRoute(builder: (_) => const MyTasksPage()));
+              _loadMyTasksCount();
+            },
             'color': null,
-            'badge': null,
+            'badge': _myTasksCount,
           },
         ],
       },

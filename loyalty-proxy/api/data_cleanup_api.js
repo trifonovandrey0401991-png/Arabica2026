@@ -8,6 +8,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { execSync } = require('child_process');
 const { fileExists } = require('../utils/file_helpers');
+const { requireAdmin } = require('../utils/session_middleware');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 
@@ -410,19 +411,8 @@ function getDiskInfo() {
 }
 
 function setupDataCleanupAPI(app) {
-  // SECURITY: Middleware для проверки админских прав на всех /api/admin/* маршрутах
-  app.use('/api/admin', (req, res, next) => {
-    if (!req.user || !req.user.isAdmin) {
-      return res.status(403).json({
-        success: false,
-        error: 'Доступ запрещён. Требуются права администратора.'
-      });
-    }
-    next();
-  });
-
   // GET /api/admin/disk-info - информация о дисковом пространстве
-  app.get('/api/admin/disk-info', (req, res) => {
+  app.get('/api/admin/disk-info', requireAdmin, (req, res) => {
     try {
       const diskInfo = getDiskInfo();
       res.json({
@@ -439,7 +429,7 @@ function setupDataCleanupAPI(app) {
   });
 
   // GET /api/admin/data-stats - статистика по категориям данных
-  app.get('/api/admin/data-stats', async (req, res) => {
+  app.get('/api/admin/data-stats', requireAdmin, async (req, res) => {
     try {
       const categories = [];
       for (const cat of CLEANUP_CATEGORIES) {
@@ -474,7 +464,7 @@ function setupDataCleanupAPI(app) {
   });
 
   // GET /api/admin/cleanup-preview - предварительный просмотр удаления
-  app.get('/api/admin/cleanup-preview', async (req, res) => {
+  app.get('/api/admin/cleanup-preview', requireAdmin, async (req, res) => {
     try {
       const { category, beforeDate } = req.query;
 
@@ -529,7 +519,7 @@ function setupDataCleanupAPI(app) {
   });
 
   // POST /api/admin/cleanup - выполнить очистку
-  app.post('/api/admin/cleanup', async (req, res) => {
+  app.post('/api/admin/cleanup', requireAdmin, async (req, res) => {
     try {
       const { category, beforeDate } = req.body;
 

@@ -22,6 +22,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { compressUpload } = require('../utils/image_compress');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_PRODUCT_QUESTIONS === 'true';
 
@@ -108,7 +109,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
   // ===== PRODUCT QUESTIONS =====
 
-  app.get('/api/product-questions', async (req, res) => {
+  app.get('/api/product-questions', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/product-questions');
       const { shopAddress } = req.query;
@@ -182,7 +183,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
   // GET /api/product-questions/unanswered-count - Получить количество неотвеченных вопросов для сотрудников
   // Считает вопросы, на которые ещё не ответили (isAnswered = false)
-  app.get('/api/product-questions/unanswered-count', async (req, res) => {
+  app.get('/api/product-questions/unanswered-count', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/product-questions/unanswered-count');
 
@@ -227,7 +228,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     }
   });
 
-  app.post('/api/product-questions', async (req, res) => {
+  app.post('/api/product-questions', requireAuth, async (req, res) => {
     try {
       const { clientPhone, clientName, shopAddress, questionText, questionImageUrl } = req.body;
       console.log('POST /api/product-questions:', questionText?.substring(0, 50));
@@ -303,7 +304,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     }
   });
 
-  app.get('/api/product-questions/:questionId', async (req, res) => {
+  app.get('/api/product-questions/:questionId', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       const since = req.query.since; // Инкрементальная загрузка: только новые сообщения
@@ -339,7 +340,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     }
   });
 
-  app.put('/api/product-questions/:questionId', async (req, res) => {
+  app.put('/api/product-questions/:questionId', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       const updates = req.body;
@@ -366,7 +367,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     }
   });
 
-  app.delete('/api/product-questions/:questionId', async (req, res) => {
+  app.delete('/api/product-questions/:questionId', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       console.log('DELETE /api/product-questions/:questionId', questionId);
@@ -390,7 +391,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
   // ===== PRODUCT QUESTION MESSAGES (для ответов сотрудников) =====
 
-  app.post('/api/product-questions/:questionId/messages', async (req, res) => {
+  app.post('/api/product-questions/:questionId/messages', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       const { shopAddress, text, senderPhone, senderName, imageUrl } = req.body;
@@ -515,7 +516,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // POST /api/product-questions/:questionId/mark-read - Пометить сообщения вопроса как прочитанные
-  app.post('/api/product-questions/:questionId/mark-read', async (req, res) => {
+  app.post('/api/product-questions/:questionId/mark-read', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       const { readerType } = req.body; // 'client' or 'employee'
@@ -561,7 +562,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // POST /api/product-questions/client/:phone/mark-all-read - Пометить все сообщения клиента как прочитанные
-  app.post('/api/product-questions/client/:phone/mark-all-read', async (req, res) => {
+  app.post('/api/product-questions/client/:phone/mark-all-read', requireAuth, async (req, res) => {
     try {
       const { phone } = req.params;
       console.log('POST /api/product-questions/client/:phone/mark-all-read', maskPhone(phone));
@@ -615,7 +616,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
   // ===== PRODUCT QUESTION DIALOGS =====
 
-  app.get('/api/product-questions/:questionId/dialog', async (req, res) => {
+  app.get('/api/product-questions/:questionId/dialog', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       console.log('GET /api/product-questions/:questionId/dialog', questionId);
@@ -634,7 +635,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     }
   });
 
-  app.post('/api/product-questions/:questionId/dialog', async (req, res) => {
+  app.post('/api/product-questions/:questionId/dialog', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       const message = req.body;
@@ -666,7 +667,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   // ===== PERSONAL PRODUCT DIALOGS (6 endpoints) =====
 
   // 1. POST /api/product-question-dialogs - Создать персональный диалог
-  app.post('/api/product-question-dialogs', async (req, res) => {
+  app.post('/api/product-question-dialogs', requireAuth, async (req, res) => {
     try {
       const { clientPhone, clientName, shopAddress, originalQuestionId, messageText, initialMessage, imageUrl, initialImageUrl } = req.body;
       console.log('POST /api/product-question-dialogs');
@@ -739,7 +740,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 2. GET /api/product-question-dialogs/client/:phone - Получить диалоги клиента
-  app.get('/api/product-question-dialogs/client/:phone', async (req, res) => {
+  app.get('/api/product-question-dialogs/client/:phone', requireAuth, async (req, res) => {
     try {
       const { phone } = req.params;
       console.log('GET /api/product-question-dialogs/client/:phone', maskPhone(phone));
@@ -775,7 +776,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 3. GET /api/product-question-dialogs/all - Получить все диалоги (для администраторов)
-  app.get('/api/product-question-dialogs/all', async (req, res) => {
+  app.get('/api/product-question-dialogs/all', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/product-question-dialogs/all');
 
@@ -815,7 +816,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 3.5. GET /api/product-question-dialogs/shop/:shopAddress - Получить диалоги магазина
-  app.get('/api/product-question-dialogs/shop/:shopAddress', async (req, res) => {
+  app.get('/api/product-question-dialogs/shop/:shopAddress', requireAuth, async (req, res) => {
     try {
       const { shopAddress } = req.params;
       console.log('GET /api/product-question-dialogs/shop/:shopAddress', shopAddress);
@@ -852,7 +853,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
   // 3.6. GET /api/product-question-dialogs/unviewed-counts - Получить количество непросмотренных отвеченных диалогов и вопросов по магазинам
   // ВАЖНО: этот маршрут должен быть ПЕРЕД маршрутом /:dialogId, иначе "unviewed-counts" воспринимается как dialogId
-  app.get('/api/product-question-dialogs/unviewed-counts', async (req, res) => {
+  app.get('/api/product-question-dialogs/unviewed-counts', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/product-question-dialogs/unviewed-counts');
 
@@ -916,7 +917,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 4. GET /api/product-question-dialogs/:dialogId - Получить конкретный диалог
-  app.get('/api/product-question-dialogs/:dialogId', async (req, res) => {
+  app.get('/api/product-question-dialogs/:dialogId', requireAuth, async (req, res) => {
     try {
       const { dialogId } = req.params;
       const since = req.query.since; // Инкрементальная загрузка
@@ -954,7 +955,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 5. POST /api/product-question-dialogs/:dialogId/messages - Добавить сообщение в диалог
-  app.post('/api/product-question-dialogs/:dialogId/messages', async (req, res) => {
+  app.post('/api/product-question-dialogs/:dialogId/messages', requireAuth, async (req, res) => {
     try {
       const { dialogId } = req.params;
       const { senderType, senderPhone, senderName, shopAddress, text, imageUrl } = req.body;
@@ -1025,7 +1026,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 6. POST /api/product-question-dialogs/:dialogId/mark-read - Пометить диалог как прочитанный
-  app.post('/api/product-question-dialogs/:dialogId/mark-read', async (req, res) => {
+  app.post('/api/product-question-dialogs/:dialogId/mark-read', requireAuth, async (req, res) => {
     try {
       const { dialogId } = req.params;
       const { readerType } = req.body; // 'client' or 'employee'
@@ -1073,7 +1074,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 7. POST /api/product-question-dialogs/:dialogId/mark-viewed-by-admin - Пометить диалог как просмотренный админом
-  app.post('/api/product-question-dialogs/:dialogId/mark-viewed-by-admin', async (req, res) => {
+  app.post('/api/product-question-dialogs/:dialogId/mark-viewed-by-admin', requireAuth, async (req, res) => {
     try {
       const { dialogId } = req.params;
       console.log('POST /api/product-question-dialogs/:dialogId/mark-viewed-by-admin', dialogId);
@@ -1105,7 +1106,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // 8. POST /api/product-question-dialogs/mark-shop-viewed-by-admin - Пометить все диалоги и вопросы магазина как просмотренные
-  app.post('/api/product-question-dialogs/mark-shop-viewed-by-admin', async (req, res) => {
+  app.post('/api/product-question-dialogs/mark-shop-viewed-by-admin', requireAuth, async (req, res) => {
     try {
       const { shopAddress } = req.body;
       console.log('POST /api/product-question-dialogs/mark-shop-viewed-by-admin', shopAddress);
@@ -1196,7 +1197,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   // ===== CLIENT ENDPOINTS =====
 
   // GET /api/product-questions/client/:phone - Получить все вопросы клиента (для "Мои диалоги")
-  app.get('/api/product-questions/client/:phone', async (req, res) => {
+  app.get('/api/product-questions/client/:phone', requireAuth, async (req, res) => {
     try {
       const { phone } = req.params;
       console.log('GET /api/product-questions/client/:phone', maskPhone(phone));
@@ -1260,7 +1261,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   });
 
   // POST /api/product-questions/client/:phone/reply - Клиент отвечает в диалоге вопроса
-  app.post('/api/product-questions/client/:phone/reply', async (req, res) => {
+  app.post('/api/product-questions/client/:phone/reply', requireAuth, async (req, res) => {
     try {
       const { phone } = req.params;
       const { text, imageUrl, questionId } = req.body;
@@ -1329,7 +1330,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   // ===== GROUPING ENDPOINT (1 endpoint) =====
 
   // GET /api/product-questions/client/:phone/grouped - Группировка диалогов по магазинам
-  app.get('/api/product-questions/client/:phone/grouped', async (req, res) => {
+  app.get('/api/product-questions/client/:phone/grouped', requireAuth, async (req, res) => {
     try {
       const { phone } = req.params;
       console.log('GET /api/product-questions/client/:phone/grouped', maskPhone(phone));
@@ -1451,7 +1452,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   // ===== PRODUCT QUESTION PHOTOS =====
 
   if (uploadProductQuestionPhoto) {
-    app.post('/api/product-questions/upload-photo', uploadProductQuestionPhoto.single('photo'), compressUpload, async (req, res) => {
+    app.post('/api/product-questions/upload-photo', requireAuth, uploadProductQuestionPhoto.single('photo'), compressUpload, async (req, res) => {
       try {
         console.log('POST /api/product-questions/upload-photo');
 

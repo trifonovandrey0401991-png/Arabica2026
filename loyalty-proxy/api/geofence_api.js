@@ -9,6 +9,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const { requireAuth } = require('../utils/session_middleware');
 
 // Директории хранения данных
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -229,7 +230,7 @@ function setupGeofenceAPI(app, sendPushToPhone) {
   setInterval(cleanupOldNotifications, 24 * 60 * 60 * 1000);
 
   // GET /api/geofence-settings - получить настройки
-  app.get('/api/geofence-settings', async (req, res) => {
+  app.get('/api/geofence-settings', requireAuth, async (req, res) => {
     try {
       const settings = await loadGeofenceSettings();
       res.json({ success: true, settings });
@@ -240,7 +241,7 @@ function setupGeofenceAPI(app, sendPushToPhone) {
   });
 
   // POST /api/geofence-settings - обновить настройки (только админ)
-  app.post('/api/geofence-settings', async (req, res) => {
+  app.post('/api/geofence-settings', requireAuth, async (req, res) => {
     try {
       const { enabled, radiusMeters, notificationTitle, notificationBody, cooldownHours } = req.body;
 
@@ -266,7 +267,7 @@ function setupGeofenceAPI(app, sendPushToPhone) {
   });
 
   // POST /api/geofence/client-check - проверка геозоны клиента
-  app.post('/api/geofence/client-check', async (req, res) => {
+  app.post('/api/geofence/client-check', requireAuth, async (req, res) => {
     try {
       const { clientPhone, latitude, longitude } = req.body;
 
@@ -362,7 +363,7 @@ function setupGeofenceAPI(app, sendPushToPhone) {
   });
 
   // GET /api/geofence/stats - статистика уведомлений (для админа)
-  app.get('/api/geofence/stats', async (req, res) => {
+  app.get('/api/geofence/stats', requireAuth, async (req, res) => {
     try {
       const { date } = req.query;
       const targetDate = date || new Date().toISOString().split('T')[0];

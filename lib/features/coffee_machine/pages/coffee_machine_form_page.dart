@@ -475,7 +475,10 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           ),
         ],
       ),
-    ).then((_) => manualController.dispose());
+    );
+    // НЕ вызываем manualController.dispose() в .then() —
+    // диалог ещё анимируется, и TextField обращается к контроллеру.
+    // Локальный контроллер будет очищен сборщиком мусора.
   }
 
   /// Диалог при ошибке OCR: только выделить область
@@ -645,14 +648,17 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       if (result != null) {
         _showSnackBar('Отчёт успешно отправлен!');
         Navigator.of(context).pop(true);
+        // НЕ вызываем setState после pop — страница уходит из дерева,
+        // иначе rebuild обращается к деактивируемым InheritedWidgets
+        return;
       } else {
         _showSnackBar('Ошибка отправки отчёта', isError: true);
       }
     } catch (e) {
-      _showSnackBar('Ошибка: $e', isError: true);
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) _showSnackBar('Ошибка: $e', isError: true);
     }
+    // Сбрасываем _isSaving только если остались на странице
+    if (mounted) setState(() => _isSaving = false);
   }
 
   void _showSnackBar(String message, {bool isError = false}) {

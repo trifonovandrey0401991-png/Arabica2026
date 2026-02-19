@@ -16,6 +16,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
+const { requireAuth } = require('../utils/session_middleware');
 
 // Directories
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -554,7 +555,7 @@ async function calculateManagerEfficiency(phone, month) {
  */
 function setupManagerEfficiencyAPI(app) {
   // GET /api/manager-efficiency - Get manager efficiency for a month
-  app.get('/api/manager-efficiency', async (req, res) => {
+  app.get('/api/manager-efficiency', requireAuth, async (req, res) => {
     try {
       const { phone, month } = req.query;
 

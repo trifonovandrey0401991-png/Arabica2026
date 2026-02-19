@@ -25,7 +25,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
   bool _isLoading = true;
   String _searchQuery = '';
 
-  static List<String> _weekDays = [
+  static final List<String> _weekDays = [
     'Понедельник',
     'Вторник',
     'Среда',
@@ -994,15 +994,24 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F7FA),
+      backgroundColor: AppColors.night,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text('Поставщики'),
-        backgroundColor: AppColors.primaryGreen,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _loadData,
+          Container(
+            margin: EdgeInsets.only(right: 8.w),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.refresh, color: AppColors.gold),
+              onPressed: _loadData,
+            ),
           ),
         ],
       ),
@@ -1011,12 +1020,12 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF00695C), AppColors.primaryGreen],
+            colors: [AppColors.gold, AppColors.darkGold],
           ),
           borderRadius: BorderRadius.circular(16.r),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primaryGreen.withOpacity(0.4),
+              color: AppColors.gold.withOpacity(0.3),
               blurRadius: 12,
               offset: Offset(0, 6),
             ),
@@ -1026,138 +1035,137 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           onPressed: () => _showAddEditDialog(),
           backgroundColor: Colors.transparent,
           elevation: 0,
-          child: Icon(Icons.add, size: 28),
+          child: Icon(Icons.add, size: 28, color: AppColors.night),
         ),
       ),
-      body: Column(
-        children: [
-          // Заголовок с количеством
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors.primaryGreen,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(24.r),
-                bottomRight: Radius.circular(24.r),
-              ),
-            ),
-            padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 20.h),
-            child: Column(
-              children: [
-                // Поле поиска
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16.r),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Поиск по названию, ИНН, телефону...',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                  ),
-                ),
-                SizedBox(height: 16),
-                // Статистика
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: Column(
+          children: [
+            // Заголовок с количеством
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16.w, 60.h, 16.w, 16.h),
+                child: Column(
                   children: [
-                    _buildStatChip(
-                      icon: Icons.local_shipping,
-                      label: 'Всего',
-                      count: _suppliers.length,
-                      color: Colors.white,
+                    // Поле поиска
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(16.r),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      ),
+                      child: TextField(
+                        style: TextStyle(color: Colors.white),
+                        cursorColor: AppColors.gold,
+                        decoration: InputDecoration(
+                          hintText: 'Поиск по названию, ИНН, телефону...',
+                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                          prefixIcon: Icon(Icons.search, color: AppColors.gold),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                        },
+                      ),
                     ),
-                    SizedBox(width: 12),
-                    _buildStatChip(
-                      icon: Icons.check_circle,
-                      label: 'С доставкой',
-                      count: _suppliers.where((s) => s.shopsWithDeliveryCount > 0).length,
-                      color: Colors.greenAccent,
+                    SizedBox(height: 14),
+                    // Статистика
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildStatChip(
+                          icon: Icons.local_shipping,
+                          label: 'Всего',
+                          count: _suppliers.length,
+                          color: AppColors.gold,
+                        ),
+                        SizedBox(width: 12),
+                        _buildStatChip(
+                          icon: Icons.check_circle,
+                          label: 'С доставкой',
+                          count: _suppliers.where((s) => s.shopsWithDeliveryCount > 0).length,
+                          color: AppColors.emeraldGreenLight,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
-          Expanded(
-            child: _isLoading
-                ? Center(child: CircularProgressIndicator(color: AppColors.primaryGreen))
-                : _filteredSuppliers.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [Colors.grey[300]!, Colors.grey[400]!],
+            Expanded(
+              child: _isLoading
+                  ? Center(child: CircularProgressIndicator(color: AppColors.gold))
+                  : _filteredSuppliers.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.06),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white.withOpacity(0.1)),
                                 ),
-                                shape: BoxShape.circle,
+                                child: Icon(
+                                  Icons.local_shipping_outlined,
+                                  size: 40,
+                                  color: Colors.white.withOpacity(0.3),
+                                ),
                               ),
-                              child: Icon(
-                                Icons.local_shipping_outlined,
-                                size: 50,
-                                color: Colors.white,
-                              ),
-                            ),
-                            SizedBox(height: 20),
-                            Text(
-                              _searchQuery.isEmpty
-                                  ? 'Нет поставщиков'
-                                  : 'Поставщики не найдены',
-                              style: TextStyle(
-                                fontSize: 20.sp,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            if (_searchQuery.isEmpty) ...[
-                              SizedBox(height: 8),
+                              SizedBox(height: 20),
                               Text(
-                                'Нажмите + чтобы добавить первого',
+                                _searchQuery.isEmpty
+                                    ? 'Нет поставщиков'
+                                    : 'Поставщики не найдены',
                                 style: TextStyle(
-                                  fontSize: 14.sp,
-                                  color: Colors.grey[500],
+                                  fontSize: 18.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white.withOpacity(0.7),
                                 ),
                               ),
+                              if (_searchQuery.isEmpty) ...[
+                                SizedBox(height: 8),
+                                Text(
+                                  'Нажмите + чтобы добавить первого',
+                                  style: TextStyle(
+                                    fontSize: 14.sp,
+                                    color: Colors.white.withOpacity(0.4),
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _loadData,
+                          color: AppColors.gold,
+                          backgroundColor: AppColors.emeraldDark,
+                          child: ListView.builder(
+                            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                            itemCount: _filteredSuppliers.length,
+                            itemBuilder: (context, index) {
+                              final supplier = _filteredSuppliers[index];
+                              return _buildSupplierCard(supplier);
+                            },
+                          ),
                         ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _loadData,
-                        color: AppColors.primaryGreen,
-                        child: ListView.builder(
-                          padding: EdgeInsets.all(16.w),
-                          itemCount: _filteredSuppliers.length,
-                          itemBuilder: (context, index) {
-                            final supplier = _filteredSuppliers[index];
-                            return _buildSupplierCard(supplier);
-                          },
-                        ),
-                      ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1171,8 +1179,9 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1191,7 +1200,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           Text(
             label,
             style: TextStyle(
-              color: color.withOpacity(0.8),
+              color: Colors.white.withOpacity(0.6),
               fontSize: 12.sp,
             ),
           ),
@@ -1202,181 +1211,148 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
 
   Widget _buildSupplierCard(Supplier supplier) {
     final hasDelivery = supplier.shopsWithDeliveryCount > 0;
-    final gradientColors = hasDelivery
-        ? [Color(0xFF00695C), AppColors.primaryGreen]
-        : [Colors.blueGrey[600]!, Colors.blueGrey[800]!];
 
     return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
+      margin: EdgeInsets.only(bottom: 6.h),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 15,
-            offset: Offset(0, 5),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20.r),
+        borderRadius: BorderRadius.circular(14.r),
         child: InkWell(
           onTap: () => _showSupplierDetails(supplier),
-          borderRadius: BorderRadius.circular(20.r),
+          borderRadius: BorderRadius.circular(14.r),
           child: Padding(
-            padding: EdgeInsets.all(16.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    // Аватар с градиентом
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: gradientColors,
-                        ),
-                        borderRadius: BorderRadius.circular(16.r),
-                        boxShadow: [
-                          BoxShadow(
-                            color: gradientColors[0].withOpacity(0.4),
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
+                // Компактный аватар
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.emeraldDark, AppColors.emerald],
+                    ),
+                    borderRadius: BorderRadius.circular(10.r),
+                    border: hasDelivery
+                        ? Border.all(color: AppColors.gold.withOpacity(0.5), width: 1.5)
+                        : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      supplier.name.isNotEmpty
+                          ? supplier.name[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.sp,
                       ),
-                      child: Center(
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10),
+                // Информация — одна строка
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
                         child: Text(
-                          supplier.name.isNotEmpty
-                              ? supplier.name[0].toUpperCase()
-                              : '?',
+                          supplier.name,
                           style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 24.sp,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14.sp,
+                            color: Colors.white.withOpacity(0.9),
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
-                    SizedBox(width: 14),
-                    // Информация
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  supplier.name,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 17.sp,
-                                    color: Color(0xFF2D3436),
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (supplier.legalType != null) ...[
-                                SizedBox(width: 8),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primaryGreen.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                  child: Text(
-                                    supplier.legalType!,
-                                    style: TextStyle(
-                                      fontSize: 11.sp,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.primaryGreen,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
+                      if (supplier.legalType != null) ...[
+                        SizedBox(width: 6),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                          decoration: BoxDecoration(
+                            color: AppColors.gold.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6.r),
                           ),
-                          SizedBox(height: 4),
-                          if (supplier.contactPerson != null)
-                            Text(
-                              supplier.contactPerson!,
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 13.sp,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          child: Text(
+                            supplier.legalType!,
+                            style: TextStyle(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.gold,
                             ),
-                        ],
-                      ),
-                    ),
-                    // Меню
-                    PopupMenuButton<String>(
-                      icon: Icon(Icons.more_vert, color: Colors.grey[400]),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          _showAddEditDialog(supplier);
-                        } else if (value == 'delete') {
-                          _deleteSupplier(supplier);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit_outlined, size: 20, color: Colors.grey[700]),
-                              SizedBox(width: 12),
-                              Text('Редактировать'),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                              SizedBox(width: 12),
-                              Text('Удалить', style: TextStyle(color: Colors.red)),
-                            ],
                           ),
                         ),
                       ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                SizedBox(height: 14),
-                // Нижняя часть с тегами
-                Row(
-                  children: [
-                    // Тип оплаты
-                    if (supplier.paymentType != null)
-                      _buildInfoChip(
-                        icon: supplier.paymentType == 'Нал' ? Icons.money : Icons.credit_card,
-                        label: supplier.paymentType!,
-                        color: supplier.paymentType == 'Нал' ? Colors.orange : Colors.blue,
+                SizedBox(width: 6),
+                // Теги справа (компактные)
+                if (supplier.paymentType != null)
+                  _buildInfoChip(
+                    icon: supplier.paymentType == 'Нал' ? Icons.money : Icons.credit_card,
+                    label: supplier.paymentType!,
+                    color: supplier.paymentType == 'Нал' ? AppColors.warmAmber : AppColors.info,
+                  ),
+                if (supplier.paymentType != null && hasDelivery) SizedBox(width: 4),
+                if (hasDelivery)
+                  _buildInfoChip(
+                    icon: Icons.local_shipping,
+                    label: '${supplier.shopsWithDeliveryCount}',
+                    color: AppColors.emeraldGreenLight,
+                  ),
+                // Телефон
+                if (supplier.phone != null)
+                  Padding(
+                    padding: EdgeInsets.only(left: 4),
+                    child: Icon(Icons.phone, size: 14, color: Colors.white.withOpacity(0.3)),
+                  ),
+                // Меню
+                SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert, color: Colors.white.withOpacity(0.3), size: 18),
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        _showAddEditDialog(supplier);
+                      } else if (value == 'delete') {
+                        _deleteSupplier(supplier);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 20, color: Colors.grey[700]),
+                            SizedBox(width: 12),
+                            Text('Редактировать'),
+                          ],
+                        ),
                       ),
-                    if (supplier.paymentType != null) SizedBox(width: 8),
-                    // Доставка
-                    if (hasDelivery)
-                      _buildInfoChip(
-                        icon: Icons.local_shipping,
-                        label: '${supplier.shopsWithDeliveryCount} ${_getShopWord(supplier.shopsWithDeliveryCount)}',
-                        color: Colors.green,
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                            SizedBox(width: 12),
+                            Text('Удалить', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
                       ),
-                    Spacer(),
-                    // Телефон
-                    if (supplier.phone != null)
-                      Icon(Icons.phone, size: 16, color: Colors.grey[400]),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -1392,20 +1368,20 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
     required Color color,
   }) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10.r),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8.r),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: color),
-          SizedBox(width: 5),
+          Icon(icon, size: 12, color: color),
+          SizedBox(width: 3),
           Text(
             label,
             style: TextStyle(
-              fontSize: 12.sp,
+              fontSize: 10.sp,
               fontWeight: FontWeight.w600,
               color: color,
             ),
@@ -1413,12 +1389,6 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
         ],
       ),
     );
-  }
-
-  String _getShopWord(int count) {
-    if (count == 1) return 'магазин';
-    if (count >= 2 && count <= 4) return 'магазина';
-    return 'магазинов';
   }
 
   void _showSupplierDetails(Supplier supplier) {

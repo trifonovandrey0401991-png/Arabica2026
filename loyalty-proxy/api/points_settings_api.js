@@ -10,6 +10,7 @@ const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { invalidatePointsSettings } = require('../utils/data_cache');
+const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -305,7 +306,7 @@ function calculateShiftHandoverPoints(rating, settings) {
 
 function setupPointsSettingsAPI(app) {
   // GET /api/points-settings/test - Get test points settings
-  app.get('/api/points-settings/test', async (req, res) => {
+  app.get('/api/points-settings/test', requireAuth, async (req, res) => {
     try {
       await ensureDir();
 
@@ -328,9 +329,8 @@ function setupPointsSettingsAPI(app) {
   });
 
   // POST /api/points-settings/test - Save test points settings
-  app.post('/api/points-settings/test', async (req, res) => {
+  app.post('/api/points-settings/test', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { minPoints, zeroThreshold, maxPoints } = req.body;
@@ -391,7 +391,7 @@ function setupPointsSettingsAPI(app) {
   });
 
   // GET /api/points-settings/test/calculate - Calculate points for a score
-  app.get('/api/points-settings/test/calculate', async (req, res) => {
+  app.get('/api/points-settings/test/calculate', requireAuth, async (req, res) => {
     try {
       const score = parseInt(req.query.score) || 0;
 
@@ -424,7 +424,7 @@ function setupPointsSettingsAPI(app) {
   // ===== ATTENDANCE POINTS SETTINGS =====
 
   // GET /api/points-settings/attendance - Get attendance points settings
-  app.get('/api/points-settings/attendance', async (req, res) => {
+  app.get('/api/points-settings/attendance', requireAuth, async (req, res) => {
     try {
       await ensureDir();
 
@@ -447,9 +447,8 @@ function setupPointsSettingsAPI(app) {
   });
 
   // POST /api/points-settings/attendance - Save attendance points settings
-  app.post('/api/points-settings/attendance', async (req, res) => {
+  app.post('/api/points-settings/attendance', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const {
@@ -516,7 +515,7 @@ function setupPointsSettingsAPI(app) {
   // ===== SHIFT POINTS SETTINGS (Пересменка) =====
 
   // GET /api/points-settings/shift - Get shift points settings
-  app.get('/api/points-settings/shift', async (req, res) => {
+  app.get('/api/points-settings/shift', requireAuth, async (req, res) => {
     try {
       await ensureDir();
 
@@ -539,9 +538,8 @@ function setupPointsSettingsAPI(app) {
   });
 
   // POST /api/points-settings/shift - Save shift points settings
-  app.post('/api/points-settings/shift', async (req, res) => {
+  app.post('/api/points-settings/shift', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const {
@@ -615,7 +613,7 @@ function setupPointsSettingsAPI(app) {
   });
 
   // GET /api/points-settings/shift/calculate - Calculate points for a rating
-  app.get('/api/points-settings/shift/calculate', async (req, res) => {
+  app.get('/api/points-settings/shift/calculate', requireAuth, async (req, res) => {
     try {
       const rating = parseInt(req.query.rating) || 1;
 
@@ -648,7 +646,7 @@ function setupPointsSettingsAPI(app) {
   // ===== RECOUNT POINTS SETTINGS (Пересчет) =====
 
   // GET /api/points-settings/recount - Get recount points settings
-  app.get('/api/points-settings/recount', async (req, res) => {
+  app.get('/api/points-settings/recount', requireAuth, async (req, res) => {
     try {
       await ensureDir();
 
@@ -671,9 +669,8 @@ function setupPointsSettingsAPI(app) {
   });
 
   // POST /api/points-settings/recount - Save recount points settings
-  app.post('/api/points-settings/recount', async (req, res) => {
+  app.post('/api/points-settings/recount', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const {
@@ -747,7 +744,7 @@ function setupPointsSettingsAPI(app) {
   });
 
   // GET /api/points-settings/recount/calculate - Calculate points for a rating
-  app.get('/api/points-settings/recount/calculate', async (req, res) => {
+  app.get('/api/points-settings/recount/calculate', requireAuth, async (req, res) => {
     try {
       const rating = parseInt(req.query.rating) || 1;
 
@@ -780,7 +777,7 @@ function setupPointsSettingsAPI(app) {
   // ===== RKO POINTS SETTINGS (РКО) =====
 
   // GET /api/points-settings/rko - Get RKO points settings
-  app.get('/api/points-settings/rko', async (req, res) => {
+  app.get('/api/points-settings/rko', requireAuth, async (req, res) => {
     try {
       await ensureDir();
 
@@ -803,9 +800,8 @@ function setupPointsSettingsAPI(app) {
   });
 
   // POST /api/points-settings/rko - Save RKO points settings
-  app.post('/api/points-settings/rko', async (req, res) => {
+  app.post('/api/points-settings/rko', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const {
@@ -876,7 +872,7 @@ function setupPointsSettingsAPI(app) {
   // ===== SHIFT HANDOVER POINTS SETTINGS (Сдать смену) =====
 
   // GET /api/points-settings/shift-handover - Get shift handover points settings
-  app.get('/api/points-settings/shift-handover', async (req, res) => {
+  app.get('/api/points-settings/shift-handover', requireAuth, async (req, res) => {
     try {
       await ensureDir();
 
@@ -899,9 +895,8 @@ function setupPointsSettingsAPI(app) {
   });
 
   // POST /api/points-settings/shift-handover - Save shift handover points settings
-  app.post('/api/points-settings/shift-handover', async (req, res) => {
+  app.post('/api/points-settings/shift-handover', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const {
@@ -975,7 +970,7 @@ function setupPointsSettingsAPI(app) {
   });
 
   // GET /api/points-settings/shift-handover/calculate - Calculate points for a rating
-  app.get('/api/points-settings/shift-handover/calculate', async (req, res) => {
+  app.get('/api/points-settings/shift-handover/calculate', requireAuth, async (req, res) => {
     try {
       const rating = parseInt(req.query.rating) || 1;
 
@@ -1008,7 +1003,7 @@ function setupPointsSettingsAPI(app) {
   // ===== REVIEWS POINTS SETTINGS (Отзывы) =====
 
   // GET /api/points-settings/reviews - Get reviews points settings
-  app.get('/api/points-settings/reviews', async (req, res) => {
+  app.get('/api/points-settings/reviews', requireAuth, async (req, res) => {
     try {
       await ensureDir();
 
@@ -1031,9 +1026,8 @@ function setupPointsSettingsAPI(app) {
   });
 
   // POST /api/points-settings/reviews - Save reviews points settings
-  app.post('/api/points-settings/reviews', async (req, res) => {
+  app.post('/api/points-settings/reviews', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { positivePoints, negativePoints } = req.body;
@@ -1088,7 +1082,7 @@ function setupPointsSettingsAPI(app) {
   // ===== PRODUCT SEARCH POINTS SETTINGS (Поиск товара) =====
 
   // GET /api/points-settings/product-search - Get product search points settings
-  app.get('/api/points-settings/product-search', async (req, res) => {
+  app.get('/api/points-settings/product-search', requireAuth, async (req, res) => {
     try {
       await ensureDir();
 
@@ -1111,9 +1105,8 @@ function setupPointsSettingsAPI(app) {
   });
 
   // POST /api/points-settings/product-search - Save product search points settings
-  app.post('/api/points-settings/product-search', async (req, res) => {
+  app.post('/api/points-settings/product-search', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { answeredPoints, notAnsweredPoints, answerTimeoutMinutes } = req.body;
@@ -1176,7 +1169,7 @@ function setupPointsSettingsAPI(app) {
   // ===== ORDERS POINTS SETTINGS (Заказы клиентов) =====
 
   // GET /api/points-settings/orders - Get orders points settings
-  app.get('/api/points-settings/orders', async (req, res) => {
+  app.get('/api/points-settings/orders', requireAuth, async (req, res) => {
     try {
       await ensureDir();
 
@@ -1199,9 +1192,8 @@ function setupPointsSettingsAPI(app) {
   });
 
   // POST /api/points-settings/orders - Save orders points settings
-  app.post('/api/points-settings/orders', async (req, res) => {
+  app.post('/api/points-settings/orders', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { acceptedPoints, rejectedPoints } = req.body;
@@ -1256,7 +1248,7 @@ function setupPointsSettingsAPI(app) {
   // ===== ENVELOPE POINTS SETTINGS (Конверт) =====
 
   // GET /api/points-settings/envelope - Get envelope points settings
-  app.get('/api/points-settings/envelope', async (req, res) => {
+  app.get('/api/points-settings/envelope', requireAuth, async (req, res) => {
     try {
       await ensureDir();
 
@@ -1279,9 +1271,8 @@ function setupPointsSettingsAPI(app) {
   });
 
   // POST /api/points-settings/envelope - Save envelope points settings
-  app.post('/api/points-settings/envelope', async (req, res) => {
+  app.post('/api/points-settings/envelope', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { submittedPoints, notSubmittedPoints } = req.body;
@@ -1336,7 +1327,7 @@ function setupPointsSettingsAPI(app) {
   // ===== COFFEE MACHINE POINTS SETTINGS (Счётчик кофемашин) =====
 
   // GET /api/points-settings/coffee-machine - Get coffee machine points settings
-  app.get('/api/points-settings/coffee-machine', async (req, res) => {
+  app.get('/api/points-settings/coffee-machine', requireAuth, async (req, res) => {
     try {
       await ensureDir();
 
@@ -1358,9 +1349,8 @@ function setupPointsSettingsAPI(app) {
   });
 
   // POST /api/points-settings/coffee-machine - Save coffee machine points settings
-  app.post('/api/points-settings/coffee-machine', async (req, res) => {
+  app.post('/api/points-settings/coffee-machine', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { submittedPoints, notSubmittedPoints, morningStartTime, morningEndTime,
@@ -1411,7 +1401,7 @@ function setupPointsSettingsAPI(app) {
 
   // GET /api/points-settings/manager - Get manager points settings
   // With migration from old format (subordinateQuality/reviewPercentage -> confirmed/rejected)
-  app.get('/api/points-settings/manager', async (req, res) => {
+  app.get('/api/points-settings/manager', requireAuth, async (req, res) => {
     try {
       await ensureDir();
 
@@ -1459,9 +1449,8 @@ function setupPointsSettingsAPI(app) {
 
   // POST /api/points-settings/manager - Save manager points settings
   // Simplified: confirmedPoints (>=0), rejectedPenalty (<=0)
-  app.post('/api/points-settings/manager', async (req, res) => {
+  app.post('/api/points-settings/manager', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       await ensureDir();
 
       const { shiftSettings, recountSettings, shiftHandoverSettings } = req.body;

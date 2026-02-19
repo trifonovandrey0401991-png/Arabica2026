@@ -6,6 +6,10 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_Z_REPORT === 'true';
 
 // Путь к файлу с шаблонами
 const TEMPLATES_FILE = path.join(__dirname, '../data/z-report-templates.json');
@@ -46,6 +50,15 @@ function normalizeOcrErrors(text) {
  * Загрузить шаблоны из файла
  */
 async function loadTemplates() {
+  if (USE_DB) {
+    try {
+      const rows = await db.findAll('z_report_templates', { orderBy: 'created_at', orderDir: 'ASC' });
+      return { templates: rows.map(r => r.data) };
+    } catch (e) {
+      console.error('[Z-Report] DB loadTemplates error:', e.message);
+      // fallback to JSON
+    }
+  }
   try {
     await ensureDataDir();
     const data = await fs.readFile(TEMPLATES_FILE, 'utf-8');
@@ -60,7 +73,22 @@ async function loadTemplates() {
  */
 async function saveTemplates(data) {
   await ensureDataDir();
-  await fs.writeFile(TEMPLATES_FILE, JSON.stringify(data, null, 2));
+  await writeJsonFile(TEMPLATES_FILE, data);
+
+  if (USE_DB) {
+    try {
+      for (const template of (data.templates || [])) {
+        await db.upsert('z_report_templates', {
+          id: template.id,
+          data: template,
+          created_at: template.createdAt || new Date().toISOString(),
+          updated_at: template.updatedAt || new Date().toISOString(),
+        });
+      }
+    } catch (e) {
+      console.error('[Z-Report] DB saveTemplates error:', e.message);
+    }
+  }
 }
 
 /**
@@ -146,6 +174,11 @@ async function deleteTemplate(id) {
   const templates = (data.templates || []).filter(t => t.id !== id);
   await saveTemplates({ templates });
 
+  if (USE_DB) {
+    try { await db.deleteById('z_report_templates', id); }
+    catch (e) { console.error('[Z-Report] DB deleteTemplate error:', e.message); }
+  }
+
   // Удаляем образец изображения
   try {
     await fs.unlink(path.join(__dirname, '../data/template-images', `${id}.jpg`));
@@ -194,6 +227,14 @@ async function updateTemplateStats(templateId, wasSuccessful) {
  * Загрузить образцы
  */
 async function loadTrainingSamples() {
+  if (USE_DB) {
+    try {
+      const rows = await db.findAll('z_report_training_samples', { orderBy: 'created_at', orderDir: 'ASC' });
+      return { samples: rows.map(r => r.data) };
+    } catch (e) {
+      console.error('[Z-Report] DB loadTrainingSamples error:', e.message);
+    }
+  }
   try {
     await ensureDataDir();
     const data = await fs.readFile(SAMPLES_FILE, 'utf-8');
@@ -208,7 +249,23 @@ async function loadTrainingSamples() {
  */
 async function saveTrainingSamples(data) {
   await ensureDataDir();
-  await fs.writeFile(SAMPLES_FILE, JSON.stringify(data, null, 2));
+  await writeJsonFile(SAMPLES_FILE, data);
+
+  if (USE_DB) {
+    try {
+      for (const sample of (data.samples || [])) {
+        await db.upsert('z_report_training_samples', {
+          id: sample.id,
+          shop_id: sample.shopId || null,
+          template_id: sample.templateId || null,
+          data: sample,
+          created_at: sample.createdAt || new Date().toISOString(),
+        });
+      }
+    } catch (e) {
+      console.error('[Z-Report] DB saveTrainingSamples error:', e.message);
+    }
+  }
 }
 
 // Максимальное количество образцов для хранения
@@ -349,6 +406,14 @@ async function addTrainingSample({
  * Загрузить выученные паттерны
  */
 async function loadLearnedPatterns() {
+  if (USE_DB) {
+    try {
+      const row = await db.findById('app_settings', 'z_report_learned_patterns', 'key');
+      if (row && row.value) return row.value;
+    } catch (e) {
+      console.error('[Z-Report] DB loadLearnedPatterns error:', e.message);
+    }
+  }
   try {
     await ensureDataDir();
     const data = await fs.readFile(LEARNED_PATTERNS_FILE, 'utf-8');
@@ -372,7 +437,19 @@ async function loadLearnedPatterns() {
  */
 async function saveLearnedPatterns(data) {
   await ensureDataDir();
-  await fs.writeFile(LEARNED_PATTERNS_FILE, JSON.stringify(data, null, 2));
+  await writeJsonFile(LEARNED_PATTERNS_FILE, data);
+
+  if (USE_DB) {
+    try {
+      await db.upsert('app_settings', {
+        key: 'z_report_learned_patterns',
+        value: data,
+        updated_at: new Date().toISOString(),
+      }, 'key');
+    } catch (e) {
+      console.error('[Z-Report] DB saveLearnedPatterns error:', e.message);
+    }
+  }
 }
 
 /**

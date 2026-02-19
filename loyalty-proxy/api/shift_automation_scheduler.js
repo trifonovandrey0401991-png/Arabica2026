@@ -150,6 +150,30 @@ class ShiftScheduler extends BaseReportScheduler {
 
       reports.push(report);
       created++;
+
+      // DB dual-write: сохраняем pending в PostgreSQL
+      if (USE_DB) {
+        try {
+          await db.upsert('shift_reports', {
+            id: report.id,
+            employee_name: '',
+            employee_id: null,
+            employee_phone: null,
+            shop_address: report.shopAddress,
+            shop_name: report.shopName,
+            shift_type: report.shiftType,
+            status: 'pending',
+            answers: '[]',
+            date: getMoscowDateString(),
+            created_at: report.createdAt,
+            deadline: report.deadline,
+            updated_at: report.createdAt
+          });
+        } catch (dbErr) {
+          console.error(`${this.tag} DB upsert pending error:`, dbErr.message);
+        }
+      }
+
       console.log(`${this.tag} Created pending ${shiftType} report for ${shop.name} (${shop.address})`);
     }
 
@@ -200,6 +224,24 @@ class ShiftScheduler extends BaseReportScheduler {
 
     if (failedCount > 0) {
       await this.saveTodayReports(reports);
+
+      // DB dual-write: обновляем pending → failed
+      if (USE_DB) {
+        for (const report of reports) {
+          if (report.status === 'failed' && report.failedAt) {
+            try {
+              await db.updateById('shift_reports', report.id, {
+                status: 'failed',
+                failed_at: report.failedAt,
+                updated_at: new Date().toISOString()
+              });
+            } catch (dbErr) {
+              console.error(`${this.tag} DB update failed error:`, dbErr.message);
+            }
+          }
+        }
+      }
+
       await this.sendAdminFailedNotification(failedCount, failedShops);
     }
 
@@ -237,7 +279,7 @@ class ShiftScheduler extends BaseReportScheduler {
       // DB dual-write: обновляем rejected статусы
       if (USE_DB) {
         for (const report of reports) {
-          if (report.status === 'rejected' && report.id && !report.id.startsWith('pending_')) {
+          if (report.status === 'rejected' && report.id) {
             try {
               await db.updateById('shift_reports', report.id, {
                 status: 'rejected',
@@ -250,6 +292,35 @@ class ShiftScheduler extends BaseReportScheduler {
             }
           }
         }
+      }
+    }
+
+    // DB: проверяем старые застрявшие отчёты (не из сегодняшнего файла)
+    if (USE_DB) {
+      try {
+        const stuckRows = await db.query(
+          `SELECT id, shop_address, shift_type, employee_name
+           FROM shift_reports
+           WHERE status = 'review'
+             AND review_deadline IS NOT NULL
+             AND review_deadline < $1`,
+          [now.toISOString()]
+        );
+        for (const row of (stuckRows.rows || stuckRows)) {
+          try {
+            await db.updateById('shift_reports', row.id, {
+              status: 'rejected',
+              rejected_at: now.toISOString(),
+              updated_at: now.toISOString()
+            });
+            rejectedCount++;
+            console.log(`${this.tag} DB stale REJECTED: ${row.shop_address} (${row.shift_type}), employee: ${row.employee_name}`);
+          } catch (dbErr) {
+            console.error(`${this.tag} DB stale reject error:`, dbErr.message);
+          }
+        }
+      } catch (err) {
+        console.error(`${this.tag} DB stale review check error:`, err.message);
       }
     }
 
@@ -329,6 +400,28 @@ class ShiftScheduler extends BaseReportScheduler {
 
   // ==================== OVERRIDE: USE isTimeReached for time windows ====================
 
+  /**
+   * Проверяет, находимся ли мы в интервале [start, end) с поддержкой перехода через полночь.
+   * Например: start=23:01, end=13:00 → true в 00:30, 01:00, 12:59; false в 13:00, 22:00
+   */
+  isInTimeWindow(startTime, endTime) {
+    const moscow = getMoscowTime();
+    const moscowMinutes = moscow.getUTCHours() * 60 + moscow.getUTCMinutes();
+
+    const startParts = this.parseTime(startTime);
+    const endParts = this.parseTime(endTime);
+    const startMinutes = startParts.hours * 60 + startParts.minutes;
+    const endMinutes = endParts.hours * 60 + endParts.minutes;
+
+    if (startMinutes <= endMinutes) {
+      // Обычный интервал (14:00 - 23:00)
+      return moscowMinutes >= startMinutes && moscowMinutes < endMinutes;
+    } else {
+      // Интервал через полночь (23:01 - 13:00)
+      return moscowMinutes >= startMinutes || moscowMinutes < endMinutes;
+    }
+  }
+
   async runScheduledChecks() {
     const now = new Date();
     const moscow = getMoscowTime();
@@ -337,8 +430,8 @@ class ShiftScheduler extends BaseReportScheduler {
 
     console.log(`\n[${now.toISOString()}] ${this.tag} Running checks... (Moscow time: ${moscow.toISOString()})`);
 
-    // Morning window (uses isTimeReached instead of isWithinTimeWindow)
-    if (this.isTimeReached(settings.morningStartTime) && !this.isTimeReached(settings.morningEndTime)) {
+    // Morning window (supports midnight crossover, e.g. 23:01 - 13:00)
+    if (this.isInTimeWindow(settings.morningStartTime, settings.morningEndTime)) {
       const lastGen = state.lastMorningGeneration;
       if (!lastGen || !this.isSameDay(new Date(lastGen), now)) {
         const created = await this.generatePendingReports('morning');
@@ -349,7 +442,7 @@ class ShiftScheduler extends BaseReportScheduler {
     }
 
     // Evening window
-    if (this.isTimeReached(settings.eveningStartTime) && !this.isTimeReached(settings.eveningEndTime)) {
+    if (this.isInTimeWindow(settings.eveningStartTime, settings.eveningEndTime)) {
       const lastGen = state.lastEveningGeneration;
       if (!lastGen || !this.isSameDay(new Date(lastGen), now)) {
         const created = await this.generatePendingReports('evening');

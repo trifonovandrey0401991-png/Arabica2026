@@ -10,6 +10,8 @@ const path = require('path');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_EMPLOYEE_REGISTRATION === 'true';
 
@@ -80,7 +82,7 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
   });
 
   // Эндпоинт для получения регистрации по телефону
-  app.get('/api/employee-registration/:phone', async (req, res) => {
+  app.get('/api/employee-registration/:phone', requireAuth, async (req, res) => {
     try {
       const phone = decodeURIComponent(req.params.phone);
       console.log('GET /api/employee-registration:', maskPhone(phone));
@@ -112,7 +114,7 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
   });
 
   // Эндпоинт для верификации/снятия верификации сотрудника
-  app.post('/api/employee-registration/:phone/verify', async (req, res) => {
+  app.post('/api/employee-registration/:phone/verify', requireAuth, async (req, res) => {
     try {
       const phone = decodeURIComponent(req.params.phone);
       const { isVerified, verifiedBy } = req.body;
@@ -193,13 +195,17 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
   });
 
   // Эндпоинт для получения всех регистраций (для админа)
-  app.get('/api/employee-registrations', async (req, res) => {
+  app.get('/api/employee-registrations', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/employee-registrations');
 
       if (USE_DB) {
         const rows = await db.findAll('employee_registrations', { orderBy: 'created_at', orderDir: 'DESC' });
-        return res.json({ success: true, registrations: rows.map(r => r.data) });
+        const dbRegistrations = rows.map(r => r.data);
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(dbRegistrations, req.query, 'registrations'));
+        }
+        return res.json({ success: true, registrations: dbRegistrations });
       }
 
       const registrations = [];
@@ -225,6 +231,9 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
         });
       }
 
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(registrations, req.query, 'registrations'));
+      }
       res.json({ success: true, registrations });
     } catch (error) {
       console.error('Ошибка получения регистраций:', error);

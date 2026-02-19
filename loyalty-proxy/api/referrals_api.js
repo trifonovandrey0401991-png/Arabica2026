@@ -9,6 +9,7 @@ const path = require('path');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_REFERRALS === 'true';
 
@@ -483,7 +484,7 @@ async function invalidateStatsCache() {
 function setupReferralsAPI(app) {
 
   // GET /api/referrals/unviewed-count - количество непросмотренных приглашений
-  app.get('/api/referrals/unviewed-count', async (req, res) => {
+  app.get('/api/referrals/unviewed-count', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/referrals/unviewed-count');
 
@@ -505,7 +506,7 @@ function setupReferralsAPI(app) {
   });
 
   // POST /api/referrals/mark-as-viewed - отметить приглашения как просмотренные
-  app.post('/api/referrals/mark-as-viewed', async (req, res) => {
+  app.post('/api/referrals/mark-as-viewed', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/referrals/mark-as-viewed');
 
@@ -519,7 +520,7 @@ function setupReferralsAPI(app) {
   });
 
   // GET /api/referrals/next-code - получить следующий свободный код
-  app.get('/api/referrals/next-code', async (req, res) => {
+  app.get('/api/referrals/next-code', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/referrals/next-code');
       const nextCode = await getNextReferralCode();
@@ -531,7 +532,7 @@ function setupReferralsAPI(app) {
   });
 
   // GET /api/referrals/validate-code/:code - валидация кода (ФАЗА 1.2: лимит 10000)
-  app.get('/api/referrals/validate-code/:code', async (req, res) => {
+  app.get('/api/referrals/validate-code/:code', requireAuth, async (req, res) => {
     try {
       const code = parseInt(req.params.code, 10);
       console.log(`GET /api/referrals/validate-code/${code}`);
@@ -562,7 +563,7 @@ function setupReferralsAPI(app) {
   });
 
   // GET /api/referrals/stats - статистика всех сотрудников (с кэшированием)
-  app.get('/api/referrals/stats', async (req, res) => {
+  app.get('/api/referrals/stats', requireAuth, async (req, res) => {
     try {
       const forceRefresh = req.query.refresh === 'true';
       console.log(`GET /api/referrals/stats (refresh=${forceRefresh})`);
@@ -602,7 +603,7 @@ function setupReferralsAPI(app) {
   });
 
   // GET /api/referrals/stats/:employeeId - статистика одного сотрудника (с кэшированием)
-  app.get('/api/referrals/stats/:employeeId', async (req, res) => {
+  app.get('/api/referrals/stats/:employeeId', requireAuth, async (req, res) => {
     try {
       const { employeeId } = req.params;
       const forceRefresh = req.query.refresh === 'true';
@@ -676,7 +677,7 @@ function setupReferralsAPI(app) {
   });
 
   // GET /api/referrals/clients/:referralCode - список клиентов сотрудника по коду
-  app.get('/api/referrals/clients/:referralCode', async (req, res) => {
+  app.get('/api/referrals/clients/:referralCode', requireAuth, async (req, res) => {
     try {
       const code = parseInt(req.params.referralCode, 10);
       console.log(`GET /api/referrals/clients/${code}`);
@@ -708,7 +709,7 @@ function setupReferralsAPI(app) {
   });
 
   // GET /api/referrals/unassigned - количество неучтенных клиентов
-  app.get('/api/referrals/unassigned', async (req, res) => {
+  app.get('/api/referrals/unassigned', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/referrals/unassigned');
 
@@ -731,7 +732,7 @@ function setupReferralsAPI(app) {
   });
 
   // GET /api/points-settings/referrals - настройки баллов за приглашения
-  app.get('/api/points-settings/referrals', async (req, res) => {
+  app.get('/api/points-settings/referrals', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/points-settings/referrals');
 
@@ -771,7 +772,7 @@ function setupReferralsAPI(app) {
   });
 
   // POST /api/points-settings/referrals - обновить настройки
-  app.post('/api/points-settings/referrals', async (req, res) => {
+  app.post('/api/points-settings/referrals', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/points-settings/referrals');
 
@@ -801,7 +802,7 @@ function setupReferralsAPI(app) {
   });
 
   // GET /api/referrals/employee-points/:employeeId - баллы сотрудника за текущий месяц
-  app.get('/api/referrals/employee-points/:employeeId', async (req, res) => {
+  app.get('/api/referrals/employee-points/:employeeId', requireAuth, async (req, res) => {
     try {
       const { employeeId } = req.params;
       console.log(`GET /api/referrals/employee-points/${employeeId}`);
@@ -888,7 +889,7 @@ function setupReferralsAPI(app) {
   });
 
   // PATCH /api/clients/:phone/referral-status - обновить статус реферала (ФАЗА 2.1)
-  app.patch('/api/clients/:phone/referral-status', async (req, res) => {
+  app.patch('/api/clients/:phone/referral-status', requireAuth, async (req, res) => {
     try {
       const { phone } = req.params;
       const { status } = req.body;

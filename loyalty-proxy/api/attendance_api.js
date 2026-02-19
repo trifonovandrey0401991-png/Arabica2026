@@ -13,6 +13,7 @@ const { isPaginationRequested, createPaginatedResponse } = require('../utils/pag
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
 const { getMoscowDateString } = require('../utils/moscow_time');
+const { requireAuth } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const USE_DB = process.env.USE_DB_ATTENDANCE === 'true';
@@ -350,7 +351,7 @@ function setupAttendanceAPI(app, {
 } = {}) {
 
   // POST /api/attendance - отметка прихода
-  app.post('/api/attendance', async (req, res) => {
+  app.post('/api/attendance', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/attendance:', JSON.stringify(req.body).substring(0, 200));
 
@@ -445,7 +446,7 @@ function setupAttendanceAPI(app, {
   });
 
   // POST /api/attendance/confirm-shift - подтверждение выбора смены
-  app.post('/api/attendance/confirm-shift', async (req, res) => {
+  app.post('/api/attendance/confirm-shift', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/attendance/confirm-shift: recordId:', req.body?.recordId, 'shift:', req.body?.selectedShift);
 
@@ -532,7 +533,7 @@ function setupAttendanceAPI(app, {
   });
 
   // GET /api/attendance/check - проверка отметки сегодня
-  app.get('/api/attendance/check', async (req, res) => {
+  app.get('/api/attendance/check', requireAuth, async (req, res) => {
     try {
       const employeeName = req.query.employeeName;
       if (!employeeName) {
@@ -587,7 +588,7 @@ function setupAttendanceAPI(app, {
   });
 
   // GET /api/attendance - получение списка отметок
-  app.get('/api/attendance', async (req, res) => {
+  app.get('/api/attendance', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/attendance:', req.query);
 
@@ -683,7 +684,7 @@ function setupAttendanceAPI(app, {
   });
 
   // GET /api/attendance/pending - получить pending отчеты
-  app.get('/api/attendance/pending', async (req, res) => {
+  app.get('/api/attendance/pending', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/attendance/pending');
       const reports = getPendingAttendanceReports ? getPendingAttendanceReports() : [];
@@ -702,7 +703,7 @@ function setupAttendanceAPI(app, {
   });
 
   // GET /api/attendance/failed - получить failed отчеты
-  app.get('/api/attendance/failed', async (req, res) => {
+  app.get('/api/attendance/failed', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/attendance/failed');
       const reports = getFailedAttendanceReports ? getFailedAttendanceReports() : [];
@@ -721,7 +722,7 @@ function setupAttendanceAPI(app, {
   });
 
   // GET /api/attendance/can-mark - проверить можно ли отмечаться на магазине
-  app.get('/api/attendance/can-mark', async (req, res) => {
+  app.get('/api/attendance/can-mark', requireAuth, async (req, res) => {
     try {
       const { shopAddress } = req.query;
       console.log('GET /api/attendance/can-mark:', shopAddress);
@@ -751,7 +752,7 @@ function setupAttendanceAPI(app, {
   });
 
   // POST /api/attendance/gps-check - Проверка GPS и отправка уведомления
-  app.post('/api/attendance/gps-check', async (req, res) => {
+  app.post('/api/attendance/gps-check', requireAuth, async (req, res) => {
     try {
       const { lat, lng, phone, employeeName } = req.body;
 

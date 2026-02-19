@@ -12,6 +12,7 @@ const { isAdminPhone } = require('../utils/admin_cache');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_LOYALTY_GAMIFICATION === 'true';
 
@@ -334,7 +335,7 @@ function setupLoyaltyGamificationAPI(app) {
   // ===== SETTINGS =====
 
   // GET settings
-  app.get('/api/loyalty-gamification/settings', async (req, res) => {
+  app.get('/api/loyalty-gamification/settings', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/loyalty-gamification/settings');
       const settings = await loadSettings();
@@ -346,7 +347,7 @@ function setupLoyaltyGamificationAPI(app) {
   });
 
   // POST settings (admin only)
-  app.post('/api/loyalty-gamification/settings', async (req, res) => {
+  app.post('/api/loyalty-gamification/settings', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/loyalty-gamification/settings');
       const { levels, wheel, employeePhone } = req.body;
@@ -377,7 +378,7 @@ function setupLoyaltyGamificationAPI(app) {
 
   // ===== BADGE UPLOAD =====
 
-  app.post('/api/loyalty-gamification/upload-badge', upload.single('badge'), async (req, res) => {
+  app.post('/api/loyalty-gamification/upload-badge', requireAuth, upload.single('badge'), async (req, res) => {
     try {
       console.log('POST /api/loyalty-gamification/upload-badge');
 
@@ -410,7 +411,7 @@ function setupLoyaltyGamificationAPI(app) {
   // ===== CLIENT DATA =====
 
   // GET client gamification data
-  app.get('/api/loyalty-gamification/client/:phone', async (req, res) => {
+  app.get('/api/loyalty-gamification/client/:phone', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       console.log('GET /api/loyalty-gamification/client:', maskPhone(phone));
@@ -482,7 +483,7 @@ function setupLoyaltyGamificationAPI(app) {
 
   // ===== WHEEL SPIN =====
 
-  app.post('/api/loyalty-gamification/spin', async (req, res) => {
+  app.post('/api/loyalty-gamification/spin', requireAuth, async (req, res) => {
     try {
       const { phone } = req.body;
       console.log('POST /api/loyalty-gamification/spin:', maskPhone(phone));
@@ -642,7 +643,7 @@ function setupLoyaltyGamificationAPI(app) {
   });
 
   // GET wheel history
-  app.get('/api/loyalty-gamification/wheel-history', async (req, res) => {
+  app.get('/api/loyalty-gamification/wheel-history', requireAuth, async (req, res) => {
     try {
       const { month, phone } = req.query;
       console.log('GET /api/loyalty-gamification/wheel-history:', month, maskPhone(phone));
@@ -669,7 +670,7 @@ function setupLoyaltyGamificationAPI(app) {
   });
 
   // PATCH mark prize as processed
-  app.patch('/api/loyalty-gamification/wheel-history/:id/process', async (req, res) => {
+  app.patch('/api/loyalty-gamification/wheel-history/:id/process', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const { processedBy } = req.body;
@@ -706,7 +707,7 @@ function setupLoyaltyGamificationAPI(app) {
   // ===== CLIENT PRIZES (Призы клиентов) =====
 
   // GET pending prize for client
-  app.get('/api/loyalty-gamification/client/:phone/pending-prize', async (req, res) => {
+  app.get('/api/loyalty-gamification/client/:phone/pending-prize', requireAuth, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       console.log('GET /api/loyalty-gamification/client/:phone/pending-prize:', maskPhone(phone));
@@ -740,7 +741,7 @@ function setupLoyaltyGamificationAPI(app) {
   });
 
   // POST generate new QR token for prize
-  app.post('/api/loyalty-gamification/generate-qr', async (req, res) => {
+  app.post('/api/loyalty-gamification/generate-qr', requireAuth, async (req, res) => {
     try {
       const { prizeId, phone } = req.body;
       console.log('POST /api/loyalty-gamification/generate-qr:', maskPhone(prizeId || phone));
@@ -785,7 +786,7 @@ function setupLoyaltyGamificationAPI(app) {
   });
 
   // POST scan prize QR code (employee action)
-  app.post('/api/loyalty-gamification/scan-prize', async (req, res) => {
+  app.post('/api/loyalty-gamification/scan-prize', requireAuth, async (req, res) => {
     try {
       const { qrToken } = req.body;
       console.log('POST /api/loyalty-gamification/scan-prize:', qrToken);
@@ -848,7 +849,7 @@ function setupLoyaltyGamificationAPI(app) {
   });
 
   // POST issue prize (employee confirms delivery)
-  app.post('/api/loyalty-gamification/issue-prize', async (req, res) => {
+  app.post('/api/loyalty-gamification/issue-prize', requireAuth, async (req, res) => {
     try {
       const { prizeId, employeePhone, employeeName } = req.body;
       console.log('POST /api/loyalty-gamification/issue-prize:', prizeId);
@@ -958,7 +959,7 @@ function setupLoyaltyGamificationAPI(app) {
   });
 
   // POST postpone prize (generate new QR, keep pending)
-  app.post('/api/loyalty-gamification/postpone-prize', async (req, res) => {
+  app.post('/api/loyalty-gamification/postpone-prize', requireAuth, async (req, res) => {
     try {
       const { prizeId } = req.body;
       console.log('POST /api/loyalty-gamification/postpone-prize:', prizeId);
@@ -997,7 +998,7 @@ function setupLoyaltyGamificationAPI(app) {
   });
 
   // GET client prizes report
-  app.get('/api/loyalty-gamification/client-prizes-report', async (req, res) => {
+  app.get('/api/loyalty-gamification/client-prizes-report', requireAuth, async (req, res) => {
     try {
       const { status, month, limit = 100 } = req.query;
       console.log('GET /api/loyalty-gamification/client-prizes-report:', { status, month });

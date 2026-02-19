@@ -29,6 +29,7 @@ const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_SHOP_MANAGERS === 'true';
 
@@ -177,7 +178,7 @@ async function getUserMultitenantRole(phone) {
 function setupShopManagersAPI(app) {
 
   // GET /api/shop-managers - получить конфигурацию (только для developer)
-  app.get('/api/shop-managers', async (req, res) => {
+  app.get('/api/shop-managers', requireAuth, async (req, res) => {
     try {
       const { phone } = req.query;
 
@@ -202,7 +203,7 @@ function setupShopManagersAPI(app) {
   });
 
   // GET /api/shop-managers/role/:phone - получить мультитенантную роль
-  app.get('/api/shop-managers/role/:phone', async (req, res) => {
+  app.get('/api/shop-managers/role/:phone', requireAuth, async (req, res) => {
     try {
       const { phone } = req.params;
       const role = await getUserMultitenantRole(phone);
@@ -222,7 +223,7 @@ function setupShopManagersAPI(app) {
   });
 
   // POST /api/shop-managers/developers - добавить разработчика (только developer)
-  app.post('/api/shop-managers/developers', async (req, res) => {
+  app.post('/api/shop-managers/developers', requireAuth, async (req, res) => {
     try {
       const { adminPhone, developerPhone } = req.body;
 
@@ -247,7 +248,7 @@ function setupShopManagersAPI(app) {
   });
 
   // DELETE /api/shop-managers/developers/:phone - удалить разработчика
-  app.delete('/api/shop-managers/developers/:phone', async (req, res) => {
+  app.delete('/api/shop-managers/developers/:phone', requireAuth, async (req, res) => {
     try {
       const { phone } = req.params;
       const { adminPhone } = req.query;
@@ -270,7 +271,7 @@ function setupShopManagersAPI(app) {
   });
 
   // POST /api/shop-managers/managers - добавить/обновить управляющего
-  app.post('/api/shop-managers/managers', async (req, res) => {
+  app.post('/api/shop-managers/managers', requireAuth, async (req, res) => {
     try {
       const { adminPhone, manager } = req.body;
 
@@ -309,7 +310,7 @@ function setupShopManagersAPI(app) {
   });
 
   // DELETE /api/shop-managers/managers/:phone - удалить управляющего
-  app.delete('/api/shop-managers/managers/:phone', async (req, res) => {
+  app.delete('/api/shop-managers/managers/:phone', requireAuth, async (req, res) => {
     try {
       const { phone } = req.params;
       const { adminPhone } = req.query;
@@ -332,7 +333,7 @@ function setupShopManagersAPI(app) {
   });
 
   // PUT /api/shop-managers/managers/:phone/shops - обновить магазины управляющего
-  app.put('/api/shop-managers/managers/:phone/shops', async (req, res) => {
+  app.put('/api/shop-managers/managers/:phone/shops', requireAuth, async (req, res) => {
     try {
       const { phone } = req.params;
       const { adminPhone, shopIds } = req.body;
@@ -361,7 +362,7 @@ function setupShopManagersAPI(app) {
   });
 
   // PUT /api/shop-managers/managers/:phone/employees - обновить сотрудников управляющего
-  app.put('/api/shop-managers/managers/:phone/employees', async (req, res) => {
+  app.put('/api/shop-managers/managers/:phone/employees', requireAuth, async (req, res) => {
     try {
       const { phone } = req.params;
       const { adminPhone, employeePhones } = req.body;
@@ -390,7 +391,7 @@ function setupShopManagersAPI(app) {
   });
 
   // POST /api/shop-managers/store-managers - добавить/обновить заведующую магазина
-  app.post('/api/shop-managers/store-managers', async (req, res) => {
+  app.post('/api/shop-managers/store-managers', requireAuth, async (req, res) => {
     try {
       const { adminPhone, storeManager } = req.body;
 
@@ -427,7 +428,7 @@ function setupShopManagersAPI(app) {
   });
 
   // GET /api/shop-managers/store-managers - список всех заведующих (для admin/developer)
-  app.get('/api/shop-managers/store-managers', async (req, res) => {
+  app.get('/api/shop-managers/store-managers', requireAuth, async (req, res) => {
     try {
       const { phone } = req.query;
 
@@ -459,7 +460,7 @@ function setupShopManagersAPI(app) {
   });
 
   // PUT /api/shop-managers/store-managers/:phone/shops - обновить магазины заведующей
-  app.put('/api/shop-managers/store-managers/:phone/shops', async (req, res) => {
+  app.put('/api/shop-managers/store-managers/:phone/shops', requireAuth, async (req, res) => {
     try {
       const { phone } = req.params;
       const { adminPhone, managedShopIds } = req.body;
@@ -505,7 +506,7 @@ function setupShopManagersAPI(app) {
   });
 
   // DELETE /api/shop-managers/store-managers/:phone - удалить заведующую
-  app.delete('/api/shop-managers/store-managers/:phone', async (req, res) => {
+  app.delete('/api/shop-managers/store-managers/:phone', requireAuth, async (req, res) => {
     try {
       const { phone } = req.params;
       const { adminPhone } = req.query;

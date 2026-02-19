@@ -12,6 +12,7 @@ const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_COFFEE_MACHINE === 'true';
 
@@ -103,7 +104,7 @@ function setupCoffeeMachineAPI(app) {
   // ============================================
 
   // GET /api/coffee-machine/templates — список всех шаблонов
-  app.get('/api/coffee-machine/templates', async (req, res) => {
+  app.get('/api/coffee-machine/templates', requireAuth, async (req, res) => {
     try {
       const templates = [];
       if (await fileExists(TEMPLATES_DIR)) {
@@ -126,7 +127,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // GET /api/coffee-machine/templates/:id — один шаблон
-  app.get('/api/coffee-machine/templates/:id', async (req, res) => {
+  app.get('/api/coffee-machine/templates/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const filePath = path.join(TEMPLATES_DIR, `${sanitizeId(id)}.json`);
@@ -142,7 +143,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // POST /api/coffee-machine/templates — создать/обновить шаблон
-  app.post('/api/coffee-machine/templates', async (req, res) => {
+  app.post('/api/coffee-machine/templates', requireAuth, async (req, res) => {
     try {
       const { template, referenceImage } = req.body;
       if (!template || !template.name) {
@@ -176,7 +177,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // PUT /api/coffee-machine/templates/:id — обновить шаблон
-  app.put('/api/coffee-machine/templates/:id', async (req, res) => {
+  app.put('/api/coffee-machine/templates/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const { template, referenceImage } = req.body;
@@ -206,7 +207,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // DELETE /api/coffee-machine/templates/:id — удалить шаблон
-  app.delete('/api/coffee-machine/templates/:id', async (req, res) => {
+  app.delete('/api/coffee-machine/templates/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const filePath = path.join(TEMPLATES_DIR, `${sanitizeId(id)}.json`);
@@ -224,7 +225,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // GET /api/coffee-machine/templates/:id/image — получить эталонное фото
-  app.get('/api/coffee-machine/templates/:id/image', async (req, res) => {
+  app.get('/api/coffee-machine/templates/:id/image', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const photoPath = path.join(PHOTOS_DIR, `ref_${sanitizeId(id)}.jpg`);
@@ -246,7 +247,7 @@ function setupCoffeeMachineAPI(app) {
   // ============================================
 
   // GET /api/coffee-machine/shop-config — все привязки
-  app.get('/api/coffee-machine/shop-config', async (req, res) => {
+  app.get('/api/coffee-machine/shop-config', requireAuth, async (req, res) => {
     try {
       const configs = [];
       if (await fileExists(SHOP_CONFIGS_DIR)) {
@@ -267,7 +268,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // GET /api/coffee-machine/shop-config/:shopAddress — конфиг одного магазина
-  app.get('/api/coffee-machine/shop-config/:shopAddress', async (req, res) => {
+  app.get('/api/coffee-machine/shop-config/:shopAddress', requireAuth, async (req, res) => {
     try {
       const shopAddress = decodeURIComponent(req.params.shopAddress);
       const fileName = sanitizeId(shopAddress) + '.json';
@@ -293,7 +294,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // PUT /api/coffee-machine/shop-config/:shopAddress — обновить привязку
-  app.put('/api/coffee-machine/shop-config/:shopAddress', async (req, res) => {
+  app.put('/api/coffee-machine/shop-config/:shopAddress', requireAuth, async (req, res) => {
     try {
       const shopAddress = decodeURIComponent(req.params.shopAddress);
       const config = req.body;
@@ -319,7 +320,7 @@ function setupCoffeeMachineAPI(app) {
   // ============================================
 
   // GET /api/coffee-machine/reports — список отчётов
-  app.get('/api/coffee-machine/reports', async (req, res) => {
+  app.get('/api/coffee-machine/reports', requireAuth, async (req, res) => {
     try {
       let reports;
 
@@ -391,7 +392,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // GET /api/coffee-machine/reports/:id — один отчёт
-  app.get('/api/coffee-machine/reports/:id', async (req, res) => {
+  app.get('/api/coffee-machine/reports/:id', requireAuth, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
 
@@ -418,7 +419,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // POST /api/coffee-machine/reports — создать отчёт
-  app.post('/api/coffee-machine/reports', async (req, res) => {
+  app.post('/api/coffee-machine/reports', requireAuth, async (req, res) => {
     try {
       const report = req.body;
 
@@ -497,7 +498,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // PUT /api/coffee-machine/reports/:id/confirm — подтвердить отчёт
-  app.put('/api/coffee-machine/reports/:id/confirm', async (req, res) => {
+  app.put('/api/coffee-machine/reports/:id/confirm', requireAuth, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       const { confirmedByAdmin, rating } = req.body;
@@ -544,7 +545,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // PUT /api/coffee-machine/reports/:id/reject — отклонить отчёт
-  app.put('/api/coffee-machine/reports/:id/reject', async (req, res) => {
+  app.put('/api/coffee-machine/reports/:id/reject', requireAuth, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       const { rejectedByAdmin, rejectReason } = req.body;
@@ -591,7 +592,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // DELETE /api/coffee-machine/reports/:id — удалить отчёт
-  app.delete('/api/coffee-machine/reports/:id', async (req, res) => {
+  app.delete('/api/coffee-machine/reports/:id', requireAuth, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
 
@@ -623,7 +624,7 @@ function setupCoffeeMachineAPI(app) {
   // ============================================
 
   // POST /api/coffee-machine/ocr — распознать число с фото
-  app.post('/api/coffee-machine/ocr', async (req, res) => {
+  app.post('/api/coffee-machine/ocr', requireAuth, async (req, res) => {
     try {
       const { imageBase64, region, preset, machineName } = req.body;
 
@@ -717,7 +718,7 @@ function setupCoffeeMachineAPI(app) {
   // ============================================
 
   // GET /api/coffee-machine/pending — pending отчёты
-  app.get('/api/coffee-machine/pending', async (req, res) => {
+  app.get('/api/coffee-machine/pending', requireAuth, async (req, res) => {
     try {
       const pendingDir = `${DATA_DIR}/coffee-machine-pending`;
       const results = [];
@@ -745,7 +746,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // GET /api/coffee-machine/failed — failed отчёты
-  app.get('/api/coffee-machine/failed', async (req, res) => {
+  app.get('/api/coffee-machine/failed', requireAuth, async (req, res) => {
     try {
       const pendingDir = `${DATA_DIR}/coffee-machine-pending`;
       const results = [];
@@ -794,7 +795,7 @@ function setupCoffeeMachineAPI(app) {
   }
 
   // POST /api/coffee-machine/training — сохранить обучающее фото
-  app.post('/api/coffee-machine/training', async (req, res) => {
+  app.post('/api/coffee-machine/training', requireAuth, async (req, res) => {
     try {
       const { photoUrl, correctNumber, selectedRegion, preset, machineName, shopAddress, trainedBy } = req.body;
 
@@ -883,7 +884,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // GET /api/coffee-machine/training — список обучающих фото (фильтр по machineName)
-  app.get('/api/coffee-machine/training', async (req, res) => {
+  app.get('/api/coffee-machine/training', requireAuth, async (req, res) => {
     try {
       let samples = await loadTrainingSamples();
       // Фильтрация по machineName (если передан)
@@ -900,7 +901,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // GET /api/coffee-machine/training/stats — статистика
-  app.get('/api/coffee-machine/training/stats', async (req, res) => {
+  app.get('/api/coffee-machine/training/stats', requireAuth, async (req, res) => {
     try {
       const samples = await loadTrainingSamples();
       const byPreset = {};
@@ -924,7 +925,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // DELETE /api/coffee-machine/training/:id — удалить обучающее фото
-  app.delete('/api/coffee-machine/training/:id', async (req, res) => {
+  app.delete('/api/coffee-machine/training/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       let samples = await loadTrainingSamples();
@@ -959,7 +960,7 @@ function setupCoffeeMachineAPI(app) {
   // ============================================
 
   // GET /api/coffee-machine/intelligence — вся intelligence (все машины)
-  app.get('/api/coffee-machine/intelligence', async (req, res) => {
+  app.get('/api/coffee-machine/intelligence', requireAuth, async (req, res) => {
     try {
       const data = await loadMachineIntelligence(null);
       res.json({ success: true, intelligence: data || {}, machineCount: data ? Object.keys(data).length : 0 });
@@ -969,7 +970,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // GET /api/coffee-machine/intelligence/:machineName — одна машина
-  app.get('/api/coffee-machine/intelligence/:machineName', async (req, res) => {
+  app.get('/api/coffee-machine/intelligence/:machineName', requireAuth, async (req, res) => {
     try {
       const { machineName } = req.params;
       const data = await loadMachineIntelligence(decodeURIComponent(machineName));
@@ -984,7 +985,7 @@ function setupCoffeeMachineAPI(app) {
   });
 
   // POST /api/coffee-machine/intelligence/rebuild — принудительная перестройка
-  app.post('/api/coffee-machine/intelligence/rebuild', async (req, res) => {
+  app.post('/api/coffee-machine/intelligence/rebuild', requireAuth, async (req, res) => {
     try {
       const intelligence = await buildMachineIntelligence();
       res.json({ success: true, machineCount: Object.keys(intelligence).length, intelligence });

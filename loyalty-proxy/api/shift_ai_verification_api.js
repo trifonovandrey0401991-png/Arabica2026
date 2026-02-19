@@ -8,6 +8,12 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { requireAuth } = require('../utils/session_middleware');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_SHIFT_AI === 'true';
 
 // Директории
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -47,6 +53,14 @@ async function loadMasterCatalog() {
  * Загрузить настройки ИИ для товаров
  */
 async function loadAiSettings() {
+  if (USE_DB) {
+    try {
+      const row = await db.findById('app_settings', 'shift_ai_settings', 'key');
+      if (row && row.value) return row.value;
+    } catch (e) {
+      console.error('[ShiftAI] DB loadAiSettings error:', e.message);
+    }
+  }
   try {
     const settingsFile = path.join(SHIFT_AI_SETTINGS_DIR, 'products.json');
     if (await fileExists(settingsFile)) {
@@ -66,7 +80,20 @@ async function loadAiSettings() {
 async function saveAiSettings(settings) {
   try {
     const settingsFile = path.join(SHIFT_AI_SETTINGS_DIR, 'products.json');
-    await fsp.writeFile(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
+    await writeJsonFile(settingsFile, settings);
+
+    if (USE_DB) {
+      try {
+        await db.upsert('app_settings', {
+          key: 'shift_ai_settings',
+          value: settings,
+          updated_at: new Date().toISOString(),
+        }, 'key');
+      } catch (dbErr) {
+        console.error('[ShiftAI] DB saveAiSettings error:', dbErr.message);
+      }
+    }
+
     return true;
   } catch (error) {
     console.error('[ShiftAI] Ошибка сохранения настроек ИИ:', error);
@@ -113,11 +140,11 @@ async function loadSamplesForProduct(productId) {
  * Проверить готовность ИИ для товара в конкретном магазине
  * Возвращает { isReady, reason, recountComplete, displayComplete }
  */
-function checkAiReadinessForShop(productId, barcode, shopAddress) {
+async function checkAiReadinessForShop(productId, barcode, shopAddress) {
   try {
     const cigaretteVision = require('../modules/cigarette-vision');
-    const samples = cigaretteVision.loadSamples();
-    const settings = cigaretteVision.getSettings();
+    const samples = await cigaretteVision.loadSamples();
+    const settings = await cigaretteVision.getSettings();
 
     const requiredRecount = settings.requiredRecountPhotos || 10;
     const requiredDisplayPerShop = settings.requiredDisplayPhotosPerShop || 3;
@@ -206,7 +233,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ ТОВАРЫ ============
 
   // Получить товары с настройками ИИ
-  app.get('/api/shift-ai/products', async (req, res) => {
+  app.get('/api/shift-ai/products', requireAuth, async (req, res) => {
     try {
       const { shopId, group } = req.query;
 
@@ -234,6 +261,9 @@ function setupShiftAiVerificationAPI(app) {
         products = products.filter(p => p.productGroup === group);
       }
 
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(products, req.query, 'products'));
+      }
       res.json({ success: true, products });
     } catch (error) {
       console.error('[ShiftAI] Ошибка получения товаров:', error);
@@ -242,7 +272,7 @@ function setupShiftAiVerificationAPI(app) {
   });
 
   // Получить группы товаров
-  app.get('/api/shift-ai/product-groups', async (req, res) => {
+  app.get('/api/shift-ai/product-groups', requireAuth, async (req, res) => {
     try {
       const catalog = await loadMasterCatalog();
       const groups = [...new Set(catalog.map(p => p.group).filter(Boolean))];
@@ -256,7 +286,7 @@ function setupShiftAiVerificationAPI(app) {
   });
 
   // Обновить настройки ИИ для товара
-  app.put('/api/shift-ai/products/:barcode', async (req, res) => {
+  app.put('/api/shift-ai/products/:barcode', requireAuth, async (req, res) => {
     try {
       const { barcode } = req.params;
       const { isAiActive } = req.body;
@@ -285,7 +315,7 @@ function setupShiftAiVerificationAPI(app) {
   });
 
   // Получить активные товары для магазина (для проверки при пересменке)
-  app.get('/api/shift-ai/active-products/:shopId', async (req, res) => {
+  app.get('/api/shift-ai/active-products/:shopId', requireAuth, async (req, res) => {
     try {
       const { shopId } = req.params;
 
@@ -315,7 +345,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ ПРОВЕРКА ============
 
   // Проверить фото с помощью YOLO
-  app.post('/api/shift-ai/verify', async (req, res) => {
+  app.post('/api/shift-ai/verify', requireAuth, async (req, res) => {
     try {
       const { imagesBase64, shopAddress } = req.body;
 
@@ -366,9 +396,9 @@ function setupShiftAiVerificationAPI(app) {
       const readyProducts = [];
       const skippedProducts = [];
 
-      activeProducts.forEach(product => {
+      for (const product of activeProducts) {
         const productId = product.id || product.barcode;
-        const readiness = checkAiReadinessForShop(productId, product.barcode, shopAddress);
+        const readiness = await checkAiReadinessForShop(productId, product.barcode, shopAddress);
 
         if (readiness.isReady) {
           readyProducts.push(product);
@@ -386,7 +416,7 @@ function setupShiftAiVerificationAPI(app) {
             requiredDisplayPerShop: readiness.requiredDisplayPerShop,
           });
         }
-      });
+      }
 
       if (readyProducts.length === 0) {
         return res.json({
@@ -532,7 +562,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ АННОТАЦИИ ============
 
   // Сохранить аннотацию (BBox) от сотрудника
-  app.post('/api/shift-ai/annotations', async (req, res) => {
+  app.post('/api/shift-ai/annotations', requireAuth, async (req, res) => {
     try {
       const {
         imageBase64,
@@ -581,7 +611,22 @@ function setupShiftAiVerificationAPI(app) {
       annotation.imagePath = imagePath;
 
       // Сохраняем аннотацию
-      await fsp.writeFile(annotationFile, JSON.stringify(annotation, null, 2), 'utf8');
+      await writeJsonFile(annotationFile, annotation);
+
+      if (USE_DB) {
+        try {
+          await db.upsert('shift_ai_annotations', {
+            id: annotationId,
+            product_id: annotation.productId,
+            barcode: annotation.barcode,
+            shop_address: annotation.shopAddress,
+            data: annotation,
+            created_at: annotation.createdAt,
+          });
+        } catch (dbErr) {
+          console.error('[ShiftAI] DB save annotation error:', dbErr.message);
+        }
+      }
 
       // Обновляем счётчик образцов для товара
       const settings = await loadAiSettings();
@@ -604,7 +649,7 @@ function setupShiftAiVerificationAPI(app) {
 
   // Перепроверить товар в выделенной области BBox с помощью YOLO
   // Используется когда сотрудник выделяет товар на фото после неудачного распознавания
-  app.post('/api/shift-ai/verify-bbox', async (req, res) => {
+  app.post('/api/shift-ai/verify-bbox', requireAuth, async (req, res) => {
     try {
       const {
         imageBase64,
@@ -708,7 +753,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ ГОТОВНОСТЬ ДЛЯ МАГАЗИНА ============
 
   // Проверить готовность ИИ для конкретного магазина (per-shop)
-  app.get('/api/shift-ai/readiness/:shopAddress', async (req, res) => {
+  app.get('/api/shift-ai/readiness/:shopAddress', requireAuth, async (req, res) => {
     try {
       const { shopAddress } = req.params;
       const decodedAddress = decodeURIComponent(shopAddress);
@@ -726,9 +771,9 @@ function setupShiftAiVerificationAPI(app) {
       const readyProducts = [];
       const notReadyProducts = [];
 
-      activeProducts.forEach(product => {
+      for (const product of activeProducts) {
         const productId = product.id || product.barcode;
-        const readiness = checkAiReadinessForShop(productId, product.barcode, decodedAddress);
+        const readiness = await checkAiReadinessForShop(productId, product.barcode, decodedAddress);
 
         const productInfo = {
           productId: productId,
@@ -743,7 +788,7 @@ function setupShiftAiVerificationAPI(app) {
         } else {
           notReadyProducts.push(productInfo);
         }
-      });
+      }
 
       res.json({
         success: true,
@@ -767,7 +812,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ СТАТУС ============
 
   // Получить статус модели YOLO
-  app.get('/api/shift-ai/model-status', async (req, res) => {
+  app.get('/api/shift-ai/model-status', requireAuth, async (req, res) => {
     try {
       const status = await checkModelStatus();
 
@@ -796,7 +841,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ ОСТАТКИ ============
 
   // Получить остатки товара
-  app.get('/api/shift-ai/stock/:shopAddress/:barcode', async (req, res) => {
+  app.get('/api/shift-ai/stock/:shopAddress/:barcode', requireAuth, async (req, res) => {
     try {
       const { shopAddress, barcode } = req.params;
 
@@ -819,7 +864,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ СТАТИСТИКА ============
 
   // Получить статистику обучения
-  app.get('/api/shift-ai/stats', async (req, res) => {
+  app.get('/api/shift-ai/stats', requireAuth, async (req, res) => {
     try {
       const catalog = await loadMasterCatalog();
       const aiSettings = await loadAiSettings();

@@ -517,6 +517,7 @@ class PointsSettingsService {
     required String morningEndTime,
     required String eveningStartTime,
     required String eveningEndTime,
+    required int adminReviewTimeoutHours,
   }) async {
     Logger.debug('Saving coffee machine points settings: submitted=$submittedPoints, notSubmitted=$notSubmittedPoints');
 
@@ -529,6 +530,7 @@ class PointsSettingsService {
         'morningEndTime': morningEndTime,
         'eveningStartTime': eveningStartTime,
         'eveningEndTime': eveningEndTime,
+        'adminReviewTimeoutHours': adminReviewTimeoutHours,
       },
       fromJson: (json) => CoffeeMachinePointsSettings.fromJson(json),
       itemKey: 'settings',

@@ -12,8 +12,23 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { fileExists } = require('../utils/file_helpers');
+const { fileExists, writeJsonFile } = require('../utils/file_helpers');
+const { getMoscowDateString } = require('../utils/moscow_time');
+const { requireAuth } = require('../utils/session_middleware');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
+
+// Feature flags для чтения из БД
+const USE_DB_ATTENDANCE = process.env.USE_DB_ATTENDANCE === 'true';
+const USE_DB_TESTS = process.env.USE_DB_TESTS === 'true';
+const USE_DB_SHIFTS = process.env.USE_DB_SHIFTS === 'true';
+const USE_DB_RECOUNT = process.env.USE_DB_RECOUNT === 'true';
+const USE_DB_SHIFT_HANDOVER = process.env.USE_DB_SHIFT_HANDOVER === 'true';
+const USE_DB_COFFEE_MACHINE = process.env.USE_DB_COFFEE_MACHINE === 'true';
+const USE_DB_ENVELOPE = process.env.USE_DB_ENVELOPE === 'true';
+const USE_DB_RKO = process.env.USE_DB_RKO === 'true';
+
+let db;
+try { db = require('../utils/db'); } catch (e) { /* db not available */ }
 
 const CONFIG_DIR = path.join(DATA_DIR, 'execution-chain');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
@@ -50,7 +65,7 @@ async function loadConfig() {
 
 async function saveConfig(config) {
   await fsp.mkdir(CONFIG_DIR, { recursive: true });
-  await fsp.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
+  await writeJsonFile(CONFIG_FILE, config);
 }
 
 // ═══════════════════════════════════════════════════
@@ -62,6 +77,22 @@ async function saveConfig(config) {
  */
 async function checkAttendance(employeeName, shopAddress, date) {
   try {
+    // Сначала пробуем БД
+    if (USE_DB_ATTENDANCE && db) {
+      const conditions = [`employee_name = $1`, `(timestamp + interval '3 hours')::date = $2::date`];
+      const params = [employeeName, date];
+      if (shopAddress) {
+        conditions.push(`shop_address = $3`);
+        params.push(shopAddress);
+      }
+      const result = await db.query(
+        `SELECT id FROM attendance WHERE ${conditions.join(' AND ')} LIMIT 1`,
+        params
+      );
+      if (result.rows.length > 0) return true;
+    }
+
+    // Fallback на JSON
     const attendanceDir = path.join(DATA_DIR, 'attendance');
     if (!(await fileExists(attendanceDir))) return false;
 
@@ -72,9 +103,16 @@ async function checkAttendance(employeeName, shopAddress, date) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(attendanceDir, file), 'utf8'));
         if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
-          // Проверяем дату
+          // Проверяем дату (timestamp может быть в московском или UTC формате)
           const ts = data.timestamp || data.date;
           if (ts && ts.startsWith(date)) return true;
+          // Также проверяем createdAt (UTC) — конвертируем в московскую дату
+          const createdAt = data.createdAt;
+          if (createdAt) {
+            const moscowDate = new Date(new Date(createdAt).getTime() + 3 * 60 * 60 * 1000)
+              .toISOString().split('T')[0];
+            if (moscowDate === date) return true;
+          }
         }
       } catch { /* skip broken files */ }
     }
@@ -89,6 +127,31 @@ async function checkAttendance(employeeName, shopAddress, date) {
  */
 async function checkTesting(employeeName, shopAddress, date) {
   try {
+    // Загружаем minimumScore из настроек теста
+    let minimumScore = 0;
+    try {
+      const settingsFile = path.join(DATA_DIR, 'test-settings.json');
+      if (await fileExists(settingsFile)) {
+        const settingsData = JSON.parse(await fsp.readFile(settingsFile, 'utf8'));
+        minimumScore = settingsData.minimumScore || 0;
+      }
+    } catch { /* используем 0 по умолчанию */ }
+
+    // Сначала пробуем БД
+    if (USE_DB_TESTS && db) {
+      let query, params;
+      if (minimumScore > 0) {
+        query = `SELECT id FROM test_results WHERE data->>'employeeName' = $1 AND (created_at + interval '3 hours')::date = $2::date AND (data->>'score')::int >= $3 LIMIT 1`;
+        params = [employeeName, date, minimumScore];
+      } else {
+        query = `SELECT id FROM test_results WHERE data->>'employeeName' = $1 AND (created_at + interval '3 hours')::date = $2::date LIMIT 1`;
+        params = [employeeName, date];
+      }
+      const result = await db.query(query, params);
+      if (result.rows.length > 0) return true;
+    }
+
+    // Fallback на JSON
     const testsDir = path.join(DATA_DIR, 'test-results');
     if (!(await fileExists(testsDir))) return false;
 
@@ -100,7 +163,11 @@ async function checkTesting(employeeName, shopAddress, date) {
         const data = JSON.parse(await fsp.readFile(path.join(testsDir, file), 'utf8'));
         if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
           const ts = data.completedAt || data.date;
-          if (ts && ts.startsWith(date)) return true;
+          if (ts && ts.startsWith(date)) {
+            // Если minimumScore > 0, проверяем что набрал достаточно
+            if (minimumScore > 0 && (data.score || 0) < minimumScore) continue;
+            return true;
+          }
         }
       } catch { /* skip broken files */ }
     }
@@ -115,10 +182,25 @@ async function checkTesting(employeeName, shopAddress, date) {
  */
 async function checkShift(employeeName, shopAddress, date) {
   try {
+    // Сначала пробуем БД
+    if (USE_DB_SHIFTS && db) {
+      const conditions = [`employee_name = $1`, `(created_at + interval '3 hours')::date = $2::date`];
+      const params = [employeeName, date];
+      if (shopAddress) {
+        conditions.push(`shop_address = $3`);
+        params.push(shopAddress);
+      }
+      const result = await db.query(
+        `SELECT id FROM shift_reports WHERE ${conditions.join(' AND ')} LIMIT 1`,
+        params
+      );
+      if (result.rows.length > 0) return true;
+    }
+
+    // Fallback на JSON
     const reportsDir = path.join(DATA_DIR, 'shift-reports');
     if (!(await fileExists(reportsDir))) return false;
 
-    // Shift reports: файлы YYYY-MM-DD.json (массив отчётов за день)
     const dayFile = path.join(reportsDir, `${date}.json`);
     if (await fileExists(dayFile)) {
       const reports = JSON.parse(await fsp.readFile(dayFile, 'utf8'));
@@ -127,19 +209,16 @@ async function checkShift(employeeName, shopAddress, date) {
       }
     }
 
-    // Также проверяем индивидуальные файлы (если есть)
     const files = await fsp.readdir(reportsDir);
     const jsonFiles = files.filter(f => f.endsWith('.json') && f !== `${date}.json`);
 
     for (const file of jsonFiles) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        // Индивидуальный отчёт
         if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
           const ts = data.createdAt || data.date || data.timestamp;
           if (ts && ts.startsWith(date)) return true;
         }
-        // Массив отчётов
         if (Array.isArray(data)) {
           if (data.some(r => r.employeeName === employeeName &&
               (!shopAddress || r.shopAddress === shopAddress) &&
@@ -158,6 +237,22 @@ async function checkShift(employeeName, shopAddress, date) {
  */
 async function checkRecount(employeeName, shopAddress, date) {
   try {
+    // Сначала пробуем БД
+    if (USE_DB_RECOUNT && db) {
+      const conditions = [`employee_name = $1`, `(created_at + interval '3 hours')::date = $2::date`];
+      const params = [employeeName, date];
+      if (shopAddress) {
+        conditions.push(`shop_address = $3`);
+        params.push(shopAddress);
+      }
+      const result = await db.query(
+        `SELECT id FROM recount_reports WHERE ${conditions.join(' AND ')} LIMIT 1`,
+        params
+      );
+      if (result.rows.length > 0) return true;
+    }
+
+    // Fallback на JSON
     const reportsDir = path.join(DATA_DIR, 'recount-reports');
     if (!(await fileExists(reportsDir))) return false;
 
@@ -184,6 +279,22 @@ async function checkRecount(employeeName, shopAddress, date) {
  */
 async function checkShiftHandover(employeeName, shopAddress, date) {
   try {
+    // Сначала пробуем БД
+    if (USE_DB_SHIFT_HANDOVER && db) {
+      const conditions = [`employee_name = $1`, `(created_at + interval '3 hours')::date = $2::date`];
+      const params = [employeeName, date];
+      if (shopAddress) {
+        conditions.push(`shop_address = $3`);
+        params.push(shopAddress);
+      }
+      const result = await db.query(
+        `SELECT id FROM shift_handover_reports WHERE ${conditions.join(' AND ')} LIMIT 1`,
+        params
+      );
+      if (result.rows.length > 0) return true;
+    }
+
+    // Fallback на JSON
     const reportsDir = path.join(DATA_DIR, 'shift-handover-reports');
     if (!(await fileExists(reportsDir))) return false;
 
@@ -210,6 +321,22 @@ async function checkShiftHandover(employeeName, shopAddress, date) {
  */
 async function checkCoffeeMachine(employeeName, shopAddress, date) {
   try {
+    // Сначала пробуем БД
+    if (USE_DB_COFFEE_MACHINE && db) {
+      const conditions = [`employee_name = $1`, `date = $2::date`];
+      const params = [employeeName, date];
+      if (shopAddress) {
+        conditions.push(`shop_address = $3`);
+        params.push(shopAddress);
+      }
+      const result = await db.query(
+        `SELECT id FROM coffee_machine_reports WHERE ${conditions.join(' AND ')} LIMIT 1`,
+        params
+      );
+      if (result.rows.length > 0) return true;
+    }
+
+    // Fallback на JSON
     const reportsDir = path.join(DATA_DIR, 'coffee-machine-reports');
     if (!(await fileExists(reportsDir))) return false;
 
@@ -236,6 +363,22 @@ async function checkCoffeeMachine(employeeName, shopAddress, date) {
  */
 async function checkEnvelope(employeeName, shopAddress, date) {
   try {
+    // Сначала пробуем БД
+    if (USE_DB_ENVELOPE && db) {
+      const conditions = [`employee_name = $1`, `(created_at + interval '3 hours')::date = $2::date`];
+      const params = [employeeName, date];
+      if (shopAddress) {
+        conditions.push(`shop_address = $3`);
+        params.push(shopAddress);
+      }
+      const result = await db.query(
+        `SELECT id FROM envelope_reports WHERE ${conditions.join(' AND ')} LIMIT 1`,
+        params
+      );
+      if (result.rows.length > 0) return true;
+    }
+
+    // Fallback на JSON
     const reportsDir = path.join(DATA_DIR, 'envelope-reports');
     if (!(await fileExists(reportsDir))) return false;
 
@@ -262,11 +405,26 @@ async function checkEnvelope(employeeName, shopAddress, date) {
  */
 async function checkRko(employeeName, shopAddress, date) {
   try {
+    // Сначала пробуем БД
+    if (USE_DB_RKO && db) {
+      const conditions = [`employee_name = $1`, `date = $2::date`];
+      const params = [employeeName, date];
+      if (shopAddress) {
+        conditions.push(`shop_address = $3`);
+        params.push(shopAddress);
+      }
+      const result = await db.query(
+        `SELECT id FROM rko_reports WHERE ${conditions.join(' AND ')} LIMIT 1`,
+        params
+      );
+      if (result.rows.length > 0) return true;
+    }
+
+    // Fallback на JSON
     const metadataFile = path.join(DATA_DIR, 'rko-reports', 'rko_metadata.json');
     if (!(await fileExists(metadataFile))) return false;
 
     const metadata = JSON.parse(await fsp.readFile(metadataFile, 'utf8'));
-    // rko_metadata.json — массив или объект с записями
     const entries = Array.isArray(metadata) ? metadata : (metadata.reports || []);
 
     return entries.some(entry => {
@@ -300,7 +458,7 @@ function setupExecutionChainAPI(app) {
   console.log('[ExecutionChain] Setting up Execution Chain API...');
 
   // GET /api/execution-chain/config — получить конфиг
-  app.get('/api/execution-chain/config', async (req, res) => {
+  app.get('/api/execution-chain/config', requireAuth, async (req, res) => {
     try {
       const config = await loadConfig();
       res.json({ success: true, ...config, availableModules: AVAILABLE_MODULES });
@@ -311,7 +469,7 @@ function setupExecutionChainAPI(app) {
   });
 
   // PUT /api/execution-chain/config — сохранить конфиг
-  app.put('/api/execution-chain/config', async (req, res) => {
+  app.put('/api/execution-chain/config', requireAuth, async (req, res) => {
     try {
       const { enabled, steps } = req.body;
 
@@ -350,11 +508,11 @@ function setupExecutionChainAPI(app) {
   });
 
   // GET /api/execution-chain/status — статус выполнения
-  app.get('/api/execution-chain/status', async (req, res) => {
+  app.get('/api/execution-chain/status', requireAuth, async (req, res) => {
     try {
       const { employeeName, shopAddress } = req.query;
-      // Дата — сегодня (серверное время)
-      const date = req.query.date || new Date().toISOString().split('T')[0];
+      // Дата — сегодня по Москве (UTC+3)
+      const date = req.query.date || getMoscowDateString();
 
       if (!employeeName) {
         return res.status(400).json({ success: false, error: 'employeeName required' });
@@ -382,6 +540,8 @@ function setupExecutionChainAPI(app) {
           };
         })
       );
+
+      console.log(`[ExecutionChain] Status for "${employeeName}" on ${date}: ${stepResults.map(s => `${s.id}=${s.completed}`).join(', ')}`);
 
       res.json({
         success: true,

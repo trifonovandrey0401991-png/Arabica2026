@@ -8,6 +8,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
+const { requireAuth } = require('../utils/session_middleware');
 
 const cigaretteVision = require('../modules/cigarette-vision');
 
@@ -75,7 +76,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ ТОВАРЫ ============
 
   // Получить товары с информацией об обучении
-  app.get('/api/cigarette-vision/products', async (req, res) => {
+  app.get('/api/cigarette-vision/products', requireAuth, async (req, res) => {
     try {
       const { productGroup } = req.query;
 
@@ -95,7 +96,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить группы товаров
-  app.get('/api/cigarette-vision/products/groups', async (req, res) => {
+  app.get('/api/cigarette-vision/products/groups', requireAuth, async (req, res) => {
     try {
       await loadRecountQuestions();
       const groups = cigaretteVision.getProductGroups(recountQuestionsCache);
@@ -109,7 +110,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ СТАТИСТИКА ============
 
   // Получить статистику обучения
-  app.get('/api/cigarette-vision/stats', async (req, res) => {
+  app.get('/api/cigarette-vision/stats', requireAuth, async (req, res) => {
     try {
       await loadRecountQuestions();
       const stats = cigaretteVision.getTrainingStats(recountQuestionsCache);
@@ -123,7 +124,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ ОБРАЗЦЫ ДЛЯ ОБУЧЕНИЯ ============
 
   // Загрузить образец для обучения (с аннотациями bounding boxes)
-  app.post('/api/cigarette-vision/samples', async (req, res) => {
+  app.post('/api/cigarette-vision/samples', requireAuth, async (req, res) => {
     try {
       const {
         imageBase64,
@@ -169,7 +170,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить образцы для товара
-  app.get('/api/cigarette-vision/samples', (req, res) => {
+  app.get('/api/cigarette-vision/samples', requireAuth, async (req, res) => {
     try {
       const { productId } = req.query;
 
@@ -177,7 +178,7 @@ async function setupCigaretteVisionAPI(app) {
         return res.status(400).json({ success: false, error: 'ID товара обязателен' });
       }
 
-      const samples = cigaretteVision.getSamplesForProduct(productId);
+      const samples = await cigaretteVision.getSamplesForProduct(productId);
       res.json({ success: true, samples });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка получения образцов:', error);
@@ -186,9 +187,9 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Удалить образец
-  app.delete('/api/cigarette-vision/samples/:id', (req, res) => {
+  app.delete('/api/cigarette-vision/samples/:id', requireAuth, async (req, res) => {
     try {
-      const result = cigaretteVision.deleteSample(req.params.id);
+      const result = await cigaretteVision.deleteSample(req.params.id);
 
       if (result.success) {
         res.json({ success: true });
@@ -204,9 +205,9 @@ async function setupCigaretteVisionAPI(app) {
   // ============ ИЗОБРАЖЕНИЯ ============
 
   // Получить изображение образца
-  app.get('/api/cigarette-vision/images/:fileName', async (req, res) => {
+  app.get('/api/cigarette-vision/images/:fileName', requireAuth, async (req, res) => {
     try {
-      const imagePath = cigaretteVision.getImagePath(req.params.fileName);
+      const imagePath = cigaretteVision.getImagePath(sanitizeFileName(req.params.fileName));
 
       if (await fileExists(imagePath)) {
         res.sendFile(imagePath);
@@ -222,7 +223,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ ДЕТЕКЦИЯ (ML) ============
 
   // Детекция и подсчёт пачек
-  app.post('/api/cigarette-vision/detect', async (req, res) => {
+  app.post('/api/cigarette-vision/detect', requireAuth, async (req, res) => {
     try {
       const { imageBase64, productId } = req.body;
 
@@ -243,7 +244,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Проверка выкладки
-  app.post('/api/cigarette-vision/display-check', async (req, res) => {
+  app.post('/api/cigarette-vision/display-check', requireAuth, async (req, res) => {
     try {
       const { imageBase64, shopAddress, productId } = req.body;
 
@@ -256,7 +257,7 @@ async function setupCigaretteVisionAPI(app) {
       // Записываем статистику распознавания для display (если передан productId)
       if (productId) {
         const isSuccessfulDetection = result.success && result.detected;
-        cigaretteVision.recordRecognitionAttempt(productId, 'display', isSuccessfulDetection, {
+        await cigaretteVision.recordRecognitionAttempt(productId, 'display', isSuccessfulDetection, {
           shopAddress: shopAddress || '',
         });
       }
@@ -271,7 +272,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ СТАТУС МОДЕЛИ ============
 
   // Получить статус модели YOLO
-  app.get('/api/cigarette-vision/model-status', async (req, res) => {
+  app.get('/api/cigarette-vision/model-status', requireAuth, async (req, res) => {
     try {
       const status = await cigaretteVision.getModelStatus();
       res.json({ success: true, ...status });
@@ -284,9 +285,13 @@ async function setupCigaretteVisionAPI(app) {
   // ============ ОБУЧЕНИЕ МОДЕЛИ ============
 
   // Экспорт данных для обучения
-  app.post('/api/cigarette-vision/export-training', async (req, res) => {
+  app.post('/api/cigarette-vision/export-training', requireAuth, async (req, res) => {
     try {
       const { outputDir } = req.body;
+      // Validate outputDir is within DATA_DIR to prevent path traversal
+      if (outputDir && !path.resolve(outputDir).startsWith(path.resolve(DATA_DIR))) {
+        return res.status(400).json({ success: false, error: 'Недопустимый путь экспорта' });
+      }
       const result = await cigaretteVision.exportTrainingData(outputDir);
       res.json(result);
     } catch (error) {
@@ -296,7 +301,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Запуск обучения модели
-  app.post('/api/cigarette-vision/train', async (req, res) => {
+  app.post('/api/cigarette-vision/train', requireAuth, async (req, res) => {
     try {
       const { dataYaml, epochs } = req.body;
 
@@ -315,9 +320,9 @@ async function setupCigaretteVisionAPI(app) {
   // ============ НАСТРОЙКИ ============
 
   // Получить настройки
-  app.get('/api/cigarette-vision/settings', (req, res) => {
+  app.get('/api/cigarette-vision/settings', requireAuth, async (req, res) => {
     try {
-      const settings = cigaretteVision.getSettings();
+      const settings = await cigaretteVision.getSettings();
       res.json({ success: true, settings });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка получения настроек:', error);
@@ -326,11 +331,12 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Обновить настройки
-  app.put('/api/cigarette-vision/settings', (req, res) => {
+  app.put('/api/cigarette-vision/settings', requireAuth, async (req, res) => {
     try {
       const {
         requiredRecountPhotos,
         requiredDisplayPhotos,
+        requiredDisplayPhotosPerShop, // Flutter sends this name
         catalogSource,
         // Настройки positive samples
         positiveSamplesEnabled,
@@ -343,8 +349,10 @@ async function setupCigaretteVisionAPI(app) {
       if (requiredRecountPhotos !== undefined) {
         newSettings.requiredRecountPhotos = Math.max(1, Math.min(50, parseInt(requiredRecountPhotos) || 10));
       }
-      if (requiredDisplayPhotos !== undefined) {
-        newSettings.requiredDisplayPhotos = Math.max(1, Math.min(50, parseInt(requiredDisplayPhotos) || 10));
+      // Accept both parameter names (Flutter sends requiredDisplayPhotosPerShop)
+      const displayPhotosValue = requiredDisplayPhotosPerShop ?? requiredDisplayPhotos;
+      if (displayPhotosValue !== undefined) {
+        newSettings.requiredDisplayPhotosPerShop = Math.max(1, Math.min(50, parseInt(displayPhotosValue) || 3));
       }
       // Источник каталога: recount-questions или master-catalog
       if (catalogSource !== undefined) {
@@ -368,7 +376,7 @@ async function setupCigaretteVisionAPI(app) {
         newSettings.positiveSamplesMaxAgeDays = Math.max(30, Math.min(365, parseInt(positiveSamplesMaxAgeDays) || 180));
       }
 
-      const updated = cigaretteVision.updateSettings(newSettings);
+      const updated = await cigaretteVision.updateSettings(newSettings);
       if (updated) {
         res.json({ success: true, settings: updated });
       } else {
@@ -383,9 +391,9 @@ async function setupCigaretteVisionAPI(app) {
   // ============ POSITIVE SAMPLES API ============
 
   // Получить статистику positive samples
-  app.get('/api/cigarette-vision/positive-samples/stats', (req, res) => {
+  app.get('/api/cigarette-vision/positive-samples/stats', requireAuth, async (req, res) => {
     try {
-      const stats = cigaretteVision.getPositiveSamplesStats();
+      const stats = await cigaretteVision.getPositiveSamplesStats();
       res.json({ success: true, ...stats });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка получения статистики positive samples:', error);
@@ -394,9 +402,9 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Ручной запуск очистки старых positive samples (для админа)
-  app.post('/api/cigarette-vision/positive-samples/cleanup', (req, res) => {
+  app.post('/api/cigarette-vision/positive-samples/cleanup', requireAuth, async (req, res) => {
     try {
-      const result = cigaretteVision.cleanupOldPositiveSamples();
+      const result = await cigaretteVision.cleanupOldPositiveSamples();
       res.json({ success: true, ...result });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка очистки positive samples:', error);
@@ -407,10 +415,10 @@ async function setupCigaretteVisionAPI(app) {
   // ============ ВСЕ ОБРАЗЦЫ (для админки) ============
 
   // Получить все образцы с фильтрацией
-  app.get('/api/cigarette-vision/samples/all', (req, res) => {
+  app.get('/api/cigarette-vision/samples/all', requireAuth, async (req, res) => {
     try {
       const { productId, type, limit, offset } = req.query;
-      let samples = cigaretteVision.loadSamples();
+      let samples = await cigaretteVision.loadSamples();
 
       // Фильтрация по productId
       if (productId) {
@@ -450,7 +458,7 @@ async function setupCigaretteVisionAPI(app) {
   // Детекция и подсчёт с сохранением в counting датасет
   // Используется для пересчёта товаров
   // ВАЖНО: Сохраняет ВСЕ фото для товаров с isAiActive=true (для обучения)
-  app.post('/api/cigarette-vision/count-with-training', async (req, res) => {
+  app.post('/api/cigarette-vision/count-with-training', requireAuth, async (req, res) => {
     try {
       const { imageBase64, productId, productName, shopAddress, isAiActive, employeeAnswer, selectedRegion } = req.body;
 
@@ -470,7 +478,7 @@ async function setupCigaretteVisionAPI(app) {
       // Записываем статистику распознавания
       // success = true если ИИ нашёл хотя бы один объект
       const isSuccessfulDetection = result.success && result.count > 0;
-      cigaretteVision.recordRecognitionAttempt(productId, 'counting', isSuccessfulDetection, {
+      await cigaretteVision.recordRecognitionAttempt(productId, 'counting', isSuccessfulDetection, {
         shopAddress: shopAddress || '',
         detectedCount: result.count || 0,
         expectedCount: employeeAnswer || null,
@@ -512,10 +520,10 @@ async function setupCigaretteVisionAPI(app) {
   // ============ COUNTING SAMPLES API ============
 
   // Получить фото пересчёта для товара
-  app.get('/api/cigarette-vision/counting-samples/:productId', (req, res) => {
+  app.get('/api/cigarette-vision/counting-samples/:productId', requireAuth, async (req, res) => {
     try {
       const { productId } = req.params;
-      const samples = cigaretteVision.getCountingSamplesForProduct(productId);
+      const samples = await cigaretteVision.getCountingSamplesForProduct(productId);
       res.json({ success: true, samples, count: samples.length });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка получения counting samples:', error);
@@ -524,10 +532,10 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Удалить фото пересчёта
-  app.delete('/api/cigarette-vision/counting-samples/:sampleId', (req, res) => {
+  app.delete('/api/cigarette-vision/counting-samples/:sampleId', requireAuth, async (req, res) => {
     try {
       const { sampleId } = req.params;
-      const result = cigaretteVision.deleteCountingSample(sampleId);
+      const result = await cigaretteVision.deleteCountingSample(sampleId);
       res.json(result);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка удаления counting sample:', error);
@@ -536,7 +544,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Отдача изображений counting
-  app.get('/api/cigarette-vision/counting-images/:fileName', async (req, res) => {
+  app.get('/api/cigarette-vision/counting-images/:fileName', requireAuth, async (req, res) => {
     try {
       const paths = cigaretteVision.getTrainingPaths(cigaretteVision.TRAINING_TYPES.COUNTING);
       const imagePath = path.join(paths.imagesDir, sanitizeFileName(req.params.fileName));
@@ -555,9 +563,9 @@ async function setupCigaretteVisionAPI(app) {
   // ============ COUNTING PENDING API (ожидающие подтверждения) ============
 
   // Получить все pending фото (для админа)
-  app.get('/api/cigarette-vision/counting-pending', (req, res) => {
+  app.get('/api/cigarette-vision/counting-pending', requireAuth, async (req, res) => {
     try {
-      const samples = cigaretteVision.getAllPendingCountingSamples();
+      const samples = await cigaretteVision.getAllPendingCountingSamples();
       res.json({ success: true, samples, count: samples.length });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка получения pending samples:', error);
@@ -566,10 +574,10 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить pending фото для товара
-  app.get('/api/cigarette-vision/counting-pending/product/:productId', (req, res) => {
+  app.get('/api/cigarette-vision/counting-pending/product/:productId', requireAuth, async (req, res) => {
     try {
       const { productId } = req.params;
-      const samples = cigaretteVision.getPendingCountingSamplesForProduct(productId);
+      const samples = await cigaretteVision.getPendingCountingSamplesForProduct(productId);
       res.json({ success: true, samples, count: samples.length });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка получения pending для товара:', error);
@@ -578,10 +586,10 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Подтвердить pending фото (переместить в training)
-  app.post('/api/cigarette-vision/counting-pending/:sampleId/approve', (req, res) => {
+  app.post('/api/cigarette-vision/counting-pending/:sampleId/approve', requireAuth, async (req, res) => {
     try {
       const { sampleId } = req.params;
-      const result = cigaretteVision.approveCountingPendingSample(sampleId);
+      const result = await cigaretteVision.approveCountingPendingSample(sampleId);
       res.json(result);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка подтверждения pending:', error);
@@ -590,10 +598,10 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Отклонить pending фото (удалить)
-  app.delete('/api/cigarette-vision/counting-pending/:sampleId', (req, res) => {
+  app.delete('/api/cigarette-vision/counting-pending/:sampleId', requireAuth, async (req, res) => {
     try {
       const { sampleId } = req.params;
-      const result = cigaretteVision.rejectCountingPendingSample(sampleId);
+      const result = await cigaretteVision.rejectCountingPendingSample(sampleId);
       res.json(result);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка отклонения pending:', error);
@@ -602,7 +610,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Отдача изображений pending
-  app.get('/api/cigarette-vision/counting-pending-images/:fileName', async (req, res) => {
+  app.get('/api/cigarette-vision/counting-pending-images/:fileName', requireAuth, async (req, res) => {
     try {
       const paths = cigaretteVision.getCountingPendingPaths();
       const imagePath = path.join(paths.imagesDir, sanitizeFileName(req.params.fileName));
@@ -621,9 +629,9 @@ async function setupCigaretteVisionAPI(app) {
   // ============ СТАТИСТИКА РАЗДЕЛЬНЫХ ДАТАСЕТОВ ============
 
   // Получить статистику датасета display (пересменка)
-  app.get('/api/cigarette-vision/typed-stats/display', (req, res) => {
+  app.get('/api/cigarette-vision/typed-stats/display', requireAuth, async (req, res) => {
     try {
-      const stats = cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.DISPLAY);
+      const stats = await cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.DISPLAY);
       res.json({ success: true, ...stats });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка получения статистики display:', error);
@@ -632,9 +640,9 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить статистику датасета counting (пересчёт)
-  app.get('/api/cigarette-vision/typed-stats/counting', (req, res) => {
+  app.get('/api/cigarette-vision/typed-stats/counting', requireAuth, async (req, res) => {
     try {
-      const stats = cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.COUNTING);
+      const stats = await cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.COUNTING);
       res.json({ success: true, ...stats });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка получения статистики counting:', error);
@@ -643,10 +651,10 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить объединённую статистику обоих датасетов
-  app.get('/api/cigarette-vision/typed-stats', (req, res) => {
+  app.get('/api/cigarette-vision/typed-stats', requireAuth, async (req, res) => {
     try {
-      const displayStats = cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.DISPLAY);
-      const countingStats = cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.COUNTING);
+      const displayStats = await cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.DISPLAY);
+      const countingStats = await cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.COUNTING);
 
       res.json({
         success: true,
@@ -668,7 +676,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Очистка раздельных датасетов
-  app.post('/api/cigarette-vision/typed-cleanup/:type', (req, res) => {
+  app.post('/api/cigarette-vision/typed-cleanup/:type', requireAuth, async (req, res) => {
     try {
       const { type } = req.params;
       const { maxAgeDays } = req.body;
@@ -677,7 +685,7 @@ async function setupCigaretteVisionAPI(app) {
         return res.status(400).json({ success: false, error: 'Тип должен быть display или counting' });
       }
 
-      const result = cigaretteVision.cleanupTypedSamples(type, maxAgeDays || 180);
+      const result = await cigaretteVision.cleanupTypedSamples(type, maxAgeDays || 180);
       res.json({ success: true, type, ...result });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка очистки typed samples:', error);
@@ -691,35 +699,39 @@ async function setupCigaretteVisionAPI(app) {
   const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
   // Первая очистка через 5 минут после старта
-  setTimeout(() => {
-    console.log('[Cigarette Vision API] Запуск первичной очистки positive samples...');
-    // Старый общий датасет
-    const result = cigaretteVision.cleanupOldPositiveSamples();
-    console.log(`[Cigarette Vision API] Общий датасет: удалено ${result.deletedCount || 0} старых samples`);
+  setTimeout(async () => {
+    try {
+      console.log('[Cigarette Vision API] Запуск первичной очистки positive samples...');
+      const result = await cigaretteVision.cleanupOldPositiveSamples();
+      console.log(`[Cigarette Vision API] Общий датасет: удалено ${result.deletedCount || 0} старых samples`);
 
-    // Раздельные датасеты (используем строки напрямую для надёжности)
-    const displayResult = cigaretteVision.cleanupTypedSamples('display');
-    const countingResult = cigaretteVision.cleanupTypedSamples('counting');
-    console.log(`[Cigarette Vision API] Display: удалено ${displayResult.deletedCount || 0}, Counting: удалено ${countingResult.deletedCount || 0}`);
+      const displayResult = await cigaretteVision.cleanupTypedSamples('display');
+      const countingResult = await cigaretteVision.cleanupTypedSamples('counting');
+      console.log(`[Cigarette Vision API] Display: удалено ${displayResult.deletedCount || 0}, Counting: удалено ${countingResult.deletedCount || 0}`);
+    } catch (err) {
+      console.error('[Cigarette Vision API] Ошибка первичной очистки:', err.message);
+    }
   }, 5 * 60 * 1000);
 
   // Регулярная очистка каждые 24 часа
-  setInterval(() => {
-    console.log('[Cigarette Vision API] Запуск ежедневной очистки...');
-    // Старый общий датасет
-    const result = cigaretteVision.cleanupOldPositiveSamples();
-    console.log(`[Cigarette Vision API] Общий датасет: удалено ${result.deletedCount || 0} старых samples`);
+  setInterval(async () => {
+    try {
+      console.log('[Cigarette Vision API] Запуск ежедневной очистки...');
+      const result = await cigaretteVision.cleanupOldPositiveSamples();
+      console.log(`[Cigarette Vision API] Общий датасет: удалено ${result.deletedCount || 0} старых samples`);
 
-    // Раздельные датасеты (используем строки напрямую для надёжности)
-    const displayResult = cigaretteVision.cleanupTypedSamples('display');
-    const countingResult = cigaretteVision.cleanupTypedSamples('counting');
-    console.log(`[Cigarette Vision API] Display: удалено ${displayResult.deletedCount || 0}, Counting: удалено ${countingResult.deletedCount || 0}`);
+      const displayResult = await cigaretteVision.cleanupTypedSamples('display');
+      const countingResult = await cigaretteVision.cleanupTypedSamples('counting');
+      console.log(`[Cigarette Vision API] Display: удалено ${displayResult.deletedCount || 0}, Counting: удалено ${countingResult.deletedCount || 0}`);
+    } catch (err) {
+      console.error('[Cigarette Vision API] Ошибка ежедневной очистки:', err.message);
+    }
   }, CLEANUP_INTERVAL_MS);
 
   // ============ СИСТЕМА ОБРАТНОЙ СВЯЗИ И АВТООТКЛЮЧЕНИЯ ИИ ============
 
   // Сообщить об ошибке ИИ
-  app.post('/api/cigarette-vision/report-error', async (req, res) => {
+  app.post('/api/cigarette-vision/report-error', requireAuth, async (req, res) => {
     try {
       const {
         productId,
@@ -753,10 +765,10 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить статус ИИ для товара
-  app.get('/api/cigarette-vision/product-ai-status/:productId', (req, res) => {
+  app.get('/api/cigarette-vision/product-ai-status/:productId', requireAuth, async (req, res) => {
     try {
       const { productId } = req.params;
-      const status = cigaretteVision.getProductAiStatus(productId);
+      const status = await cigaretteVision.getProductAiStatus(productId);
       res.json({ success: true, ...status });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка product-ai-status:', error);
@@ -765,10 +777,10 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Проверить отключен ли ИИ для товара (быстрая проверка)
-  app.get('/api/cigarette-vision/is-ai-disabled/:productId', (req, res) => {
+  app.get('/api/cigarette-vision/is-ai-disabled/:productId', requireAuth, async (req, res) => {
     try {
       const { productId } = req.params;
-      const isDisabled = cigaretteVision.isProductAiDisabled(productId);
+      const isDisabled = await cigaretteVision.isProductAiDisabled(productId);
       res.json({ success: true, productId, isDisabled });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -776,10 +788,10 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Сбросить счётчик ошибок и включить ИИ (админ)
-  app.post('/api/cigarette-vision/reset-product-ai/:productId', (req, res) => {
+  app.post('/api/cigarette-vision/reset-product-ai/:productId', requireAuth, async (req, res) => {
     try {
       const { productId } = req.params;
-      const result = cigaretteVision.resetProductAiErrors(productId);
+      const result = await cigaretteVision.resetProductAiErrors(productId);
       res.json(result);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка reset-product-ai:', error);
@@ -788,7 +800,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Решение админа по ошибке ИИ (подтвердить или отклонить)
-  app.post('/api/cigarette-vision/admin-ai-decision', async (req, res) => {
+  app.post('/api/cigarette-vision/admin-ai-decision', requireAuth, async (req, res) => {
     try {
       const {
         productId,
@@ -835,9 +847,9 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить список всех проблемных товаров
-  app.get('/api/cigarette-vision/problematic-products', (req, res) => {
+  app.get('/api/cigarette-vision/problematic-products', requireAuth, async (req, res) => {
     try {
-      const products = cigaretteVision.getProblematicProducts();
+      const products = await cigaretteVision.getProblematicProducts();
       res.json({ success: true, products, count: products.length });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка problematic-products:', error);
@@ -846,10 +858,10 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить проблемные фото для товара
-  app.get('/api/cigarette-vision/problem-samples/:productId', (req, res) => {
+  app.get('/api/cigarette-vision/problem-samples/:productId', requireAuth, async (req, res) => {
     try {
       const { productId } = req.params;
-      const result = cigaretteVision.getProblemSamples(productId);
+      const result = await cigaretteVision.getProblemSamples(productId);
       res.json(result);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка problem-samples:', error);
@@ -858,10 +870,10 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Отдача проблемных фото (для просмотра)
-  app.get('/api/cigarette-vision/problem-samples/:productId/:fileName', async (req, res) => {
+  app.get('/api/cigarette-vision/problem-samples/:productId/:fileName', requireAuth, async (req, res) => {
     try {
       const { productId, fileName } = req.params;
-      const filePath = path.join(cigaretteVision.PROBLEM_SAMPLES_DIR, productId, fileName);
+      const filePath = path.join(cigaretteVision.PROBLEM_SAMPLES_DIR, sanitizeFileName(productId), sanitizeFileName(fileName));
 
       if (!(await fileExists(filePath))) {
         return res.status(404).json({ success: false, error: 'Файл не найден' });

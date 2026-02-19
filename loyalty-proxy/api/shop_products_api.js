@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_SHOP_PRODUCTS === 'true';
 
@@ -300,7 +301,7 @@ function setupShopProductsAPI(app) {
   /**
    * GET /api/shop-products/:shopId
    */
-  app.get('/api/shop-products/:shopId', async (req, res) => {
+  app.get('/api/shop-products/:shopId', requireAuth, async (req, res) => {
     try {
       const { shopId } = req.params;
       const { group, hasStock, useMasterNames } = req.query;
@@ -338,7 +339,7 @@ function setupShopProductsAPI(app) {
   /**
    * GET /api/shop-products/:shopId/for-recount
    */
-  app.get('/api/shop-products/:shopId/for-recount', async (req, res) => {
+  app.get('/api/shop-products/:shopId/for-recount', requireAuth, async (req, res) => {
     try {
       const { shopId } = req.params;
       const { group } = req.query;
@@ -369,7 +370,7 @@ function setupShopProductsAPI(app) {
   /**
    * GET /api/shop-products/:shopId/groups
    */
-  app.get('/api/shop-products/:shopId/groups', async (req, res) => {
+  app.get('/api/shop-products/:shopId/groups', requireAuth, async (req, res) => {
     try {
       const { shopId } = req.params;
       const shopData = await loadShopProducts(shopId);
@@ -398,7 +399,7 @@ function setupShopProductsAPI(app) {
   /**
    * GET /api/shop-products/shops/list
    */
-  app.get('/api/shop-products/shops/list', async (req, res) => {
+  app.get('/api/shop-products/shops/list', requireAuth, async (req, res) => {
     try {
       const shops = await getShopsWithProducts();
 
@@ -416,7 +417,7 @@ function setupShopProductsAPI(app) {
   /**
    * GET /api/shop-products/stats
    */
-  app.get('/api/shop-products/stats', async (req, res) => {
+  app.get('/api/shop-products/stats', requireAuth, async (req, res) => {
     try {
       const shops = await getShopsWithProducts();
 
@@ -450,7 +451,7 @@ function setupShopProductsAPI(app) {
   /**
    * GET /api/shop-products-search
    */
-  app.get('/api/shop-products-search', async (req, res) => {
+  app.get('/api/shop-products-search', requireAuth, async (req, res) => {
     try {
       const { q, shopId, group } = req.query;
 
@@ -514,7 +515,7 @@ function setupShopProductsAPI(app) {
   /**
    * GET /api/shop-products/api-keys
    */
-  app.get('/api/shop-products/api-keys', async (req, res) => {
+  app.get('/api/shop-products/api-keys', requireAuth, async (req, res) => {
     try {
       const keys = await loadApiKeys();
       const maskedKeys = keys.map((k) => ({
@@ -532,7 +533,7 @@ function setupShopProductsAPI(app) {
   /**
    * POST /api/shop-products/api-keys
    */
-  app.post('/api/shop-products/api-keys', async (req, res) => {
+  app.post('/api/shop-products/api-keys', requireAuth, async (req, res) => {
     try {
       const { shopId, description } = req.body;
 

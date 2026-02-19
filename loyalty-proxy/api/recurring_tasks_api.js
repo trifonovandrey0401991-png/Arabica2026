@@ -12,6 +12,8 @@ const { getTaskPointsConfig } = require('./task_points_settings_api');
 const { sendPushToPhone, sendPushNotification } = require('./report_notifications_api');
 const { dbInsertPenalties } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_RECURRING_TASKS === 'true';
 
@@ -605,9 +607,12 @@ function setupRecurringTasksAPI(app) {
   console.log('Setting up Recurring Tasks API...');
 
   // GET /api/recurring-tasks - Список всех шаблонов
-  app.get('/api/recurring-tasks', async (req, res) => {
+  app.get('/api/recurring-tasks', requireAuth, async (req, res) => {
     try {
       const templates = await loadTemplates();
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(templates, req.query, 'tasks'));
+      }
       res.json({ success: true, tasks: templates });
     } catch (e) {
       console.error('Error getting recurring tasks:', e);
@@ -616,7 +621,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // GET /api/recurring-tasks/instances/list - Список экземпляров
-  app.get('/api/recurring-tasks/instances/list', async (req, res) => {
+  app.get('/api/recurring-tasks/instances/list', requireAuth, async (req, res) => {
     try {
       const { assigneeId, assigneePhone, date, status, yearMonth } = req.query;
 
@@ -638,6 +643,9 @@ function setupRecurringTasksAPI(app) {
         instances = instances.filter(i => i.status === status);
       }
 
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(instances, req.query, 'instances'));
+      }
       res.json({ success: true, instances });
     } catch (e) {
       console.error('Error getting instances:', e);
@@ -646,7 +654,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks/instances/:id/complete - Выполнить задачу
-  app.post('/api/recurring-tasks/instances/:id/complete', async (req, res) => {
+  app.post('/api/recurring-tasks/instances/:id/complete', requireAuth, async (req, res) => {
     try {
       const { responseText, responsePhotos } = req.body;
       const instanceId = req.params.id;
@@ -692,7 +700,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // GET /api/recurring-tasks/:id - Шаблон по ID (должен быть после instances/list!)
-  app.get('/api/recurring-tasks/:id', async (req, res) => {
+  app.get('/api/recurring-tasks/:id', requireAuth, async (req, res) => {
     try {
       const templates = await loadTemplates();
       const task = templates.find(t => t.id === req.params.id);
@@ -707,9 +715,8 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks - Создать шаблон
-  app.post('/api/recurring-tasks', async (req, res) => {
+  app.post('/api/recurring-tasks', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const {
         title,
         description,
@@ -774,9 +781,8 @@ function setupRecurringTasksAPI(app) {
   });
 
   // PUT /api/recurring-tasks/:id - Обновить шаблон
-  app.put('/api/recurring-tasks/:id', async (req, res) => {
+  app.put('/api/recurring-tasks/:id', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
 
@@ -825,9 +831,8 @@ function setupRecurringTasksAPI(app) {
   });
 
   // PUT /api/recurring-tasks/:id/toggle-pause - Пауза/возобновить
-  app.put('/api/recurring-tasks/:id/toggle-pause', async (req, res) => {
+  app.put('/api/recurring-tasks/:id/toggle-pause', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
 
@@ -848,9 +853,8 @@ function setupRecurringTasksAPI(app) {
   });
 
   // DELETE /api/recurring-tasks/:id - Удалить шаблон
-  app.delete('/api/recurring-tasks/:id', async (req, res) => {
+  app.delete('/api/recurring-tasks/:id', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
 
@@ -879,7 +883,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks/generate-daily - Ручная генерация (для тестирования)
-  app.post('/api/recurring-tasks/generate-daily', async (req, res) => {
+  app.post('/api/recurring-tasks/generate-daily', requireAuth, async (req, res) => {
     try {
       const date = req.body.date || getToday();
       const count = await generateDailyTasks(date);
@@ -891,7 +895,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks/check-expired - Ручная проверка expired
-  app.post('/api/recurring-tasks/check-expired', async (req, res) => {
+  app.post('/api/recurring-tasks/check-expired', requireAuth, async (req, res) => {
     try {
       const count = await checkExpiredTasks();
       res.json({ success: true, expiredCount: count });
@@ -902,7 +906,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks/send-reminders - Ручная отправка напоминаний (для тестирования)
-  app.post('/api/recurring-tasks/send-reminders', async (req, res) => {
+  app.post('/api/recurring-tasks/send-reminders', requireAuth, async (req, res) => {
     try {
       const count = await sendScheduledReminders();
       res.json({ success: true, sentCount: count, currentTime: getCurrentTime() });

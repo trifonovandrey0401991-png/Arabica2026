@@ -68,33 +68,53 @@ class TestQuestionService {
     );
   }
 
-  /// Получить настройки теста (длительность в минутах)
-  static Future<int> getTestDurationMinutes() async {
+  /// Получить все настройки теста
+  static Future<({int durationMinutes, int minimumScore})> getTestSettings() async {
     try {
       final response = await BaseHttpService.getRaw(
         endpoint: ApiConstants.testSettingsEndpoint,
       );
       if (response != null && response['settings'] != null) {
         final settings = response['settings'] as Map<String, dynamic>;
-        return settings['durationMinutes'] as int? ?? 7;
+        return (
+          durationMinutes: settings['durationMinutes'] as int? ?? 7,
+          minimumScore: settings['minimumScore'] as int? ?? 0,
+        );
       }
     } catch (e) {
       Logger.warning('Не удалось загрузить настройки теста: $e');
     }
-    return 7;
+    return (durationMinutes: 7, minimumScore: 0);
   }
 
-  /// Сохранить длительность теста
-  static Future<bool> saveTestDurationMinutes(int minutes) async {
+  /// Получить настройки теста (длительность в минутах) — обратная совместимость
+  static Future<int> getTestDurationMinutes() async {
+    final settings = await getTestSettings();
+    return settings.durationMinutes;
+  }
+
+  /// Сохранить все настройки теста
+  static Future<bool> saveTestSettings({
+    required int durationMinutes,
+    required int minimumScore,
+  }) async {
     try {
       final response = await BaseHttpService.postRaw(
         endpoint: ApiConstants.testSettingsEndpoint,
-        body: {'durationMinutes': minutes},
+        body: {
+          'durationMinutes': durationMinutes,
+          'minimumScore': minimumScore,
+        },
       );
       return response != null && response['success'] == true;
     } catch (e) {
       Logger.error('Ошибка сохранения настроек теста', e);
       return false;
     }
+  }
+
+  /// Сохранить длительность теста — обратная совместимость
+  static Future<bool> saveTestDurationMinutes(int minutes) async {
+    return saveTestSettings(durationMinutes: minutes, minimumScore: 0);
   }
 }

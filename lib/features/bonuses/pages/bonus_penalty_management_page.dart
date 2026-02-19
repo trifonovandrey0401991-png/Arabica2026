@@ -4,6 +4,7 @@ import '../../employees/pages/employees_page.dart';
 import '../../employees/services/employee_service.dart';
 import '../services/bonus_penalty_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 class BonusPenaltyManagementPage extends StatefulWidget {
   const BonusPenaltyManagementPage({super.key});
@@ -20,20 +21,13 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
   String _adminName = '';
 
   // Gradient colors
-  static final _bonusGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
-  static final _penaltyGradient = [Color(0xFFeb3349), Color(0xFFf45c43)];
-  static final _neutralGradient = [Color(0xFF667eea), Color(0xFF764ba2)];
+  static final _bonusGradient = [AppColors.emeraldGreen, AppColors.emeraldGreenLight];
+  static final _penaltyGradient = [AppColors.error, AppColors.errorLight];
 
   @override
   void initState() {
     super.initState();
     _loadData();
-  }
-
-  List<Color> get _currentGradient {
-    if (_selectedType == 'bonus') return _bonusGradient;
-    if (_selectedType == 'penalty') return _penaltyGradient;
-    return _neutralGradient;
   }
 
   Future<void> _loadData() async {
@@ -415,111 +409,121 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F7FA),
+      backgroundColor: AppColors.night,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(_selectedType == null
             ? 'Премия/Штрафы'
             : (_selectedType == 'bonus' ? 'Премия' : 'Штраф')),
-        backgroundColor: _currentGradient[0],
+        backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           if (_selectedType != null)
-            IconButton(
-              icon: Icon(Icons.close),
-              onPressed: () => setState(() => _selectedType = null),
-              tooltip: 'Сбросить выбор',
+            Container(
+              margin: EdgeInsets.only(right: 8.w),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: IconButton(
+                icon: Icon(Icons.close, color: AppColors.gold),
+                onPressed: () => setState(() => _selectedType = null),
+                tooltip: 'Сбросить выбор',
+              ),
             ),
         ],
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: _currentGradient[0]))
-          : _selectedType == null
-              ? _buildTypeSelection()
-              : _buildEmployeeList(),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: _isLoading
+            ? Center(child: CircularProgressIndicator(color: AppColors.gold))
+            : _selectedType == null
+                ? _buildTypeSelection()
+                : _buildEmployeeList(),
+      ),
     );
   }
 
   Widget _buildTypeSelection() {
-    return Column(
-      children: [
-        // Header gradient
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: _neutralGradient,
-            ),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(32.r),
-              bottomRight: Radius.circular(32.r),
-            ),
-          ),
-          padding: EdgeInsets.fromLTRB(24.w, 0.h, 24.w, 32.h),
-          child: Column(
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20.r),
-                ),
-                child: Icon(
-                  Icons.account_balance_wallet_outlined,
-                  color: Colors.white,
-                  size: 40,
-                ),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Управление премиями',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Начислите премию или назначьте штраф',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
-                  fontSize: 15.sp,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Selection buttons
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.all(24.w),
+    return SafeArea(
+      child: Column(
+        children: [
+          // Header
+          Padding(
+            padding: EdgeInsets.fromLTRB(24.w, 60.h, 24.w, 0.h),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildLargeTypeButton(
-                  icon: Icons.card_giftcard,
-                  title: 'Премия',
-                  subtitle: 'Начислить сотруднику денежное вознаграждение',
-                  gradientColors: _bonusGradient,
-                  type: 'bonus',
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(20.r),
+                    border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+                  ),
+                  child: Icon(
+                    Icons.account_balance_wallet_outlined,
+                    color: AppColors.gold,
+                    size: 36,
+                  ),
                 ),
-                SizedBox(height: 20),
-                _buildLargeTypeButton(
-                  icon: Icons.money_off,
-                  title: 'Штраф',
-                  subtitle: 'Списать у сотрудника за нарушение',
-                  gradientColors: _penaltyGradient,
-                  type: 'penalty',
+                SizedBox(height: 16),
+                Text(
+                  'Управление премиями',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 22.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Начислите премию или назначьте штраф',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                    fontSize: 14.sp,
+                  ),
                 ),
               ],
             ),
           ),
-        ),
-      ],
+          // Selection buttons
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.all(24.w),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildLargeTypeButton(
+                    icon: Icons.card_giftcard,
+                    title: 'Премия',
+                    subtitle: 'Начислить сотруднику денежное вознаграждение',
+                    gradientColors: _bonusGradient,
+                    type: 'bonus',
+                  ),
+                  SizedBox(height: 16),
+                  _buildLargeTypeButton(
+                    icon: Icons.money_off,
+                    title: 'Штраф',
+                    subtitle: 'Списать у сотрудника за нарушение',
+                    gradientColors: _penaltyGradient,
+                    type: 'penalty',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -534,41 +538,35 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
       onTap: () => setState(() => _selectedType = type),
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.all(24.w),
+        padding: EdgeInsets.all(20.w),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24.r),
-          boxShadow: [
-            BoxShadow(
-              color: gradientColors[0].withOpacity(0.2),
-              blurRadius: 20,
-              offset: Offset(0, 10),
-            ),
-          ],
+          color: Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(color: gradientColors[0].withOpacity(0.3)),
         ),
         child: Row(
           children: [
             Container(
-              width: 64,
-              height: 64,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: gradientColors,
                 ),
-                borderRadius: BorderRadius.circular(18.r),
+                borderRadius: BorderRadius.circular(16.r),
                 boxShadow: [
                   BoxShadow(
-                    color: gradientColors[0].withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: Offset(0, 6),
+                    color: gradientColors[0].withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
-              child: Icon(icon, color: Colors.white, size: 32),
+              child: Icon(icon, color: Colors.white, size: 28),
             ),
-            SizedBox(width: 20),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -576,33 +574,33 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                   Text(
                     title,
                     style: TextStyle(
-                      fontSize: 22.sp,
+                      fontSize: 20.sp,
                       fontWeight: FontWeight.bold,
-                      color: gradientColors[0],
+                      color: gradientColors[1],
                     ),
                   ),
                   SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: 14.sp,
-                      color: Colors.grey[600],
+                      fontSize: 13.sp,
+                      color: Colors.white.withOpacity(0.5),
                     ),
                   ),
                 ],
               ),
             ),
             Container(
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: gradientColors[0].withOpacity(0.1),
+                color: gradientColors[0].withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12.r),
               ),
               child: Icon(
                 Icons.arrow_forward_ios,
-                color: gradientColors[0],
-                size: 20,
+                color: gradientColors[1],
+                size: 18,
               ),
             ),
           ],
@@ -615,137 +613,121 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
     final isBonus = _selectedType == 'bonus';
     final gradientColors = isBonus ? _bonusGradient : _penaltyGradient;
 
-    return Column(
-      children: [
-        // Header
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: gradientColors,
-            ),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(28.r),
-              bottomRight: Radius.circular(28.r),
-            ),
-          ),
-          padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 24.h),
-          child: Column(
-            children: [
-              Container(
-                padding: EdgeInsets.all(16.w),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(16.r),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                      child: Icon(
-                        isBonus ? Icons.card_giftcard : Icons.money_off,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isBonus ? 'Выберите сотрудника' : 'Выберите сотрудника',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            isBonus ? 'для начисления премии' : 'для назначения штрафа',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 13.sp,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          // Header
+          Padding(
+            padding: EdgeInsets.fromLTRB(20.w, 60.h, 20.w, 0.h),
+            child: Container(
+              padding: EdgeInsets.all(14.w),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16.r),
+                border: Border.all(color: gradientColors[0].withOpacity(0.3)),
               ),
-            ],
-          ),
-        ),
-        // Search field
-        Padding(
-          padding: EdgeInsets.all(16.w),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16.r),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: TextField(
-              onChanged: (value) => setState(() => _searchQuery = value),
-              decoration: InputDecoration(
-                hintText: 'Поиск сотрудника...',
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-              ),
-            ),
-          ),
-        ),
-        // Employee list
-        Expanded(
-          child: _filteredEmployees.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.person_search,
-                        size: 64,
-                        color: Colors.grey[300],
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        _searchQuery.isEmpty
-                            ? 'Нет сотрудников'
-                            : 'Ничего не найдено',
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: gradientColors),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Icon(
+                      isBonus ? Icons.card_giftcard : Icons.money_off,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
-                )
-              : ListView.builder(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  itemCount: _filteredEmployees.length,
-                  itemBuilder: (context, index) {
-                    final employee = _filteredEmployees[index];
-                    return _buildEmployeeCard(employee);
-                  },
+                  SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Выберите сотрудника',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          isBonus ? 'для начисления премии' : 'для назначения штрафа',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontSize: 12.sp,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Search field
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 8.h),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(14.r),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: TextField(
+                onChanged: (value) => setState(() => _searchQuery = value),
+                style: TextStyle(color: Colors.white),
+                cursorColor: AppColors.gold,
+                decoration: InputDecoration(
+                  hintText: 'Поиск сотрудника...',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                  prefixIcon: Icon(Icons.search, color: AppColors.gold),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                 ),
-        ),
-      ],
+              ),
+            ),
+          ),
+          // Employee list
+          Expanded(
+            child: _filteredEmployees.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.person_search,
+                          size: 56,
+                          color: Colors.white.withOpacity(0.2),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          _searchQuery.isEmpty
+                              ? 'Нет сотрудников'
+                              : 'Ничего не найдено',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+                    itemCount: _filteredEmployees.length,
+                    itemBuilder: (context, index) {
+                      final employee = _filteredEmployees[index];
+                      return _buildEmployeeCard(employee);
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -756,34 +738,25 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
     return GestureDetector(
       onTap: () => _selectEmployee(employee),
       child: Container(
-        margin: EdgeInsets.only(bottom: 12.h),
-        padding: EdgeInsets.all(16.w),
+        margin: EdgeInsets.only(bottom: 6.h),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16.r),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
+          color: Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Row(
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    gradientColors[0].withOpacity(0.8),
-                    gradientColors[1].withOpacity(0.8),
-                  ],
+                  colors: [AppColors.emeraldDark, AppColors.emerald],
                 ),
-                borderRadius: BorderRadius.circular(14.r),
+                borderRadius: BorderRadius.circular(12.r),
               ),
               child: Center(
                 child: Text(
@@ -791,12 +764,12 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 22.sp,
+                    fontSize: 18.sp,
                   ),
                 ),
               ),
             ),
-            SizedBox(width: 16),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -805,31 +778,32 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                     employee.name,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 16.sp,
-                      color: Color(0xFF2D3436),
+                      fontSize: 15.sp,
+                      color: Colors.white.withOpacity(0.9),
                     ),
                   ),
                   if (employee.phone != null && employee.phone!.isNotEmpty)
                     Text(
                       employee.phone!,
                       style: TextStyle(
-                        fontSize: 13.sp,
-                        color: Colors.grey[500],
+                        fontSize: 12.sp,
+                        color: Colors.white.withOpacity(0.4),
                       ),
                     ),
                 ],
               ),
             ),
             Container(
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: gradientColors[0].withOpacity(0.1),
+                color: gradientColors[0].withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(
                 isBonus ? Icons.add_circle_outline : Icons.remove_circle_outline,
-                color: gradientColors[0],
+                color: gradientColors[1],
+                size: 20,
               ),
             ),
           ],

@@ -11,6 +11,7 @@ const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { invalidateShiftHandoverQuestions } = require('../utils/data_cache');
 const { compressUpload } = require('../utils/image_compress');
+const { requireAuth } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SHIFT_HANDOVER_QUESTIONS_DIR = `${DATA_DIR}/shift-handover-questions`;
@@ -24,7 +25,7 @@ const SHIFT_HANDOVER_QUESTIONS_DIR = `${DATA_DIR}/shift-handover-questions`;
 
 function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) {
   // Получить все вопросы
-  app.get('/api/shift-handover-questions', async (req, res) => {
+  app.get('/api/shift-handover-questions', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/shift-handover-questions:', req.query);
 
@@ -73,7 +74,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
   });
 
   // Получить один вопрос по ID
-  app.get('/api/shift-handover-questions/:questionId', async (req, res) => {
+  app.get('/api/shift-handover-questions/:questionId', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       const sanitizedId = sanitizeId(questionId);
@@ -103,7 +104,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
   });
 
   // Создать новый вопрос
-  app.post('/api/shift-handover-questions', async (req, res) => {
+  app.post('/api/shift-handover-questions', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/shift-handover-questions:', JSON.stringify(req.body).substring(0, 200));
 
@@ -141,7 +142,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
   });
 
   // Обновить вопрос
-  app.put('/api/shift-handover-questions/:questionId', async (req, res) => {
+  app.put('/api/shift-handover-questions/:questionId', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       const sanitizedId = sanitizeId(questionId);
@@ -185,7 +186,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
 
   // Загрузить эталонное фото для вопроса
   if (uploadShiftHandoverPhoto) {
-    app.post('/api/shift-handover-questions/:questionId/reference-photo', uploadShiftHandoverPhoto.single('photo'), compressUpload, async (req, res) => {
+    app.post('/api/shift-handover-questions/:questionId/reference-photo', requireAuth, uploadShiftHandoverPhoto.single('photo'), compressUpload, async (req, res) => {
       try {
         const { questionId } = req.params;
         const { shopAddress } = req.body;
@@ -243,7 +244,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
   }
 
   // Удалить вопрос
-  app.delete('/api/shift-handover-questions/:questionId', async (req, res) => {
+  app.delete('/api/shift-handover-questions/:questionId', requireAuth, async (req, res) => {
     try {
       const { questionId } = req.params;
       const sanitizedId = sanitizeId(questionId);

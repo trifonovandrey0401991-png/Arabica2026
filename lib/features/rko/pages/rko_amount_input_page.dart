@@ -4,6 +4,7 @@ import '../services/rko_service.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import '../services/rko_pdf_service.dart';
+import '../services/rko_reports_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../kpi/services/kpi_service.dart';
@@ -62,12 +63,16 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
     );
   }
 
-  /// Проверка находится ли время в диапазоне
+  /// Проверка находится ли время в диапазоне (с поддержкой перехода через полночь)
   bool _isTimeInRange(TimeOfDay current, TimeOfDay start, TimeOfDay end) {
     final currentMinutes = current.hour * 60 + current.minute;
     final startMinutes = start.hour * 60 + start.minute;
     final endMinutes = end.hour * 60 + end.minute;
-    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+    if (startMinutes <= endMinutes) {
+      return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+    } else {
+      return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+    }
   }
 
   /// Проверка временного окна для сдачи РКО
@@ -225,6 +230,23 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       return;
     }
 
+    // Для "ЗП после смены" — проверяем есть ли pending отчёт для магазина
+    if (widget.rkoType.contains('смены')) {
+      final hasPending = await RKOReportsService.hasPendingForShop(_selectedShop!.address);
+      if (!hasPending) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Нет ожидающего отчёта для этого магазина. РКО можно сдать только в активное временное окно.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
     setState(() {
       _isCreating = true;
     });
@@ -358,6 +380,8 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
           );
         }
         Navigator.pop(context);
+        // НЕ вызываем setState после pop — страница уходит из дерева
+        return;
       }
     } catch (e) {
       Logger.error('Ошибка создания РКО', e);
@@ -369,13 +393,9 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
           ),
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCreating = false;
-        });
-      }
     }
+    // Сбрасываем _isCreating только если остались на странице
+    if (mounted) setState(() => _isCreating = false);
   }
 
   @override

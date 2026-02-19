@@ -137,22 +137,26 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
+          backgroundColor: AppColors.emeraldDark,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
           title: Row(
             children: [
               Container(
                 padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryGreen.withOpacity(0.1),
+                  gradient: LinearGradient(
+                    colors: [AppColors.emerald, AppColors.emeraldLight.withOpacity(0.7)],
+                  ),
                   borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: AppColors.gold.withOpacity(0.4)),
                 ),
-                child: Icon(Icons.add_business_rounded, color: AppColors.primaryGreen),
+                child: Icon(Icons.add_business_rounded, color: AppColors.gold),
               ),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Новый магазин',
-                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
             ],
@@ -198,7 +202,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                 SizedBox(height: 8),
                 Text(
                   'Если интервал не заполнен, смена не учитывается',
-                  style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12.sp, color: Colors.white54),
                 ),
                 SizedBox(height: 16),
                 // Утренняя смена
@@ -257,7 +261,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                 SizedBox(height: 8),
                 Text(
                   'Координаты нужны для отметки прихода сотрудников',
-                  style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12.sp, color: Colors.white54),
                 ),
                 SizedBox(height: 12),
                 // Показываем текущие координаты если они установлены
@@ -266,18 +270,18 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     padding: EdgeInsets.all(12.w),
                     margin: EdgeInsets.only(bottom: 12.h),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: AppColors.success.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(color: Colors.green.withOpacity(0.3)),
+                      border: Border.all(color: AppColors.success.withOpacity(0.4)),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.check_circle_rounded, color: Colors.green, size: 20),
+                        Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'GPS: ${latitude!.toStringAsFixed(6)}, ${longitude!.toStringAsFixed(6)}',
-                            style: TextStyle(fontSize: 13.sp, color: Colors.green, fontWeight: FontWeight.w500),
+                            style: TextStyle(fontSize: 13.sp, color: AppColors.success, fontWeight: FontWeight.w500),
                           ),
                         ),
                       ],
@@ -287,16 +291,10 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.blue, Color(0xFF1E88E5)],
+                      colors: [AppColors.emerald, AppColors.emeraldLight],
                     ),
                     borderRadius: BorderRadius.circular(14.r),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
+                    border: Border.all(color: AppColors.info.withOpacity(0.4)),
                   ),
                   child: Material(
                     color: Colors.transparent,
@@ -323,7 +321,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                                     Text('Геолокация установлена'),
                                   ],
                                 ),
-                                backgroundColor: Colors.green,
+                                backgroundColor: AppColors.success,
                                 behavior: SnackBarBehavior.floating,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                               ),
@@ -341,7 +339,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                                     Expanded(child: Text('Ошибка: $e')),
                                   ],
                                 ),
-                                backgroundColor: Colors.red,
+                                backgroundColor: AppColors.error,
                                 behavior: SnackBarBehavior.floating,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                               ),
@@ -362,14 +360,14 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                                 child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                               )
                             else
-                              Icon(Icons.my_location_rounded, color: Colors.white),
+                              Icon(Icons.my_location_rounded, color: AppColors.info),
                             SizedBox(width: 10),
                             Text(
                               isGettingLocation ? 'Получение...' : 'Установить текущую геолокацию',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 15.sp,
+                                fontSize: 14.sp,
                               ),
                             ),
                           ],
@@ -384,12 +382,12 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Отмена', style: TextStyle(color: Colors.grey[600])),
+              child: Text('Отмена', style: TextStyle(color: Colors.white54)),
             ),
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppColors.primaryGreen, Color(0xFF00695C)],
+                  colors: [AppColors.gold, AppColors.darkGold],
                 ),
                 borderRadius: BorderRadius.circular(12.r),
               ),
@@ -402,7 +400,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Введите название магазина'),
-                          backgroundColor: Colors.orange,
+                          backgroundColor: AppColors.warning,
                         ),
                       );
                       return;
@@ -411,7 +409,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Введите адрес магазина'),
-                          backgroundColor: Colors.orange,
+                          backgroundColor: AppColors.warning,
                         ),
                       );
                       return;
@@ -439,7 +437,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
                     child: Text(
                       'Создать',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: AppColors.night, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -581,22 +579,26 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
+          backgroundColor: AppColors.emeraldDark,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
           title: Row(
             children: [
               Container(
                 padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryGreen.withOpacity(0.1),
+                  gradient: LinearGradient(
+                    colors: [AppColors.emerald, AppColors.emeraldLight.withOpacity(0.7)],
+                  ),
                   borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: AppColors.gold.withOpacity(0.4)),
                 ),
-                child: Icon(Icons.settings_rounded, color: AppColors.primaryGreen),
+                child: Icon(Icons.settings_rounded, color: AppColors.gold),
               ),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
                   shop.name,
-                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.white),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -608,23 +610,23 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ID магазина (для синхронизации DBF)
+                // ID магазина
                 Container(
                   padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: AppColors.night.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(color: Colors.grey[300]!),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.tag, size: 16, color: Colors.grey[600]),
+                      Icon(Icons.tag, size: 16, color: Colors.white54),
                       SizedBox(width: 8),
                       Text(
                         'ID: ',
                         style: TextStyle(
                           fontSize: 12.sp,
-                          color: Colors.grey[600],
+                          color: Colors.white54,
                         ),
                       ),
                       Expanded(
@@ -634,11 +636,12 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                             fontSize: 12.sp,
                             fontFamily: 'monospace',
                             fontWeight: FontWeight.w500,
+                            color: Colors.white70,
                           ),
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.copy, size: 16),
+                        icon: Icon(Icons.copy, size: 16, color: Colors.white54),
                         padding: EdgeInsets.zero,
                         constraints: BoxConstraints(),
                         onPressed: () {
@@ -683,7 +686,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                 SizedBox(height: 8),
                 Text(
                   'Если интервал не заполнен, смена не учитывается',
-                  style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12.sp, color: Colors.white54),
                 ),
                 SizedBox(height: 16),
                 // Утренняя смена
@@ -737,22 +740,16 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   nightAbbreviationController,
                 ),
                 SizedBox(height: 24),
-                Divider(),
+                Divider(color: Colors.white.withOpacity(0.15)),
                 SizedBox(height: 16),
                 // Кнопка обновления геолокации
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.blue, Color(0xFF1E88E5)],
+                      colors: [AppColors.emerald, AppColors.emeraldLight],
                     ),
                     borderRadius: BorderRadius.circular(14.r),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
+                    border: Border.all(color: AppColors.info.withOpacity(0.4)),
                   ),
                   child: Material(
                     color: Colors.transparent,
@@ -764,14 +761,14 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.my_location_rounded, color: Colors.white),
+                            Icon(Icons.my_location_rounded, color: AppColors.info),
                             SizedBox(width: 10),
                             Text(
                               'Обновить геолокацию',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 15.sp,
+                                fontSize: 14.sp,
                               ),
                             ),
                           ],
@@ -786,12 +783,12 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Отмена', style: TextStyle(color: Colors.grey[600])),
+              child: Text('Отмена', style: TextStyle(color: Colors.white54)),
             ),
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppColors.primaryGreen, Color(0xFF00695C)],
+                  colors: [AppColors.gold, AppColors.darkGold],
                 ),
                 borderRadius: BorderRadius.circular(12.r),
               ),
@@ -819,7 +816,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
                     child: Text(
                       'Сохранить',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: AppColors.night, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -919,15 +916,16 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
         Container(
           padding: EdgeInsets.all(8.w),
           decoration: BoxDecoration(
-            color: AppColors.primaryGreen.withOpacity(0.1),
+            color: AppColors.emerald.withOpacity(0.4),
             borderRadius: BorderRadius.circular(10.r),
+            border: Border.all(color: AppColors.gold.withOpacity(0.3)),
           ),
-          child: Icon(icon, color: AppColors.primaryGreen, size: 20),
+          child: Icon(icon, color: AppColors.gold, size: 18),
         ),
         SizedBox(width: 10),
         Text(
           title,
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.sp, color: Colors.white.withOpacity(0.9)),
         ),
       ],
     );
@@ -943,23 +941,26 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: TextStyle(color: Colors.white60),
         hintText: hint,
-        prefixIcon: Icon(icon, color: AppColors.primaryGreen),
+        hintStyle: TextStyle(color: Colors.white30),
+        prefixIcon: Icon(icon, color: AppColors.gold.withOpacity(0.7)),
         filled: true,
-        fillColor: Colors.grey[50],
+        fillColor: AppColors.night.withOpacity(0.4),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),
-          borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
+          borderSide: BorderSide(color: AppColors.gold, width: 2),
         ),
       ),
     );
@@ -1184,9 +1185,9 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
     return Container(
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1257,12 +1258,14 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
           SizedBox(height: 12),
           TextField(
             controller: abbreviationController,
+            style: TextStyle(color: Colors.white),
             decoration: InputDecoration(
               labelText: 'Аббревиатура',
               hintText: 'Например: Ост(У)',
               labelStyle: TextStyle(color: color),
+              hintStyle: TextStyle(color: Colors.white30),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: AppColors.night.withOpacity(0.4),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(color: color.withOpacity(0.3)),
@@ -1290,7 +1293,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 14.h),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.night.withOpacity(0.4),
           borderRadius: BorderRadius.circular(12.r),
           border: Border.all(color: color.withOpacity(0.3)),
         ),
@@ -1303,7 +1306,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
                     : '—',
                 style: TextStyle(
-                  color: time != null ? Colors.black87 : Colors.grey,
+                  color: time != null ? Colors.white : Colors.white38,
                   fontWeight: time != null ? FontWeight.w500 : FontWeight.normal,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -1320,24 +1323,28 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primaryGreen,
+      backgroundColor: AppColors.night,
       appBar: AppBar(
         title: Text(
           'Управление магазинами',
-          style: TextStyle(fontWeight: FontWeight.w600),
+          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
         ),
-        backgroundColor: AppColors.primaryGreen,
+        backgroundColor: AppColors.night,
+        iconTheme: IconThemeData(color: Colors.white),
         elevation: 0,
         actions: [
           // Кнопка добавления магазина
           Container(
             margin: EdgeInsets.only(right: 4.w),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12.r),
+              gradient: LinearGradient(
+                colors: [AppColors.emerald.withOpacity(0.5), AppColors.emeraldDark.withOpacity(0.5)],
+              ),
+              borderRadius: BorderRadius.circular(14.r),
+              border: Border.all(color: AppColors.gold.withOpacity(0.3)),
             ),
             child: IconButton(
-              icon: Icon(Icons.add_business_rounded),
+              icon: Icon(Icons.add_business_rounded, color: AppColors.gold),
               onPressed: _showAddShopDialog,
               tooltip: 'Добавить магазин',
             ),
@@ -1345,11 +1352,11 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
           Container(
             margin: EdgeInsets.only(right: 8.w),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12.r),
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(14.r),
             ),
             child: IconButton(
-              icon: Icon(Icons.refresh_rounded),
+              icon: Icon(Icons.refresh_rounded, color: Colors.white70),
               onPressed: _loadShops,
               tooltip: 'Обновить',
             ),
@@ -1362,9 +1369,9 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppColors.primaryGreen,
-              Color(0xFF00695C),
-              Color(0xFF00796B),
+              AppColors.night,
+              AppColors.emeraldDark,
+              AppColors.emerald.withOpacity(0.8),
             ],
           ),
         ),
@@ -1375,23 +1382,18 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.emeraldDark.withOpacity(0.6),
                   borderRadius: BorderRadius.circular(16.r),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
+                  border: Border.all(color: Colors.white.withOpacity(0.12)),
                 ),
                 child: TextField(
+                  style: TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     hintText: 'Поиск магазина...',
-                    hintStyle: TextStyle(color: Colors.grey[400]),
-                    prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[500]),
+                    hintStyle: TextStyle(color: Colors.white38),
+                    prefixIcon: Icon(Icons.search_rounded, color: Colors.white38),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: Colors.transparent,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16.r),
                       borderSide: BorderSide.none,
@@ -1428,11 +1430,12 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
           Container(
             padding: EdgeInsets.all(20.w),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: AppColors.emerald.withOpacity(0.3),
               shape: BoxShape.circle,
+              border: Border.all(color: AppColors.gold.withOpacity(0.3)),
             ),
             child: CircularProgressIndicator(
-              color: Colors.white,
+              color: AppColors.gold,
               strokeWidth: 3,
             ),
           ),
@@ -1440,8 +1443,8 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
           Text(
             'Загрузка магазинов...',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 16.sp,
+              color: Colors.white.withOpacity(0.8),
+              fontSize: 15.sp,
             ),
           ),
         ],
@@ -1455,32 +1458,33 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: EdgeInsets.all(32.w),
+            padding: EdgeInsets.all(28.w),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: AppColors.emerald.withOpacity(0.2),
               shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Icon(
               Icons.store_outlined,
-              size: 80,
-              color: Colors.white.withOpacity(0.7),
+              size: 60,
+              color: Colors.white.withOpacity(0.5),
             ),
           ),
-          SizedBox(height: 24),
+          SizedBox(height: 20),
           Text(
             'Магазины не найдены',
             style: TextStyle(
-              fontSize: 22.sp,
-              color: Colors.white,
+              fontSize: 18.sp,
+              color: Colors.white.withOpacity(0.9),
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 12),
+          SizedBox(height: 8),
           Text(
             'Попробуйте изменить поисковый запрос',
             style: TextStyle(
-              fontSize: 16.sp,
-              color: Colors.white.withOpacity(0.7),
+              fontSize: 14.sp,
+              color: Colors.white54,
             ),
           ),
         ],
@@ -1502,8 +1506,8 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
 
     return RefreshIndicator(
       onRefresh: _loadShops,
-      color: AppColors.primaryGreen,
-      backgroundColor: Colors.white,
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 16.h),
         itemCount: filteredShops.length,
@@ -1541,42 +1545,50 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20.r),
+        borderRadius: BorderRadius.circular(16.r),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.emeraldDark,
+            AppColors.emerald.withOpacity(0.85),
+          ],
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 12,
-            offset: Offset(0, 6),
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: Offset(0, 4),
           ),
         ],
       ),
       child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20.r),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16.r),
         child: InkWell(
           onTap: () => _editShopSettings(shop),
-          borderRadius: BorderRadius.circular(20.r),
+          borderRadius: BorderRadius.circular(16.r),
+          splashColor: AppColors.gold.withOpacity(0.15),
           child: Padding(
-            padding: EdgeInsets.all(16.w),
+            padding: EdgeInsets.all(14.w),
             child: Row(
               children: [
                 // Иконка магазина
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16.r),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primaryGreen.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(14.r),
+                    color: AppColors.night.withOpacity(0.4),
+                    border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                   ),
-                  child: ShopIcon(size: 64),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14.r),
+                    child: ShopIcon(size: 56),
+                  ),
                 ),
-                SizedBox(width: 16),
+                SizedBox(width: 14),
                 // Информация о магазине
                 Expanded(
                   child: Column(
@@ -1586,34 +1598,34 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                         shop.name,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16.sp,
-                          color: Color(0xFF1A1A1A),
+                          fontSize: 15.sp,
+                          color: Colors.white,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      SizedBox(height: 3),
                       Text(
                         shop.address,
                         style: TextStyle(
-                          fontSize: 13.sp,
-                          color: Colors.grey[600],
+                          fontSize: 12.sp,
+                          color: Colors.white60,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: 10),
+                      SizedBox(height: 8),
                       // Статусы
                       Wrap(
-                        spacing: 8,
+                        spacing: 6,
                         runSpacing: 4,
                         children: [
                           _buildStatusBadge(
                             hasSettings ? 'Настроен' : 'Не настроен',
-                            hasSettings ? Colors.green : Colors.orange,
+                            hasSettings ? AppColors.success : AppColors.warning,
                             hasSettings ? Icons.check_circle_rounded : Icons.warning_rounded,
                           ),
                           _buildStatusBadge(
                             hasLocation ? 'GPS' : 'Нет GPS',
-                            hasLocation ? Colors.blue : Colors.grey,
+                            hasLocation ? AppColors.info : Colors.grey,
                             hasLocation ? Icons.location_on_rounded : Icons.location_off_rounded,
                           ),
                         ],
@@ -1621,39 +1633,21 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     ],
                   ),
                 ),
-                // Кнопки редактирования и удаления
-                Row(
+                // Кнопки
+                Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: EdgeInsets.all(12.w),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(14.r),
-                      ),
-                      child: Icon(
-                        Icons.edit_rounded,
-                        color: AppColors.primaryGreen,
-                        size: 22,
-                      ),
+                    _buildCardActionButton(
+                      icon: Icons.edit_rounded,
+                      color: AppColors.gold,
+                      onTap: () => _editShopSettings(shop),
                     ),
-                    // Показываем кнопку удаления только если у магазина есть ID
                     if (shop.id.isNotEmpty) ...[
-                      SizedBox(width: 8),
-                      GestureDetector(
+                      SizedBox(height: 8),
+                      _buildCardActionButton(
+                        icon: Icons.delete_outline_rounded,
+                        color: AppColors.error,
                         onTap: () => _confirmDeleteShop(shop),
-                        child: Container(
-                          padding: EdgeInsets.all(12.w),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(14.r),
-                          ),
-                          child: Icon(
-                            Icons.delete_outline_rounded,
-                            color: Colors.red,
-                            size: 22,
-                          ),
-                        ),
                       ),
                     ],
                   ],
@@ -1661,6 +1655,29 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardActionButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10.r),
+        child: Container(
+          padding: EdgeInsets.all(9.w),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(10.r),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Icon(icon, color: color, size: 18),
         ),
       ),
     );
@@ -1872,22 +1889,22 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
 
   Widget _buildStatusBadge(String text, Color color, IconData icon) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: color.withOpacity(0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 14),
+          Icon(icon, color: color, size: 12),
           SizedBox(width: 4),
           Text(
             text,
             style: TextStyle(
               color: color,
-              fontSize: 11.sp,
+              fontSize: 10.sp,
               fontWeight: FontWeight.w600,
             ),
           ),

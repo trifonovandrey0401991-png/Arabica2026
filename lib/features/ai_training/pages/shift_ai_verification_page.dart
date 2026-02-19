@@ -51,10 +51,12 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
       shopAddress: widget.shopAddress,
     );
 
-    setState(() {
-      _result = result;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _result = result;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _confirmProductPresent(MissingProductInfo product) async {
@@ -81,7 +83,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Товар распознан! (${result.confidencePercent}%)'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
       }
@@ -98,7 +100,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
             content: Text(remaining > 0
                 ? 'ИИ не распознал товар. Осталось попыток: $remaining'
                 : 'ИИ не распознал товар. Можете пропустить проверку.'),
-            backgroundColor: Colors.orange,
+            backgroundColor: AppColors.warning,
           ),
         );
       }
@@ -114,7 +116,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Проверка ИИ пропущена'),
-        backgroundColor: Colors.grey,
+        backgroundColor: AppColors.emeraldDark,
       ),
     );
   }
@@ -148,18 +150,18 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
               Container(
                 padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.12),
+                  color: AppColors.warning.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.warning.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning, color: Colors.orange),
+                    Icon(Icons.warning, color: AppColors.warning),
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'На остатках: $stockQuantity шт.\nВы уверены, что товар отсутствует?',
-                        style: TextStyle(color: Colors.orange),
+                        style: TextStyle(color: AppColors.warning),
                       ),
                     ),
                   ],
@@ -175,7 +177,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: AppColors.error,
                 foregroundColor: Colors.white,
               ),
               child: Text('Да, отсутствует'),
@@ -222,7 +224,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Подтвердите все товары перед сохранением'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -417,11 +419,11 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.15),
+                  color: AppColors.warning.withOpacity(0.15),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.orange.withOpacity(0.3), width: 2),
+                  border: Border.all(color: AppColors.warning.withOpacity(0.3), width: 2),
                 ),
-                child: Icon(Icons.hourglass_empty, size: 50, color: Colors.orange),
+                child: Icon(Icons.hourglass_empty, size: 50, color: AppColors.warning),
               ),
               SizedBox(height: 24),
               Text(
@@ -458,7 +460,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                     final product = _result!.skippedProducts[index];
                     return ListTile(
                       dense: true,
-                      leading: Icon(Icons.warning, color: Colors.orange, size: 20),
+                      leading: Icon(Icons.warning, color: AppColors.warning, size: 20),
                       title: Text(product.productName, style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.9))),
                       subtitle: Text(product.reason, style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5))),
                     );
@@ -495,11 +497,11 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.15),
+                  color: AppColors.success.withOpacity(0.15),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.green.withOpacity(0.3), width: 2),
+                  border: Border.all(color: AppColors.success.withOpacity(0.3), width: 2),
                 ),
-                child: Icon(Icons.check_circle, size: 60, color: Colors.green),
+                child: Icon(Icons.check_circle, size: 60, color: AppColors.success),
               ),
               SizedBox(height: 24),
               Text(
@@ -507,7 +509,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                 style: TextStyle(
                   fontSize: 22.sp,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green,
+                  color: AppColors.success,
                 ),
               ),
               SizedBox(height: 12),
@@ -524,7 +526,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                 Text(
                   'Пропущено ${_result!.skippedProducts.length} товаров (ИИ не готов)',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13.sp, color: Colors.orange),
+                  style: TextStyle(fontSize: 13.sp, color: AppColors.warning),
                 ),
               ],
             ],
@@ -541,7 +543,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
           _buildSectionHeader(
             icon: Icons.check_circle,
             title: 'Найденные товары',
-            color: Colors.green,
+            color: AppColors.success,
             count: _result!.detectedProducts.length,
           ),
           SizedBox(height: 8),
@@ -554,7 +556,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
           _buildSectionHeader(
             icon: Icons.warning,
             title: 'Требуют подтверждения',
-            color: Colors.orange,
+            color: AppColors.warning,
             count: _result!.missingProducts.length,
           ),
           SizedBox(height: 8),
@@ -567,7 +569,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
           _buildSectionHeader(
             icon: Icons.hourglass_empty,
             title: 'Пропущены (ИИ не готов)',
-            color: Colors.grey,
+            color: AppColors.neutral,
             count: _result!.skippedProducts.length,
           ),
           SizedBox(height: 8),
@@ -592,10 +594,10 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.15),
+              color: AppColors.neutral.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10.r),
             ),
-            child: Icon(Icons.hourglass_empty, color: Colors.grey, size: 20),
+            child: Icon(Icons.hourglass_empty, color: AppColors.neutral, size: 20),
           ),
           SizedBox(width: 12),
           Expanded(
@@ -610,7 +612,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                 SizedBox(height: 4),
                 Text(
                   product.reason,
-                  style: TextStyle(fontSize: 11.sp, color: Colors.orange),
+                  style: TextStyle(fontSize: 11.sp, color: AppColors.warning),
                 ),
               ],
             ),
@@ -674,7 +676,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.green.withOpacity(0.2)),
+        border: Border.all(color: AppColors.success.withOpacity(0.2)),
       ),
       child: Row(
         children: [
@@ -682,10 +684,10 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.15),
+              color: AppColors.success.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10.r),
             ),
-            child: Icon(Icons.check, color: Colors.green, size: 22),
+            child: Icon(Icons.check, color: AppColors.success, size: 22),
           ),
           SizedBox(width: 12),
           Expanded(
@@ -706,14 +708,14 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.15),
+              color: AppColors.success.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(color: Colors.green.withOpacity(0.3)),
+              border: Border.all(color: AppColors.success.withOpacity(0.3)),
             ),
             child: Text(
               '${product.confidencePercent}%',
               style: TextStyle(
-                color: Colors.green,
+                color: AppColors.success,
                 fontWeight: FontWeight.bold,
                 fontSize: 12.sp,
               ),
@@ -731,17 +733,17 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
 
     switch (product.status) {
       case ConfirmationStatus.confirmedPresent:
-        statusColor = Colors.green;
+        statusColor = AppColors.success;
         statusIcon = Icons.check_circle;
         statusText = 'Присутствует';
         break;
       case ConfirmationStatus.confirmedMissing:
-        statusColor = Colors.red;
+        statusColor = AppColors.error;
         statusIcon = Icons.cancel;
         statusText = 'Недостача';
         break;
       default:
-        statusColor = Colors.orange;
+        statusColor = AppColors.warning;
         statusIcon = Icons.help_outline;
         statusText = 'Не подтверждён';
     }
@@ -813,10 +815,10 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 margin: EdgeInsets.only(bottom: 8.h),
                 decoration: BoxDecoration(
-                  color: (product.canRetry ? Colors.orange : Colors.red).withOpacity(0.12),
+                  color: (product.canRetry ? AppColors.warning : AppColors.error).withOpacity(0.12),
                   borderRadius: BorderRadius.circular(6.r),
                   border: Border.all(
-                    color: (product.canRetry ? Colors.orange : Colors.red).withOpacity(0.3),
+                    color: (product.canRetry ? AppColors.warning : AppColors.error).withOpacity(0.3),
                   ),
                 ),
                 child: Row(
@@ -825,7 +827,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                     Icon(
                       product.canRetry ? Icons.refresh : Icons.warning,
                       size: 14,
-                      color: product.canRetry ? Colors.orange : Colors.red,
+                      color: product.canRetry ? AppColors.warning : AppColors.error,
                     ),
                     SizedBox(width: 4),
                     Text(
@@ -834,7 +836,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                           : 'Лимит попыток исчерпан',
                       style: TextStyle(
                         fontSize: 11.sp,
-                        color: product.canRetry ? Colors.orange : Colors.red,
+                        color: product.canRetry ? AppColors.warning : AppColors.error,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -850,8 +852,8 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                     icon: Icon(Icons.photo_camera, size: 18),
                     label: Text(product.verificationAttempts > 0 ? 'Повторить' : 'Присутствует'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.green,
-                      side: BorderSide(color: Colors.green.withOpacity(0.5)),
+                      foregroundColor: AppColors.success,
+                      side: BorderSide(color: AppColors.success.withOpacity(0.5)),
                     ),
                   ),
                 ),
@@ -862,8 +864,8 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
                     icon: Icon(Icons.cancel, size: 18),
                     label: Text('Отсутствует'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: BorderSide(color: Colors.red.withOpacity(0.5)),
+                      foregroundColor: AppColors.error,
+                      side: BorderSide(color: AppColors.error.withOpacity(0.5)),
                     ),
                   ),
                 ),
@@ -1015,7 +1017,7 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                             'Попытка ${widget.currentAttempts + 1} из ${MissingProductInfo.maxVerificationAttempts}',
                             style: TextStyle(
                               fontSize: 11.sp,
-                              color: remaining > 0 ? Colors.orange : Colors.red,
+                              color: remaining > 0 ? AppColors.warning : AppColors.error,
                               fontWeight: FontWeight.w600,
                             ),
                           ),

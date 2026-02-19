@@ -12,6 +12,7 @@ const { isPaginationRequested, createPaginatedResponse } = require('../utils/pag
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { requireAdmin } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SHOPS_DIR = `${DATA_DIR}/shops`;
@@ -103,9 +104,8 @@ function setupShopsAPI(app) {
   });
 
   // POST /api/shops - создать магазин
-  app.post('/api/shops', async (req, res) => {
+  app.post('/api/shops', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const { name, address, latitude, longitude, icon } = req.body;
       console.log('POST /api/shops', name, address);
 
@@ -149,9 +149,8 @@ function setupShopsAPI(app) {
   });
 
   // PUT /api/shops/:id - обновить магазин
-  app.put('/api/shops/:id', async (req, res) => {
+  app.put('/api/shops/:id', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const id = sanitizeId(req.params.id);
       const updates = req.body;
       console.log('PUT /api/shops/' + id, updates);
@@ -197,9 +196,8 @@ function setupShopsAPI(app) {
   });
 
   // DELETE /api/shops/:id - удалить магазин
-  app.delete('/api/shops/:id', async (req, res) => {
+  app.delete('/api/shops/:id', requireAdmin, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/shops/' + id);
 

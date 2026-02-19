@@ -100,12 +100,16 @@ class EmployeeChatService {
   }
 
   /// Создать или получить чат магазина
-  static Future<EmployeeChat?> getOrCreateShopChat(String shopAddress) async {
+  /// [phone] — телефон пользователя, автоматически добавляется в участники
+  static Future<EmployeeChat?> getOrCreateShopChat(String shopAddress, {String? phone}) async {
     Logger.debug('📝 Создание чата магазина $shopAddress...');
 
     return await BaseHttpService.post<EmployeeChat>(
       endpoint: '$baseEndpoint/shop',
-      body: {'shopAddress': shopAddress},
+      body: {
+        'shopAddress': shopAddress,
+        if (phone != null) 'phone': phone,
+      },
       fromJson: (json) => EmployeeChat.fromJson(json),
       itemKey: 'chat',
     );

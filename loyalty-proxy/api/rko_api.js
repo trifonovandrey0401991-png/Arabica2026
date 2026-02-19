@@ -12,6 +12,7 @@ const path = require('path');
 const { fileExists, isPathSafe } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_RKO === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -194,9 +195,8 @@ function dbRkoToCamel(row) {
 
 function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFailedRkoReports } = {}) {
   // Загрузка РКО на сервер
-  app.post('/api/rko/upload', uploadRKO ? uploadRKO.single('docx') : (req, res, next) => next(), async (req, res) => {
+  app.post('/api/rko/upload', requireAuth, uploadRKO ? uploadRKO.single('docx') : (req, res, next) => next(), async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       console.log('📤 POST /api/rko/upload');
 
       if (!req.file) {
@@ -213,6 +213,18 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
           success: false,
           error: 'Не все обязательные поля указаны'
         });
+      }
+
+      // Проверка pending для "ЗП после смены"
+      if (rkoType === 'ЗП после смены' && getPendingRkoReports) {
+        const pending = await getPendingRkoReports();
+        const hasPending = pending.some(r => r.shopAddress === shopAddress && r.status === 'pending');
+        if (!hasPending) {
+          return res.status(400).json({
+            success: false,
+            error: 'Нет ожидающего отчёта для этого магазина. РКО можно сдать только в рамках активного временного окна.'
+          });
+        }
       }
 
       // Создаем структуру директорий
@@ -291,7 +303,7 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
   });
 
   // Получить список РКО сотрудника
-  app.get('/api/rko/list/employee/:employeeName', async (req, res) => {
+  app.get('/api/rko/list/employee/:employeeName', requireAuth, async (req, res) => {
     try {
       const employeeName = decodeURIComponent(req.params.employeeName);
       console.log('📋 GET /api/rko/list/employee:', employeeName);
@@ -349,7 +361,7 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
   });
 
   // Получить список РКО магазина
-  app.get('/api/rko/list/shop/:shopAddress', async (req, res) => {
+  app.get('/api/rko/list/shop/:shopAddress', requireAuth, async (req, res) => {
     try {
       const shopAddress = decodeURIComponent(req.params.shopAddress);
       console.log('📋 GET /api/rko/list/shop:', shopAddress);
@@ -408,7 +420,7 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
   });
 
   // Получить все РКО за месяц (для эффективности)
-  app.get('/api/rko/all', async (req, res) => {
+  app.get('/api/rko/all', requireAuth, async (req, res) => {
     try {
       const { month } = req.query; // YYYY-MM
       console.log('📋 GET /api/rko/all, month:', month);
@@ -456,7 +468,7 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
   });
 
   // Получить DOCX файл РКО
-  app.get('/api/rko/file/:fileName', async (req, res) => {
+  app.get('/api/rko/file/:fileName', requireAuth, async (req, res) => {
     try {
       // Декодируем имя файла, обрабатывая возможные проблемы с кодировкой
       let fileName;
@@ -536,9 +548,8 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
   });
 
   // Генерация РКО из .docx шаблона
-  app.post('/api/rko/generate-from-docx', async (req, res) => {
+  app.post('/api/rko/generate-from-docx', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const {
         shopAddress,
         shopSettings,
@@ -744,9 +755,8 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
 
   // ========== Обновление статуса РКО (подтверждение/отклонение) ==========
 
-  app.put('/api/rko/:reportId/status', async (req, res) => {
+  app.put('/api/rko/:reportId/status', requireAuth, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
       const { reportId } = req.params;
       const { status, rating, confirmedBy, confirmedAt, rejectedBy, rejectedAt, rejectReason } = req.body;
       console.log(`📝 PUT /api/rko/${reportId}/status:`, status);
@@ -813,10 +823,10 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
   // ========== API для pending/failed РКО отчетов ==========
 
   // Получить pending РКО отчеты
-  app.get('/api/rko/pending', async (req, res) => {
+  app.get('/api/rko/pending', requireAuth, async (req, res) => {
     try {
       console.log('📋 GET /api/rko/pending');
-      const reports = getPendingRkoReports ? getPendingRkoReports() : [];
+      const reports = getPendingRkoReports ? await getPendingRkoReports() : [];
       res.json({
         success: true,
         items: reports,
@@ -832,10 +842,10 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
   });
 
   // Получить failed РКО отчеты
-  app.get('/api/rko/failed', async (req, res) => {
+  app.get('/api/rko/failed', requireAuth, async (req, res) => {
     try {
       console.log('📋 GET /api/rko/failed');
-      const reports = getFailedRkoReports ? getFailedRkoReports() : [];
+      const reports = getFailedRkoReports ? await getFailedRkoReports() : [];
       res.json({
         success: true,
         items: reports,

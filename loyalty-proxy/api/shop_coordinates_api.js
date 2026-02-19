@@ -9,7 +9,9 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_SHOP_COORDINATES === 'true';
 
@@ -31,13 +33,17 @@ async function ensureDir() {
 
 function setupShopCoordinatesAPI(app) {
   // ===== GET ALL SHOP COORDINATES =====
-  app.get('/api/shop-coordinates', async (req, res) => {
+  app.get('/api/shop-coordinates', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/shop-coordinates');
 
       if (USE_DB) {
         const rows = await db.findAll('shop_coordinates', { orderBy: 'created_at', orderDir: 'ASC' });
-        return res.json({ success: true, coordinates: rows.map(r => r.data) });
+        const coordinates = rows.map(r => r.data);
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(coordinates, req.query, 'coordinates'));
+        }
+        return res.json({ success: true, coordinates });
       }
 
       const coordinates = [];
@@ -56,6 +62,9 @@ function setupShopCoordinatesAPI(app) {
         }
       }
 
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(coordinates, req.query, 'coordinates'));
+      }
       res.json({ success: true, coordinates });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -63,7 +72,7 @@ function setupShopCoordinatesAPI(app) {
   });
 
   // ===== GET SHOP COORDINATES BY ADDRESS =====
-  app.get('/api/shop-coordinates/:shopAddress', async (req, res) => {
+  app.get('/api/shop-coordinates/:shopAddress', requireAuth, async (req, res) => {
     try {
       const { shopAddress } = req.params;
       console.log('GET /api/shop-coordinates:', shopAddress);
@@ -90,7 +99,7 @@ function setupShopCoordinatesAPI(app) {
   });
 
   // ===== SET/UPDATE SHOP COORDINATES =====
-  app.post('/api/shop-coordinates', async (req, res) => {
+  app.post('/api/shop-coordinates', requireAuth, async (req, res) => {
     try {
       const coords = req.body;
       console.log('POST /api/shop-coordinates:', coords.shopAddress);
@@ -119,7 +128,7 @@ function setupShopCoordinatesAPI(app) {
   });
 
   // ===== UPDATE SHOP COORDINATES =====
-  app.put('/api/shop-coordinates/:shopAddress', async (req, res) => {
+  app.put('/api/shop-coordinates/:shopAddress', requireAuth, async (req, res) => {
     try {
       const { shopAddress } = req.params;
       const updates = req.body;
@@ -151,7 +160,7 @@ function setupShopCoordinatesAPI(app) {
   });
 
   // ===== DELETE SHOP COORDINATES =====
-  app.delete('/api/shop-coordinates/:shopAddress', async (req, res) => {
+  app.delete('/api/shop-coordinates/:shopAddress', requireAuth, async (req, res) => {
     try {
       const { shopAddress } = req.params;
       console.log('DELETE /api/shop-coordinates:', shopAddress);
@@ -177,7 +186,7 @@ function setupShopCoordinatesAPI(app) {
   });
 
   // ===== CHECK IF EMPLOYEE IS NEAR SHOP =====
-  app.post('/api/shop-coordinates/check-proximity', async (req, res) => {
+  app.post('/api/shop-coordinates/check-proximity', requireAuth, async (req, res) => {
     try {
       const { shopAddress, latitude, longitude, maxDistance = 100 } = req.body;
       console.log('POST /api/shop-coordinates/check-proximity:', shopAddress);

@@ -15,6 +15,7 @@ const { getMoscowTime } = require('../utils/moscow_time');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_RECOUNT === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -90,7 +91,7 @@ function camelToDbRecount(body) {
 function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) {
 
   // POST /api/recount-reports - создание отчета пересчета с TIME_EXPIRED валидацией
-  app.post('/api/recount-reports', async (req, res) => {
+  app.post('/api/recount-reports', requireAuth, async (req, res) => {
     try {
       console.log('POST /api/recount-reports:', JSON.stringify(req.body).substring(0, 200));
 
@@ -270,7 +271,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
   });
 
   // GET /api/recount-reports - получить отчеты пересчета
-  app.get('/api/recount-reports', async (req, res) => {
+  app.get('/api/recount-reports', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/recount-reports:', req.query);
 
@@ -368,7 +369,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
   });
 
   // GET /api/recount-reports/expired - просроченные/failed/rejected отчеты
-  app.get('/api/recount-reports/expired', async (req, res) => {
+  app.get('/api/recount-reports/expired', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/recount-reports/expired');
 
@@ -428,7 +429,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
   });
 
   // GET /api/recount-reports/:id - получить один отчёт пересчёта по ID
-  app.get('/api/recount-reports/:id', async (req, res) => {
+  app.get('/api/recount-reports/:id', requireAuth, async (req, res) => {
     try {
       const reportId = decodeURIComponent(req.params.id);
       console.log(`GET /api/recount-reports/${reportId}`);
@@ -487,7 +488,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
   // GET /api/pending-recount-reports - ожидающие (pending) пересчёты
   // ПРИМЕЧАНИЕ: pending файлы хранятся ТОЛЬКО в файловой системе (эфемерные, scheduler)
   // Но если pending отчёт был обновлён через scheduler → его статус в DB тоже pending
-  app.get('/api/pending-recount-reports', async (req, res) => {
+  app.get('/api/pending-recount-reports', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/pending-recount-reports');
 
@@ -531,7 +532,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
   });
 
   // POST /api/recount-reports/:reportId/rating - оценка отчета пересчёта (только админ)
-  app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
+  app.post('/api/recount-reports/:reportId/rating', requireAuth, async (req, res) => {
     try {
       // Оценка пересчёта — только админ
       if (!req.user || !req.user.isAdmin) {
@@ -711,7 +712,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
   });
 
   // POST /api/recount-reports/:reportId/notify - отправка push-уведомления
-  app.post('/api/recount-reports/:reportId/notify', async (req, res) => {
+  app.post('/api/recount-reports/:reportId/notify', requireAuth, async (req, res) => {
     try {
       const { reportId } = req.params;
       console.log(`POST /api/recount-reports/${reportId}/notify`);

@@ -13,6 +13,10 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_CIGARETTE_VISION === 'true';
 
 // YOLO ML Wrapper для детекции
 let yoloWrapper = null;
@@ -74,7 +78,7 @@ async function initCountingPending() {
   const paths = getCountingPendingPaths();
   if (!(await fileExists(paths.baseDir))) await fsp.mkdir(paths.baseDir, { recursive: true });
   if (!(await fileExists(paths.imagesDir))) await fsp.mkdir(paths.imagesDir, { recursive: true });
-  if (!(await fileExists(paths.samplesFile))) await fsp.writeFile(paths.samplesFile, '[]');
+  if (!(await fileExists(paths.samplesFile))) await writeJsonFile(paths.samplesFile, []);
   return paths;
 }
 
@@ -92,7 +96,7 @@ async function loadPendingCountingSamples() {
 // Сохранить pending samples
 async function savePendingCountingSamples(samples) {
   const paths = await initCountingPending();
-  await fsp.writeFile(paths.samplesFile, JSON.stringify(samples, null, 2));
+  await writeJsonFile(paths.samplesFile, samples);
 }
 
 // Пути к моделям
@@ -121,6 +125,18 @@ let settingsCache = null;
 async function loadSettings() {
   if (settingsCache) return settingsCache;
 
+  if (USE_DB) {
+    try {
+      const row = await db.findById('app_settings', 'cigarette_vision_settings', 'key');
+      if (row && row.value) {
+        settingsCache = row.value;
+        return settingsCache;
+      }
+    } catch (e) {
+      console.error('[Cigarette Vision] DB loadSettings error:', e.message);
+    }
+  }
+
   try {
     if (await fileExists(SETTINGS_FILE)) {
       settingsCache = JSON.parse(await fsp.readFile(SETTINGS_FILE, 'utf8'));
@@ -140,8 +156,21 @@ async function loadSettings() {
  */
 async function saveSettings(settings) {
   try {
-    await fsp.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+    await writeJsonFile(SETTINGS_FILE, settings);
     settingsCache = settings;
+
+    if (USE_DB) {
+      try {
+        await db.upsert('app_settings', {
+          key: 'cigarette_vision_settings',
+          value: settings,
+          updated_at: new Date().toISOString(),
+        }, 'key');
+      } catch (dbErr) {
+        console.error('[Cigarette Vision] DB saveSettings error:', dbErr.message);
+      }
+    }
+
     return true;
   } catch (e) {
     console.error('Ошибка сохранения настроек:', e);
@@ -180,10 +209,10 @@ async function init() {
   }
 
   if (!(await fileExists(SAMPLES_FILE))) {
-    await fsp.writeFile(SAMPLES_FILE, JSON.stringify({ samples: [] }, null, 2));
+    await writeJsonFile(SAMPLES_FILE, { samples: [] });
   }
   if (!(await fileExists(STATS_FILE))) {
-    await fsp.writeFile(STATS_FILE, JSON.stringify({ lastUpdated: null }, null, 2));
+    await writeJsonFile(STATS_FILE, { lastUpdated: null });
   }
 }
 
@@ -232,6 +261,14 @@ async function loadAllShops() {
  * Загрузить все образцы
  */
 async function loadSamples() {
+  if (USE_DB) {
+    try {
+      const rows = await db.findAll('cigarette_samples', { orderBy: 'created_at', orderDir: 'ASC' });
+      return rows.map(r => r.data);
+    } catch (e) {
+      console.error('[Cigarette Vision] DB loadSamples error:', e.message);
+    }
+  }
   try {
     await init();
     const data = await fsp.readFile(SAMPLES_FILE, 'utf8');
@@ -248,7 +285,25 @@ async function loadSamples() {
 async function saveSamples(samples) {
   try {
     await init();
-    await fsp.writeFile(SAMPLES_FILE, JSON.stringify({ samples }, null, 2));
+    await writeJsonFile(SAMPLES_FILE, { samples });
+
+    if (USE_DB) {
+      try {
+        for (const sample of samples) {
+          await db.upsert('cigarette_samples', {
+            id: sample.id,
+            product_id: sample.productId || null,
+            type: sample.type || null,
+            shop_address: sample.shopAddress || null,
+            data: sample,
+            created_at: sample.createdAt || new Date().toISOString(),
+          });
+        }
+      } catch (dbErr) {
+        console.error('[Cigarette Vision] DB saveSamples error:', dbErr.message);
+      }
+    }
+
     return true;
   } catch (error) {
     console.error('Ошибка сохранения образцов:', error);
@@ -513,7 +568,7 @@ async function getClassIdForProduct(productId) {
   const newId = maxId + 1;
   classMapping[productId] = newId;
 
-  await fsp.writeFile(CLASS_MAPPING_FILE, JSON.stringify(classMapping, null, 2));
+  await writeJsonFile(CLASS_MAPPING_FILE, classMapping);
   console.log(`[Cigarette Vision] Новый classId для ${productId}: ${newId}`);
 
   return newId;
@@ -989,7 +1044,7 @@ async function initTypedTraining(trainingType) {
     await fsp.mkdir(paths.labelsDir, { recursive: true });
   }
   if (!(await fileExists(paths.samplesFile))) {
-    await fsp.writeFile(paths.samplesFile, JSON.stringify({ samples: [] }, null, 2));
+    await writeJsonFile(paths.samplesFile, { samples: [] });
   }
 
   return paths;
@@ -1015,7 +1070,7 @@ async function loadTypedSamples(trainingType) {
 async function saveTypedSamples(trainingType, samples) {
   try {
     const paths = await initTypedTraining(trainingType);
-    await fsp.writeFile(paths.samplesFile, JSON.stringify({ samples }, null, 2));
+    await writeJsonFile(paths.samplesFile, { samples });
     return true;
   } catch (error) {
     console.error(`[Typed Training] Ошибка сохранения образцов ${trainingType}:`, error);
@@ -1046,7 +1101,7 @@ async function getTypedClassId(trainingType, productId) {
   const newId = maxId + 1;
   classMapping[productId] = newId;
 
-  await fsp.writeFile(paths.classMappingFile, JSON.stringify(classMapping, null, 2));
+  await writeJsonFile(paths.classMappingFile, classMapping);
   console.log(`[Typed Training] ${trainingType}: новый classId для ${productId}: ${newId}`);
 
   return newId;
@@ -1554,7 +1609,7 @@ async function loadAiErrorsStats() {
  */
 async function saveAiErrorsStats(stats) {
   try {
-    await fsp.writeFile(AI_ERRORS_FILE, JSON.stringify(stats, null, 2));
+    await writeJsonFile(AI_ERRORS_FILE, stats);
   } catch (e) {
     console.error('[AI Errors] Ошибка сохранения статистики:', e.message);
   }
@@ -1783,7 +1838,7 @@ async function saveProblemSample({
     await fsp.writeFile(path.join(productDir, fileName), imageBuffer);
 
     const metaFileName = fileName.replace('.jpg', '.json');
-    await fsp.writeFile(path.join(productDir, metaFileName), JSON.stringify({
+    await writeJsonFile(path.join(productDir, metaFileName), {
       productId,
       productName,
       expectedCount,
@@ -1791,7 +1846,7 @@ async function saveProblemSample({
       shopAddress,
       status,
       createdAt: new Date().toISOString(),
-    }, null, 2));
+    });
 
     console.log(`[AI Errors] Проблемное фото сохранено: ${productId}/${fileName} (status: ${status})`);
     return { success: true, fileName };
@@ -1998,7 +2053,7 @@ async function saveRecognitionStats(stats) {
       await fsp.mkdir(RECOGNITION_STATS_DIR, { recursive: true });
     }
 
-    await fsp.writeFile(RECOGNITION_STATS_FILE, JSON.stringify(stats, null, 2));
+    await writeJsonFile(RECOGNITION_STATS_FILE, stats);
     recognitionStatsCache = stats;
     return true;
   } catch (error) {

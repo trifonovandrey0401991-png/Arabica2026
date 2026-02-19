@@ -15,6 +15,12 @@ import '../../shifts/pages/shift_report_view_page.dart';
 import '../../recount/models/recount_report_model.dart';
 import '../../recount/services/recount_service.dart';
 import '../../recount/pages/recount_report_view_page.dart';
+import '../../envelope/models/envelope_report_model.dart';
+import '../../envelope/services/envelope_report_service.dart';
+import '../../envelope/pages/envelope_report_view_page.dart';
+import '../../coffee_machine/models/coffee_machine_report_model.dart';
+import '../../coffee_machine/services/coffee_machine_report_service.dart';
+import '../../coffee_machine/pages/coffee_machine_report_view_page.dart';
 import '../../employees/services/user_role_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
@@ -39,10 +45,13 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
   static final _greenGradient = [Color(0xFF00b09b), Color(0xFF96c93d)];
   static final _redGradient = [Color(0xFFE53935), Color(0xFFFF5252)];
   static final _purpleGradient = [Color(0xFF7B1FA2), Color(0xFFBA68C8)];
+  static final _amberGradient = [Color(0xFFFF8F00), Color(0xFFFFCA28)];
 
   List<TaskAssignment> _assignments = [];
   List<ShiftReport> _shiftReviewReports = [];
   List<RecountReport> _recountReviewReports = [];
+  List<EnvelopeReport> _envelopePendingReports = [];
+  List<CoffeeMachineReport> _coffeeMachinePendingReports = [];
   List<RecurringTaskInstance> _recurringInstances = [];
   bool _isLoading = true;
   String? _userPhone;
@@ -92,6 +101,8 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
       List<RecurringTaskInstance> recurringInstances = [];
       List<ShiftReport> shiftReviews = [];
       List<RecountReport> recountReviews = [];
+      List<EnvelopeReport> envelopePending = [];
+      List<CoffeeMachineReport> coffeeMachinePending = [];
 
       await Future.wait([
         // Обычные задачи
@@ -153,6 +164,36 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
             Logger.warning('Ошибка загрузки отчётов пересчёта: $e');
           }
         }(),
+        // Конверты на проверке (только для управляющей/developer)
+        () async {
+          try {
+            final role = await UserRoleService.loadUserRole();
+            if (role != null && role.isAdminOrAbove) {
+              final allReports = await EnvelopeReportService.getReportsForCurrentUser();
+              envelopePending = allReports
+                  .where((r) => r.status == 'pending')
+                  .toList();
+              envelopePending.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            }
+          } catch (e) {
+            Logger.warning('Ошибка загрузки конвертов: $e');
+          }
+        }(),
+        // Счётчики кофемашин на проверке (только для управляющей/developer)
+        () async {
+          try {
+            final role = await UserRoleService.loadUserRole();
+            if (role != null && role.isAdminOrAbove) {
+              final allReports = await CoffeeMachineReportService.getReportsForCurrentUser();
+              coffeeMachinePending = allReports
+                  .where((r) => r.status == 'pending')
+                  .toList();
+              coffeeMachinePending.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            }
+          } catch (e) {
+            Logger.warning('Ошибка загрузки счётчиков кофемашин: $e');
+          }
+        }(),
       ]);
 
       if (!mounted) return;
@@ -161,6 +202,8 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         _recurringInstances = recurringInstances;
         _shiftReviewReports = shiftReviews;
         _recountReviewReports = recountReviews;
+        _envelopePendingReports = envelopePending;
+        _coffeeMachinePendingReports = coffeeMachinePending;
         _isLoading = false;
       });
     } catch (e) {
@@ -231,7 +274,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final activeCount = _activeAssignments.length + _activeRecurring.length + _shiftReviewReports.length + _recountReviewReports.length;
+    final activeCount = _activeAssignments.length + _activeRecurring.length + _shiftReviewReports.length + _recountReviewReports.length + _envelopePendingReports.length + _coffeeMachinePendingReports.length;
     final completedCount = _completedAssignments.length + _completedRecurring.length;
     final expiredCount = _expiredAssignments.length + _expiredRecurring.length;
 
@@ -257,7 +300,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                     : TabBarView(
                         controller: _tabController,
                         children: [
-                          _buildTaskList(_activeAssignments, _activeRecurring, 'Нет активных задач', isActive: true, shiftReviews: _shiftReviewReports, recountReviews: _recountReviewReports),
+                          _buildTaskList(_activeAssignments, _activeRecurring, 'Нет активных задач', isActive: true, shiftReviews: _shiftReviewReports, recountReviews: _recountReviewReports, envelopePending: _envelopePendingReports, coffeeMachinePending: _coffeeMachinePendingReports),
                           _buildTaskList(_completedAssignments, _completedRecurring, 'Нет выполненных задач', isCompleted: true),
                           _buildTaskList(_expiredAssignments, _expiredRecurring, 'Нет просроченных задач', isExpired: true),
                         ],
@@ -478,8 +521,10 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
     bool isExpired = false,
     List<ShiftReport> shiftReviews = const [],
     List<RecountReport> recountReviews = const [],
+    List<EnvelopeReport> envelopePending = const [],
+    List<CoffeeMachineReport> coffeeMachinePending = const [],
   }) {
-    if (assignments.isEmpty && recurring.isEmpty && shiftReviews.isEmpty && recountReviews.isEmpty) {
+    if (assignments.isEmpty && recurring.isEmpty && shiftReviews.isEmpty && recountReviews.isEmpty && envelopePending.isEmpty && coffeeMachinePending.isEmpty) {
       return _buildEmptyState(emptyMessage, isActive: isActive, isCompleted: isCompleted, isExpired: isExpired);
     }
 
@@ -496,6 +541,18 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
             ...shiftReviews.map((report) => _buildShiftReviewCard(report)),
             SizedBox(height: 16),
           ],
+          // Конверты на проверке
+          if (envelopePending.isNotEmpty) ...[
+            _buildModernSectionHeader('Конверты на проверке', Icons.mail_outline, envelopePending.length),
+            ...envelopePending.map((report) => _buildEnvelopeCard(report)),
+            SizedBox(height: 16),
+          ],
+          // Счётчики кофемашин на проверке
+          if (coffeeMachinePending.isNotEmpty) ...[
+            _buildModernSectionHeader('Счётчики на проверке', Icons.coffee_outlined, coffeeMachinePending.length),
+            ...coffeeMachinePending.map((report) => _buildCoffeeMachineCard(report)),
+            SizedBox(height: 16),
+          ],
           // Пересчёт на проверке
           if (recountReviews.isNotEmpty) ...[
             _buildModernSectionHeader('Пересчёт на проверке', Icons.inventory, recountReviews.length),
@@ -510,7 +567,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
           ],
           // Обычные задачи
           if (assignments.isNotEmpty) ...[
-            if (recurring.isNotEmpty || shiftReviews.isNotEmpty || recountReviews.isNotEmpty)
+            if (recurring.isNotEmpty || shiftReviews.isNotEmpty || recountReviews.isNotEmpty || envelopePending.isNotEmpty || coffeeMachinePending.isNotEmpty)
               _buildModernSectionHeader('Разовые задачи', Icons.assignment, assignments.length),
             ...assignments.map((assignment) => _buildModernAssignmentCard(assignment)),
           ],
@@ -1114,6 +1171,223 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
       context,
       MaterialPageRoute(
         builder: (context) => RecountReportViewPage(report: report),
+      ),
+    );
+    if (mounted) _loadAssignments();
+  }
+
+  Widget _buildEnvelopeCard(EnvelopeReport report) {
+    final dateFormat = DateFormat('dd.MM HH:mm');
+    final shiftLabel = report.shiftType == 'morning' ? 'утро' : 'вечер';
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 10.h),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openEnvelopeDetail(report),
+          borderRadius: BorderRadius.circular(14.r),
+          child: Container(
+            padding: EdgeInsets.all(14.w),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(14.r),
+              border: Border.all(color: _amberGradient[0].withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10.w),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: _amberGradient),
+                    borderRadius: BorderRadius.circular(12.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _amberGradient[0].withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.mail_outline, color: Colors.white, size: 20),
+                ),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        report.shopAddress,
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline, size: 14, color: Colors.white.withOpacity(0.4)),
+                          SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '${report.employeeName} · $shiftLabel · ${dateFormat.format(report.createdAt)}',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.white.withOpacity(0.5),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: _amberGradient.map((c) => c.withOpacity(0.2)).toList()),
+                              borderRadius: BorderRadius.circular(8.r),
+                              border: Border.all(color: _amberGradient[0].withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              'Ожидает',
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: _amberGradient[1],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 22),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openEnvelopeDetail(EnvelopeReport report) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EnvelopeReportViewPage(report: report, isAdmin: true),
+      ),
+    );
+    if (mounted) _loadAssignments();
+  }
+
+  Widget _buildCoffeeMachineCard(CoffeeMachineReport report) {
+    final dateFormat = DateFormat('dd.MM HH:mm');
+    final shiftLabel = report.shiftType == 'morning' ? 'утро' : 'вечер';
+    final coffeeGradient = [Color(0xFF795548), Color(0xFFA1887F)];
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 10.h),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openCoffeeMachineDetail(report),
+          borderRadius: BorderRadius.circular(14.r),
+          child: Container(
+            padding: EdgeInsets.all(14.w),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(14.r),
+              border: Border.all(color: coffeeGradient[0].withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10.w),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: coffeeGradient),
+                    borderRadius: BorderRadius.circular(12.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: coffeeGradient[0].withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.coffee_outlined, color: Colors.white, size: 20),
+                ),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        report.shopAddress,
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline, size: 14, color: Colors.white.withOpacity(0.4)),
+                          SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '${report.employeeName} · $shiftLabel · ${dateFormat.format(report.createdAt)}',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.white.withOpacity(0.5),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: coffeeGradient.map((c) => c.withOpacity(0.2)).toList()),
+                              borderRadius: BorderRadius.circular(8.r),
+                              border: Border.all(color: coffeeGradient[0].withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              'Ожидает',
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: coffeeGradient[1],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 22),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openCoffeeMachineDetail(CoffeeMachineReport report) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CoffeeMachineReportViewPage(report: report),
       ),
     );
     if (mounted) _loadAssignments();

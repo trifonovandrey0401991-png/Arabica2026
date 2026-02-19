@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/z_report_service.dart';
+import '../../employees/services/user_role_service.dart';
 import '../services/z_report_template_service.dart';
 import '../models/z_report_sample_model.dart';
 import '../models/z_report_template_model.dart';
@@ -38,8 +38,8 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
   }
 
   Future<void> _initTabController() async {
-    final prefs = await SharedPreferences.getInstance();
-    final role = prefs.getString('user_role') ?? '';
+    final roleData = await UserRoleService.loadUserRole();
+    final role = roleData?.role ?? '';
 
     if (mounted) {
       setState(() {
@@ -250,15 +250,17 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
   Future<void> _loadTemplates() async {
     try {
       final templates = await ZReportTemplateService.getTemplates();
-      setState(() {
-        _templates = templates;
-        _isLoadingTemplates = false;
-        if (templates.isNotEmpty) {
-          _selectedTemplate = templates.first;
-        }
-      });
+      if (mounted) {
+        setState(() {
+          _templates = templates;
+          _isLoadingTemplates = false;
+          if (templates.isNotEmpty) {
+            _selectedTemplate = templates.first;
+          }
+        });
+      }
     } catch (e) {
-      setState(() => _isLoadingTemplates = false);
+      if (mounted) setState(() => _isLoadingTemplates = false);
     }
   }
 
@@ -332,10 +334,12 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
         result = await ZReportService.parseZReport(_imageBase64!);
       }
 
-      setState(() {
-        _parseResult = result;
-        _isParsing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _parseResult = result;
+          _isParsing = false;
+        });
+      }
 
       if (result.success && result.data != null) {
         if (result.data!.totalSum != null) {
@@ -352,16 +356,18 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
         }
       }
     } catch (e) {
-      setState(() {
-        _isParsing = false;
-        _parseResult = ZReportParseResult(success: false, error: 'Ошибка: $e');
-      });
+      if (mounted) {
+        setState(() {
+          _isParsing = false;
+          _parseResult = ZReportParseResult(success: false, error: 'Ошибка: $e');
+        });
+      }
     }
   }
 
   Future<void> _saveSample() async {
     if (_imageBase64 == null) {
-      _showSnackBar('Сначала сфотографируйте Z-отчёт', Colors.orange);
+      _showSnackBar('Сначала сфотографируйте Z-отчёт', AppColors.warning);
       return;
     }
 
@@ -371,7 +377,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
     final resourceKeys = int.tryParse(_resourceKeysController.text);
 
     if (totalSum == null) {
-      _showSnackBar('Введите корректную общую сумму', Colors.orange);
+      _showSnackBar('Введите корректную общую сумму', AppColors.warning);
       return;
     }
 
@@ -414,20 +420,22 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
         }
 
         _showSnackBar(message, _greenGradient[0]);
-        setState(() {
-          _selectedImage = null;
-          _imageBase64 = null;
-          _parseResult = null;
-        });
+        if (mounted) {
+          setState(() {
+            _selectedImage = null;
+            _imageBase64 = null;
+            _parseResult = null;
+          });
+        }
         _totalSumController.clear();
         _cashSumController.clear();
         _ofdNotSentController.clear();
         _resourceKeysController.clear();
       } else {
-        _showSnackBar('Ошибка сохранения образца', Colors.red);
+        _showSnackBar('Ошибка сохранения образца', AppColors.error);
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -437,7 +445,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
         content: Row(
           children: [
             Icon(
-              color == Colors.red ? Icons.error_outline : Icons.check_circle,
+              color == AppColors.error ? Icons.error_outline : Icons.check_circle,
               color: Colors.white,
             ),
             SizedBox(width: 12),
@@ -642,7 +650,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
             icon: _isLoading ? null : Icons.save_alt,
             label: _isLoading ? 'Сохранение...' : 'Сохранить образец',
             gradient: _imageBase64 == null || _isLoading || _isParsing
-                ? [Colors.grey.shade600, Colors.grey.shade700]
+                ? [const Color(0xFF757575), const Color(0xFF616161)]
                 : _greenGradient,
             onTap: _isLoading || _isParsing || _imageBase64 == null ? null : _saveSample,
             isLoading: _isLoading,
@@ -714,10 +722,10 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
     return Container(
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.1),
+        color: AppColors.warning.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
-          color: Colors.orange.withOpacity(0.3),
+          color: AppColors.warning.withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -726,10 +734,10 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
           Container(
             padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.2),
+              color: AppColors.warning.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8.r),
             ),
-            child: Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+            child: Icon(Icons.warning_amber, color: AppColors.warning, size: 20),
           ),
           SizedBox(width: 12),
           Expanded(
@@ -856,7 +864,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
 
   Widget _buildResultCard(ZReportParseResult result) {
     final isSuccess = result.success;
-    final gradient = isSuccess ? _greenGradient : [Colors.red, Colors.red.shade300];
+    final gradient = isSuccess ? _greenGradient : [AppColors.error, AppColors.errorLight];
 
     return Container(
       padding: EdgeInsets.all(16.w),
@@ -915,7 +923,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
             SizedBox(height: 10),
             Text(
               result.error!,
-              style: TextStyle(color: Colors.red.shade300),
+              style: TextStyle(color: AppColors.errorLight),
             ),
           ],
           if (result.data != null) ...[
@@ -960,7 +968,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
   Widget _buildConfidenceRow(String label, double? value, String? confidence, bool isMoney) {
     final isFound = confidence == 'high' || confidence == 'medium';
     final isHigh = confidence == 'high';
-    final color = isFound ? (isHigh ? _greenGradient[0] : Colors.orange) : Colors.grey;
+    final color = isFound ? (isHigh ? _greenGradient[0] : AppColors.warning) : AppColors.neutral;
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 3.h),
@@ -1029,12 +1037,14 @@ class _TemplatesTabState extends State<_TemplatesTab> {
     setState(() => _isLoading = true);
     try {
       final templates = await ZReportTemplateService.getTemplates();
-      setState(() {
-        _templates = templates;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _templates = templates;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -1056,7 +1066,7 @@ class _TemplatesTabState extends State<_TemplatesTab> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Удалить', style: TextStyle(color: Colors.red)),
+            child: Text('Удалить', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -1133,10 +1143,10 @@ class _TemplatesTabState extends State<_TemplatesTab> {
           child: Container(
             padding: EdgeInsets.all(14.w),
             decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.1),
+              color: AppColors.amber.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12.r),
               border: Border.all(
-                color: Colors.amber.withOpacity(0.3),
+                color: AppColors.amber.withOpacity(0.3),
                 width: 1,
               ),
             ),
@@ -1145,10 +1155,10 @@ class _TemplatesTabState extends State<_TemplatesTab> {
                 Container(
                   padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.2),
+                    color: AppColors.amber.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(8.r),
                   ),
-                  child: Icon(Icons.lightbulb_outline, color: Colors.amber, size: 20),
+                  child: Icon(Icons.lightbulb_outline, color: AppColors.amber, size: 20),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -1287,19 +1297,19 @@ class _TemplatesTabState extends State<_TemplatesTab> {
                           _buildStatChip(
                             '${template.usageCount}',
                             Icons.analytics,
-                            Colors.blue,
+                            AppColors.info,
                           ),
                           SizedBox(width: 8),
                           _buildStatChip(
                             '${(template.successRate * 100).toStringAsFixed(0)}%',
                             Icons.check_circle,
-                            Colors.green,
+                            AppColors.success,
                           ),
                           SizedBox(width: 8),
                           _buildStatChip(
                             '${template.regions.length}',
                             Icons.grid_view,
-                            Colors.purple,
+                            AppColors.purple,
                           ),
                         ],
                       ),
@@ -1310,7 +1320,7 @@ class _TemplatesTabState extends State<_TemplatesTab> {
                   onPressed: () => _deleteTemplate(template),
                   icon: Icon(
                     Icons.delete_outline,
-                    color: Colors.red.withOpacity(0.7),
+                    color: AppColors.error.withOpacity(0.7),
                   ),
                 ),
               ],
@@ -1374,12 +1384,14 @@ class _StatsTabState extends State<_StatsTab> {
     setState(() => _isLoading = true);
     try {
       final stats = await ZReportTemplateService.getTrainingStats();
-      setState(() {
-        _stats = stats;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _stats = stats;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -1580,8 +1592,8 @@ class _StatsTabState extends State<_StatsTab> {
   Widget _buildCorrectionBar(String label, int count, int total) {
     final percent = total > 0 ? count / total : 0.0;
     final color = percent > 0.5
-        ? Colors.red
-        : (percent > 0.2 ? Colors.orange : _greenGradient[0]);
+        ? AppColors.error
+        : (percent > 0.2 ? AppColors.warning : _greenGradient[0]);
 
     return Container(
       padding: EdgeInsets.all(14.w),

@@ -16,6 +16,7 @@ const { withLock } = require('../utils/file_lock');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
+const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB_HANDOVER = process.env.USE_DB_SHIFT_HANDOVER === 'true';
 const USE_DB_SHIFTS = process.env.USE_DB_SHIFTS === 'true';
@@ -241,7 +242,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
   // ========== SHIFT REPORTS (Пересменка) ==========
 
-  app.get('/api/shift-reports', async (req, res) => {
+  app.get('/api/shift-reports', requireAuth, async (req, res) => {
     try {
       const { employeeName, shopAddress, date, status, shiftType } = req.query;
 
@@ -355,7 +356,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
     }
   });
 
-  app.post('/api/shift-reports', async (req, res) => {
+  app.post('/api/shift-reports', requireAuth, async (req, res) => {
     try {
       const { getShiftSettings, loadTodayReports, saveTodayReports } = require('./shift_automation_scheduler');
       const settings = await getShiftSettings();
@@ -370,26 +371,29 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
         return { hours, minutes };
       }
 
+      // Проверка попадания в интервал с поддержкой перехода через полночь
+      function isInRange(current, start, end) {
+        if (start <= end) {
+          return current >= start && current < end;
+        } else {
+          // Переход через полночь (например 23:01 - 13:00)
+          return current >= start || current < end;
+        }
+      }
+
       // Функция для проверки активного интервала
       function isWithinInterval(shiftType) {
-        // Boy Scout: getMoscowTime вместо ручного UTC+3
         const moscowNow = getMoscowTime();
-        const currentHour = moscowNow.getUTCHours();
-        const currentMinute = moscowNow.getUTCMinutes();
-        const currentMinutes = currentHour * 60 + currentMinute;
+        const currentMinutes = moscowNow.getUTCHours() * 60 + moscowNow.getUTCMinutes();
 
         if (shiftType === 'morning') {
           const start = parseTime(settings.morningStartTime);
           const end = parseTime(settings.morningEndTime);
-          const startMinutes = start.hours * 60 + start.minutes;
-          const endMinutes = end.hours * 60 + end.minutes;
-          return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+          return isInRange(currentMinutes, start.hours * 60 + start.minutes, end.hours * 60 + end.minutes);
         } else if (shiftType === 'evening') {
           const start = parseTime(settings.eveningStartTime);
           const end = parseTime(settings.eveningEndTime);
-          const startMinutes = start.hours * 60 + start.minutes;
-          const endMinutes = end.hours * 60 + end.minutes;
-          return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+          return isInRange(currentMinutes, start.hours * 60 + start.minutes, end.hours * 60 + end.minutes);
         }
         return false;
       }
@@ -498,7 +502,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // GET - Get single shift report by ID
-  app.get('/api/shift-reports/:id', async (req, res) => {
+  app.get('/api/shift-reports/:id', requireAuth, async (req, res) => {
     try {
       const reportId = decodeURIComponent(req.params.id);
       let report = null;
@@ -558,7 +562,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // PUT - Update shift report (confirm/rate)
-  app.put('/api/shift-reports/:id', async (req, res) => {
+  app.put('/api/shift-reports/:id', requireAuth, async (req, res) => {
     try {
       const reportId = decodeURIComponent(req.params.id);
       let existingReport = null;
@@ -752,7 +756,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   // ========== SHIFT HANDOVER REPORTS (Сдача смены) ==========
 
   // GET /api/shift-handover-reports - получить все отчеты сдачи смены
-  app.get('/api/shift-handover-reports', async (req, res) => {
+  app.get('/api/shift-handover-reports', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/shift-handover-reports:', req.query);
 
@@ -834,21 +838,22 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // GET /api/shift-handover-reports/:id - получить отчет по ID
-  app.get('/api/shift-handover-reports/:id', async (req, res) => {
+  app.get('/api/shift-handover-reports/:id', requireAuth, async (req, res) => {
     try {
-      const id = sanitizeId(req.params.id);
-      console.log('GET /api/shift-handover-reports/:id', id);
+      const rawId = decodeURIComponent(req.params.id);
+      const safeId = sanitizeId(rawId); // для файловых путей
+      console.log('GET /api/shift-handover-reports/:id', rawId);
 
       let report;
 
       if (USE_DB_HANDOVER) {
-        const row = await db.findById('shift_handover_reports', id);
+        const row = await db.findById('shift_handover_reports', rawId);
         if (!row) {
           return res.status(404).json({ success: false, error: 'Отчет не найден' });
         }
         report = dbHandoverReportToCamel(row);
       } else {
-        const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
+        const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${safeId}.json`);
 
         if (!await fileExists(reportFile)) {
           return res.status(404).json({ success: false, error: 'Отчет не найден' });
@@ -866,7 +871,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // POST /api/shift-handover-reports - создать отчет
-  app.post('/api/shift-handover-reports', async (req, res) => {
+  app.post('/api/shift-handover-reports', requireAuth, async (req, res) => {
     try {
       const report = req.body;
       console.log('POST /api/shift-handover-reports:', report.id);
@@ -877,11 +882,17 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       const createdHour = (createdAt.getUTCHours() + 3) % 24;
       const shiftType = createdHour >= 14 ? 'evening' : 'morning';
 
+      // Гарантируем статус pending для новых отчётов (иначе таймаут авто-отклонения не сработает)
+      if (!report.status) {
+        report.status = 'pending';
+      }
+
       if (USE_DB_HANDOVER) {
         const dbData = camelToDbHandover(report);
         dbData.id = report.id;
         dbData.date = report.date || (report.createdAt ? report.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]);
         if (!dbData.shift_type) dbData.shift_type = shiftType;
+        if (!dbData.status) dbData.status = 'pending';
         dbData.updated_at = new Date().toISOString();
         await db.upsert('shift_handover_reports', dbData);
       }
@@ -909,22 +920,23 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // PUT /api/shift-handover-reports/:id - обновить отчет (подтвердить/отклонить)
-  app.put('/api/shift-handover-reports/:id', async (req, res) => {
+  app.put('/api/shift-handover-reports/:id', requireAuth, async (req, res) => {
     try {
-      const id = sanitizeId(req.params.id);
+      const rawId = decodeURIComponent(req.params.id);
+      const safeId = sanitizeId(rawId); // для файловых путей
       const updatedData = req.body;
-      console.log('PUT /api/shift-handover-reports/:id', id, 'status:', updatedData.status);
+      console.log('PUT /api/shift-handover-reports/:id', rawId, 'status:', updatedData.status);
 
       let existingReport;
 
       if (USE_DB_HANDOVER) {
-        const row = await db.findById('shift_handover_reports', id);
+        const row = await db.findById('shift_handover_reports', rawId);
         if (!row) {
           return res.status(404).json({ success: false, error: 'Отчет не найден' });
         }
         existingReport = dbHandoverReportToCamel(row);
       } else {
-        const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
+        const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${safeId}.json`);
 
         if (!await fileExists(reportFile)) {
           return res.status(404).json({ success: false, error: 'Отчет не найден' });
@@ -945,13 +957,13 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       if (USE_DB_HANDOVER) {
         const dbData = camelToDbHandover(updatedData);
         dbData.updated_at = new Date().toISOString();
-        await db.updateById('shift_handover_reports', id, dbData);
+        await db.updateById('shift_handover_reports', rawId, dbData);
       }
 
       // Dual-write: всегда сохраняем в файл
-      const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
+      const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${safeId}.json`);
       await writeJsonFile(reportFile, updatedReport);
-      console.log('Отчет сдачи смены обновлен:', id, 'статус:', updatedReport.status);
+      console.log('Отчет сдачи смены обновлен:', rawId, 'статус:', updatedReport.status);
 
       // Отправляем push-уведомление сотруднику при изменении статуса на approved/rejected
       if (previousStatus !== updatedReport.status &&
@@ -990,21 +1002,22 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // DELETE /api/shift-handover-reports/:id - удалить отчет
-  app.delete('/api/shift-handover-reports/:id', async (req, res) => {
+  app.delete('/api/shift-handover-reports/:id', requireAuth, async (req, res) => {
     try {
-      const id = sanitizeId(req.params.id);
-      console.log('DELETE /api/shift-handover-reports:', id);
+      const rawId = decodeURIComponent(req.params.id);
+      const safeId = sanitizeId(rawId);
+      console.log('DELETE /api/shift-handover-reports:', rawId);
 
       if (USE_DB_HANDOVER) {
-        const row = await db.findById('shift_handover_reports', id);
+        const row = await db.findById('shift_handover_reports', rawId);
         if (!row) {
           return res.status(404).json({ success: false, error: 'Отчет не найден' });
         }
-        await db.deleteById('shift_handover_reports', id);
+        await db.deleteById('shift_handover_reports', rawId);
       }
 
       // Dual-write: удаляем файл тоже
-      const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
+      const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${safeId}.json`);
       if (await fileExists(reportFile)) {
         await fsp.unlink(reportFile);
       } else if (!USE_DB_HANDOVER) {
@@ -1019,7 +1032,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // GET /api/shift-handover/pending - получить pending отчёты (не сданные смены)
-  app.get('/api/shift-handover/pending', async (req, res) => {
+  app.get('/api/shift-handover/pending', requireAuth, async (req, res) => {
     try {
       const pending = getPendingShiftHandoverReports ? await getPendingShiftHandoverReports() : [];
       console.log(`GET /api/shift-handover/pending: found ${pending.length} pending`);
@@ -1035,7 +1048,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // GET /api/shift-handover/failed - получить failed отчёты (не в срок)
-  app.get('/api/shift-handover/failed', async (req, res) => {
+  app.get('/api/shift-handover/failed', requireAuth, async (req, res) => {
     try {
       const failed = getFailedShiftHandoverReports ? await getFailedShiftHandoverReports() : [];
       console.log(`GET /api/shift-handover/failed: found ${failed.length} failed`);

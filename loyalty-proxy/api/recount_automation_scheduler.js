@@ -304,6 +304,44 @@ class RecountScheduler extends BaseReportScheduler {
       }
     }
 
+    // DB check: catch old stuck reports not in today's JSON files
+    if (USE_DB) {
+      try {
+        const stuckRows = await db.query(
+          `SELECT id, shop_address, shift_type, employee_name, employee_phone
+           FROM recount_reports WHERE status = 'review'
+           AND review_deadline IS NOT NULL AND review_deadline < $1`,
+          [now.toISOString()]
+        );
+        for (const row of stuckRows.rows || stuckRows) {
+          await db.updateById('recount_reports', row.id, {
+            status: 'rejected',
+            rejected_at: now.toISOString(),
+            updated_at: now.toISOString()
+          });
+          rejectedCount++;
+          console.log(`${this.tag} DB: Recount REJECTED (stale review): ${row.shop_address}, employee: ${row.employee_name}`);
+        }
+
+        // Also reject reviews with NULL deadline (should not happen, but safety net)
+        const nullDeadlineRows = await db.query(
+          `SELECT id, shop_address, employee_name
+           FROM recount_reports WHERE status = 'review' AND review_deadline IS NULL`
+        );
+        for (const row of nullDeadlineRows.rows || nullDeadlineRows) {
+          await db.updateById('recount_reports', row.id, {
+            status: 'rejected',
+            rejected_at: now.toISOString(),
+            updated_at: now.toISOString()
+          });
+          rejectedCount++;
+          console.log(`${this.tag} DB: Recount REJECTED (null deadline): ${row.shop_address}, employee: ${row.employee_name}`);
+        }
+      } catch (dbErr) {
+        console.error(`${this.tag} DB review timeout check error:`, dbErr.message);
+      }
+    }
+
     return rejectedCount;
   }
 

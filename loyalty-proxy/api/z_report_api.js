@@ -9,6 +9,8 @@ const path = require('path');
 const templatesModule = require('../modules/z-report-templates');
 const visionModule = require('../modules/z-report-vision');
 const { sanitizeId } = require('../utils/file_helpers');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { requireAuth } = require('../utils/session_middleware');
 
 // Директория для изображений шаблонов
 const TEMPLATE_IMAGES_DIR = path.join(__dirname, '../data/template-images');
@@ -17,19 +19,22 @@ const REGION_SET_IMAGES_DIR = path.join(__dirname, '../data/region-set-images');
 /**
  * Настройка API для Z-отчётов
  */
-function setupZReportAPI(app) {
+async function setupZReportAPI(app) {
   console.log('[Z-Report API] Инициализация...');
 
   // Убедимся что директории существуют
-  ensureDirectories();
+  await ensureDirectories();
 
   // ============ ШАБЛОНЫ ============
 
   // Получить все шаблоны
-  app.get('/api/z-report/templates', async (req, res) => {
+  app.get('/api/z-report/templates', requireAuth, async (req, res) => {
     try {
       const { shopId } = req.query;
       const templates = await templatesModule.getTemplates(shopId);
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(templates, req.query, 'templates'));
+      }
       res.json({ success: true, templates });
     } catch (error) {
       console.error('[Z-Report API] Ошибка получения шаблонов:', error);
@@ -37,8 +42,20 @@ function setupZReportAPI(app) {
     }
   });
 
+  // Найти шаблон для магазина (MUST be before /:id to avoid shadowing)
+  app.get('/api/z-report/templates/find', requireAuth, async (req, res) => {
+    try {
+      const { shopId } = req.query;
+      const template = await templatesModule.findTemplateForShop(shopId);
+      res.json({ success: true, template });
+    } catch (error) {
+      console.error('[Z-Report API] Ошибка поиска шаблона:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // Получить шаблон по ID
-  app.get('/api/z-report/templates/:id', async (req, res) => {
+  app.get('/api/z-report/templates/:id', requireAuth, async (req, res) => {
     try {
       const template = await templatesModule.getTemplate(req.params.id);
       if (template) {
@@ -53,7 +70,7 @@ function setupZReportAPI(app) {
   });
 
   // Сохранить шаблон
-  app.post('/api/z-report/templates', async (req, res) => {
+  app.post('/api/z-report/templates', requireAuth, async (req, res) => {
     try {
       const { template, sampleImage, regionSetImages } = req.body;
 
@@ -77,7 +94,7 @@ function setupZReportAPI(app) {
   });
 
   // Удалить шаблон
-  app.delete('/api/z-report/templates/:id', async (req, res) => {
+  app.delete('/api/z-report/templates/:id', requireAuth, async (req, res) => {
     try {
       await templatesModule.deleteTemplate(req.params.id);
 
@@ -91,20 +108,8 @@ function setupZReportAPI(app) {
     }
   });
 
-  // Найти шаблон для магазина
-  app.get('/api/z-report/templates/find', async (req, res) => {
-    try {
-      const { shopId } = req.query;
-      const template = await templatesModule.findTemplateForShop(shopId);
-      res.json({ success: true, template });
-    } catch (error) {
-      console.error('[Z-Report API] Ошибка поиска шаблона:', error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
   // Обновить статистику шаблона
-  app.post('/api/z-report/templates/:id/stats', async (req, res) => {
+  app.post('/api/z-report/templates/:id/stats', requireAuth, async (req, res) => {
     try {
       const { wasSuccessful } = req.body;
       await templatesModule.updateTemplateStats(req.params.id, wasSuccessful);
@@ -118,7 +123,7 @@ function setupZReportAPI(app) {
   // ============ ИЗОБРАЖЕНИЯ ШАБЛОНОВ ============
 
   // Получить основное изображение шаблона
-  app.get('/api/z-report/templates/:id/image', async (req, res) => {
+  app.get('/api/z-report/templates/:id/image', requireAuth, async (req, res) => {
     try {
       const imagePath = path.join(TEMPLATE_IMAGES_DIR, `${sanitizeId(req.params.id)}.jpg`);
       try {
@@ -136,7 +141,7 @@ function setupZReportAPI(app) {
   // ============ ИЗОБРАЖЕНИЯ ФОРМАТОВ (REGION SETS) ============
 
   // Сохранить изображение для формата
-  app.post('/api/z-report/templates/:templateId/region-sets/:setId/image', async (req, res) => {
+  app.post('/api/z-report/templates/:templateId/region-sets/:setId/image', requireAuth, async (req, res) => {
     try {
       const { templateId, setId } = req.params;
       const { imageBase64 } = req.body;
@@ -154,7 +159,7 @@ function setupZReportAPI(app) {
   });
 
   // Получить изображение формата
-  app.get('/api/z-report/templates/:templateId/region-sets/:setId/image', async (req, res) => {
+  app.get('/api/z-report/templates/:templateId/region-sets/:setId/image', requireAuth, async (req, res) => {
     try {
       const templateId = sanitizeId(req.params.templateId);
       const setId = sanitizeId(req.params.setId);
@@ -180,7 +185,7 @@ function setupZReportAPI(app) {
   });
 
   // Удалить изображение формата
-  app.delete('/api/z-report/templates/:templateId/region-sets/:setId/image', async (req, res) => {
+  app.delete('/api/z-report/templates/:templateId/region-sets/:setId/image', requireAuth, async (req, res) => {
     try {
       const templateId = sanitizeId(req.params.templateId);
       const setId = sanitizeId(req.params.setId);
@@ -202,7 +207,7 @@ function setupZReportAPI(app) {
   // ============ РАСПОЗНАВАНИЕ ============
 
   // Распознать Z-отчёт
-  app.post('/api/z-report/parse', async (req, res) => {
+  app.post('/api/z-report/parse', requireAuth, async (req, res) => {
     try {
       const { imageBase64 } = req.body;
 
@@ -219,7 +224,7 @@ function setupZReportAPI(app) {
   });
 
   // Распознать с использованием шаблона
-  app.post('/api/z-report/parse-with-template', async (req, res) => {
+  app.post('/api/z-report/parse-with-template', requireAuth, async (req, res) => {
     try {
       const { imageBase64, templateId } = req.body;
 
@@ -249,7 +254,7 @@ function setupZReportAPI(app) {
   // ============ ОБУЧЕНИЕ ============
 
   // Сохранить образец для обучения
-  app.post('/api/z-report/training-samples', async (req, res) => {
+  app.post('/api/z-report/training-samples', requireAuth, async (req, res) => {
     try {
       const { imageBase64, rawText, correctData, recognizedData, shopId, templateId } = req.body;
 
@@ -275,7 +280,7 @@ function setupZReportAPI(app) {
   });
 
   // Получить статистику обучения
-  app.get('/api/z-report/training-stats', async (req, res) => {
+  app.get('/api/z-report/training-stats', requireAuth, async (req, res) => {
     try {
       const stats = await templatesModule.getTrainingStats();
       res.json({ success: true, ...stats });

@@ -109,53 +109,34 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('РКО'),
-        backgroundColor: AppColors.primaryGreen,
-        elevation: 0,
-      ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppColors.primaryGreen,
-              AppColors.primaryGreen.withOpacity(0.85),
+              AppColors.emerald,
+              AppColors.emeraldDark,
+              AppColors.night,
             ],
+            stops: [0.0, 0.5, 1.0],
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.all(20.w),
-            child: Column(
-              children: [
-                SizedBox(height: 20),
-                // Заголовок
-                Container(
-                  padding: EdgeInsets.all(20.w),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20.r),
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 70,
-                        height: 70,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20.r),
-                        ),
-                        child: Icon(
-                          Icons.receipt_long_rounded,
-                          size: 36,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'Расходный кассовый ордер',
+          child: Column(
+            children: [
+              // Кастомный хедер
+              Padding(
+                padding: EdgeInsets.fromLTRB(8.w, 8.h, 20.w, 0),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.arrow_back, color: Colors.white),
+                    ),
+                    Expanded(
+                      child: Text(
+                        'РКО',
                         style: TextStyle(
                           fontSize: 20.sp,
                           fontWeight: FontWeight.bold,
@@ -163,79 +144,136 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Выберите тип выплаты',
-                        style: TextStyle(
-                          fontSize: 15.sp,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    SizedBox(width: 48),
+                  ],
                 ),
-                SizedBox(height: 32),
-                // Карточка "ЗП после смены"
-                _buildTypeCard(
-                  context: context,
-                  icon: Icons.access_time_rounded,
-                  iconColor: Colors.orange,
-                  title: 'ЗП после смены',
-                  subtitle: 'Выплата за отработанную смену',
-                  description: 'Оформить РКО на зарплату сотруднику после завершения рабочей смены',
-                  onTap: _openShopSelectionForShift,
-                ),
-                SizedBox(height: 16),
-                // Карточка "ЗП за месяц"
-                _buildTypeCard(
-                  context: context,
-                  icon: Icons.calendar_month_rounded,
-                  iconColor: Colors.blue,
-                  title: 'ЗП за месяц',
-                  subtitle: 'Месячная выплата заработной платы',
-                  description: 'Оформить РКО на зарплату сотруднику за весь расчётный месяц',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => RKOAmountInputPage(
-                          rkoType: 'ЗП за месяц',
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                Spacer(),
-                // Подсказка внизу
-                Container(
-                  padding: EdgeInsets.all(16.w),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                  child: Row(
+              ),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.all(20.w),
+                  child: Column(
                     children: [
-                      Icon(
-                        Icons.info_outline_rounded,
-                        color: Colors.white.withOpacity(0.7),
-                        size: 22,
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'После оформления РКО будет сформирован PDF документ',
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            color: Colors.white.withOpacity(0.7),
+                      SizedBox(height: 12),
+                      // Заголовок с золотой иконкой
+                      Container(
+                        padding: EdgeInsets.all(20.w),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(20.r),
+                          border: Border.all(
+                            color: AppColors.gold.withOpacity(0.3),
                           ),
                         ),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 70,
+                              height: 70,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppColors.gold.withOpacity(0.3),
+                                    AppColors.darkGold.withOpacity(0.2),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(20.r),
+                              ),
+                              child: Icon(
+                                Icons.receipt_long_rounded,
+                                size: 36,
+                                color: AppColors.gold,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Расходный кассовый ордер',
+                              style: TextStyle(
+                                fontSize: 20.sp,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Выберите тип выплаты',
+                              style: TextStyle(
+                                fontSize: 15.sp,
+                                color: Colors.white.withOpacity(0.6),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                      SizedBox(height: 28),
+                      // Карточка "ЗП после смены"
+                      _buildTypeCard(
+                        context: context,
+                        icon: Icons.access_time_rounded,
+                        iconColor: AppColors.gold,
+                        title: 'ЗП после смены',
+                        subtitle: 'Выплата за отработанную смену',
+                        description: 'Оформить РКО на зарплату сотруднику после завершения рабочей смены',
+                        onTap: _openShopSelectionForShift,
+                      ),
+                      SizedBox(height: 14),
+                      // Карточка "ЗП за месяц"
+                      _buildTypeCard(
+                        context: context,
+                        icon: Icons.calendar_month_rounded,
+                        iconColor: AppColors.turquoise,
+                        title: 'ЗП за месяц',
+                        subtitle: 'Месячная выплата заработной платы',
+                        description: 'Оформить РКО на зарплату сотруднику за весь расчётный месяц',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RKOAmountInputPage(
+                                rkoType: 'ЗП за месяц',
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      Spacer(),
+                      // Подсказка внизу
+                      Container(
+                        padding: EdgeInsets.all(14.w),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(14.r),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline_rounded,
+                              color: AppColors.gold.withOpacity(0.7),
+                              size: 22,
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'После оформления РКО будет сформирован PDF документ',
+                                style: TextStyle(
+                                  fontSize: 13.sp,
+                                  color: Colors.white.withOpacity(0.5),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 10),
                     ],
                   ),
                 ),
-                SizedBox(height: 10),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -253,40 +291,37 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 12,
-            offset: Offset(0, 5),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(18.r),
+        border: Border.all(
+          color: iconColor.withOpacity(0.3),
+          width: 1.5,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20.r),
+          borderRadius: BorderRadius.circular(18.r),
           child: Padding(
-            padding: EdgeInsets.all(20.w),
+            padding: EdgeInsets.all(18.w),
             child: Row(
               children: [
                 // Иконка
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
                     color: iconColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(16.r),
                   ),
                   child: Icon(
                     icon,
-                    size: 32,
+                    size: 30,
                     color: iconColor,
                   ),
                 ),
-                SizedBox(width: 16),
+                SizedBox(width: 14),
                 // Текст
                 Expanded(
                   child: Column(
@@ -295,16 +330,16 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                       Text(
                         title,
                         style: TextStyle(
-                          fontSize: 18.sp,
+                          fontSize: 17.sp,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2D2D2D),
+                          color: Colors.white,
                         ),
                       ),
                       SizedBox(height: 4),
                       Text(
                         subtitle,
                         style: TextStyle(
-                          fontSize: 14.sp,
+                          fontSize: 13.sp,
                           fontWeight: FontWeight.w500,
                           color: iconColor,
                         ),
@@ -314,7 +349,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                         description,
                         style: TextStyle(
                           fontSize: 12.sp,
-                          color: Colors.grey[600],
+                          color: Colors.white.withOpacity(0.45),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -325,16 +360,16 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                 SizedBox(width: 8),
                 // Стрелка
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withOpacity(0.1),
+                    color: iconColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     Icons.arrow_forward_ios_rounded,
-                    color: AppColors.primaryGreen,
-                    size: 18,
+                    color: iconColor,
+                    size: 16,
                   ),
                 ),
               ],
@@ -537,11 +572,6 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('РКО'),
-        backgroundColor: widget.primaryColor,
-        elevation: 0,
-      ),
       body: Stack(
         children: [
           Container(
@@ -550,27 +580,42 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  widget.primaryColor,
-                  widget.primaryColor.withOpacity(0.85),
+                  AppColors.emerald,
+                  AppColors.emeraldDark,
+                  AppColors.night,
                 ],
+                stops: [0.0, 0.5, 1.0],
               ),
             ),
             child: SafeArea(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Заголовок
+                  // Кастомный хедер
                   Padding(
-                    padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 16.h),
-                    child: Text(
-                      'Выберите магазин:',
-                      style: TextStyle(
-                        fontSize: 20.sp,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                    padding: EdgeInsets.fromLTRB(8.w, 8.h, 20.w, 0),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(Icons.arrow_back, color: Colors.white),
+                        ),
+                        Expanded(
+                          child: Text(
+                            'Выберите магазин',
+                            style: TextStyle(
+                              fontSize: 20.sp,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        SizedBox(width: 48),
+                      ],
                     ),
                   ),
+                  SizedBox(height: 8.h),
 
                   // Список магазинов
                   Expanded(
@@ -592,7 +637,7 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
             Container(
               color: Colors.black.withOpacity(0.3),
               child: Center(
-                child: CircularProgressIndicator(color: Colors.white),
+                child: CircularProgressIndicator(color: AppColors.gold),
               ),
             ),
         ],
@@ -604,10 +649,10 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: widget.primaryColor.withOpacity(0.6),
+        color: Colors.white.withOpacity(0.07),
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
-          color: Colors.white.withOpacity(0.3),
+          color: AppColors.gold.withOpacity(0.2),
           width: 1.5,
         ),
       ),
@@ -622,16 +667,16 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
               children: [
                 // Иконка магазина
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12.r),
+                    color: AppColors.gold.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(14.r),
                   ),
                   child: Icon(
                     Icons.storefront_rounded,
-                    color: Colors.white,
-                    size: 28,
+                    color: AppColors.gold,
+                    size: 26,
                   ),
                 ),
                 SizedBox(width: 14),
@@ -640,7 +685,7 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
                   child: Text(
                     shop.address,
                     style: TextStyle(
-                      fontSize: 16.sp,
+                      fontSize: 15.sp,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                     ),
@@ -652,8 +697,8 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
                 // Стрелка
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: Colors.white.withOpacity(0.7),
-                  size: 28,
+                  color: AppColors.gold.withOpacity(0.5),
+                  size: 26,
                 ),
               ],
             ),

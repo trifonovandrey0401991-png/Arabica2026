@@ -258,14 +258,20 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                   SizedBox(height: 2),
                   Row(
                     children: [
-                      Text(
-                        CoffeeMachineTypes.getDisplayName(template.machineType),
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11.sp),
+                      Flexible(
+                        child: Text(
+                          CoffeeMachineTypes.getDisplayName(template.machineType),
+                          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11.sp),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       SizedBox(width: 8),
-                      Text(
-                        OcrPresets.getDisplayName(template.ocrPreset),
-                        style: TextStyle(color: AppColors.gold.withOpacity(0.5), fontSize: 11.sp),
+                      Flexible(
+                        child: Text(
+                          OcrPresets.getDisplayName(template.ocrPreset),
+                          style: TextStyle(color: AppColors.gold.withOpacity(0.5), fontSize: 11.sp),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),

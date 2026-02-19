@@ -20,6 +20,8 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
   String _searchQuery = '';
   final _searchController = TextEditingController();
   int _testDurationMinutes = 7;
+  int _minimumScore = 0;
+
   @override
   void initState() {
     super.initState();
@@ -69,52 +71,61 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
   }
 
   Future<void> _loadSettings() async {
-    final minutes = await TestQuestionService.getTestDurationMinutes();
+    final settings = await TestQuestionService.getTestSettings();
     if (mounted) {
-      setState(() => _testDurationMinutes = minutes);
+      setState(() {
+        _testDurationMinutes = settings.durationMinutes;
+        _minimumScore = settings.minimumScore;
+      });
     }
   }
 
   Future<void> _showSettingsDialog() async {
-    final controller = TextEditingController(text: '$_testDurationMinutes');
-
-    final result = await showDialog<int>(
+    final result = await showDialog<({int durationMinutes, int minimumScore})>(
       context: context,
       builder: (ctx) => _TestSettingsDialog(
-        controller: controller,
         currentMinutes: _testDurationMinutes,
+        currentMinimumScore: _minimumScore,
       ),
     );
 
-    controller.dispose();
+    if (result == null) return;
 
-    if (result != null && result != _testDurationMinutes) {
-      final success = await TestQuestionService.saveTestDurationMinutes(result);
-      if (success) {
-        setState(() => _testDurationMinutes = result);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Время теста: $result мин.'),
-              backgroundColor: Color(0xFF2E7D32),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-              margin: EdgeInsets.all(16.w),
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Ошибка сохранения настроек'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-              margin: EdgeInsets.all(16.w),
-            ),
-          );
-        }
+    final changed = result.durationMinutes != _testDurationMinutes ||
+        result.minimumScore != _minimumScore;
+    if (!changed) return;
+
+    final success = await TestQuestionService.saveTestSettings(
+      durationMinutes: result.durationMinutes,
+      minimumScore: result.minimumScore,
+    );
+    if (success) {
+      setState(() {
+        _testDurationMinutes = result.durationMinutes;
+        _minimumScore = result.minimumScore;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Настройки сохранены'),
+            backgroundColor: Color(0xFF2E7D32),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка сохранения настроек'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
+          ),
+        );
       }
     }
   }
@@ -730,12 +741,12 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
 
 /// Диалог настроек теста (время в минутах)
 class _TestSettingsDialog extends StatefulWidget {
-  final TextEditingController controller;
   final int currentMinutes;
+  final int currentMinimumScore;
 
   _TestSettingsDialog({
-    required this.controller,
     required this.currentMinutes,
+    required this.currentMinimumScore,
   });
 
   @override
@@ -746,17 +757,23 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
   static final _goldLight = Color(0xFFE8C860);
 
   late int _selectedMinutes;
-  final _focusNode = FocusNode();
+  late int _selectedMinScore;
+  late TextEditingController _minutesController;
+  late TextEditingController _minScoreController;
 
   @override
   void initState() {
     super.initState();
     _selectedMinutes = widget.currentMinutes;
+    _selectedMinScore = widget.currentMinimumScore;
+    _minutesController = TextEditingController(text: '$_selectedMinutes');
+    _minScoreController = TextEditingController(text: '$_selectedMinScore');
   }
 
   @override
   void dispose() {
-    _focusNode.dispose();
+    _minutesController.dispose();
+    _minScoreController.dispose();
     super.dispose();
   }
 
@@ -765,220 +782,283 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
     return Dialog(
       backgroundColor: AppColors.emeraldDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
-      child: Padding(
-        padding: EdgeInsets.all(28.w),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Иконка
-            Container(
-              padding: EdgeInsets.all(16.w),
-              decoration: BoxDecoration(
-                color: AppColors.gold.withOpacity(0.12),
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.gold.withOpacity(0.25)),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(28.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Иконка
+              Container(
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: AppColors.gold.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.gold.withOpacity(0.25)),
+                ),
+                child: Icon(
+                  Icons.settings_rounded,
+                  size: 36,
+                  color: AppColors.gold,
+                ),
               ),
-              child: Icon(
-                Icons.timer_rounded,
-                size: 36,
-                color: AppColors.gold,
+              SizedBox(height: 20),
+              Text(
+                'Настройки теста',
+                style: TextStyle(
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
               ),
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Время тестирования',
-              style: TextStyle(
-                fontSize: 20.sp,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
+
+              // ── Секция 1: Время ──
+              SizedBox(height: 24),
+              _buildSectionLabel('Время тестирования', Icons.timer_rounded),
+              SizedBox(height: 12),
+              _buildNumberInput(
+                controller: _minutesController,
+                value: _selectedMinutes,
+                min: 1,
+                max: 120,
+                onChanged: (v) => setState(() => _selectedMinutes = v),
               ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Укажите сколько минут отводится\nна прохождение теста',
-              style: TextStyle(
-                fontSize: 13.sp,
-                color: Colors.white.withOpacity(0.5),
-                height: 1.4,
+              SizedBox(height: 6),
+              Text(
+                'минут',
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  color: Colors.white.withOpacity(0.4),
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 24),
-            // Поле ввода минут
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(16.r),
-                border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+              SizedBox(height: 8),
+              _buildQuickOptions(
+                values: [5, 7, 10, 15],
+                selected: _selectedMinutes,
+                controller: _minutesController,
+                onSelect: (v) => setState(() => _selectedMinutes = v),
               ),
-              child: Row(
+
+              // ── Секция 2: Минимальный балл ──
+              SizedBox(height: 24),
+              _buildSectionLabel('Проходной балл', Icons.star_rounded),
+              SizedBox(height: 12),
+              _buildNumberInput(
+                controller: _minScoreController,
+                value: _selectedMinScore,
+                min: 0,
+                max: 20,
+                onChanged: (v) => setState(() => _selectedMinScore = v),
+              ),
+              SizedBox(height: 6),
+              Text(
+                _selectedMinScore == 0
+                    ? 'отключено'
+                    : 'из 20 правильных ответов',
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  color: _selectedMinScore == 0
+                      ? Colors.white.withOpacity(0.3)
+                      : Colors.white.withOpacity(0.4),
+                ),
+              ),
+              SizedBox(height: 8),
+              _buildQuickOptions(
+                values: [0, 10, 15, 18],
+                selected: _selectedMinScore,
+                controller: _minScoreController,
+                onSelect: (v) => setState(() => _selectedMinScore = v),
+                labels: {0: 'Выкл'},
+              ),
+
+              // ── Кнопки ──
+              SizedBox(height: 26),
+              Row(
                 children: [
-                  // Кнопка минус
-                  IconButton(
-                    onPressed: _selectedMinutes > 1
-                        ? () {
-                            setState(() {
-                              _selectedMinutes--;
-                              widget.controller.text = '$_selectedMinutes';
-                            });
-                          }
-                        : null,
-                    icon: Icon(
-                      Icons.remove_circle_outline,
-                      color: _selectedMinutes > 1
-                          ? AppColors.gold
-                          : Colors.white.withOpacity(0.2),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white.withOpacity(0.7),
+                        side: BorderSide(color: Colors.white.withOpacity(0.15)),
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14.r),
+                        ),
+                      ),
+                      child: Text('Отмена'),
                     ),
                   ),
-                  // Поле ввода
+                  SizedBox(width: 12),
                   Expanded(
-                    child: TextField(
-                      controller: widget.controller,
-                      focusNode: _focusNode,
-                      textAlign: TextAlign.center,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(3),
-                      ],
-                      style: TextStyle(
-                        color: _goldLight,
-                        fontSize: 32.sp,
-                        fontWeight: FontWeight.w800,
-                      ),
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      onChanged: (value) {
-                        final parsed = int.tryParse(value);
-                        if (parsed != null && parsed >= 1 && parsed <= 120) {
-                          setState(() => _selectedMinutes = parsed);
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (_selectedMinutes >= 1 && _selectedMinutes <= 120) {
+                          Navigator.pop(context, (
+                            durationMinutes: _selectedMinutes,
+                            minimumScore: _selectedMinScore,
+                          ));
                         }
                       },
-                    ),
-                  ),
-                  // Кнопка плюс
-                  IconButton(
-                    onPressed: _selectedMinutes < 120
-                        ? () {
-                            setState(() {
-                              _selectedMinutes++;
-                              widget.controller.text = '$_selectedMinutes';
-                            });
-                          }
-                        : null,
-                    icon: Icon(
-                      Icons.add_circle_outline,
-                      color: _selectedMinutes < 120
-                          ? AppColors.gold
-                          : Colors.white.withOpacity(0.2),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.gold.withOpacity(0.2),
+                        foregroundColor: AppColors.gold,
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14.r),
+                          side: BorderSide(color: AppColors.gold.withOpacity(0.4)),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        'Сохранить',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'минут',
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: Colors.white.withOpacity(0.4),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: 8),
-            // Быстрые варианты
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [5, 7, 10, 15].map((m) {
-                final isSelected = _selectedMinutes == m;
-                return Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4.w),
-                  child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        _selectedMinutes = m;
-                        widget.controller.text = '$m';
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(10.r),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.gold.withOpacity(0.2)
-                            : Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10.r),
-                        border: Border.all(
-                          color: isSelected
-                              ? AppColors.gold.withOpacity(0.5)
-                              : Colors.white.withOpacity(0.08),
-                        ),
-                      ),
-                      child: Text(
-                        '$m',
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? _goldLight
-                              : Colors.white.withOpacity(0.5),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            SizedBox(height: 26),
-            // Кнопки
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white.withOpacity(0.7),
-                      side: BorderSide(color: Colors.white.withOpacity(0.15)),
-                      padding: EdgeInsets.symmetric(vertical: 14.h),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14.r),
-                      ),
-                    ),
-                    child: Text('Отмена'),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      final value = int.tryParse(widget.controller.text);
-                      if (value != null && value >= 1 && value <= 120) {
-                        Navigator.pop(context, value);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.gold.withOpacity(0.2),
-                      foregroundColor: AppColors.gold,
-                      padding: EdgeInsets.symmetric(vertical: 14.h),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14.r),
-                        side: BorderSide(color: AppColors.gold.withOpacity(0.4)),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      'Сохранить',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionLabel(String text, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.gold.withOpacity(0.7)),
+        SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withOpacity(0.7),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNumberInput({
+    required TextEditingController controller,
+    required int value,
+    required int min,
+    required int max,
+    required ValueChanged<int> onChanged,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: value > min
+                ? () {
+                    final newVal = value - 1;
+                    onChanged(newVal);
+                    controller.text = '$newVal';
+                  }
+                : null,
+            icon: Icon(
+              Icons.remove_circle_outline,
+              color: value > min ? AppColors.gold : Colors.white.withOpacity(0.2),
+            ),
+          ),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              textAlign: TextAlign.center,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(3),
+              ],
+              style: TextStyle(
+                color: _goldLight,
+                fontSize: 32.sp,
+                fontWeight: FontWeight.w800,
+              ),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+              ),
+              onChanged: (text) {
+                final parsed = int.tryParse(text);
+                if (parsed != null && parsed >= min && parsed <= max) {
+                  onChanged(parsed);
+                }
+              },
+            ),
+          ),
+          IconButton(
+            onPressed: value < max
+                ? () {
+                    final newVal = value + 1;
+                    onChanged(newVal);
+                    controller.text = '$newVal';
+                  }
+                : null,
+            icon: Icon(
+              Icons.add_circle_outline,
+              color: value < max ? AppColors.gold : Colors.white.withOpacity(0.2),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickOptions({
+    required List<int> values,
+    required int selected,
+    required TextEditingController controller,
+    required ValueChanged<int> onSelect,
+    Map<int, String>? labels,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: values.map((v) {
+        final isActive = selected == v;
+        final label = labels?[v] ?? '$v';
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4.w),
+          child: InkWell(
+            onTap: () {
+              onSelect(v);
+              controller.text = '$v';
+            },
+            borderRadius: BorderRadius.circular(10.r),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? AppColors.gold.withOpacity(0.2)
+                    : Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(
+                  color: isActive
+                      ? AppColors.gold.withOpacity(0.5)
+                      : Colors.white.withOpacity(0.08),
+                ),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                  color: isActive ? _goldLight : Colors.white.withOpacity(0.5),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

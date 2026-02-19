@@ -359,16 +359,14 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              AppColors.primaryGreen,
-              Color(0xFF00695C),
-              Color(0xFF00796B),
-            ],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
         child: SafeArea(
@@ -409,11 +407,12 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
           // Кнопка "Добавить сотрудника"
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
-              icon: Icon(Icons.person_add, color: Colors.white),
+              icon: Icon(Icons.person_add, color: AppColors.gold),
               onPressed: () async {
                 final result = await Navigator.push(
                   context,
@@ -432,8 +431,9 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
           // Кнопка "Не верифицированные"
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
               icon: Icon(Icons.person_off, color: Colors.white),
@@ -452,8 +452,9 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
           // Кнопка обновления
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: IconButton(
               icon: Icon(Icons.refresh, color: Colors.white),
@@ -484,40 +485,27 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
   }
 
   Widget _buildEmployeesTab() {
-    return Container(
-      margin: EdgeInsets.only(top: 8.h),
-      decoration: BoxDecoration(
-        color: Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24.r),
-          topRight: Radius.circular(24.r),
-        ),
-      ),
-      child: Column(
+    return Column(
         children: [
           // Поиск
           Padding(
-            padding: EdgeInsets.all(16.w),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16.r),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: Offset(0, 2),
-                  ),
-                ],
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
               child: TextField(
+                style: TextStyle(color: Colors.white),
+                cursorColor: AppColors.gold,
                 decoration: InputDecoration(
                   hintText: 'Поиск сотрудника...',
-                  hintStyle: TextStyle(color: Colors.grey[400]),
-                  prefixIcon: Icon(Icons.search, color: AppColors.primaryGreen.withOpacity(0.7)),
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                  prefixIcon: Icon(Icons.search, color: AppColors.gold),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: Icon(Icons.clear, color: Colors.grey[400]),
+                          icon: Icon(Icons.clear, color: Colors.white.withOpacity(0.3)),
                           onPressed: () {
                             setState(() {
                               _searchQuery = '';
@@ -525,12 +513,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                           },
                         )
                       : null,
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16.r),
-                    borderSide: BorderSide.none,
-                  ),
+                  border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                 ),
                 onChanged: (value) {
@@ -551,13 +534,11 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
-                        ),
+                        CircularProgressIndicator(color: AppColors.gold),
                         SizedBox(height: 16),
                         Text(
                           'Загрузка сотрудников...',
-                          style: TextStyle(color: Colors.grey[600]),
+                          style: TextStyle(color: Colors.white.withOpacity(0.5)),
                         ),
                       ],
                     ),
@@ -574,13 +555,13 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                           Container(
                             padding: EdgeInsets.all(20.w),
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
+                              color: AppColors.error.withOpacity(0.15),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
                               Icons.error_outline,
                               size: 48,
-                              color: Colors.red,
+                              color: AppColors.error,
                             ),
                           ),
                           SizedBox(height: 16),
@@ -589,12 +570,13 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                             style: TextStyle(
                               fontSize: 18.sp,
                               fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
                           SizedBox(height: 8),
                           Text(
                             '${snapshot.error}',
-                            style: TextStyle(color: Colors.grey[600]),
+                            style: TextStyle(color: Colors.white.withOpacity(0.5)),
                             textAlign: TextAlign.center,
                           ),
                           SizedBox(height: 24),
@@ -609,7 +591,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                             icon: Icon(Icons.refresh),
                             label: Text('Повторить'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryGreen,
+                              backgroundColor: AppColors.gold,
                               foregroundColor: Colors.white,
                               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                               shape: RoundedRectangleBorder(
@@ -631,13 +613,11 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
-                        ),
+                        CircularProgressIndicator(color: AppColors.gold),
                         SizedBox(height: 16),
                         Text(
                           'Проверка верификации...',
-                          style: TextStyle(color: Colors.grey[600]),
+                          style: TextStyle(color: Colors.white.withOpacity(0.5)),
                         ),
                       ],
                     ),
@@ -679,13 +659,13 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                         Container(
                           padding: EdgeInsets.all(24.w),
                           decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Colors.white.withOpacity(0.06),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
                             Icons.person_search,
                             size: 48,
-                            color: Colors.grey[400],
+                            color: Colors.white.withOpacity(0.3),
                           ),
                         ),
                         SizedBox(height: 16),
@@ -694,7 +674,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                           style: TextStyle(
                             fontSize: 18.sp,
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey[600],
+                            color: Colors.white.withOpacity(0.7),
                           ),
                         ),
                         SizedBox(height: 8),
@@ -702,7 +682,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                           'Попробуйте изменить параметры поиска',
                           style: TextStyle(
                             fontSize: 14.sp,
-                            color: Colors.grey[400],
+                            color: Colors.white.withOpacity(0.4),
                           ),
                         ),
                       ],
@@ -719,7 +699,8 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                     _animationController.reset();
                     _animationController.forward();
                   },
-                  color: AppColors.primaryGreen,
+                  color: AppColors.gold,
+                  backgroundColor: AppColors.emeraldDark,
                   child: ListView.builder(
                     padding: EdgeInsets.symmetric(horizontal: 16.w),
                     itemCount: filteredEmployees.length,
@@ -764,27 +745,16 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
             ),
           ),
         ],
-      ),
     );
   }
 
   Widget _buildEmployeeCard(Employee employee, bool isVerified) {
-    // Определяем цвета в зависимости от статуса
-    final Color primaryColor = isVerified ? AppColors.primaryGreen : Color(0xFF78909C);
-    final Color accentColor = isVerified ? Color(0xFF00897B) : Color(0xFF90A4AE);
-
     return Container(
       margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(14.r),
-        boxShadow: [
-          BoxShadow(
-            color: primaryColor.withOpacity(0.06),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -813,7 +783,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
             decoration: BoxDecoration(
               border: Border(
                 left: BorderSide(
-                  color: isVerified ? AppColors.success : Colors.orange,
+                  color: isVerified ? AppColors.gold : AppColors.warmAmber,
                   width: 3,
                 ),
               ),
@@ -828,9 +798,12 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [primaryColor, accentColor],
+                      colors: [AppColors.emeraldDark, AppColors.emerald],
                     ),
                     borderRadius: BorderRadius.circular(12.r),
+                    border: isVerified
+                        ? Border.all(color: AppColors.gold.withOpacity(0.6), width: 1.5)
+                        : null,
                   ),
                   child: Center(
                     child: Text(
@@ -858,7 +831,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 15.sp,
-                          color: Color(0xFF1A1A1A),
+                          color: Colors.white.withOpacity(0.9),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -868,14 +841,14 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                       Row(
                         children: [
                           if (employee.phone != null && employee.phone!.isNotEmpty) ...[
-                            Icon(Icons.phone, size: 12, color: Colors.grey[500]),
+                            Icon(Icons.phone, size: 12, color: Colors.white.withOpacity(0.4)),
                             SizedBox(width: 4),
                             Flexible(
                               child: Text(
                                 employee.phone!,
                                 style: TextStyle(
                                   fontSize: 12.sp,
-                                  color: Colors.grey[600],
+                                  color: Colors.white.withOpacity(0.5),
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -887,8 +860,8 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                             padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                             decoration: BoxDecoration(
                               color: isVerified
-                                  ? Colors.green.withOpacity(0.1)
-                                  : Colors.orange.withOpacity(0.1),
+                                  ? AppColors.gold.withOpacity(0.15)
+                                  : AppColors.warmAmber.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(8.r),
                             ),
                             child: Row(
@@ -896,14 +869,14 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                               children: [
                                 Icon(
                                   isVerified ? Icons.check_circle : Icons.schedule,
-                                  color: isVerified ? Colors.green[700] : Colors.orange[700],
+                                  color: isVerified ? AppColors.gold : AppColors.warmAmber,
                                   size: 10,
                                 ),
                                 SizedBox(width: 3),
                                 Text(
                                   isVerified ? 'Верифицирован' : 'Ожидает',
                                   style: TextStyle(
-                                    color: isVerified ? Colors.green[700] : Colors.orange[700],
+                                    color: isVerified ? AppColors.gold : AppColors.warmAmber,
                                     fontSize: 10.sp,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -919,7 +892,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                 // Стрелка
                 Icon(
                   Icons.chevron_right,
-                  color: Colors.grey[400],
+                  color: Colors.white.withOpacity(0.3),
                   size: 20,
                 ),
               ],

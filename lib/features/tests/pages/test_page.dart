@@ -27,6 +27,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
   final Map<int, String> _userAnswers = {};
   Timer? _timer;
   int _durationMinutes = 7;
+  int _minimumScore = 0;
   int _timeRemaining = 420;
   bool _testStarted = false;
   bool _testFinished = false;
@@ -84,11 +85,12 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
   }
 
   Future<void> _loadDuration() async {
-    final minutes = await TestQuestionService.getTestDurationMinutes();
+    final settings = await TestQuestionService.getTestSettings();
     if (mounted) {
       setState(() {
-        _durationMinutes = minutes;
-        _timeRemaining = minutes * 60;
+        _durationMinutes = settings.durationMinutes;
+        _minimumScore = settings.minimumScore;
+        _timeRemaining = settings.durationMinutes * 60;
       });
     }
   }
@@ -183,7 +185,13 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
       });
 
       await _saveTestResult(score);
-      _showResultsDialog();
+
+      // Проверяем минимальный проходной балл
+      if (_minimumScore > 0 && score < _minimumScore) {
+        _showFailedDialog();
+      } else {
+        _showResultsDialog();
+      }
     }
   }
 
@@ -329,6 +337,180 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     } else {
       return 'баллов';
     }
+  }
+
+  void _retryTest() {
+    setState(() {
+      _score = 0;
+      _selectedAnswer = null;
+      _userAnswers.clear();
+      _testFinished = false;
+      _testStarted = false;
+      _testResult = null;
+      _currentQuestionIndex = 0;
+      _timeRemaining = _durationMinutes * 60;
+    });
+    _loadQuestions();
+  }
+
+  void _showFailedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: AppColors.emeraldDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+        child: Padding(
+          padding: EdgeInsets.all(28.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Иконка
+              Container(
+                padding: EdgeInsets.all(18.w),
+                decoration: BoxDecoration(
+                  color: Color(0xFFEF5350).withOpacity(0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Color(0xFFEF5350).withOpacity(0.3)),
+                ),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 44,
+                  color: Color(0xFFEF5350),
+                ),
+              ),
+              SizedBox(height: 22),
+              Text(
+                'Тест не пройден',
+                style: TextStyle(
+                  fontSize: 22.sp,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: 14),
+              // Счёт
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 18.h),
+                decoration: BoxDecoration(
+                  color: Color(0xFFEF5350).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(18.r),
+                  border: Border.all(color: Color(0xFFEF5350).withOpacity(0.3)),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      '$_score / ${_questions.length}',
+                      style: TextStyle(
+                        fontSize: 36.sp,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFFEF5350),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 14),
+              Text(
+                'Вы набрали меньше нужного',
+                style: TextStyle(
+                  fontSize: 15.sp,
+                  color: Colors.white.withOpacity(0.7),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'Необходимо: $_minimumScore правильных',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  color: Colors.white.withOpacity(0.5),
+                ),
+              ),
+              // Начисленные баллы
+              if (_testResult?.points != null) ...[
+                SizedBox(height: 14),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12.r),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _testResult!.points! >= 0 ? Icons.add_circle_rounded : Icons.remove_circle_rounded,
+                        color: _testResult!.points! >= 0 ? AppColors.gold : Colors.red,
+                        size: 18,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        '${_testResult!.points! >= 0 ? "+" : ""}${_testResult!.points!.toStringAsFixed(1)} ${_getBallsWordForm(_testResult!.points!)}',
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                          color: _testResult!.points! >= 0 ? _goldLight : Colors.red[300],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              SizedBox(height: 24),
+              // Кнопка "Попробовать ещё раз"
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    _retryTest();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.gold.withOpacity(0.2),
+                    foregroundColor: AppColors.gold,
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14.r),
+                      side: BorderSide(color: AppColors.gold.withOpacity(0.4)),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Попробовать ещё раз',
+                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              SizedBox(height: 10),
+              // Кнопка "Выйти"
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    Navigator.of(context).pop();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white.withOpacity(0.6),
+                    side: BorderSide(color: Colors.white.withOpacity(0.15)),
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14.r),
+                    ),
+                  ),
+                  child: Text(
+                    'Выйти',
+                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showResultsDialog() {
