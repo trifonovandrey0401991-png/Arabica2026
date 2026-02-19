@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/services/multitenancy_filter_service.dart';
 
 // Отчёты
 import '../../features/rko/pages/rko_reports_page.dart';
@@ -73,7 +74,7 @@ class ManagerGridPage extends StatefulWidget {
   State<ManagerGridPage> createState() => _ManagerGridPageState();
 }
 
-class _ManagerGridPageState extends State<ManagerGridPage> {
+class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingObserver {
 
   // Счётчики
   UnviewedCounts _reportCounts = UnviewedCounts();
@@ -93,7 +94,22 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadAllCounts();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Обновляем счётчики при возврате в приложение (после пуша)
+    if (state == AppLifecycleState.resumed && mounted) {
+      _loadAllCounts();
+    }
   }
 
   Future<void> _loadAllCounts() async {
@@ -147,7 +163,11 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
 
   Future<void> _loadReviewsCount() async {
     try {
-      final reviews = await ReviewService.getAllReviews();
+      final allReviews = await ReviewService.getAllReviews();
+      final reviews = await MultitenancyFilterService.filterByShopAddress(
+        allReviews,
+        (review) => review.shopAddress,
+      );
       final count = reviews.where((r) => r.hasUnreadFromClient).length;
       if (mounted) setState(() => _reviewsCount = count);
     } catch (e) { Logger.error('Ошибка загрузки счётчика отзывов', e); }
@@ -167,8 +187,17 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
 
   Future<void> _loadProductQuestionsCount() async {
     try {
-      final count = await ProductQuestionService.getTotalUnviewedByAdminCount();
-      if (mounted) setState(() => _productQuestionsCount = count);
+      final counts = await ProductQuestionService.getUnviewedByAdminCounts();
+      final allowedAddresses = await MultitenancyFilterService.getAllowedShopAddresses();
+      int total;
+      if (allowedAddresses == null) {
+        total = counts.values.fold<int>(0, (a, b) => a + b);
+      } else {
+        total = counts.entries
+            .where((e) => allowedAddresses.contains(e.key))
+            .fold<int>(0, (a, e) => a + e.value);
+      }
+      if (mounted) setState(() => _productQuestionsCount = total);
     } catch (e) { Logger.error('Ошибка загрузки счётчика поиска товаров', e); }
   }
 
@@ -209,8 +238,11 @@ class _ManagerGridPageState extends State<ManagerGridPage> {
 
   Future<void> _loadOrdersCount() async {
     try {
-      final counts = await OrderService.getUnviewedCounts();
-      if (mounted) setState(() => _ordersCount = counts['total'] ?? 0);
+      // Считаем pending (новые) + unviewed (rejected/unconfirmed)
+      final pending = await OrderService.getAllOrders(status: 'pending');
+      final unviewed = await OrderService.getUnviewedCounts();
+      final total = pending.length + (unviewed['total'] ?? 0);
+      if (mounted) setState(() => _ordersCount = total);
     } catch (e) { Logger.error('Ошибка загрузки счётчика заказов', e); }
   }
 

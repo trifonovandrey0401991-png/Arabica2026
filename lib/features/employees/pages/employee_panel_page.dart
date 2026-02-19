@@ -45,7 +45,7 @@ class EmployeePanelPage extends StatefulWidget {
   State<EmployeePanelPage> createState() => _EmployeePanelPageState();
 }
 
-class _EmployeePanelPageState extends State<EmployeePanelPage> {
+class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindingObserver {
   String? _userName;
   UserRoleData? _userRole;
   int? _referralCode;
@@ -58,12 +58,29 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadUserData();
     _loadAvailableSpins();
     _loadPendingOrdersCount();
     _loadUnreadProductQuestionsCount();
     _loadActiveTasksCount();
     _loadShiftTransferUnreadCount();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Обновляем счётчики при возврате в приложение (после пуша)
+    if (state == AppLifecycleState.resumed && mounted) {
+      _loadPendingOrdersCount();
+      _loadUnreadProductQuestionsCount();
+      _loadActiveTasksCount();
+    }
   }
 
   Future<void> _loadUserData() async {
