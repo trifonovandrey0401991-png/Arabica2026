@@ -13,17 +13,15 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { admin, firebaseInitialized } = require('../firebase-admin-config');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { requireAuth } = require('../utils/session_middleware');
+const pushService = require('../utils/push_service');
 
 // Директория хранения уведомлений
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const NOTIFICATIONS_DIR = `${DATA_DIR}/report-notifications`;
-const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
-const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 
 // Создаём директорию если не существует
 (async () => {
@@ -66,209 +64,13 @@ async function saveNotifications(notifications) {
   await writeJsonFile(filePath, notifications);
 }
 
-// Получить FCM токены админов
-async function getAdminFcmTokens() {
-  const tokens = [];
-  try {
-    // Сначала получаем телефоны админов из списка сотрудников
-    const adminPhones = [];
-    if (await fileExists(EMPLOYEES_DIR)) {
-      const employeeFiles = await fsp.readdir(EMPLOYEES_DIR);
-      for (const file of employeeFiles) {
-        if (!file.endsWith('.json')) continue;
-        const filePath = path.join(EMPLOYEES_DIR, file);
-        const employee = await loadJsonFile(filePath, null);
-        if (employee && employee.isAdmin === true && employee.phone) {
-          // Нормализуем телефон (убираем + и пробелы)
-          const normalizedPhone = employee.phone.replace(/[^\d]/g, '');
-          adminPhones.push(normalizedPhone);
-        }
-      }
-    }
-
-    console.log(`Найдено ${adminPhones.length} админов с телефонами:`, adminPhones);
-
-    // Теперь ищем FCM токены для этих телефонов
-    if (!(await fileExists(FCM_TOKENS_DIR))) {
-      console.log('Папка FCM токенов не существует');
-      return tokens;
-    }
-
-    const tokenFiles = await fsp.readdir(FCM_TOKENS_DIR);
-    for (const file of tokenFiles) {
-      if (!file.endsWith('.json')) continue;
-      const phone = file.replace('.json', '');
-      if (adminPhones.includes(phone)) {
-        const filePath = path.join(FCM_TOKENS_DIR, file);
-        const tokenData = await loadJsonFile(filePath, null);
-        if (tokenData && tokenData.token) {
-          tokens.push(tokenData.token);
-          console.log(`Найден FCM токен для админа ${maskPhone(phone)}`);
-        }
-      }
-    }
-  } catch (e) {
-    console.error('Ошибка получения FCM токенов админов:', e);
-  }
-  return tokens;
-}
-
-// Отправить push-уведомление всем админам
+// Push-функции делегируются в push_service.js (BUG-06: единый модуль)
 async function sendPushNotification(title, body, data = {}) {
-  if (!firebaseInitialized || !admin) {
-    console.log('Firebase не инициализирован, push-уведомление не отправлено');
-    return;
-  }
-
-  const tokens = await getAdminFcmTokens();
-  if (tokens.length === 0) {
-    console.log('Нет FCM токенов админов для отправки уведомления');
-    return;
-  }
-
-  console.log(`Отправка push-уведомления ${tokens.length} админам: ${title}`);
-
-  for (const token of tokens) {
-    try {
-      // Convert all data values to strings (Firebase requirement)
-      const stringData = Object.fromEntries(
-        Object.entries(data).map(([k, v]) => [k, String(v)])
-      );
-
-      await admin.messaging().send({
-        token: token,
-        notification: {
-          title: title,
-          body: body,
-        },
-        data: {
-          ...stringData,
-          click_action: 'FLUTTER_NOTIFICATION_CLICK',
-        },
-        android: {
-          priority: 'high',
-          notification: {
-            sound: 'default',
-            channelId: 'reports_channel',
-          },
-        },
-      });
-      console.log('Push-уведомление отправлено:', token.substring(0, 20) + '...');
-    } catch (e) {
-      console.error('❌ Ошибка отправки push-уведомления:', e.message);
-
-      // Проверяем, является ли токен невалидным
-      const errorMessage = e.message || '';
-      const isInvalidToken =
-        errorMessage.includes('Requested entity was not found') ||
-        errorMessage.includes('NotRegistered') ||
-        errorMessage.includes('InvalidRegistration') ||
-        errorMessage.includes('messaging/registration-token-not-registered') ||
-        errorMessage.includes('messaging/invalid-registration-token');
-
-      if (isInvalidToken) {
-        // Ищем и удаляем файл с этим токеном
-        try {
-          if (await fileExists(FCM_TOKENS_DIR)) {
-            const files = await fsp.readdir(FCM_TOKENS_DIR);
-            for (const file of files) {
-              if (!file.endsWith('.json')) continue;
-              const filePath = path.join(FCM_TOKENS_DIR, file);
-              const tokenData = await loadJsonFile(filePath, null);
-              if (tokenData && tokenData.token === token) {
-                await fsp.unlink(filePath);
-                console.log(`🗑️ Невалидный FCM токен удалён: ${file}`);
-                break;
-              }
-            }
-          }
-        } catch (deleteError) {
-          console.error(`Ошибка удаления невалидного токена:`, deleteError.message);
-        }
-      }
-    }
-  }
+  return pushService.sendPushToAllAdmins(title, body, data, 'reports_channel');
 }
 
-// Отправить push-уведомление конкретному пользователю по номеру телефона
 async function sendPushToPhone(phone, title, body, data = {}) {
-  if (!firebaseInitialized || !admin) {
-    console.log('Firebase не инициализирован, push-уведомление не отправлено');
-    return false;
-  }
-
-  try {
-    // Нормализуем телефон (убираем + и пробелы)
-    const normalizedPhone = phone.replace(/[^\d]/g, '');
-    const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
-
-    if (!(await fileExists(tokenFile))) {
-      console.log(`Нет FCM токена для телефона: ${maskPhone(phone)}`);
-      return false;
-    }
-
-    const tokenData = await loadJsonFile(tokenFile, null);
-    if (!tokenData || !tokenData.token) {
-      console.log(`Некорректный FCM токен для телефона: ${maskPhone(phone)}`);
-      return false;
-    }
-
-    console.log(`Отправка push-уведомления на ${maskPhone(phone)}: ${title}`);
-
-    // Convert all data values to strings (Firebase requirement)
-    const stringData = Object.fromEntries(
-      Object.entries(data).map(([k, v]) => [k, String(v)])
-    );
-
-    await admin.messaging().send({
-      token: tokenData.token,
-      notification: {
-        title: title,
-        body: body,
-      },
-      data: {
-        ...stringData,
-        click_action: 'FLUTTER_NOTIFICATION_CLICK',
-      },
-      android: {
-        priority: 'high',
-        notification: {
-          sound: 'default',
-          channelId: 'reviews_channel',
-        },
-      },
-    });
-
-    console.log(`✓ Push-уведомление отправлено на ${maskPhone(phone)}`);
-    return true;
-  } catch (e) {
-    console.error(`❌ Ошибка отправки push-уведомления на ${maskPhone(phone)}:`, e.message);
-
-    // Проверяем, является ли токен невалидным
-    const errorMessage = e.message || '';
-    const isInvalidToken =
-      errorMessage.includes('Requested entity was not found') ||
-      errorMessage.includes('NotRegistered') ||
-      errorMessage.includes('InvalidRegistration') ||
-      errorMessage.includes('messaging/registration-token-not-registered') ||
-      errorMessage.includes('messaging/invalid-registration-token');
-
-    if (isInvalidToken) {
-      // Удаляем невалидный токен
-      try {
-        const normalizedPhone = phone.replace(/[^\d]/g, '');
-        const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
-        if (await fileExists(tokenFile)) {
-          await fsp.unlink(tokenFile);
-          console.log(`🗑️ Невалидный FCM токен удалён для: ${maskPhone(phone)}`);
-        }
-      } catch (deleteError) {
-        console.error(`Ошибка удаления невалидного токена:`, deleteError.message);
-      }
-    }
-
-    return false;
-  }
+  return pushService.sendPushToPhone(phone, title, body, data, 'reports_channel');
 }
 
 // Названия типов отчётов на русском

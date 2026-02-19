@@ -85,9 +85,11 @@ class BaseReportScheduler {
     if (this._pushInitialized) return;
     this._pushInitialized = true;
     try {
-      const notificationsApi = require('../api/report_notifications_api');
-      this._pushNotification = notificationsApi.sendPushNotification;
-      this._pushToPhone = notificationsApi.sendPushToPhone;
+      const pushService = require('./push_service');
+      this._pushNotification = (title, body, data) =>
+        pushService.sendPushToAllAdmins(title, body, data, 'reports_channel');
+      this._pushToPhone = (phone, title, body, data) =>
+        pushService.sendPushToPhone(phone, title, body, data, 'reports_channel');
       console.log(`${this.tag} Push notifications enabled`);
     } catch (e) {
       console.log(`${this.tag} Push notifications disabled: ${e.message}`);

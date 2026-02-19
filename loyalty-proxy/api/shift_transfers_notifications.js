@@ -16,30 +16,12 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
+const pushService = require('../utils/push_service');
 
 // Константы
-const FCM_TOKENS_DIR = '/var/www/fcm-tokens';
-const EMPLOYEES_DIR = '/var/www/employees';
+const EMPLOYEES_DIR = process.env.DATA_DIR ? `${process.env.DATA_DIR}/employees` : '/var/www/employees';
 
 // ==================== УТИЛИТЫ ====================
-
-/**
- * Получить Firebase Admin SDK
- * @returns {Object|null} Firebase Admin или null
- */
-function getFirebaseAdmin() {
-  try {
-    const { admin, firebaseInitialized } = require('../firebase-admin-config');
-    if (!firebaseInitialized) {
-      console.log('⚠️  Firebase не инициализирован');
-      return null;
-    }
-    return admin;
-  } catch (e) {
-    console.error('❌ Ошибка загрузки Firebase:', e.message);
-    return null;
-  }
-}
 
 /**
  * Получить данные сотрудника по ID
@@ -133,101 +115,15 @@ async function getAllAdmins() {
   return admins;
 }
 
-/**
- * Получить FCM токен сотрудника по телефону
- * @param {string} phone - Номер телефона
- * @returns {Promise<string|null>} FCM токен или null
- */
-async function getFcmTokenByPhone(phone) {
-  try {
-    const normalizedPhone = phone.replace(/[^\d]/g, '');
-    const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
+// Push-функции делегируются в push_service.js (BUG-06: единый модуль)
+const CHANNEL = 'shift_transfers_channel';
 
-    if (!(await fileExists(tokenFile))) {
-      return null;
-    }
-
-    const content = await fsp.readFile(tokenFile, 'utf8');
-    const tokenData = JSON.parse(content);
-    return tokenData.token || null;
-  } catch (e) {
-    console.error(`❌ Ошибка получения токена для ${maskPhone(phone)}:`, e.message);
-    return null;
-  }
+function sendPushToPhone(phone, title, body, data = {}) {
+  return pushService.sendPushToPhone(phone, title, body, data, CHANNEL);
 }
 
-/**
- * Отправить push-уведомление одному пользователю
- * @param {string} phone - Номер телефона
- * @param {string} title - Заголовок уведомления
- * @param {string} body - Текст уведомления
- * @param {Object} data - Дополнительные данные
- * @returns {Promise<boolean>} true если отправлено успешно
- */
-async function sendPushToPhone(phone, title, body, data = {}) {
-  const admin = getFirebaseAdmin();
-  if (!admin) {
-    console.log('⚠️  Firebase не доступен, уведомление не отправлено');
-    return false;
-  }
-
-  const token = await getFcmTokenByPhone(phone);
-  if (!token) {
-    console.log(`⚠️  FCM токен не найден для ${maskPhone(phone)}`);
-    return false;
-  }
-
-  try {
-    await admin.messaging().send({
-      token: token,
-      notification: {
-        title: title,
-        body: body,
-      },
-      data: {
-        ...data,
-        click_action: 'FLUTTER_NOTIFICATION_CLICK',
-      },
-      android: {
-        priority: 'high',
-        notification: {
-          sound: 'default',
-          channelId: 'shift_transfers_channel',
-        },
-      },
-    });
-
-    console.log(`✅ Push отправлен: ${maskPhone(phone)}`);
-    return true;
-  } catch (e) {
-    console.error(`❌ Ошибка отправки push на ${maskPhone(phone)}:`, e.message);
-    return false;
-  }
-}
-
-/**
- * Отправить push нескольким пользователям
- * @param {Array} employees - Массив сотрудников с полем phone
- * @param {string} title - Заголовок
- * @param {string} body - Текст
- * @param {Object} data - Дополнительные данные
- * @returns {Promise<number>} Количество успешных отправок
- */
-async function sendPushToMultiple(employees, title, body, data = {}) {
-  let successCount = 0;
-
-  for (const employee of employees) {
-    if (!employee.phone) {
-      console.log(`⚠️  У сотрудника ${employee.name || employee.id} нет телефона`);
-      continue;
-    }
-
-    const success = await sendPushToPhone(employee.phone, title, body, data);
-    if (success) successCount++;
-  }
-
-  console.log(`✅ Отправлено ${successCount}/${employees.length} уведомлений`);
-  return successCount;
+function sendPushToMultiple(employees, title, body, data = {}) {
+  return pushService.sendPushToMultiple(employees, title, body, data, CHANNEL);
 }
 
 /**

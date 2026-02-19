@@ -22,7 +22,6 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const EMPLOYEE_CHATS_DIR = `${DATA_DIR}/employee-chats`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 const CLIENTS_DIR = `${DATA_DIR}/clients`;
-const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 const MESSAGE_RETENTION_DAYS = 90;
 const MAX_GROUP_PARTICIPANTS = 100;
 
@@ -37,19 +36,8 @@ const MAX_GROUP_PARTICIPANTS = 100;
   }
 })();
 
-// Firebase Admin for push notifications - use shared config
-let admin = null;
-let firebaseInitialized = false;
-try {
-  const firebaseConfig = require('../firebase-admin-config.js');
-  admin = firebaseConfig.admin;
-  firebaseInitialized = firebaseConfig.firebaseInitialized;
-  if (firebaseInitialized) {
-    console.log('✅ Employee Chat API: Firebase Admin подключен');
-  }
-} catch (e) {
-  console.warn('⚠️ Firebase Admin not available for employee chat notifications:', e.message);
-}
+// Push notifications — через общий push_service.js
+const pushService = require('../utils/push_service');
 
 // ===== DB Converters =====
 
@@ -262,62 +250,17 @@ function createPrivateChatId(phone1, phone2) {
   return `private_${sorted[0]}_${sorted[1]}`;
 }
 
-// Helper: Get FCM tokens for phones (async, parallel reads)
+// Push-функции делегируются в push_service.js (BUG-06: единый модуль)
+const CHAT_CHANNEL = 'employee_chat_channel';
+
 async function getFcmTokens(phones) {
-  const results = await Promise.all(phones.map(async (phone) => {
-    const tokenFile = path.join(FCM_TOKENS_DIR, `${phone}.json`);
-    try {
-      const content = await fsPromises.readFile(tokenFile, 'utf8');
-      const data = JSON.parse(content);
-      if (data.token) {
-        return { phone, token: data.token };
-      }
-      return null;
-    } catch (e) {
-      if (e.code !== 'ENOENT') {
-        console.error(`Error reading FCM token for ${maskPhone(phone)}:`, e.message);
-      }
-      return null;
-    }
-  }));
-  return results.filter(Boolean);
+  return pushService.getFcmTokens(phones);
 }
 
-// Helper: Send push notification
 async function sendPushNotification(tokens, title, body, data) {
-  if (!firebaseInitialized || !admin || tokens.length === 0) {
-    console.log(`📵 Push не отправлен: firebase=${firebaseInitialized}, tokens=${tokens.length}`);
-    return;
-  }
-
-  console.log(`📤 Отправка push: "${title}" -> ${tokens.length} получателей`);
-
+  if (tokens.length === 0) return;
   for (const { phone, token } of tokens) {
-    try {
-      await admin.messaging().send({
-        token,
-        notification: { title, body },
-        data: data || {},
-        android: {
-          priority: 'high',
-          notification: {
-            sound: 'default',
-            channelId: 'employee_chat_channel'
-          }
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: 'default',
-              badge: 1
-            }
-          }
-        }
-      });
-      console.log(`✅ Push отправлен: ${maskPhone(phone)}`);
-    } catch (e) {
-      console.error(`❌ Push ошибка для ${maskPhone(phone)}:`, e.message);
-    }
+    await pushService.sendPushByToken(token, title, body, data || {}, CHAT_CHANNEL, phone);
   }
 }
 

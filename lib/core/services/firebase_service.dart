@@ -23,6 +23,10 @@ import '../../features/orders/pages/orders_page.dart';
 import '../../features/work_schedule/pages/my_schedule_page.dart';
 import '../../features/work_schedule/pages/work_schedule_page.dart';
 import '../../features/tasks/pages/my_tasks_page.dart';
+import '../../features/tasks/pages/task_reports_page.dart';
+import '../../features/ai_training/pages/pending_codes_page.dart';
+import '../../features/tests/pages/test_notifications_page.dart';
+import '../../app/pages/reports_page.dart';
 import '../../features/employee_chat/pages/employee_chats_list_page.dart';
 import '../../features/employees/services/user_role_service.dart';
 import '../constants/api_constants.dart';
@@ -31,6 +35,24 @@ import '../utils/logger.dart';
 // На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием
 import 'package:firebase_core/firebase_core.dart' as firebase_core;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+/// BUG-03: Top-level handler для фоновых сообщений (работает в отдельном изоляте)
+/// Используется для обработки data-only сообщений и критических уведомлений
+/// (например, verification_revoked) когда приложение не активно.
+@pragma('vm:entry-point')
+Future<void> _firebaseBackgroundMessageHandler(RemoteMessage message) async {
+  final type = message.data['type'] as String?;
+
+  // Для verification_revoked сохраняем флаг — при открытии приложения покажем диалог
+  if (type == 'verification_revoked') {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('verification_revoked_pending', true);
+    } catch (_) {
+      // SharedPreferences может быть недоступен в изоляте — игнорируем
+    }
+  }
+}
 
 /// Сервис для работы с Firebase Cloud Messaging (FCM)
 class FirebaseService {
@@ -46,6 +68,9 @@ class FirebaseService {
 
   /// Флаг для предотвращения повторного показа диалога блокировки
   static bool _verificationRevokedDialogShown = false;
+
+  /// Буфер для уведомления, пришедшего до установки _globalContext (BUG-01: cold start)
+  static Map<String, dynamic>? _pendingNotificationData;
   
   /// Получить экземпляр FirebaseMessaging (ленивая инициализация)
   static FirebaseMessaging _getMessaging() {
@@ -198,7 +223,15 @@ class FirebaseService {
   /// Инициализация после получения разрешений (выполняется в отдельном микротаске)
   static Future<void> _initializeAfterPermissions(FirebaseMessaging messaging) async {
     Logger.debug('Начало инициализации после получения разрешений');
-    
+
+    // BUG-03: регистрация background message handler
+    try {
+      FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundMessageHandler);
+      Logger.debug('Background message handler зарегистрирован');
+    } catch (e) {
+      Logger.debug('Ошибка регистрации background handler: $e');
+    }
+
     Logger.debug('Начало инициализации локальных уведомлений...');
     // Инициализация локальных уведомлений
     final androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -350,6 +383,15 @@ class FirebaseService {
   /// Установить глобальный контекст для навигации
   static void setGlobalContext(BuildContext context) {
     _globalContext = context;
+    // BUG-01: обработать буферизованное уведомление из cold start
+    if (_pendingNotificationData != null) {
+      final data = _pendingNotificationData!;
+      _pendingNotificationData = null;
+      Logger.debug('Обработка буферизованного уведомления после установки контекста');
+      Future.microtask(() => _handleNotificationNavigation(data));
+    }
+    // BUG-03: проверить флаг verification_revoked из фонового handler
+    Future.microtask(() => checkPendingVerificationRevoked());
   }
 
   /// Проверить, разрешены ли уведомления
@@ -370,6 +412,21 @@ class FirebaseService {
     } catch (e) {
       Logger.error('Ошибка проверки разрешений уведомлений', e);
       return false;
+    }
+  }
+
+  /// BUG-03: Проверить флаг verification_revoked, установленный в фоновом handler
+  /// Вызывается при открытии приложения для показа диалога блокировки
+  static Future<void> checkPendingVerificationRevoked() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final pending = prefs.getBool('verification_revoked_pending') ?? false;
+      if (pending) {
+        await prefs.remove('verification_revoked_pending');
+        _showVerificationRevokedDialog();
+      }
+    } catch (e) {
+      Logger.debug('Ошибка проверки pending verification_revoked: $e');
     }
   }
 
@@ -442,7 +499,7 @@ class FirebaseService {
     final type = message.data['type'] as String?;
 
     AndroidNotificationDetails androidDetails;
-    if (type == 'new_order' || type == 'order_status') {
+    if (type == 'new_order' || type == 'order_status' || type == 'order_unconfirmed' || type == 'order_rejected') {
       androidDetails = AndroidNotificationDetails(
         'orders_channel',
         'Заказы',
@@ -467,7 +524,9 @@ class FirebaseService {
         color: _notificationColor,
         largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
-    } else if (type == 'product_question_created' || type == 'product_question_answered') {
+    } else if (type == 'product_question_created' || type == 'product_question_answered' ||
+               type == 'product_question' || type == 'product_answer' ||
+               type == 'personal_dialog_employee_message' || type == 'personal_dialog_client_message') {
       // Канал для вопросов о товаре
       androidDetails = AndroidNotificationDetails(
         'product_questions_channel',
@@ -483,7 +542,8 @@ class FirebaseService {
     } else if (type != null && (type.startsWith('new_task') ||
                type.startsWith('task_') ||
                type.startsWith('new_recurring_task') ||
-               type.startsWith('recurring_task_'))) {
+               type.startsWith('recurring_task_') ||
+               type == 'test_assigned')) {
       // Канал для задач
       androidDetails = AndroidNotificationDetails(
         'tasks_channel',
@@ -508,11 +568,92 @@ class FirebaseService {
         color: _notificationColor,
         largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
-    } else {
+    } else if (type == 'report_notification' || type == 'report_status_changed' ||
+               type == 'shift_confirmed' || type == 'recount_confirmed' ||
+               type == 'shift_handover_penalty') {
+      // Канал для отчётов (пересменка, пересчёт, сдать смену и т.д.)
+      androidDetails = AndroidNotificationDetails(
+        'reports_channel',
+        'Отчёты',
+        channelDescription: 'Уведомления об отчётах',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+        icon: '@drawable/ic_launcher_foreground',
+        color: _notificationColor,
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      );
+    } else if (type == 'management_message') {
+      // Канал для связи с руководством
+      androidDetails = AndroidNotificationDetails(
+        'management_channel',
+        'Связь с руководством',
+        channelDescription: 'Сообщения от руководства',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+        icon: '@drawable/ic_launcher_foreground',
+        color: _notificationColor,
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      );
+    } else if (type == 'schedule_updated') {
+      // Канал для графика работы
+      androidDetails = AndroidNotificationDetails(
+        'schedule_channel',
+        'График работы',
+        channelDescription: 'Уведомления об изменениях графика',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+        icon: '@drawable/ic_launcher_foreground',
+        color: _notificationColor,
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      );
+    } else if (type == 'geofence' || type == 'attendance_reminder') {
+      // Канал для геолокации и посещаемости
+      androidDetails = AndroidNotificationDetails(
+        'location_channel',
+        'Геолокация',
+        channelDescription: 'Уведомления о геолокации и посещаемости',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+        icon: '@drawable/ic_launcher_foreground',
+        color: _notificationColor,
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      );
+    } else if (type == 'new_pending_codes') {
+      // Канал для мастер-каталога
+      androidDetails = AndroidNotificationDetails(
+        'master_catalog_channel',
+        'Мастер-каталог',
+        channelDescription: 'Уведомления о новых кодах товаров',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+        icon: '@drawable/ic_launcher_foreground',
+        color: _notificationColor,
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      );
+    } else if (message.data.containsKey('reviewId')) {
+      // Уведомление об отзыве (legacy-формат без поля type)
       androidDetails = AndroidNotificationDetails(
         'reviews_channel',
         'Отзывы',
         channelDescription: 'Уведомления о новых ответах на отзывы',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+        icon: '@drawable/ic_launcher_foreground',
+        color: _notificationColor,
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      );
+    } else {
+      // Общий канал для неизвестных типов
+      androidDetails = AndroidNotificationDetails(
+        'general_channel',
+        'Общие уведомления',
+        channelDescription: 'Прочие уведомления',
         importance: Importance.high,
         priority: Priority.high,
         showWhen: true,
@@ -533,10 +674,14 @@ class FirebaseService {
       iOS: iosDetails,
     );
 
+    // BUG-04: уникальный ID на основе messageId (уникален от FCM), не message.hashCode
+    final notificationId = (message.messageId?.hashCode ??
+        DateTime.now().microsecondsSinceEpoch).abs() % 2147483647;
+
     await _localNotifications.show(
-      message.hashCode,
-      message.notification?.title ?? 'Новый ответ',
-      message.notification?.body ?? 'У вас новый ответ на отзыв',
+      notificationId,
+      message.notification?.title ?? 'Уведомление',
+      message.notification?.body ?? '',
       notificationDetails,
       payload: jsonEncode(message.data),
     );
@@ -625,7 +770,12 @@ class FirebaseService {
 
   /// Навигация к диалогу при открытии уведомления
   static void _handleNotificationNavigation(Map<String, dynamic> data) async {
-    if (_globalContext == null) return;
+    if (_globalContext == null) {
+      // BUG-01: сохраняем данные до появления контекста
+      _pendingNotificationData = Map<String, dynamic>.from(data);
+      Logger.debug('Контекст ещё не готов, уведомление сохранено в буфер');
+      return;
+    }
 
     final type = data['type'] as String?;
 
@@ -636,11 +786,11 @@ class FirebaseService {
     }
 
     // Обработка уведомлений о заказах — проверяем роль пользователя
-    if (type == 'new_order' || type == 'order_status' || type == 'order_rejected') {
+    if (type == 'new_order' || type == 'order_status' || type == 'order_rejected' || type == 'order_unconfirmed') {
       final userRole = await UserRoleService.loadUserRole();
       final isStaff = userRole != null && userRole.isEmployeeOrAdmin;
 
-      if (type == 'new_order' && isStaff) {
+      if ((type == 'new_order' || type == 'order_unconfirmed') && isStaff) {
         // Сотрудник/админ → страница управления заказами
         Navigator.of(_globalContext!).push(
           MaterialPageRoute(
@@ -782,12 +932,11 @@ class FirebaseService {
       return;
     }
 
-    // Обработка уведомлений о просроченных задачах для админа
+    // Обработка уведомлений о просроченных задачах для админа → отчёты по задачам
     if (type == 'task_expired_admin' || type == 'recurring_task_expired_admin') {
-      // Админ тоже переходит на страницу задач (или можно сделать отдельную страницу отчётов)
       Navigator.of(_globalContext!).push(
         MaterialPageRoute(
-          builder: (context) => MyTasksPage(), // Note: можно добавить TaskReportsPage для админов
+          builder: (context) => const TaskReportsPage(),
         ),
       );
       return;
@@ -846,6 +995,46 @@ class FirebaseService {
         );
         return;
       }
+    }
+
+    // Обработка уведомления об обновлении графика → мой график
+    if (type == 'schedule_updated') {
+      Navigator.of(_globalContext!).push(
+        MaterialPageRoute(
+          builder: (context) => MySchedulePage(),
+        ),
+      );
+      return;
+    }
+
+    // Обработка уведомления о назначении теста → страница тестов
+    if (type == 'test_assigned') {
+      Navigator.of(_globalContext!).push(
+        MaterialPageRoute(
+          builder: (context) => const TestNotificationsPage(),
+        ),
+      );
+      return;
+    }
+
+    // Обработка уведомления о новом отчёте (для админов) → страница отчётов
+    if (type == 'report_notification') {
+      Navigator.of(_globalContext!).push(
+        MaterialPageRoute(
+          builder: (context) => const ReportsPage(),
+        ),
+      );
+      return;
+    }
+
+    // Обработка уведомления о новых кодах (для админов) → страница ожидающих кодов
+    if (type == 'new_pending_codes') {
+      Navigator.of(_globalContext!).push(
+        MaterialPageRoute(
+          builder: (context) => const PendingCodesPage(),
+        ),
+      );
+      return;
     }
 
     // Обработка уведомлений об отзывах (старая логика)

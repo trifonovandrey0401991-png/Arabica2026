@@ -8,7 +8,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
-const { admin, firebaseInitialized } = require('../firebase-admin-config');
+const pushService = require('../utils/push_service');
 const { sendPushNotification } = require('../api/report_notifications_api');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile, withLock } = require('../utils/async_fs');
@@ -19,7 +19,6 @@ const USE_DB = process.env.USE_DB_ORDERS === 'true';
 
 const ORDERS_DIR = `${DATA_DIR}/orders`;
 const COUNTER_FILE = path.join(ORDERS_DIR, 'order-counter.json');
-const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 const DIALOGS_DIR = `${DATA_DIR}/client-dialogs`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 
@@ -364,62 +363,27 @@ async function updateOrderStatus(orderId, updates) {
 }
 
 async function sendOrderNotification(order, type) {
-  if (!firebaseInitialized) {
-    console.warn('⚠️  Push-уведомление не отправлено: Firebase не инициализирован');
-    return;
+  let title, body;
+  if (type === 'accepted') {
+    title = 'Заказ ' + order.orderNumber + ' принят';
+    body = 'Ваш заказ принят в работу сотрудником ' + order.acceptedBy;
+  } else {
+    title = 'Заказ ' + order.orderNumber + ' не принят';
+    body = 'Причина: ' + order.rejectionReason;
   }
 
-  const tokenFile = path.join(FCM_TOKENS_DIR, order.clientPhone + '.json');
-
-  if (!(await fileExists(tokenFile))) {
-    console.warn('⚠️  FCM токен для ' + order.clientPhone + ' не найден');
-    return;
-  }
-
-  try {
-    const content = await fsp.readFile(tokenFile, 'utf8');
-    const { token } = JSON.parse(content);
-
-    let title, body;
-    if (type === 'accepted') {
-      title = 'Заказ ' + order.orderNumber + ' принят';
-      body = 'Ваш заказ принят в работу сотрудником ' + order.acceptedBy;
-    } else {
-      title = 'Заказ ' + order.orderNumber + ' не принят';
-      body = 'Причина: ' + order.rejectionReason;
-    }
-
-    await admin.messaging().send({
-      token,
-      notification: { title, body },
-      data: {
-        type: 'order_status',
-        orderId: order.id,
-        orderNumber: String(order.orderNumber),
-        shopAddress: order.shopAddress,
-        status: order.status
-      },
-      android: { priority: 'high' },
-      apns: { payload: { aps: { sound: 'default' } } }
-    });
-
-    console.log('✅ Push-уведомление отправлено клиенту ' + order.clientPhone);
-  } catch (err) {
-    console.error('❌ Ошибка отправки push-уведомления:', err.message);
-  }
+  await pushService.sendPushToPhone(order.clientPhone, title, body, {
+    type: 'order_status',
+    orderId: order.id,
+    orderNumber: String(order.orderNumber),
+    shopAddress: order.shopAddress,
+    status: order.status
+  }, 'orders_channel');
 }
 
-// Отправка push уведомления всем сотрудникам о новом заказе
+// Отправка push уведомления всем верифицированным сотрудникам о новом заказе
 async function sendNewOrderNotificationToEmployees(order) {
-  if (!firebaseInitialized) {
-    console.warn('⚠️  Push сотрудникам не отправлен: Firebase не инициализирован');
-    return;
-  }
-
   try {
-    // Получаем список всех сотрудников из БД
-    const employees = await db.findAll('employees');
-
     // Получаем верифицированных из employee_registrations
     const registrations = await db.findAll('employee_registrations');
     const verifiedPhones = new Set();
@@ -431,55 +395,28 @@ async function sendNewOrderNotificationToEmployees(order) {
       }
     }
 
+    const title = 'Новый заказ ' + order.orderNumber;
+    const body = order.clientName + ' - ' + order.shopAddress;
+    const data = {
+      type: 'new_order',
+      orderId: order.id,
+      orderNumber: String(order.orderNumber),
+      shopAddress: order.shopAddress,
+      clientName: order.clientName,
+      totalPrice: String(order.totalPrice)
+    };
+
     let sentCount = 0;
-
-    for (const employee of employees) {
-      try {
-        const phone = (employee.phone || '').replace(/[^\d]/g, '');
-        if (!phone) continue;
-
-        // Только верифицированные сотрудники получают пуш
-        if (!verifiedPhones.has(phone)) continue;
-
-        // Проверяем наличие FCM токена
-        const tokenFile = path.join(FCM_TOKENS_DIR, phone + '.json');
-        if (!(await fileExists(tokenFile))) continue;
-
-        const tokenContent = await fsp.readFile(tokenFile, 'utf8');
-        const { token } = JSON.parse(tokenContent);
-
-        const title = 'Новый заказ ' + order.orderNumber;
-        const body = order.clientName + ' - ' + order.shopAddress;
-
-        await admin.messaging().send({
-          token,
-          notification: { title, body },
-          data: {
-            type: 'new_order',
-            orderId: order.id,
-            orderNumber: String(order.orderNumber),
-            shopAddress: order.shopAddress,
-            clientName: order.clientName,
-            totalPrice: String(order.totalPrice)
-          },
-          android: { priority: 'high' },
-          apns: { payload: { aps: { sound: 'default' } } }
-        });
-
-        sentCount++;
-        console.log('✅ Push о новом заказе отправлен: ' + employee.name);
-      } catch (err) {
-        if (err.code === 'messaging/registration-token-not-registered') {
-          console.log('⚠️  Невалидный FCM токен у ' + employee.name + ', пропускаем');
-        }
-      }
+    for (const phone of verifiedPhones) {
+      const success = await pushService.sendPushToPhone(phone, title, body, data, 'orders_channel');
+      if (success) sentCount++;
     }
 
     if (sentCount > 0) {
-      console.log('✅ Push о новом заказе #' + order.orderNumber + ' отправлен ' + sentCount + ' сотрудникам');
+      console.log('Push о новом заказе #' + order.orderNumber + ' отправлен ' + sentCount + ' сотрудникам');
     }
   } catch (err) {
-    console.error('❌ Ошибка отправки push сотрудникам:', err.message);
+    console.error('Ошибка отправки push сотрудникам:', err.message);
   }
 }
 

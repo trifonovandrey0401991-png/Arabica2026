@@ -12,31 +12,21 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
+const pushService = require('../utils/push_service');
 
 // Константы
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
-
-const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 
-// ==================== УТИЛИТЫ ====================
+// Push-функции делегируются в push_service.js (BUG-06: единый модуль)
+const CHANNEL = 'product_questions_channel';
 
-/**
- * Получить Firebase Admin SDK
- * @returns {Object|null} Firebase Admin или null
- */
-function getFirebaseAdmin() {
-  try {
-    const { admin, firebaseInitialized } = require('../firebase-admin-config');
-    if (!firebaseInitialized) {
-      console.log('Firebase not initialized');
-      return null;
-    }
-    return admin;
-  } catch (e) {
-    console.error('Firebase load error:', e.message);
-    return null;
-  }
+function sendPushToPhone(phone, title, body, data = {}) {
+  return pushService.sendPushToPhone(phone, title, body, data, CHANNEL);
+}
+
+function sendPushToMultiple(employees, title, body, data = {}) {
+  return pushService.sendPushToMultiple(employees, title, body, data, CHANNEL);
 }
 
 /**
@@ -68,103 +58,6 @@ async function getAllEmployees() {
   }
 
   return employees;
-}
-
-/**
- * Получить FCM токен по телефону
- * @param {string} phone - Номер телефона
- * @returns {Promise<string|null>} FCM токен или null
- */
-async function getFcmTokenByPhone(phone) {
-  try {
-    const normalizedPhone = phone.replace(/[^\d]/g, '');
-    const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
-
-    if (!(await fileExists(tokenFile))) {
-      return null;
-    }
-
-    const content = await fsp.readFile(tokenFile, 'utf8');
-    const tokenData = JSON.parse(content);
-    return tokenData.token || null;
-  } catch (e) {
-    console.error(`Error getting token for ${maskPhone(phone)}:`, e.message);
-    return null;
-  }
-}
-
-/**
- * Отправить push-уведомление одному пользователю
- * @param {string} phone - Номер телефона
- * @param {string} title - Заголовок уведомления
- * @param {string} body - Текст уведомления
- * @param {Object} data - Дополнительные данные
- * @returns {Promise<boolean>} true если отправлено успешно
- */
-async function sendPushToPhone(phone, title, body, data = {}) {
-  const admin = getFirebaseAdmin();
-  if (!admin) {
-    console.log('Firebase not available, notification not sent');
-    return false;
-  }
-
-  const token = await getFcmTokenByPhone(phone);
-  if (!token) {
-    console.log(`FCM token not found for ${maskPhone(phone)}`);
-    return false;
-  }
-
-  try {
-    await admin.messaging().send({
-      token: token,
-      notification: {
-        title: title,
-        body: body,
-      },
-      data: {
-        ...data,
-        click_action: 'FLUTTER_NOTIFICATION_CLICK',
-      },
-      android: {
-        priority: 'high',
-        notification: {
-          sound: 'default',
-          channelId: 'product_questions_channel',
-        },
-      },
-    });
-
-    console.log(`Push sent: ${phone.substring(0, 5)}***`);
-    return true;
-  } catch (e) {
-    console.error(`Push error for ${maskPhone(phone)}:`, e.message);
-    return false;
-  }
-}
-
-/**
- * Отправить push нескольким пользователям
- * @param {Array} employees - Массив сотрудников с полем phone
- * @param {string} title - Заголовок
- * @param {string} body - Текст
- * @param {Object} data - Дополнительные данные
- * @returns {Promise<number>} Количество успешных отправок
- */
-async function sendPushToMultiple(employees, title, body, data = {}) {
-  let successCount = 0;
-
-  for (const employee of employees) {
-    if (!employee.phone) {
-      console.log(`Employee ${employee.name || employee.id} has no phone`);
-      continue;
-    }
-
-    const success = await sendPushToPhone(employee.phone, title, body, data);
-    if (success) successCount++;
-  }
-
-  console.log(`Sent ${successCount}/${employees.length} notifications`);
-  return successCount;
 }
 
 // ==================== ФУНКЦИИ УВЕДОМЛЕНИЙ ====================

@@ -699,7 +699,7 @@ app.post('/upload-employee-photo', uploadEmployeePhoto.single('file'), compressU
 
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 
-// POST /api/fcm-tokens - сохранение FCM токена
+// POST /api/fcm-tokens - сохранение FCM токена (dual-write: JSON + PostgreSQL)
 app.post('/api/fcm-tokens', async (req, res) => {
   try {
     console.log('POST /api/fcm-tokens phone:', maskPhone(req.body?.phone));
@@ -711,6 +711,7 @@ app.post('/api/fcm-tokens', async (req, res) => {
 
     const normalizedPhone = phone.replace(/[^\d]/g, '');
 
+    // 1. JSON file (primary)
     const tokenDir = `${DATA_DIR}/fcm-tokens`;
     if (!await fileExists(tokenDir)) {
       await fsp.mkdir(tokenDir, { recursive: true });
@@ -723,10 +724,21 @@ app.post('/api/fcm-tokens', async (req, res) => {
       updatedAt: new Date().toISOString()
     });
 
-    console.log(`✅ FCM токен сохранен для ${normalizedPhone}`);
+    // 2. PostgreSQL (dual-write, BUG-02)
+    try {
+      await db.upsert('fcm_tokens', {
+        phone: normalizedPhone,
+        token,
+        updated_at: new Date().toISOString()
+      }, 'phone');
+    } catch (dbErr) {
+      console.error('DB fcm_tokens write error:', dbErr.message);
+    }
+
+    console.log(`FCM токен сохранен для ${normalizedPhone}`);
     res.json({ success: true });
   } catch (err) {
-    console.error('❌ Ошибка сохранения FCM токена:', err);
+    console.error('Ошибка сохранения FCM токена:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
