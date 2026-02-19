@@ -62,14 +62,26 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     final phone = prefs.getString('user_phone');
 
     if (name == null || phone == null) {
-      setState(() {
-        _error = 'Не удалось прочитать данные клиента';
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Не удалось прочитать данные клиента';
+          _loading = false;
+        });
+      }
       return;
     }
 
-    await _refresh(showSpinner: true);
+    // Сначала показываем кэшированные данные (мгновенно, без спиннера)
+    final cached = await LoyaltyStorage.read(name: name, phone: phone);
+    if (cached != null && mounted) {
+      setState(() {
+        _info = cached;
+        _loading = false;
+      });
+    }
+
+    // Затем обновляем свежими данными с сервера (в фоне)
+    await _refresh(showSpinner: cached == null);
   }
 
   Future<void> _refresh({bool showSpinner = true}) async {
