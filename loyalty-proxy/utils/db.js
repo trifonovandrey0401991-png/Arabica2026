@@ -22,11 +22,11 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   user: process.env.DB_USER || 'arabica_app',
-  password: process.env.DB_PASSWORD || 'arabica2026secure',
+  password: process.env.DB_PASSWORD || undefined, // peer auth на сервере, пароль из env
   host: process.env.DB_HOST || 'localhost',
   database: process.env.DB_NAME || 'arabica_db',
   port: parseInt(process.env.DB_PORT, 10) || 5432,
-  max: 10,                    // макс. соединений в пуле
+  max: parseInt(process.env.DB_POOL_MAX, 10) || 20, // 9 шедулеров + API запросы
   idleTimeoutMillis: 30000,   // закрыть idle соединение через 30 сек
   connectionTimeoutMillis: 5000
 });

@@ -134,7 +134,7 @@ const { setupEmployeeRegistrationAPI } = require('./api/employee_registration_ap
 const { getNextReferralCode } = require('./api/employees_api');
 const authApiRouter = require("./api/auth_api");
 const telegramBotService = require("./services/telegram_bot_service");
-const { sessionMiddleware, initSessionMiddleware } = require("./utils/session_middleware");
+const { sessionMiddleware, initSessionMiddleware, requireAuth } = require("./utils/session_middleware");
 
 // ============================================
 // SECURITY: API Key Authentication
@@ -303,7 +303,7 @@ const PUBLIC_WRITE_PATHS = [
   '/api/envelope-reports',       // Отчёты конвертов (отправка сотрудниками)
   '/api/test-results',           // Результаты тестирования (отправка сотрудниками)
   '/api/report-notifications',   // Уведомления об отчётах
-  '/upload-photo',               // Загрузка фото отчётов
+  // '/upload-photo' — убрано: requireAuth добавлен на уровне route
   '/api/attendance',             // Отметки посещаемости
   '/api/rko',                    // РКО отчёты
   '/api/shift-handover-questions', // CRUD вопросов сдачи смены
@@ -617,7 +617,7 @@ app.get('/', async (req, res) => {
 });
 
 // Эндпоинт для загрузки фото
-app.post('/upload-photo', upload.single('file'), compressUpload, (req, res) => {
+app.post('/upload-photo', requireAuth, upload.single('file'), compressUpload, (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Файл не загружен' });

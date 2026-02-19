@@ -203,35 +203,34 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       ),
     );
 
+    // Найти шаблон машины (для region, preset, machineName)
+    CoffeeMachineTemplate? machineTemplate;
+    if (!isComputer) {
+      final matches = _machineTemplates.where((t) => t.id == templateId);
+      if (matches.isEmpty) {
+        if (mounted) Navigator.of(context).pop();
+        return null;
+      }
+      machineTemplate = matches.first;
+    }
+
     // Определить region: пользовательский или из шаблона
     Map<String, double>? region = userRegion;
-    if (region == null && !isComputer) {
-      final template = _machineTemplates.firstWhere((t) => t.id == templateId);
-      if (template.counterRegion != null) {
-        region = {
-          'x': template.counterRegion!.x,
-          'y': template.counterRegion!.y,
-          'width': template.counterRegion!.width,
-          'height': template.counterRegion!.height,
-        };
-      }
+    final counterRegion = machineTemplate?.counterRegion;
+    if (region == null && counterRegion != null) {
+      region = {
+        'x': counterRegion.x,
+        'y': counterRegion.y,
+        'width': counterRegion.width,
+        'height': counterRegion.height,
+      };
     }
 
     // Пресет OCR
-    String? preset;
-    if (isComputer) {
-      preset = 'computer';
-    } else {
-      final template = _machineTemplates.firstWhere((t) => t.id == templateId);
-      preset = template.ocrPreset;
-    }
+    final String? preset = isComputer ? 'computer' : machineTemplate?.ocrPreset;
 
     // Имя машины для поиска обученного region на сервере
-    String? machineNameForTraining;
-    if (!isComputer) {
-      final tmpl = _machineTemplates.firstWhere((t) => t.id == templateId);
-      machineNameForTraining = tmpl.name;
-    }
+    final String? machineNameForTraining = machineTemplate?.name;
 
     final result = await CoffeeMachineOcrService.recognizeNumber(
       imageBase64: base64Image,
