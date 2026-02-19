@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../services/order_service.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница заказов клиентов для сотрудников
 /// Показывает только ожидающие заказы (pending)
+/// Автоматически обновляется каждые 15 секунд
 class EmployeeOrdersPage extends StatefulWidget {
   const EmployeeOrdersPage({super.key});
 
@@ -16,24 +18,46 @@ class EmployeeOrdersPage extends StatefulWidget {
 class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
   List<Map<String, dynamic>> _pendingOrders = [];
   bool _isLoading = true;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
+    // Авто-обновление каждые 15 секунд
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _refreshOrders();
+    });
   }
 
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Первичная загрузка — с индикатором загрузки
   Future<void> _loadOrders() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (mounted) setState(() => _isLoading = true);
 
     final pending = await OrderService.getAllOrders(status: 'pending');
 
-    setState(() {
-      _pendingOrders = pending;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _pendingOrders = pending;
+        _isLoading = false;
+      });
+    }
+  }
+
+  /// Фоновое обновление — без индикатора загрузки (тихое)
+  Future<void> _refreshOrders() async {
+    final pending = await OrderService.getAllOrders(status: 'pending');
+    if (mounted) {
+      setState(() {
+        _pendingOrders = pending;
+      });
+    }
   }
 
   String _formatPrice(dynamic price) {

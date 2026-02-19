@@ -241,8 +241,8 @@ async function createOrder(orderData) {
 
   await addOrderToDialog(order);
 
-  // Отправляем push уведомления всем админам о новом заказе
-  await sendNewOrderNotificationToAdmins(order);
+  // Отправляем push уведомления всем сотрудникам о новом заказе
+  await sendNewOrderNotificationToEmployees(order);
 
   console.log('✅ Создан заказ #' + orderNumber + ' от ' + orderData.clientName + ' (ID: ' + orderId + ')');
   return order;
@@ -409,29 +409,20 @@ async function sendOrderNotification(order, type) {
   }
 }
 
-// Отправка push уведомления всем админам о новом заказе
-async function sendNewOrderNotificationToAdmins(order) {
+// Отправка push уведомления всем сотрудникам о новом заказе
+async function sendNewOrderNotificationToEmployees(order) {
   if (!firebaseInitialized) {
-    console.warn('⚠️  Push админам не отправлен: Firebase не инициализирован');
+    console.warn('⚠️  Push сотрудникам не отправлен: Firebase не инициализирован');
     return;
   }
 
   try {
-    // Получаем список всех сотрудников
-    const files = await fsp.readdir(EMPLOYEES_DIR);
-    let adminCount = 0;
+    // Получаем список всех сотрудников из БД
+    const employees = await db.findAll('employees');
+    let sentCount = 0;
 
-    for (const file of files) {
-      if (!file.endsWith('.json')) continue;
-
+    for (const employee of employees) {
       try {
-        const content = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
-        const employee = JSON.parse(content);
-
-        // Проверяем, является ли сотрудник админом
-        if (!employee.isAdmin) continue;
-
-        // Получаем телефон сотрудника (нормализуем)
         const phone = (employee.phone || '').replace(/[^\d]/g, '');
         if (!phone) continue;
 
@@ -442,7 +433,6 @@ async function sendNewOrderNotificationToAdmins(order) {
         const tokenContent = await fsp.readFile(tokenFile, 'utf8');
         const { token } = JSON.parse(tokenContent);
 
-        // Формируем уведомление
         const title = 'Новый заказ ' + order.orderNumber;
         const body = order.clientName + ' - ' + order.shopAddress;
 
@@ -461,18 +451,20 @@ async function sendNewOrderNotificationToAdmins(order) {
           apns: { payload: { aps: { sound: 'default' } } }
         });
 
-        adminCount++;
-        console.log('✅ Push о новом заказе отправлен админу: ' + employee.name);
+        sentCount++;
+        console.log('✅ Push о новом заказе отправлен: ' + employee.name);
       } catch (err) {
-        // Продолжаем для других админов
+        if (err.code === 'messaging/registration-token-not-registered') {
+          console.log('⚠️  Невалидный FCM токен у ' + employee.name + ', пропускаем');
+        }
       }
     }
 
-    if (adminCount > 0) {
-      console.log('✅ Push о новом заказе #' + order.orderNumber + ' отправлен ' + adminCount + ' админам');
+    if (sentCount > 0) {
+      console.log('✅ Push о новом заказе #' + order.orderNumber + ' отправлен ' + sentCount + ' сотрудникам');
     }
   } catch (err) {
-    console.error('❌ Ошибка отправки push админам:', err.message);
+    console.error('❌ Ошибка отправки push сотрудникам:', err.message);
   }
 }
 
@@ -511,8 +503,8 @@ async function addOrderToDialog(order) {
     dialog.messages.push(message);
     dialog.lastMessageTime = message.timestamp;
 
-    // Boy Scout: fsp.writeFile → writeJsonFile
-    await writeJsonFile(dialogFile, dialog);
+    // useLock: false — уже внутри withLock, двойной лок → deadlock
+    await writeJsonFile(dialogFile, dialog, { useLock: false });
   });
   console.log('✅ Заказ #' + order.orderNumber + ' добавлен в диалог с магазином ' + order.shopAddress);
 }
@@ -560,8 +552,8 @@ async function addResponseToDialog(order, responseType) {
     dialog.lastMessageTime = message.timestamp;
     dialog.unreadCount += 1;
 
-    // Boy Scout: fsp.writeFile → writeJsonFile
-    await writeJsonFile(dialogFile, dialog);
+    // useLock: false — уже внутри withLock, двойной лок → deadlock
+    await writeJsonFile(dialogFile, dialog, { useLock: false });
   });
   console.log('✅ Ответ сотрудника добавлен в диалог (заказ #' + order.orderNumber + ')');
 }
