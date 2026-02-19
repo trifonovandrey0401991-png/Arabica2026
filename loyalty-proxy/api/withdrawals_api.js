@@ -118,18 +118,29 @@ async function sendWithdrawalNotifications(withdrawal) {
   }
 }
 
-// Отправить push-уведомления о подтверждении выемки
+// Отправить push-уведомление сотруднику о подтверждении выемки
 async function sendWithdrawalConfirmationNotifications(withdrawal) {
   try {
-    const title = `Выемка подтверждена: ${withdrawal.shopAddress}`;
-    const body = `Выемка от ${withdrawal.employeeName} на ${withdrawal.totalAmount.toFixed(0)} руб (${withdrawal.type.toUpperCase()}) подтверждена`;
-    await pushService.sendPushToAllAdmins(title, body, {
+    if (!withdrawal.employeeId) return;
+
+    // Найти телефон сотрудника по employeeId
+    const empResult = await db.query('SELECT phone FROM employees WHERE id = $1', [withdrawal.employeeId]);
+    const empPhone = empResult.rows.length > 0 ? empResult.rows[0].phone : null;
+
+    if (!empPhone) {
+      console.log(`Телефон сотрудника не найден для ${withdrawal.employeeId}`);
+      return;
+    }
+
+    const title = 'Выемка подтверждена';
+    const body = `Ваша выемка на ${withdrawal.totalAmount.toFixed(0)} руб (${withdrawal.shopAddress}) подтверждена`;
+    await pushService.sendPushToPhone(empPhone, title, body, {
       type: 'withdrawal_confirmed',
       withdrawalId: withdrawal.id,
       shopAddress: withdrawal.shopAddress,
     }, 'withdrawals_channel');
   } catch (err) {
-    console.error('Ошибка отправки push-уведомлений о подтверждении:', err.message);
+    console.error('Ошибка отправки push о подтверждении выемки:', err.message);
   }
 }
 
