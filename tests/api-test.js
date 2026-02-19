@@ -16,7 +16,7 @@ const http = require('http');
 // ============================================
 const SERVER_URL = process.env.SERVER_URL || 'https://arabica26.ru';
 const API_KEY = process.env.API_KEY || '58c4d46b9bb324d03c5d96781223821f3528c5efa4604090a8e95ac540173585';
-const AUTH_TOKEN = process.env.AUTH_TOKEN || 'cfa4bbd6d263d951b74174e0841c48dab4bb047c63d7ed2185e620f18755ef84';
+const AUTH_TOKEN = process.env.AUTH_TOKEN || 'b20781bfd2837fc2b71941e7138dec26100db899afa1d6cbbfa907962810e812';
 const TIMEOUT_MS = 20000; // 20s — сервер 2GB RAM, большие JSON
 const CONCURRENT_LIMIT = 5; // Максимум параллельных запросов
 

@@ -30,6 +30,7 @@ class ZReportRecognitionDialog extends StatefulWidget {
   final String? shopAddress;
   final String? employeeName;
   final Map<String, dynamic>? expectedRanges; // Intelligence: ожидаемые диапазоны
+  final bool startInEditMode; // Сразу открыть в режиме редактирования
 
   const ZReportRecognitionDialog({
     super.key,
@@ -38,6 +39,7 @@ class ZReportRecognitionDialog extends StatefulWidget {
     this.shopAddress,
     this.employeeName,
     this.expectedRanges,
+    this.startInEditMode = false,
   });
 
   /// Показать диалог и вернуть результат
@@ -48,6 +50,7 @@ class ZReportRecognitionDialog extends StatefulWidget {
     String? shopAddress,
     String? employeeName,
     Map<String, dynamic>? expectedRanges,
+    bool startInEditMode = false,
   }) {
     return showDialog<ZReportRecognitionResult>(
       context: context,
@@ -58,6 +61,7 @@ class ZReportRecognitionDialog extends StatefulWidget {
         shopAddress: shopAddress,
         employeeName: employeeName,
         expectedRanges: expectedRanges,
+        startInEditMode: startInEditMode,
       ),
     );
   }
@@ -98,6 +102,9 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
       if (data.resourceKeys != null) {
         _resourceKeysController.text = data.resourceKeys.toString();
       }
+    }
+    if (widget.startInEditMode) {
+      _isEditing = true;
     }
   }
 
@@ -488,6 +495,152 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Простой диалог подтверждения: "ИИ определил верно?"
+/// Показывает 4 значения read-only и возвращает true (Да) или false (Нет)
+class ZReportConfirmDialog {
+  /// Форматирование числа с разделителем тысяч
+  static String _formatNumber(num value, bool isMoney) {
+    if (isMoney) {
+      final intVal = value.round();
+      final str = intVal.toString();
+      final buf = StringBuffer();
+      for (int i = 0; i < str.length; i++) {
+        if (i > 0 && (str.length - i) % 3 == 0) buf.write(' ');
+        buf.write(str[i]);
+      }
+      return '${buf.toString()} руб';
+    }
+    return value.toString();
+  }
+
+  static Future<bool?> show(
+    BuildContext context, {
+    required ZReportData data,
+    Map<String, dynamic>? expectedRanges,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.smart_toy, color: AppColors.primaryGreen),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text('ИИ определил:', style: TextStyle(fontSize: 18.sp)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildRow(
+              'Выручка',
+              data.totalSum,
+              'totalSum',
+              expectedRanges,
+              isMoney: true,
+            ),
+            _buildRow(
+              'Наличные',
+              data.cashSum,
+              'cashSum',
+              expectedRanges,
+              isMoney: true,
+            ),
+            _buildRow(
+              'Не передано в ОФД',
+              data.ofdNotSent?.toDouble(),
+              'ofdNotSent',
+              expectedRanges,
+            ),
+            _buildRow(
+              'Ресурс ключей',
+              data.resourceKeys?.toDouble(),
+              'resourceKeys',
+              expectedRanges,
+            ),
+            SizedBox(height: 16.h),
+            Text(
+              'Данные верны?',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 16.sp,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Нет', style: TextStyle(color: Colors.red)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryGreen,
+            ),
+            child: Text('Да'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _buildRow(
+    String label,
+    num? value,
+    String fieldKey,
+    Map<String, dynamic>? expectedRanges, {
+    bool isMoney = false,
+  }) {
+    final displayValue =
+        value != null ? _formatNumber(value, isMoney) : '—';
+
+    // Проверка попадания в ожидаемый диапазон
+    bool? inRange;
+    if (value != null && expectedRanges != null) {
+      final range = expectedRanges[fieldKey];
+      if (range is Map<String, dynamic> &&
+          range['min'] != null &&
+          range['max'] != null) {
+        inRange = value >= (range['min'] as num) &&
+            value <= (range['max'] as num);
+      }
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 6.h),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+            ),
+          ),
+          if (inRange != null) ...[
+            Icon(
+              inRange ? Icons.check_circle : Icons.warning_amber,
+              color: inRange ? Colors.green : Colors.orange,
+              size: 16,
+            ),
+            SizedBox(width: 4),
+          ],
+          Text(
+            displayValue,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16.sp,
+              color: value != null ? Colors.black87 : Colors.grey,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

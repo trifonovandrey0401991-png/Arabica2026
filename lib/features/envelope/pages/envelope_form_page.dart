@@ -11,6 +11,7 @@ import '../../suppliers/services/supplier_service.dart';
 import '../../suppliers/models/supplier_model.dart';
 import '../../ai_training/services/z_report_service.dart';
 import '../../ai_training/widgets/z_report_recognition_dialog.dart';
+import '../../ai_training/widgets/z_report_region_selector.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../efficiency/services/points_settings_service.dart';
@@ -254,12 +255,48 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     }
   }
 
-  /// Сфотографировать и распознать Z-отчёт
+  /// Показать индикатор загрузки с текстом
+  void _showLoadingDialog(String text) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text(text),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Заполнить поля формы результатом распознавания
+  void _fillFormFields(bool isOoo, ZReportRecognitionResult result) {
+    if (!mounted) return;
+    setState(() {
+      if (isOoo) {
+        _oooRevenueController.text = result.revenue.toStringAsFixed(0);
+        _oooCashController.text = result.cash.toStringAsFixed(0);
+        _oooOfdNotSentController.text = result.ofdNotSent.toString();
+        _oooResourceKeysController.text = result.resourceKeys.toString();
+      } else {
+        _ipRevenueController.text = result.revenue.toStringAsFixed(0);
+        _ipCashController.text = result.cash.toStringAsFixed(0);
+        _ipOfdNotSentController.text = result.ofdNotSent.toString();
+        _ipResourceKeysController.text = result.resourceKeys.toString();
+      }
+    });
+  }
+
+  /// Сфотографировать и распознать Z-отчёт (пошаговый flow)
   Future<void> _pickAndRecognizeZReport({
     required bool isOoo,
     required Function(File) onPhotoPicked,
   }) async {
     try {
+      // ШАГ 1: Сделать фото
       final picked = await _imagePicker.pickImage(
         source: ImageSource.camera,
         maxWidth: 1920,
@@ -272,61 +309,166 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       final file = File(picked.path);
       onPhotoPicked(file);
 
-      // Показываем индикатор загрузки
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text('Распознавание Z-отчёта...'),
-            ],
-          ),
-        ),
-      );
+      // ШАГ 2: Сжатие + OCR
+      _showLoadingDialog('Распознавание Z-отчёта...');
 
-      // Конвертируем в base64 со сжатием и отправляем на распознавание
       final bytes = await file.readAsBytes();
-      Logger.debug('📸 Размер оригинала: ${(bytes.length / 1024).toStringAsFixed(0)} KB');
       final compressedBase64 = await ZReportService.compressImage(bytes);
-      Logger.debug('📦 Размер сжатого base64: ${(compressedBase64.length / 1024).toStringAsFixed(0)} KB');
       final result = await ZReportService.parseZReport(
         compressedBase64,
         shopAddress: widget.shopAddress,
       );
 
-      // Закрываем индикатор загрузки
-      if (mounted) Navigator.of(context).pop();
-
+      if (mounted) Navigator.of(context).pop(); // закрыть загрузку
       if (!mounted) return;
 
-      // Показываем диалог с результатами распознавания
-      final dialogResult = await ZReportRecognitionDialog.show(
+      final hasData = result.success &&
+          result.data != null &&
+          (result.data!.totalSum != null || result.data!.cashSum != null);
+
+      // ШАГ 3: Если OCR не распознал → сразу ручной ввод
+      if (!hasData) {
+        final manualResult = await ZReportRecognitionDialog.show(
+          context,
+          imageBase64: compressedBase64,
+          recognizedData: null,
+          shopAddress: widget.shopAddress,
+          employeeName: widget.employeeName,
+          expectedRanges: result.expectedRanges,
+        );
+        if (manualResult != null && mounted) {
+          _fillFormFields(isOoo, manualResult);
+        }
+        return;
+      }
+
+      // ШАГ 4: "ИИ определил верно?" — первое подтверждение
+      final confirmed = await ZReportConfirmDialog.show(
         context,
-        imageBase64: compressedBase64,
-        recognizedData: result.success ? result.data : null,
-        shopAddress: widget.shopAddress,
-        employeeName: widget.employeeName,
+        data: result.data!,
         expectedRanges: result.expectedRanges,
       );
+      if (!mounted) return;
 
-      if (dialogResult != null && mounted) {
-        // Заполняем поля распознанными/исправленными данными
-        if (mounted) setState(() {
-          if (isOoo) {
-            _oooRevenueController.text = dialogResult.revenue.toStringAsFixed(0);
-            _oooCashController.text = dialogResult.cash.toStringAsFixed(0);
-            _oooOfdNotSentController.text = dialogResult.ofdNotSent.toString();
-            _oooResourceKeysController.text = dialogResult.resourceKeys.toString();
-          } else {
-            _ipRevenueController.text = dialogResult.revenue.toStringAsFixed(0);
-            _ipCashController.text = dialogResult.cash.toStringAsFixed(0);
-            _ipOfdNotSentController.text = dialogResult.ofdNotSent.toString();
-            _ipResourceKeysController.text = dialogResult.resourceKeys.toString();
+      // ШАГ 5: Да → заполнить форму
+      if (confirmed == true) {
+        _fillFormFields(isOoo, ZReportRecognitionResult(
+          revenue: result.data!.totalSum ?? 0,
+          cash: result.data!.cashSum ?? 0,
+          ofdNotSent: result.data!.ofdNotSent ?? 0,
+          resourceKeys: result.data!.resourceKeys ?? 0,
+        ));
+        return;
+      }
+
+      // ШАГ 6: Нет → открыть выделение областей на фото
+      if (confirmed == false) {
+        final regions = await ZReportRegionSelector.show(
+          context,
+          imageBase64: compressedBase64,
+        );
+        if (regions == null || !mounted) return;
+
+        // ШАГ 7: Повторный OCR с указанными областями
+        _showLoadingDialog('Повторное распознавание...');
+
+        final result2 = await ZReportService.parseZReport(
+          compressedBase64,
+          shopAddress: widget.shopAddress,
+          explicitRegions: regions,
+        );
+
+        if (mounted) Navigator.of(context).pop(); // закрыть загрузку
+        if (!mounted) return;
+
+        final hasData2 = result2.success &&
+            result2.data != null &&
+            (result2.data!.totalSum != null || result2.data!.cashSum != null);
+
+        // Если повторный OCR не распознал → ручной ввод
+        if (!hasData2) {
+          final manualResult = await ZReportRecognitionDialog.show(
+            context,
+            imageBase64: compressedBase64,
+            recognizedData: null,
+            shopAddress: widget.shopAddress,
+            employeeName: widget.employeeName,
+            expectedRanges: result2.expectedRanges,
+            startInEditMode: true,
+          );
+          if (manualResult != null && mounted) {
+            // Сохраняем как образец для обучения
+            ZReportService.saveSample(
+              imageBase64: compressedBase64,
+              totalSum: manualResult.revenue,
+              cashSum: manualResult.cash,
+              ofdNotSent: manualResult.ofdNotSent,
+              resourceKeys: manualResult.resourceKeys,
+              shopAddress: widget.shopAddress,
+              employeeName: widget.employeeName,
+              fieldRegions: regions,
+            );
+            _fillFormFields(isOoo, manualResult);
           }
-        });
+          return;
+        }
+
+        // ШАГ 8: "ИИ определил верно?" — второе подтверждение
+        final confirmed2 = await ZReportConfirmDialog.show(
+          context,
+          data: result2.data!,
+          expectedRanges: result2.expectedRanges,
+        );
+        if (!mounted) return;
+
+        // ШАГ 9: Да → заполнить форму + сохранить training sample
+        if (confirmed2 == true) {
+          ZReportService.saveSample(
+            imageBase64: compressedBase64,
+            totalSum: result2.data!.totalSum ?? 0,
+            cashSum: result2.data!.cashSum ?? 0,
+            ofdNotSent: result2.data!.ofdNotSent ?? 0,
+            resourceKeys: result2.data!.resourceKeys ?? 0,
+            shopAddress: widget.shopAddress,
+            employeeName: widget.employeeName,
+            fieldRegions: regions,
+          );
+          _fillFormFields(isOoo, ZReportRecognitionResult(
+            revenue: result2.data!.totalSum ?? 0,
+            cash: result2.data!.cashSum ?? 0,
+            ofdNotSent: result2.data!.ofdNotSent ?? 0,
+            resourceKeys: result2.data!.resourceKeys ?? 0,
+            wasEdited: true,
+          ));
+          return;
+        }
+
+        // ШАГ 10: Нет → ручной ввод с предзаполненными значениями
+        if (confirmed2 == false) {
+          final manualResult = await ZReportRecognitionDialog.show(
+            context,
+            imageBase64: compressedBase64,
+            recognizedData: result2.data,
+            shopAddress: widget.shopAddress,
+            employeeName: widget.employeeName,
+            expectedRanges: result2.expectedRanges,
+            startInEditMode: true,
+          );
+          if (manualResult != null && mounted) {
+            ZReportService.saveSample(
+              imageBase64: compressedBase64,
+              totalSum: manualResult.revenue,
+              cashSum: manualResult.cash,
+              ofdNotSent: manualResult.ofdNotSent,
+              resourceKeys: manualResult.resourceKeys,
+              shopAddress: widget.shopAddress,
+              employeeName: widget.employeeName,
+              fieldRegions: regions,
+            );
+            _fillFormFields(isOoo, manualResult);
+          }
+          return;
+        }
       }
     } catch (e) {
       Logger.error('Ошибка распознавания Z-отчёта', e);

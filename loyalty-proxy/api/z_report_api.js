@@ -210,7 +210,7 @@ async function setupZReportAPI(app) {
   // Распознать Z-отчёт
   app.post('/api/z-report/parse', requireAuth, async (req, res) => {
     try {
-      const { imageBase64, shopAddress } = req.body;
+      const { imageBase64, shopAddress, explicitRegions } = req.body;
 
       if (!imageBase64) {
         return res.status(400).json({ success: false, error: 'Изображение не передано' });
@@ -233,7 +233,9 @@ async function setupZReportAPI(app) {
         }
       }
 
-      const result = await visionModule.parseZReport(imageBase64, expectedRanges, learnedRegions);
+      // Явные регионы от пользователя имеют приоритет над обученными
+      const regionsToUse = explicitRegions || learnedRegions;
+      const result = await visionModule.parseZReport(imageBase64, expectedRanges, regionsToUse);
 
       // Добавляем intelligence в ответ (для отображения подсказок в UI)
       if (expectedRanges) {

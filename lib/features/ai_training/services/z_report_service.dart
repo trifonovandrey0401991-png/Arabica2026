@@ -61,11 +61,18 @@ class ZReportService {
 
   /// Распознать Z-отчёт по фото
   /// [shopAddress] — адрес магазина для подсказки ожидаемых диапазонов (intelligence)
-  static Future<ZReportParseResult> parseZReport(String imageBase64, {String? shopAddress}) async {
+  static Future<ZReportParseResult> parseZReport(
+    String imageBase64, {
+    String? shopAddress,
+    Map<String, Map<String, double>>? explicitRegions,
+  }) async {
     try {
       final body = <String, dynamic>{'imageBase64': imageBase64};
       if (shopAddress != null && shopAddress.isNotEmpty) {
         body['shopAddress'] = shopAddress;
+      }
+      if (explicitRegions != null) {
+        body['explicitRegions'] = explicitRegions;
       }
 
       final response = await http.post(
