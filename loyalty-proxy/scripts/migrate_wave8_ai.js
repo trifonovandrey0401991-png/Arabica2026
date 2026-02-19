@@ -200,7 +200,7 @@ async function migrateZReportPatterns(stats) {
 
     await db.upsert('app_settings', {
       key: 'z_report_learned_patterns',
-      value: data,
+      data: data,
       updated_at: data.lastUpdated || new Date().toISOString(),
     }, 'key');
     stats.zReportPatterns = 1;
@@ -275,7 +275,7 @@ async function migrateCigaretteSettings(stats) {
 
     await db.upsert('app_settings', {
       key: 'cigarette_vision_settings',
-      value: data,
+      data: data,
       updated_at: new Date().toISOString(),
     }, 'key');
     stats.cigaretteSettings = 1;
@@ -305,7 +305,7 @@ async function migrateShiftAiSettings(stats) {
 
     await db.upsert('app_settings', {
       key: 'shift_ai_settings',
-      value: data,
+      data: data,
       updated_at: new Date().toISOString(),
     }, 'key');
     stats.shiftAiSettings = 1;

@@ -56,7 +56,7 @@ async function loadAiSettings() {
   if (USE_DB) {
     try {
       const row = await db.findById('app_settings', 'shift_ai_settings', 'key');
-      if (row && row.value) return row.value;
+      if (row && row.data) return row.data;
     } catch (e) {
       console.error('[ShiftAI] DB loadAiSettings error:', e.message);
     }
@@ -86,7 +86,7 @@ async function saveAiSettings(settings) {
       try {
         await db.upsert('app_settings', {
           key: 'shift_ai_settings',
-          value: settings,
+          data: settings,
           updated_at: new Date().toISOString(),
         }, 'key');
       } catch (dbErr) {

@@ -409,7 +409,7 @@ async function loadLearnedPatterns() {
   if (USE_DB) {
     try {
       const row = await db.findById('app_settings', 'z_report_learned_patterns', 'key');
-      if (row && row.value) return row.value;
+      if (row && row.data) return row.data;
     } catch (e) {
       console.error('[Z-Report] DB loadLearnedPatterns error:', e.message);
     }
@@ -443,7 +443,7 @@ async function saveLearnedPatterns(data) {
     try {
       await db.upsert('app_settings', {
         key: 'z_report_learned_patterns',
-        value: data,
+        data: data,
         updated_at: new Date().toISOString(),
       }, 'key');
     } catch (e) {

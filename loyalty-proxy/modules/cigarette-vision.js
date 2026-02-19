@@ -128,8 +128,8 @@ async function loadSettings() {
   if (USE_DB) {
     try {
       const row = await db.findById('app_settings', 'cigarette_vision_settings', 'key');
-      if (row && row.value) {
-        settingsCache = row.value;
+      if (row && row.data) {
+        settingsCache = row.data;
         return settingsCache;
       }
     } catch (e) {
@@ -163,7 +163,7 @@ async function saveSettings(settings) {
       try {
         await db.upsert('app_settings', {
           key: 'cigarette_vision_settings',
-          value: settings,
+          data: settings,
           updated_at: new Date().toISOString(),
         }, 'key');
       } catch (dbErr) {
