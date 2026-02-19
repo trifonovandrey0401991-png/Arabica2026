@@ -35,7 +35,7 @@ if (!BOT_TOKEN) {
 
 const pool = new Pool({
   user: process.env.DB_USER || 'arabica_app',
-  password: process.env.DB_PASSWORD || 'arabica2026secure',
+  password: process.env.DB_PASSWORD || undefined, // peer auth на сервере, пароль из env
   host: process.env.DB_HOST || 'localhost',
   database: process.env.DB_NAME || 'arabica_db',
   port: parseInt(process.env.DB_PORT, 10) || 5432,

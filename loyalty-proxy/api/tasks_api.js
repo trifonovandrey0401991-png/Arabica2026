@@ -964,17 +964,26 @@ function setupTasksAPI(app) {
   // Запускаем планировщик проверки просроченных задач и напоминаний
   console.log('Starting task scheduler (every 5 minutes)...');
 
+  // Guarded check — защита от crash и параллельного запуска
+  let isTaskSchedulerRunning = false;
+  const guardedTaskCheck = async () => {
+    if (isTaskSchedulerRunning) return;
+    isTaskSchedulerRunning = true;
+    try {
+      await checkExpiredTasks();
+      await checkTaskReminders();
+    } catch (err) {
+      console.error('[TaskScheduler] Error:', err.message);
+    } finally {
+      isTaskSchedulerRunning = false;
+    }
+  };
+
   // Проверка при старте
-  setTimeout(async () => {
-    await checkExpiredTasks();
-    await checkTaskReminders();
-  }, 10000); // Через 10 секунд после старта
+  setTimeout(guardedTaskCheck, 10000);
 
   // Каждые 5 минут
-  setInterval(async () => {
-    await checkExpiredTasks();
-    await checkTaskReminders();
-  }, 5 * 60 * 1000);
+  setInterval(guardedTaskCheck, 5 * 60 * 1000);
 
   console.log('Tasks API initialized');
 }

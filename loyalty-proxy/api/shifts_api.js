@@ -691,7 +691,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
               };
 
               penalties.push(penalty);
-              await writeJsonFile(penaltiesFile, penalties);
+              await writeJsonFile(penaltiesFile, penalties, { useLock: false }); // уже под withLock
               // DB dual-write
               await dbInsertPenalty(penalty);
               console.log(`✅ Баллы эффективности (пересменка) сохранены: ${efficiencyPoints} для ${existingReport.employeeName}`);
@@ -738,7 +738,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
           } else {
             freshReports.push(updatedReport);
           }
-          await writeJsonFile(dailyFilePath, freshReports);
+          await writeJsonFile(dailyFilePath, freshReports, { useLock: false }); // уже под withLock
         });
       } else {
         const reportFile = path.join(SHIFT_REPORTS_DIR, `${reportId}.json`);
