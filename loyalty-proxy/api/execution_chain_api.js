@@ -79,15 +79,12 @@ async function checkAttendance(employeeName, shopAddress, date) {
   try {
     // Сначала пробуем БД
     if (USE_DB_ATTENDANCE && db) {
-      const conditions = [`employee_name = $1`, `(timestamp + interval '3 hours')::date = $2::date`];
-      const params = [employeeName, date];
-      if (shopAddress) {
-        conditions.push(`shop_address = $3`);
-        params.push(shopAddress);
-      }
+      // NB: attendance.timestamp хранит московское время с +00 offset (клиент шлёт MSK)
+      // Поэтому НЕ добавляем interval '3 hours' — иначе двойной сдвиг
+      // NB: НЕ фильтруем по shop_address — сотрудник мог отметиться в другом магазине
       const result = await db.query(
-        `SELECT id FROM attendance WHERE ${conditions.join(' AND ')} LIMIT 1`,
-        params
+        `SELECT id FROM attendance WHERE employee_name = $1 AND timestamp::date = $2::date LIMIT 1`,
+        [employeeName, date]
       );
       if (result.rows.length > 0) return true;
     }
@@ -102,7 +99,8 @@ async function checkAttendance(employeeName, shopAddress, date) {
     for (const file of jsonFiles) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(attendanceDir, file), 'utf8'));
-        if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
+        // NB: НЕ фильтруем по shopAddress — сотрудник мог отметиться в другом магазине
+        if (data.employeeName === employeeName) {
           // Проверяем дату (timestamp может быть в московском или UTC формате)
           const ts = data.timestamp || data.date;
           if (ts && ts.startsWith(date)) return true;
@@ -138,13 +136,15 @@ async function checkTesting(employeeName, shopAddress, date) {
     } catch { /* используем 0 по умолчанию */ }
 
     // Сначала пробуем БД
+    // NB: test_results.created_at хранит клиентский completedAt (московское время с +00 offset)
+    // Поэтому НЕ добавляем interval '3 hours' — иначе двойной сдвиг
     if (USE_DB_TESTS && db) {
       let query, params;
       if (minimumScore > 0) {
-        query = `SELECT id FROM test_results WHERE data->>'employeeName' = $1 AND (created_at + interval '3 hours')::date = $2::date AND (data->>'score')::int >= $3 LIMIT 1`;
+        query = `SELECT id FROM test_results WHERE data->>'employeeName' = $1 AND created_at::date = $2::date AND (data->>'score')::int >= $3 LIMIT 1`;
         params = [employeeName, date, minimumScore];
       } else {
-        query = `SELECT id FROM test_results WHERE data->>'employeeName' = $1 AND (created_at + interval '3 hours')::date = $2::date LIMIT 1`;
+        query = `SELECT id FROM test_results WHERE data->>'employeeName' = $1 AND created_at::date = $2::date LIMIT 1`;
         params = [employeeName, date];
       }
       const result = await db.query(query, params);
@@ -183,16 +183,11 @@ async function checkTesting(employeeName, shopAddress, date) {
 async function checkShift(employeeName, shopAddress, date) {
   try {
     // Сначала пробуем БД
+    // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
     if (USE_DB_SHIFTS && db) {
-      const conditions = [`employee_name = $1`, `(created_at + interval '3 hours')::date = $2::date`];
-      const params = [employeeName, date];
-      if (shopAddress) {
-        conditions.push(`shop_address = $3`);
-        params.push(shopAddress);
-      }
       const result = await db.query(
-        `SELECT id FROM shift_reports WHERE ${conditions.join(' AND ')} LIMIT 1`,
-        params
+        `SELECT id FROM shift_reports WHERE employee_name = $1 AND created_at::date = $2::date LIMIT 1`,
+        [employeeName, date]
       );
       if (result.rows.length > 0) return true;
     }
@@ -205,7 +200,7 @@ async function checkShift(employeeName, shopAddress, date) {
     if (await fileExists(dayFile)) {
       const reports = JSON.parse(await fsp.readFile(dayFile, 'utf8'));
       if (Array.isArray(reports)) {
-        return reports.some(r => r.employeeName === employeeName && (!shopAddress || r.shopAddress === shopAddress));
+        return reports.some(r => r.employeeName === employeeName);
       }
     }
 
@@ -215,13 +210,12 @@ async function checkShift(employeeName, shopAddress, date) {
     for (const file of jsonFiles) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
+        if (data.employeeName === employeeName) {
           const ts = data.createdAt || data.date || data.timestamp;
           if (ts && ts.startsWith(date)) return true;
         }
         if (Array.isArray(data)) {
           if (data.some(r => r.employeeName === employeeName &&
-              (!shopAddress || r.shopAddress === shopAddress) &&
               (r.createdAt || r.date || '').startsWith(date))) return true;
         }
       } catch { /* skip */ }
@@ -238,16 +232,11 @@ async function checkShift(employeeName, shopAddress, date) {
 async function checkRecount(employeeName, shopAddress, date) {
   try {
     // Сначала пробуем БД
+    // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
     if (USE_DB_RECOUNT && db) {
-      const conditions = [`employee_name = $1`, `(created_at + interval '3 hours')::date = $2::date`];
-      const params = [employeeName, date];
-      if (shopAddress) {
-        conditions.push(`shop_address = $3`);
-        params.push(shopAddress);
-      }
       const result = await db.query(
-        `SELECT id FROM recount_reports WHERE ${conditions.join(' AND ')} LIMIT 1`,
-        params
+        `SELECT id FROM recount_reports WHERE employee_name = $1 AND created_at::date = $2::date LIMIT 1`,
+        [employeeName, date]
       );
       if (result.rows.length > 0) return true;
     }
@@ -262,7 +251,7 @@ async function checkRecount(employeeName, shopAddress, date) {
     for (const file of jsonFiles) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
+        if (data.employeeName === employeeName) {
           const ts = data.createdAt || data.date;
           if (ts && ts.startsWith(date)) return true;
         }
@@ -280,16 +269,11 @@ async function checkRecount(employeeName, shopAddress, date) {
 async function checkShiftHandover(employeeName, shopAddress, date) {
   try {
     // Сначала пробуем БД
+    // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
     if (USE_DB_SHIFT_HANDOVER && db) {
-      const conditions = [`employee_name = $1`, `(created_at + interval '3 hours')::date = $2::date`];
-      const params = [employeeName, date];
-      if (shopAddress) {
-        conditions.push(`shop_address = $3`);
-        params.push(shopAddress);
-      }
       const result = await db.query(
-        `SELECT id FROM shift_handover_reports WHERE ${conditions.join(' AND ')} LIMIT 1`,
-        params
+        `SELECT id FROM shift_handover_reports WHERE employee_name = $1 AND created_at::date = $2::date LIMIT 1`,
+        [employeeName, date]
       );
       if (result.rows.length > 0) return true;
     }
@@ -304,7 +288,7 @@ async function checkShiftHandover(employeeName, shopAddress, date) {
     for (const file of jsonFiles) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
+        if (data.employeeName === employeeName) {
           const ts = data.createdAt || data.date;
           if (ts && ts.startsWith(date)) return true;
         }
@@ -322,16 +306,11 @@ async function checkShiftHandover(employeeName, shopAddress, date) {
 async function checkCoffeeMachine(employeeName, shopAddress, date) {
   try {
     // Сначала пробуем БД
+    // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
     if (USE_DB_COFFEE_MACHINE && db) {
-      const conditions = [`employee_name = $1`, `date = $2::date`];
-      const params = [employeeName, date];
-      if (shopAddress) {
-        conditions.push(`shop_address = $3`);
-        params.push(shopAddress);
-      }
       const result = await db.query(
-        `SELECT id FROM coffee_machine_reports WHERE ${conditions.join(' AND ')} LIMIT 1`,
-        params
+        `SELECT id FROM coffee_machine_reports WHERE employee_name = $1 AND date = $2::date LIMIT 1`,
+        [employeeName, date]
       );
       if (result.rows.length > 0) return true;
     }
@@ -346,7 +325,7 @@ async function checkCoffeeMachine(employeeName, shopAddress, date) {
     for (const file of jsonFiles) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
+        if (data.employeeName === employeeName) {
           const ts = data.date || data.createdAt;
           if (ts && ts.startsWith(date)) return true;
         }
@@ -364,16 +343,11 @@ async function checkCoffeeMachine(employeeName, shopAddress, date) {
 async function checkEnvelope(employeeName, shopAddress, date) {
   try {
     // Сначала пробуем БД
+    // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
     if (USE_DB_ENVELOPE && db) {
-      const conditions = [`employee_name = $1`, `(created_at + interval '3 hours')::date = $2::date`];
-      const params = [employeeName, date];
-      if (shopAddress) {
-        conditions.push(`shop_address = $3`);
-        params.push(shopAddress);
-      }
       const result = await db.query(
-        `SELECT id FROM envelope_reports WHERE ${conditions.join(' AND ')} LIMIT 1`,
-        params
+        `SELECT id FROM envelope_reports WHERE employee_name = $1 AND created_at::date = $2::date LIMIT 1`,
+        [employeeName, date]
       );
       if (result.rows.length > 0) return true;
     }
@@ -388,7 +362,7 @@ async function checkEnvelope(employeeName, shopAddress, date) {
     for (const file of jsonFiles) {
       try {
         const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName && (!shopAddress || data.shopAddress === shopAddress)) {
+        if (data.employeeName === employeeName) {
           const ts = data.createdAt || data.date;
           if (ts && ts.startsWith(date)) return true;
         }
@@ -406,16 +380,11 @@ async function checkEnvelope(employeeName, shopAddress, date) {
 async function checkRko(employeeName, shopAddress, date) {
   try {
     // Сначала пробуем БД
+    // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
     if (USE_DB_RKO && db) {
-      const conditions = [`employee_name = $1`, `date = $2::date`];
-      const params = [employeeName, date];
-      if (shopAddress) {
-        conditions.push(`shop_address = $3`);
-        params.push(shopAddress);
-      }
       const result = await db.query(
-        `SELECT id FROM rko_reports WHERE ${conditions.join(' AND ')} LIMIT 1`,
-        params
+        `SELECT id FROM rko_reports WHERE employee_name = $1 AND date = $2::date LIMIT 1`,
+        [employeeName, date]
       );
       if (result.rows.length > 0) return true;
     }
@@ -429,7 +398,6 @@ async function checkRko(employeeName, shopAddress, date) {
 
     return entries.some(entry => {
       if (entry.employeeName !== employeeName) return false;
-      if (shopAddress && entry.shopAddress !== shopAddress) return false;
       const ts = entry.date || entry.createdAt;
       return ts && ts.startsWith(date);
     });

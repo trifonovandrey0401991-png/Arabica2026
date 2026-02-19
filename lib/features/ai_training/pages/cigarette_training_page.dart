@@ -45,9 +45,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   String? _selectedShopAddress;
   List<Shop> _shops = [];
 
-  // Поиск по наименованию
+  // Поиск по наименованию (вкладка Товары)
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  // Поиск по наименованию (вкладка Фото)
+  final TextEditingController _photoSearchController = TextEditingController();
+  String _photoSearchQuery = '';
 
   // Сортировка по точности ИИ
   String _accuracySortMode = 'none'; // 'none', 'worst', 'best'
@@ -109,6 +113,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   void dispose() {
     _tabController?.dispose();
     _searchController.dispose();
+    _photoSearchController.dispose();
     super.dispose();
   }
 
@@ -203,7 +208,15 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     );
   }
 
+  /// Получить короткое название магазина из адреса
+  String _getShopDisplayName() {
+    if (_selectedShopAddress == null) return '';
+    final shop = _shops.where((s) => s.address == _selectedShopAddress).firstOrNull;
+    return shop?.name ?? _selectedShopAddress!;
+  }
+
   Widget _buildCustomAppBar() {
+    final shopName = _getShopDisplayName();
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
       child: Row(
@@ -224,13 +237,57 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             ),
           ),
           Expanded(
-            child: Text(
-              'Подсчёт сигарет',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20.sp,
-                fontWeight: FontWeight.w600,
+            child: GestureDetector(
+              onTap: _shops.isNotEmpty ? _showShopSelectionDialog : null,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Подсчёт сигарет',
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (shopName.isNotEmpty) ...[
+                    SizedBox(height: 2),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.store_rounded,
+                          color: Colors.white.withOpacity(0.5),
+                          size: 13,
+                        ),
+                        SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            shopName,
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.5),
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Colors.white.withOpacity(0.4),
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -360,6 +417,27 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   /// Вкладка добавления фото
   Widget _buildAddPhotoTab() {
+    // Фильтрация и ранжирование по поиску
+    List<CigaretteProduct> filteredPhotoProducts;
+    if (_photoSearchQuery.isEmpty) {
+      filteredPhotoProducts = _products;
+    } else {
+      final scored = _products
+          .map((product) {
+            final queryLower = _photoSearchQuery.toLowerCase();
+            final barcodeMatch = product.barcodes.any((b) => b.contains(queryLower));
+            if (barcodeMatch) return MapEntry(product, 0.95);
+            return MapEntry(
+              product,
+              _calculateSearchRelevance(product.productName, _photoSearchQuery),
+            );
+          })
+          .where((entry) => entry.value > 0.3)
+          .toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      filteredPhotoProducts = scored.map((e) => e.key).toList();
+    }
+
     return ListView(
       padding: EdgeInsets.all(16.w),
       children: [
@@ -376,15 +454,80 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         ),
         SizedBox(height: 16),
 
+        // Поиск по наименованию
+        _buildPhotoSearchField(),
+        SizedBox(height: 12),
+
         // Фильтр по группе
         if (_productGroups.isNotEmpty) ...[
           _buildGroupDropdown(),
           SizedBox(height: 16),
         ],
 
+        // Счётчик найденных товаров
+        if (_photoSearchQuery.isNotEmpty) ...[
+          Padding(
+            padding: EdgeInsets.only(bottom: 12.h),
+            child: Text(
+              'Найдено: ${filteredPhotoProducts.length} из ${_products.length}',
+              style: TextStyle(
+                fontSize: 13.sp,
+                color: Colors.white.withOpacity(0.6),
+              ),
+            ),
+          ),
+        ],
+
         // Список товаров для добавления фото
-        ..._products.map((product) => _buildProductCard(product, forUpload: true)),
+        ...filteredPhotoProducts.map((product) => _buildProductCard(product, forUpload: true)),
       ],
+    );
+  }
+
+  /// Поле поиска для вкладки Фото (с поддержкой опечаток)
+  Widget _buildPhotoSearchField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: TextField(
+        controller: _photoSearchController,
+        style: TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: 'Поиск товара (с учётом опечаток)...',
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+          prefixIcon: Icon(
+            Icons.search,
+            color: Colors.white.withOpacity(0.5),
+          ),
+          suffixIcon: _photoSearchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(
+                    Icons.clear,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                  onPressed: () {
+                    _photoSearchController.clear();
+                    if (mounted) setState(() {
+                      _photoSearchQuery = '';
+                    });
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+        ),
+        onChanged: (value) {
+          if (mounted) setState(() {
+            _photoSearchQuery = value;
+          });
+        },
+      ),
     );
   }
 

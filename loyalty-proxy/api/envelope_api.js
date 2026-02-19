@@ -36,12 +36,14 @@ function dbEnvelopeReportToCamel(row) {
     oooExpenses: typeof row.ooo_expenses === 'string' ? JSON.parse(row.ooo_expenses) : (row.ooo_expenses || []),
     oooEnvelopePhotoUrl: row.ooo_envelope_photo_url,
     oooOfdNotSent: row.ooo_ofd_not_sent,
+    oooResourceKeys: row.ooo_resource_keys,
     ipZReportPhotoUrl: row.ip_z_report_photo_url,
     ipRevenue: row.ip_revenue != null ? Number(row.ip_revenue) : null,
     ipCash: row.ip_cash != null ? Number(row.ip_cash) : null,
     expenses: typeof row.expenses === 'string' ? JSON.parse(row.expenses) : (row.expenses || []),
     ipEnvelopePhotoUrl: row.ip_envelope_photo_url,
     ipOfdNotSent: row.ip_ofd_not_sent,
+    ipResourceKeys: row.ip_resource_keys,
     rating: row.rating,
     confirmedAt: row.confirmed_at,
     confirmedByAdmin: row.confirmed_by_admin,
@@ -66,12 +68,14 @@ function camelToDbEnvelope(body) {
   if (body.oooExpenses !== undefined) data.ooo_expenses = JSON.stringify(body.oooExpenses || []);
   if (body.oooEnvelopePhotoUrl !== undefined) data.ooo_envelope_photo_url = body.oooEnvelopePhotoUrl;
   if (body.oooOfdNotSent !== undefined) data.ooo_ofd_not_sent = body.oooOfdNotSent;
+  if (body.oooResourceKeys !== undefined) data.ooo_resource_keys = body.oooResourceKeys;
   if (body.ipZReportPhotoUrl !== undefined) data.ip_z_report_photo_url = body.ipZReportPhotoUrl;
   if (body.ipRevenue !== undefined) data.ip_revenue = body.ipRevenue;
   if (body.ipCash !== undefined) data.ip_cash = body.ipCash;
   if (body.expenses !== undefined) data.expenses = JSON.stringify(body.expenses || []);
   if (body.ipEnvelopePhotoUrl !== undefined) data.ip_envelope_photo_url = body.ipEnvelopePhotoUrl;
   if (body.ipOfdNotSent !== undefined) data.ip_ofd_not_sent = body.ipOfdNotSent;
+  if (body.ipResourceKeys !== undefined) data.ip_resource_keys = body.ipResourceKeys;
   if (body.rating !== undefined) data.rating = body.rating;
   if (body.confirmedAt !== undefined) data.confirmed_at = body.confirmedAt;
   if (body.confirmedByAdmin !== undefined) data.confirmed_by_admin = body.confirmedByAdmin;
@@ -488,6 +492,12 @@ function setupEnvelopeAPI(app) {
       // Boy Scout: fs.promises.writeFile → writeJsonFile
       await writeJsonFile(filePath, report);
       console.log('Отчет конверта создан:', filePath);
+
+      // Фоновое обновление Z-Report Intelligence
+      const zReportIntelligence = require('../modules/z-report-intelligence');
+      zReportIntelligence.buildZReportIntelligence().catch(e =>
+        console.error('[Envelope] Z-Report Intelligence rebuild error:', e.message)
+      );
 
       res.json({ success: true, report });
     } catch (error) {

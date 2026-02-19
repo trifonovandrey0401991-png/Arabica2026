@@ -681,28 +681,28 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         day.day == DateTime.now().day;
 
     return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
+      margin: EdgeInsets.only(bottom: 6.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14.r),
+        borderRadius: BorderRadius.circular(10.r),
         border: Border.all(
           color: isToday ? AppColors.gold.withOpacity(0.6) : Colors.white.withOpacity(0.1),
           width: isToday ? 1.5 : 1,
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.all(14.w),
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
         child: Row(
           children: [
             // Дата
             Container(
-              width: 56,
-              height: 66,
+              width: 40,
+              height: 44,
               decoration: BoxDecoration(
                 color: isToday
                     ? AppColors.gold.withOpacity(0.2)
                     : entry.shiftType.color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12.r),
+                borderRadius: BorderRadius.circular(8.r),
                 border: isToday
                     ? Border.all(color: AppColors.gold.withOpacity(0.4))
                     : null,
@@ -713,7 +713,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                   Text(
                     '${day.day}',
                     style: TextStyle(
-                      fontSize: 22.sp,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
                       color: isToday ? AppColors.gold : entry.shiftType.color,
                     ),
@@ -721,82 +721,67 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                   Text(
                     _getWeekdayShort(day.weekday),
                     style: TextStyle(
-                      fontSize: 12.sp,
+                      fontSize: 10.sp,
                       color: isToday ? AppColors.gold.withOpacity(0.7) : entry.shiftType.color.withOpacity(0.7),
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(width: 14),
+            SizedBox(width: 10),
             // Информация о смене
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                        decoration: BoxDecoration(
-                          color: entry.shiftType.color.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.access_time, size: 14, color: entry.shiftType.color),
-                            SizedBox(width: 4),
-                            Text(
-                              entry.shiftType.label,
-                              style: TextStyle(
-                                color: entry.shiftType.color,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13.sp,
-                              ),
-                            ),
-                          ],
-                        ),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                    decoration: BoxDecoration(
+                      color: entry.shiftType.color.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(6.r),
+                    ),
+                    child: Text(
+                      entry.shiftType.label,
+                      style: TextStyle(
+                        color: entry.shiftType.color,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11.sp,
                       ),
-                      SizedBox(width: 8),
-                      Text(
-                        _getShiftTimeRange(entry),
-                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
-                      ),
-                    ],
+                    ),
                   ),
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.store, size: 16, color: Colors.white.withOpacity(0.4)),
-                      SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          entry.shopAddress,
-                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13.sp),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                  SizedBox(width: 6),
+                  Text(
+                    _getShiftTimeRange(entry),
+                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11.sp),
+                  ),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      entry.shopAddress,
+                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11.sp),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                    ),
                   ),
                 ],
               ),
             ),
             // Индикатор
-            if (isToday)
+            if (isToday) ...[
+              SizedBox(width: 6),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                 decoration: BoxDecoration(
                   color: AppColors.gold.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8.r),
+                  borderRadius: BorderRadius.circular(6.r),
                   border: Border.all(color: AppColors.gold.withOpacity(0.4)),
                 ),
                 child: Text(
                   'Сегодня',
-                  style: TextStyle(color: AppColors.gold, fontSize: 11.sp, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: AppColors.gold, fontSize: 10.sp, fontWeight: FontWeight.w600),
                 ),
               ),
+            ],
           ],
         ),
       ),
@@ -1629,28 +1614,29 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
   Widget _buildWorkedShiftCard(_WorkedShiftInfo item) {
     final day = item.entry.date;
+    final statusColor = item.wasWorked ? Colors.green : Colors.red;
 
     return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
+      margin: EdgeInsets.only(bottom: 6.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14.r),
+        borderRadius: BorderRadius.circular(10.r),
         border: Border.all(
-          color: item.wasWorked ? Colors.green.withOpacity(0.4) : Colors.red.withOpacity(0.4),
+          color: statusColor.withOpacity(0.4),
           width: 1,
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.all(14.w),
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
         child: Row(
           children: [
             // Дата
             Container(
-              width: 56,
-              height: 66,
+              width: 40,
+              height: 44,
               decoration: BoxDecoration(
-                color: (item.wasWorked ? Colors.green : Colors.red).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12.r),
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8.r),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1658,7 +1644,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                   Text(
                     '${day.day}',
                     style: TextStyle(
-                      fontSize: 22.sp,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
                       color: item.wasWorked ? Colors.green[400] : Colors.red[400],
                     ),
@@ -1666,47 +1652,42 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                   Text(
                     _getWeekdayShort(day.weekday),
                     style: TextStyle(
-                      fontSize: 12.sp,
-                      color: (item.wasWorked ? Colors.green : Colors.red).withOpacity(0.6),
+                      fontSize: 10.sp,
+                      color: statusColor.withOpacity(0.6),
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(width: 14),
+            SizedBox(width: 10),
             // Информация
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                         decoration: BoxDecoration(
                           color: item.entry.shiftType.color.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8.r),
+                          borderRadius: BorderRadius.circular(6.r),
                         ),
                         child: Text(
                           item.entry.shiftType.label,
                           style: TextStyle(
                             color: item.entry.shiftType.color,
                             fontWeight: FontWeight.w600,
-                            fontSize: 13.sp,
+                            fontSize: 11.sp,
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.store, size: 16, color: Colors.white.withOpacity(0.4)),
                       SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           item.entry.shopAddress,
-                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13.sp),
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11.sp),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1714,32 +1695,27 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                     ],
                   ),
                   if (item.details != null) ...[
-                    SizedBox(height: 4),
+                    SizedBox(height: 2),
                     Text(
                       item.details!,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.4),
-                        fontSize: 12.sp,
+                        fontSize: 10.sp,
                         fontStyle: FontStyle.italic,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ],
               ),
             ),
+            SizedBox(width: 6),
             // Галочка/Крестик
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: (item.wasWorked ? Colors.green : Colors.red).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: Icon(
-                item.wasWorked ? Icons.check : Icons.close,
-                color: item.wasWorked ? Colors.green[400] : Colors.red[400],
-                size: 28,
-              ),
+            Icon(
+              item.wasWorked ? Icons.check_circle : Icons.cancel,
+              color: item.wasWorked ? Colors.green[400] : Colors.red[400],
+              size: 24,
             ),
           ],
         ),

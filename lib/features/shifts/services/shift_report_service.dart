@@ -149,9 +149,11 @@ class ShiftReportService {
   }) async {
     Logger.debug('📥 Загрузка pending отчетов...');
 
+    // FIX: Не фильтруем по дате — для midnight-crossing окон (23:01-13:00)
+    // pending отчёты могут быть на завтрашнюю дату. Pending всегда актуальны
+    // (старые автоматически переходят в failed).
     final queryParams = <String, String>{
       'status': 'pending',
-      'date': DateTime.now().toIso8601String().split('T')[0],
     };
     if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
     if (shiftType != null) queryParams['shiftType'] = shiftType;

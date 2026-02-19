@@ -37,6 +37,7 @@ import '../../ai_training/pages/ai_training_page.dart';
 import '../../../app/pages/client_functions_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/services/firebase_service.dart';
 
 /// Страница панели работника (сетка как у сотрудника)
 class EmployeePanelPage extends StatefulWidget {
@@ -67,7 +68,9 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
     _loadUnreadProductQuestionsCount();
     _loadActiveTasksCount();
     _loadShiftTransferUnreadCount();
-    // Обновляем счётчики каждые 30 сек (чтобы бейдж обновился после пуша)
+    // Мгновенное обновление бейджа при получении push о заказе
+    FirebaseService.onOrderPushReceived = _loadPendingOrdersCount;
+    // Обновляем счётчики каждые 30 сек (резервный механизм)
     _badgeTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _loadPendingOrdersCount();
     });
@@ -76,6 +79,9 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
   @override
   void dispose() {
     _badgeTimer?.cancel();
+    if (FirebaseService.onOrderPushReceived == _loadPendingOrdersCount) {
+      FirebaseService.onOrderPushReceived = null;
+    }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -964,9 +970,11 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
           children: [
             CircularProgressIndicator(color: Colors.white.withOpacity(0.8)),
             SizedBox(width: 16),
-            Text(
-              'Определяем местоположение...',
-              style: TextStyle(color: Colors.white.withOpacity(0.9)),
+            Expanded(
+              child: Text(
+                'Определяем местоположение...',
+                style: TextStyle(color: Colors.white.withOpacity(0.9)),
+              ),
             ),
           ],
         ),

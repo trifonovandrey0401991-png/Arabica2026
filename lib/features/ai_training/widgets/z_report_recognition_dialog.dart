@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/z_report_sample_model.dart';
 import '../services/z_report_service.dart';
+import 'z_report_region_selector.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Результат диалога распознавания Z-отчёта
@@ -28,6 +29,7 @@ class ZReportRecognitionDialog extends StatefulWidget {
   final ZReportData? recognizedData;
   final String? shopAddress;
   final String? employeeName;
+  final Map<String, dynamic>? expectedRanges; // Intelligence: ожидаемые диапазоны
 
   const ZReportRecognitionDialog({
     super.key,
@@ -35,6 +37,7 @@ class ZReportRecognitionDialog extends StatefulWidget {
     this.recognizedData,
     this.shopAddress,
     this.employeeName,
+    this.expectedRanges,
   });
 
   /// Показать диалог и вернуть результат
@@ -44,6 +47,7 @@ class ZReportRecognitionDialog extends StatefulWidget {
     ZReportData? recognizedData,
     String? shopAddress,
     String? employeeName,
+    Map<String, dynamic>? expectedRanges,
   }) {
     return showDialog<ZReportRecognitionResult>(
       context: context,
@@ -53,6 +57,7 @@ class ZReportRecognitionDialog extends StatefulWidget {
         recognizedData: recognizedData,
         shopAddress: shopAddress,
         employeeName: employeeName,
+        expectedRanges: expectedRanges,
       ),
     );
   }
@@ -70,6 +75,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
 
   bool _isEditing = false;
   bool _isSaving = false;
+  Map<String, Map<String, double>>? _fieldRegions;
 
   @override
   void initState() {
@@ -122,6 +128,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
         resourceKeys: resourceKeys,
         shopAddress: widget.shopAddress,
         employeeName: widget.employeeName,
+        fieldRegions: _fieldRegions,
       );
 
       if (mounted) setState(() => _isSaving = false);
@@ -144,6 +151,20 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
 
   void _cancel() {
     Navigator.of(context).pop(null);
+  }
+
+  Future<void> _openRegionSelector() async {
+    final regions = await ZReportRegionSelector.show(
+      context,
+      imageBase64: widget.imageBase64,
+      initialRegions: _fieldRegions,
+    );
+    if (regions != null && mounted) {
+      setState(() {
+        _fieldRegions = regions;
+        _isEditing = true;
+      });
+    }
   }
 
   @override
@@ -189,6 +210,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
               confidence: data?.confidence['totalSum'],
               enabled: _isEditing || !hasData,
               isMoney: true,
+              expectedRange: _getRangeForField('totalSum'),
             ),
             SizedBox(height: 12),
 
@@ -200,6 +222,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
               confidence: data?.confidence['cashSum'],
               enabled: _isEditing || !hasData,
               isMoney: true,
+              expectedRange: _getRangeForField('cashSum'),
             ),
             SizedBox(height: 12),
 
@@ -211,6 +234,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
               confidence: data?.confidence['ofdNotSent'],
               enabled: _isEditing || !hasData,
               isInteger: true,
+              expectedRange: _getRangeForField('ofdNotSent'),
             ),
             SizedBox(height: 12),
 
@@ -222,6 +246,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
               confidence: data?.confidence['resourceKeys'],
               enabled: _isEditing || !hasData,
               isInteger: true,
+              expectedRange: _getRangeForField('resourceKeys'),
             ),
 
             if (_isEditing) ...[
@@ -271,6 +296,11 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
             onPressed: _cancel,
             child: Text('Отмена'),
           ),
+          IconButton(
+            onPressed: _openRegionSelector,
+            icon: Icon(Icons.crop_free, color: AppColors.primaryGreen),
+            tooltip: 'Указать области',
+          ),
           ElevatedButton(
             onPressed: _isSaving ? null : _confirm,
             style: ElevatedButton.styleFrom(
@@ -292,6 +322,35 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
     );
   }
 
+  /// Извлечь диапазон для поля из expectedRanges
+  Map<String, dynamic>? _getRangeForField(String fieldName) {
+    final ranges = widget.expectedRanges;
+    if (ranges == null) return null;
+    final fieldRange = ranges[fieldName];
+    if (fieldRange is Map<String, dynamic> &&
+        fieldRange['min'] != null &&
+        fieldRange['max'] != null) {
+      return fieldRange;
+    }
+    return null;
+  }
+
+  /// Форматирование числа для подсказки (12 345 вместо 12345.00)
+  String _formatHint(num value, bool isMoney) {
+    if (isMoney) {
+      final intVal = value.round();
+      // Разделитель тысяч пробелом
+      final str = intVal.toString();
+      final buf = StringBuffer();
+      for (int i = 0; i < str.length; i++) {
+        if (i > 0 && (str.length - i) % 3 == 0) buf.write(' ');
+        buf.write(str[i]);
+      }
+      return buf.toString();
+    }
+    return value is double ? value.toStringAsFixed(1) : value.toString();
+  }
+
   Widget _buildField({
     required TextEditingController controller,
     required String label,
@@ -300,77 +359,135 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
     bool enabled = true,
     bool isInteger = false,
     bool isMoney = false,
+    Map<String, dynamic>? expectedRange,
   }) {
-    final isFound = confidence == 'high';
+    final isConfirmed = confidence == 'high' ||
+        confidence == 'intelligence_confirmed' ||
+        confidence == 'learned';
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: Offset(0, 2),
+    // Проверяем попадание значения в ожидаемый диапазон
+    bool? isInRange;
+    if (expectedRange != null && controller.text.isNotEmpty) {
+      final value = double.tryParse(controller.text);
+      if (value != null) {
+        final min = (expectedRange['min'] as num).toDouble();
+        final max = (expectedRange['max'] as num).toDouble();
+        isInRange = value >= min && value <= max;
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12.r),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TextField(
+            controller: controller,
+            enabled: enabled,
+            keyboardType: isInteger
+                ? TextInputType.number
+                : TextInputType.numberWithOptions(decimal: true),
+            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500),
+            decoration: InputDecoration(
+              labelText: label,
+              labelStyle: TextStyle(color: Colors.grey.shade600),
+              prefixIcon: Container(
+                margin: EdgeInsets.all(8.w),
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(
+                  color: isMoney ? Colors.teal.shade50 : Colors.blueGrey.shade50,
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Icon(
+                  icon,
+                  color: isMoney ? Colors.teal.shade700 : Colors.blueGrey.shade700,
+                  size: 20,
+                ),
+              ),
+              suffixText: isMoney ? 'руб' : null,
+              suffixStyle: TextStyle(
+                color: Colors.teal.shade700,
+                fontWeight: FontWeight.bold,
+                fontSize: 16.sp,
+              ),
+              suffixIcon: confidence != null
+                  ? Icon(
+                      isConfirmed ? Icons.check_circle : Icons.help_outline,
+                      color: isConfirmed ? Colors.green : Colors.orange,
+                      size: 20,
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(color: Colors.teal.shade400, width: 2),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(color: Colors.grey.shade200),
+              ),
+              filled: true,
+              fillColor: enabled ? Colors.white : Colors.grey.shade50,
+              contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+            ),
+          ),
+        ),
+        // Подсказка ожидаемого диапазона от Intelligence
+        if (expectedRange != null) ...[
+          Padding(
+            padding: EdgeInsets.only(left: 12.w, top: 4.h),
+            child: Row(
+              children: [
+                Icon(
+                  isInRange == true
+                      ? Icons.trending_flat
+                      : isInRange == false
+                          ? Icons.warning_amber_rounded
+                          : Icons.insights,
+                  size: 14,
+                  color: isInRange == true
+                      ? Colors.green.shade600
+                      : isInRange == false
+                          ? Colors.orange.shade700
+                          : Colors.grey.shade500,
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'Обычно: ${_formatHint(expectedRange['min'] as num, isMoney)}'
+                  ' – ${_formatHint(expectedRange['max'] as num, isMoney)}'
+                  '${isMoney ? ' руб' : ''}',
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    color: isInRange == true
+                        ? Colors.green.shade600
+                        : isInRange == false
+                            ? Colors.orange.shade700
+                            : Colors.grey.shade500,
+                    fontWeight: isInRange != null ? FontWeight.w500 : FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
-      ),
-      child: TextField(
-        controller: controller,
-        enabled: enabled,
-        keyboardType: isInteger
-            ? TextInputType.number
-            : TextInputType.numberWithOptions(decimal: true),
-        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(color: Colors.grey.shade600),
-          prefixIcon: Container(
-            margin: EdgeInsets.all(8.w),
-            padding: EdgeInsets.all(8.w),
-            decoration: BoxDecoration(
-              color: isMoney ? Colors.teal.shade50 : Colors.blueGrey.shade50,
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-            child: Icon(
-              icon,
-              color: isMoney ? Colors.teal.shade700 : Colors.blueGrey.shade700,
-              size: 20,
-            ),
-          ),
-          suffixText: isMoney ? 'руб' : null,
-          suffixStyle: TextStyle(
-            color: Colors.teal.shade700,
-            fontWeight: FontWeight.bold,
-            fontSize: 16.sp,
-          ),
-          suffixIcon: confidence != null
-              ? Icon(
-                  isFound ? Icons.check_circle : Icons.help_outline,
-                  color: isFound ? Colors.green : Colors.orange,
-                  size: 20,
-                )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide(color: Colors.teal.shade400, width: 2),
-          ),
-          disabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide(color: Colors.grey.shade200),
-          ),
-          filled: true,
-          fillColor: enabled ? Colors.white : Colors.grey.shade50,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-        ),
-      ),
+      ],
     );
   }
 }

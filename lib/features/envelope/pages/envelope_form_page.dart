@@ -292,7 +292,10 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       Logger.debug('📸 Размер оригинала: ${(bytes.length / 1024).toStringAsFixed(0)} KB');
       final compressedBase64 = await ZReportService.compressImage(bytes);
       Logger.debug('📦 Размер сжатого base64: ${(compressedBase64.length / 1024).toStringAsFixed(0)} KB');
-      final result = await ZReportService.parseZReport(compressedBase64);
+      final result = await ZReportService.parseZReport(
+        compressedBase64,
+        shopAddress: widget.shopAddress,
+      );
 
       // Закрываем индикатор загрузки
       if (mounted) Navigator.of(context).pop();
@@ -306,6 +309,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         recognizedData: result.success ? result.data : null,
         shopAddress: widget.shopAddress,
         employeeName: widget.employeeName,
+        expectedRanges: result.expectedRanges,
       );
 
       if (dialogResult != null && mounted) {
@@ -1380,6 +1384,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       children: [
         // Итоги ООО
         Card(
+          color: Colors.white.withOpacity(0.06),
           child: Padding(
             padding: EdgeInsets.all(16.w),
             child: Column(
@@ -1387,11 +1392,11 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
               children: [
                 _buildSummaryRow('Выручка ООО:', _oooRevenue),
                 _buildSummaryRow('Наличные ООО:', _oooCash),
-                Divider(),
+                Divider(color: Colors.white.withOpacity(0.15)),
                 if (_oooExpenses.isNotEmpty) ...[
                   Text(
                     'Расходы:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   SizedBox(height: 8),
                   ..._oooExpenses.asMap().entries.map((entry) {
@@ -1402,14 +1407,14 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                       child: Row(
                         children: [
                           Expanded(
-                            child: Text('  ${expense.supplierName}'),
+                            child: Text('  ${expense.supplierName}', style: TextStyle(color: Colors.white.withOpacity(0.7))),
                           ),
                           Text(
                             '${expense.amount.toStringAsFixed(0)} руб',
-                            style: TextStyle(color: Colors.red),
+                            style: TextStyle(color: Colors.red[300]),
                           ),
                           IconButton(
-                            icon: Icon(Icons.close, size: 20),
+                            icon: Icon(Icons.close, size: 20, color: Colors.white.withOpacity(0.5)),
                             onPressed: () => _removeOooExpense(index),
                             padding: EdgeInsets.zero,
                             constraints: BoxConstraints(),
@@ -1418,10 +1423,10 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                       ),
                     );
                   }),
-                  Divider(),
+                  Divider(color: Colors.white.withOpacity(0.15)),
                   _buildSummaryRow('Итого расходов:', _oooTotalExpenses, isRed: true),
                 ],
-                Divider(),
+                Divider(color: Colors.white.withOpacity(0.15)),
                 _buildSummaryRow(
                   'Итого в конверте ООО:',
                   _oooEnvelopeAmount,
@@ -1456,6 +1461,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       children: [
         // Итоги
         Card(
+          color: Colors.white.withOpacity(0.06),
           child: Padding(
             padding: EdgeInsets.all(16.w),
             child: Column(
@@ -1463,11 +1469,11 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
               children: [
                 _buildSummaryRow('Выручка ИП:', _ipRevenue),
                 _buildSummaryRow('Наличные ИП:', _ipCash),
-                Divider(),
+                Divider(color: Colors.white.withOpacity(0.15)),
                 if (_expenses.isNotEmpty) ...[
                   Text(
                     'Расходы:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   SizedBox(height: 8),
                   ..._expenses.asMap().entries.map((entry) {
@@ -1478,14 +1484,14 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                       child: Row(
                         children: [
                           Expanded(
-                            child: Text('  ${expense.supplierName}'),
+                            child: Text('  ${expense.supplierName}', style: TextStyle(color: Colors.white.withOpacity(0.7))),
                           ),
                           Text(
                             '${expense.amount.toStringAsFixed(0)} руб',
-                            style: TextStyle(color: Colors.red),
+                            style: TextStyle(color: Colors.red[300]),
                           ),
                           IconButton(
-                            icon: Icon(Icons.close, size: 20),
+                            icon: Icon(Icons.close, size: 20, color: Colors.white.withOpacity(0.5)),
                             onPressed: () => _removeExpense(index),
                             padding: EdgeInsets.zero,
                             constraints: BoxConstraints(),
@@ -1494,10 +1500,10 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                       ),
                     );
                   }),
-                  Divider(),
+                  Divider(color: Colors.white.withOpacity(0.15)),
                   _buildSummaryRow('Итого расходов:', _totalExpenses, isRed: true),
                 ],
-                Divider(),
+                Divider(color: Colors.white.withOpacity(0.15)),
                 _buildSummaryRow(
                   'Итого в конверте ИП:',
                   _ipEnvelopeAmount,

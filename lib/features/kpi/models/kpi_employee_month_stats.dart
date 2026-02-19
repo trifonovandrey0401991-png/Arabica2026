@@ -66,6 +66,21 @@ class KPIEmployeeMonthStats {
   /// Средняя продолжительность опоздания в минутах
   double get averageLateMinutes => lateArrivals > 0 ? totalLateMinutes / lateArrivals : 0;
 
+  /// Общий процент выполнения (среднее по всем категориям)
+  double get overallPercentage {
+    if (baseDays == 0) return 0;
+    final percentages = [
+      attendancePercentage,
+      shiftsPercentage,
+      recountsPercentage,
+      rkosPercentage,
+      envelopesPercentage,
+      shiftHandoversPercentage,
+    ];
+    final sum = percentages.fold(0.0, (a, b) => a + b);
+    return sum / percentages.length;
+  }
+
   /// Есть ли данные из графика
   bool get hasScheduleData => scheduledDays > 0;
 }

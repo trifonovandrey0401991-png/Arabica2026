@@ -1,18 +1,24 @@
 import '../models/work_schedule_model.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../shops/models/shop_model.dart';
-import '../../shops/models/shop_settings_model.dart';
 import '../../../core/utils/logger.dart';
+
+/// Результат автозаполнения
+class AutoFillResult {
+  final List<WorkScheduleEntry> entries;
+  final List<String> warnings;
+
+  const AutoFillResult({required this.entries, required this.warnings});
+}
 
 /// Сервис для автоматического заполнения графика работы
 class AutoFillScheduleService {
   /// Автозаполнение графика
-  static Future<List<WorkScheduleEntry>> autoFill({
+  static Future<AutoFillResult> autoFill({
     required DateTime startDate,
     required DateTime endDate,
     required List<Employee> employees,
     required List<Shop> shops,
-    required Map<String, ShopSettings> shopSettingsCache,
     required WorkSchedule? existingSchedule,
     required bool replaceExisting,
   }) async {
@@ -47,9 +53,6 @@ class AutoFillScheduleService {
       Logger.debug('📅 Обрабатываем день: ${day.day}.${day.month}.${day.year}');
       // Для каждого магазина
       for (var shop in shops) {
-        final settings = shopSettingsCache[shop.address];
-        if (settings == null) continue;
-
         // Всегда заполняем утро и вечер для каждого магазина в каждый день
         final requiredShifts = <ShiftType>[
           ShiftType.morning,
@@ -165,7 +168,7 @@ class AutoFillScheduleService {
       }
     }
 
-    return newEntries;
+    return AutoFillResult(entries: newEntries, warnings: warnings);
   }
 
   /// Получить список дней периода

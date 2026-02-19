@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/providers/order_provider.dart';
-import '../../../core/services/notification_service.dart';
-import '../../employees/pages/employees_page.dart';
 import '../../menu/pages/menu_page.dart';
 import 'orders_page.dart';
-import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -594,30 +591,6 @@ class CartPage extends StatelessWidget {
                         comment: comment,
                         shopAddress: cart.selectedShopAddress,
                       );
-
-                      final newOrder = orderProvider.orders.first;
-
-                      if (builderContext.mounted) {
-                        try {
-                          final employees = await EmployeesPage.loadEmployeesForNotifications();
-                          if (builderContext.mounted) {
-                            await NotificationService.notifyNewOrder(
-                              context,
-                              newOrder,
-                              employees,
-                            );
-                          }
-                        } catch (e) {
-                          Logger.warning('Ошибка отправки уведомлений: $e');
-                          if (builderContext.mounted) {
-                            await NotificationService.notifyNewOrder(
-                              context,
-                              newOrder,
-                              [],
-                            );
-                          }
-                        }
-                      }
 
                       cart.clear();
                       if (builderContext.mounted) {

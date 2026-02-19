@@ -4,7 +4,7 @@
  * OCR → z-report-ocr.js, парсинг текста → здесь
  */
 
-const { extractZReportText } = require('./z-report-ocr');
+const { extractZReportText, extractZReportTextFromRegion } = require('./z-report-ocr');
 
 // Кэш для выученных паттернов
 let learnedPatternsCache = null;
@@ -75,9 +75,27 @@ function enhancedOcrNormalize(text) {
  * @param {string} imageBase64 - Base64 изображения
  * @returns {Object} - Распознанные данные
  */
-async function parseZReport(imageBase64) {
+async function parseZReport(imageBase64, expectedRanges = null, learnedRegions = null) {
   try {
-    // Распознаём текст через EasyOCR (с Tesseract fallback)
+    // === Попытка 1: OCR по выученным регионам (4 отдельных кропа) ===
+    if (learnedRegions && Object.keys(learnedRegions).length >= 2) {
+      console.log('[Z-Report] Пробуем OCR по регионам:', Object.keys(learnedRegions).join(', '));
+      const regionResult = await parseByRegions(imageBase64, learnedRegions, expectedRanges);
+      if (regionResult) {
+        console.log('[Z-Report] Регионы: распознано', regionResult.recognizedCount, 'из 4 полей');
+        if (regionResult.recognizedCount >= 3) {
+          return {
+            success: true,
+            rawText: regionResult.rawText,
+            data: regionResult.data,
+            method: 'regions',
+          };
+        }
+        console.log('[Z-Report] Регионы: недостаточно полей, переходим к full-page OCR');
+      }
+    }
+
+    // === Попытка 2: полностраничный OCR (основной путь) ===
     const ocrResult = await extractZReportText(imageBase64);
 
     if (!ocrResult.success || !ocrResult.text) {
@@ -90,13 +108,18 @@ async function parseZReport(imageBase64) {
     const fullText = ocrResult.text;
     console.log('[Z-Report] Распознанный текст (метод:', ocrResult.method, '| символов:', ocrResult.charCount, '):', fullText);
 
-    // Парсим нужные поля (теперь async)
-    const parsed = await extractZReportData(fullText);
+    if (expectedRanges) {
+      console.log('[Z-Report] Intelligence ranges:', JSON.stringify(expectedRanges));
+    }
+
+    // Парсим нужные поля (теперь async) с intelligence ranges
+    const parsed = await extractZReportData(fullText, null, expectedRanges);
 
     return {
       success: true,
       rawText: fullText,
-      data: parsed
+      data: parsed,
+      method: 'fullpage',
     };
 
   } catch (error) {
@@ -106,6 +129,118 @@ async function parseZReport(imageBase64) {
       error: error.message
     };
   }
+}
+
+/**
+ * OCR по выученным регионам — кропаем 4 области и распознаём каждую отдельно
+ * Возвращает null если не удалось
+ */
+async function parseByRegions(imageBase64, regions, expectedRanges) {
+  const fields = ['totalSum', 'cashSum', 'ofdNotSent', 'resourceKeys'];
+  const result = {
+    totalSum: null,
+    cashSum: null,
+    ofdNotSent: null,
+    resourceKeys: null,
+    confidence: {},
+    validationWarnings: [],
+  };
+
+  let rawTexts = [];
+  let recognizedCount = 0;
+
+  // Распознаём каждый регион параллельно
+  const regionPromises = fields
+    .filter(field => regions[field])
+    .map(async (field) => {
+      try {
+        const ocrResult = await extractZReportTextFromRegion(imageBase64, regions[field]);
+        if (!ocrResult.success || !ocrResult.text) return { field, text: null };
+        return { field, text: ocrResult.text };
+      } catch (e) {
+        console.error(`[Z-Report Region] Ошибка OCR для ${field}:`, e.message);
+        return { field, text: null };
+      }
+    });
+
+  const regionResults = await Promise.all(regionPromises);
+
+  for (const { field, text } of regionResults) {
+    if (!text) continue;
+    rawTexts.push(`[${field}]: ${text}`);
+
+    // Извлекаем число из кропнутого текста
+    const value = extractNumberFromRegionText(text, field);
+    if (value !== null) {
+      result[field] = value;
+      result.confidence[field] = 'region';
+      recognizedCount++;
+
+      // Проверка по intelligence
+      if (expectedRanges && expectedRanges[field]) {
+        const range = expectedRanges[field];
+        if (value >= range.min && value <= range.max) {
+          result.confidence[field] = 'intelligence_confirmed';
+        } else {
+          result.validationWarnings.push({
+            type: `${field}_outside_expected`,
+            message: `${field} = ${value}, ожидалось ${range.min}–${range.max}`,
+            severity: 'warning',
+            expectedRange: range,
+          });
+        }
+      }
+    }
+  }
+
+  if (recognizedCount === 0) return null;
+
+  return {
+    data: result,
+    rawText: rawTexts.join('\n'),
+    recognizedCount,
+  };
+}
+
+/**
+ * Извлечь число из текста кропнутого региона
+ * Регион содержит 1-3 строки текста вокруг нужного числа
+ */
+function extractNumberFromRegionText(text, fieldType) {
+  if (!text) return null;
+
+  const lines = text.trim().split('\n').map(l => l.trim()).filter(l => l);
+
+  if (fieldType === 'ofdNotSent' || fieldType === 'resourceKeys') {
+    // Целые числа
+    for (const line of lines) {
+      // Ищем целое число (возможно с суффиксом AH./дн.)
+      const match = line.match(/(\d+)\s*(?:AH|АН|дн|шт)?\.?/i);
+      if (match) {
+        const val = parseInt(match[1]);
+        if (!isNaN(val) && val >= 0 && val < 100000) return val;
+      }
+    }
+  } else {
+    // Суммы (дробные)
+    for (const line of lines) {
+      // Ищем число вида 14095.00 или =14095.00
+      const match = line.match(/=?\s*(\d[\d\s]*\d)[.,](\d{2})(?!\d)/);
+      if (match) {
+        const intPart = match[1].replace(/\s/g, '');
+        const val = parseFloat(intPart + '.' + match[2]);
+        if (!isNaN(val) && val > 0) return val;
+      }
+      // Целое число (без копеек)
+      const intMatch = line.match(/=?\s*(\d{3,})/);
+      if (intMatch) {
+        const val = parseFloat(intMatch[1]);
+        if (!isNaN(val) && val > 100) return val;
+      }
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -194,7 +329,7 @@ async function getLearnedPatternsWithCache() {
  * Поддерживает АТОЛ, Штрих-М, Эвотор и другие кассы
  * ТЕПЕРЬ ИСПОЛЬЗУЕТ ВЫУЧЕННЫЕ ПАТТЕРНЫ!
  */
-async function extractZReportData(originalText, learnedPatterns = null) {
+async function extractZReportData(originalText, learnedPatterns = null, expectedRanges = null) {
   // ============ УЛУЧШЕННАЯ НОРМАЛИЗАЦИЯ OCR ============
   // Применяем нормализацию для исправления типичных ошибок OCR
   const text = enhancedOcrNormalize(originalText);
@@ -718,7 +853,32 @@ async function extractZReportData(originalText, learnedPatterns = null) {
     }
   }
 
-  // 8. Помечаем не найденные поля
+  // 8. Intelligence-валидация: проверяем значения по ожидаемым диапазонам
+  if (expectedRanges) {
+    for (const field of ['totalSum', 'cashSum', 'ofdNotSent', 'resourceKeys']) {
+      const range = expectedRanges[field];
+      if (!range || result[field] === null) continue;
+
+      if (result[field] >= range.min && result[field] <= range.max) {
+        // Значение в ожидаемом диапазоне — подтверждаем confidence
+        if (result.confidence[field] !== 'not_found' && result.confidence[field] !== 'invalid') {
+          result.confidence[field] = 'intelligence_confirmed';
+          console.log(`[Z-Report] Intelligence: ${field} = ${result[field]} в ожидаемом диапазоне [${range.min}, ${range.max}]`);
+        }
+      } else {
+        // Вне диапазона — предупреждение
+        console.log(`[Z-Report] Intelligence: ${field} = ${result[field]} ВНЕ диапазона [${range.min}, ${range.max}]`);
+        result.validationWarnings.push({
+          type: `${field}_outside_expected`,
+          message: `${field} = ${result[field]}, ожидалось ${range.min}–${range.max}`,
+          severity: 'warning',
+          expectedRange: range,
+        });
+      }
+    }
+  }
+
+  // 9. Помечаем не найденные поля
   if (result.totalSum === null) result.confidence.totalSum = 'not_found';
   if (result.cashSum === null) result.confidence.cashSum = 'not_found';
   if (result.ofdNotSent === null) result.confidence.ofdNotSent = 'not_found';

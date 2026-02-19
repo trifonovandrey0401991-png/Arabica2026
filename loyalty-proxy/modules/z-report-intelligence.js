@@ -1,0 +1,376 @@
+/**
+ * Z-Report Intelligence Module
+ * Предсказание ожидаемых значений Z-отчётов по историческим данным.
+ *
+ * Аналог buildMachineIntelligence() из coffee_machine_api.js,
+ * но адаптирован для Z-отчётов:
+ * - Счётчик кофемашины растёт монотонно → предсказание через линейный рост
+ * - Выручка Z-отчёта сбрасывается ежедневно → предсказание через avg ± stddev
+ * - 4 поля вместо 1: totalSum, cashSum, ofdNotSent, resourceKeys
+ */
+
+const fsp = require('fs').promises;
+const path = require('path');
+const { writeJsonFile } = require('../utils/async_fs');
+const { fileExists } = require('../utils/file_helpers');
+const db = require('../utils/db');
+
+const USE_DB = process.env.USE_DB_ENVELOPE === 'true';
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
+const INTELLIGENCE_FILE = path.join(DATA_DIR, 'z-report-intelligence.json');
+
+// Минимум отчётов для формирования диапазона
+const MIN_REPORTS_FOR_RANGE = 5;
+
+/**
+ * Построить intelligence по всем магазинам из истории envelope_reports
+ * Вызывается фоново после сохранения отчёта или training sample
+ */
+async function buildZReportIntelligence() {
+  try {
+    const reports = await loadAllReports();
+    if (!reports || reports.length === 0) {
+      console.log('[Z-Report Intelligence] Нет отчётов для анализа');
+      return {};
+    }
+
+    // Группируем по магазину
+    const byShop = {};
+    for (const r of reports) {
+      const shop = r.shopAddress || r.shop_address;
+      if (!shop) continue;
+      if (!byShop[shop]) byShop[shop] = [];
+      byShop[shop].push(r);
+    }
+
+    const shopProfiles = {};
+
+    for (const [shopAddress, shopReports] of Object.entries(byShop)) {
+      if (shopReports.length < 2) continue;
+
+      const profile = {
+        totalSum: buildFieldStats(shopReports, 'totalSum'),
+        cashSum: buildFieldStats(shopReports, 'cashSum'),
+        ofdNotSent: buildFieldStats(shopReports, 'ofdNotSent'),
+        resourceKeys: buildResourceKeysStats(shopReports),
+        totalReports: shopReports.length,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Статистика точности из training samples
+      profile.accuracy = await buildAccuracyStats(shopAddress);
+
+      shopProfiles[shopAddress] = profile;
+    }
+
+    const data = { shopProfiles, updatedAt: new Date().toISOString() };
+
+    // Dual-write: JSON + DB
+    await writeJsonFile(INTELLIGENCE_FILE, data);
+
+    if (USE_DB) {
+      try {
+        await db.upsert('app_settings', {
+          key: 'z_report_intelligence',
+          value: JSON.stringify(data),
+          updated_at: new Date().toISOString(),
+        }, 'key');
+      } catch (e) {
+        console.error('[Z-Report Intelligence] DB save error:', e.message);
+      }
+    }
+
+    console.log(`[Z-Report Intelligence] Обновлён: ${Object.keys(shopProfiles).length} магазинов, ${reports.length} отчётов`);
+    return data;
+  } catch (error) {
+    console.error('[Z-Report Intelligence] Ошибка build:', error.message);
+    return {};
+  }
+}
+
+/**
+ * Статистика по одному числовому полю (totalSum, cashSum, ofdNotSent)
+ * Сбрасывается ежедневно → используем avg ± stddev
+ */
+function buildFieldStats(reports, fieldName) {
+  // Собираем значения из обеих юрлиц (ООО и ИП)
+  const values = [];
+
+  for (const r of reports) {
+    // ООО
+    const oooVal = extractFieldValue(r, 'ooo', fieldName);
+    if (oooVal !== null && oooVal > 0) values.push(oooVal);
+
+    // ИП
+    const ipVal = extractFieldValue(r, 'ip', fieldName);
+    if (ipVal !== null && ipVal > 0) values.push(ipVal);
+  }
+
+  if (values.length === 0) return null;
+
+  const avg = values.reduce((s, v) => s + v, 0) / values.length;
+  const variance = values.reduce((s, v) => s + (v - avg) ** 2, 0) / values.length;
+  const stddev = Math.sqrt(variance);
+
+  return {
+    avg: Math.round(avg * 100) / 100,
+    stddev: Math.round(stddev * 100) / 100,
+    min: Math.min(...values),
+    max: Math.max(...values),
+    count: values.length,
+  };
+}
+
+/**
+ * Статистика для resourceKeys — убывает со временем (как обратный счётчик)
+ */
+function buildResourceKeysStats(reports) {
+  const entries = [];
+
+  for (const r of reports) {
+    const date = r.date || (r.createdAt ? r.createdAt.slice(0, 10) : null);
+    // resourceKeys пока может быть в отчёте или в training samples
+    const oooKeys = r.oooResourceKeys || r.ooo_resource_keys;
+    const ipKeys = r.ipResourceKeys || r.ip_resource_keys;
+
+    if (oooKeys != null && oooKeys > 0 && date) {
+      entries.push({ value: Number(oooKeys), date });
+    }
+    if (ipKeys != null && ipKeys > 0 && date) {
+      entries.push({ value: Number(ipKeys), date });
+    }
+  }
+
+  if (entries.length === 0) return null;
+
+  entries.sort((a, b) => a.date.localeCompare(b.date));
+
+  const values = entries.map(e => e.value);
+  const lastKnown = values[values.length - 1];
+  const lastDate = entries[entries.length - 1].date;
+
+  // Тренд (дневное убывание)
+  let trend = 0;
+  if (entries.length >= 2) {
+    const first = entries[0];
+    const last = entries[entries.length - 1];
+    const days = Math.max(1, (new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24));
+    trend = Math.round(((last.value - first.value) / days) * 100) / 100; // обычно отрицательный
+  }
+
+  return {
+    lastKnown,
+    lastDate,
+    trend,
+    min: Math.min(...values),
+    max: Math.max(...values),
+    count: values.length,
+  };
+}
+
+/**
+ * Извлечь значение поля из отчёта (поддерживает camelCase и snake_case)
+ */
+function extractFieldValue(report, entity, fieldName) {
+  // Маппинг: fieldName → ключи в объекте отчёта
+  const mapping = {
+    totalSum: { ooo: ['oooRevenue', 'ooo_revenue'], ip: ['ipRevenue', 'ip_revenue'] },
+    cashSum: { ooo: ['oooCash', 'ooo_cash'], ip: ['ipCash', 'ip_cash'] },
+    ofdNotSent: { ooo: ['oooOfdNotSent', 'ooo_ofd_not_sent'], ip: ['ipOfdNotSent', 'ip_ofd_not_sent'] },
+  };
+
+  const keys = mapping[fieldName]?.[entity];
+  if (!keys) return null;
+
+  for (const key of keys) {
+    const val = report[key];
+    if (val !== null && val !== undefined) return Number(val);
+  }
+  return null;
+}
+
+/**
+ * Статистика точности из training samples
+ */
+async function buildAccuracyStats(shopAddress) {
+  const defaults = {
+    totalSum: { total: 0, correct: 0, rate: 0 },
+    cashSum: { total: 0, correct: 0, rate: 0 },
+    ofdNotSent: { total: 0, correct: 0, rate: 0 },
+    resourceKeys: { total: 0, correct: 0, rate: 0 },
+  };
+
+  try {
+    let samples = [];
+    if (USE_DB) {
+      const rows = await db.query(
+        'SELECT correct_data, recognized_data, corrected_fields FROM z_report_training_samples WHERE shop_id = $1',
+        [shopAddress]
+      );
+      samples = rows || [];
+    } else {
+      const samplesFile = path.join(DATA_DIR, 'z-report-training-samples.json');
+      if (await fileExists(samplesFile)) {
+        const all = JSON.parse(await fsp.readFile(samplesFile, 'utf8'));
+        samples = (all || []).filter(s => s.shopId === shopAddress);
+      }
+    }
+
+    if (samples.length === 0) return defaults;
+
+    for (const sample of samples) {
+      const correct = typeof sample.correct_data === 'string'
+        ? JSON.parse(sample.correct_data) : (sample.correctData || sample.correct_data || {});
+      const recognized = typeof sample.recognized_data === 'string'
+        ? JSON.parse(sample.recognized_data) : (sample.recognizedData || sample.recognized_data || {});
+      const correctedFields = sample.corrected_fields || sample.correctedFields || [];
+
+      for (const field of ['totalSum', 'cashSum', 'ofdNotSent', 'resourceKeys']) {
+        if (correct[field] !== undefined && correct[field] !== null) {
+          defaults[field].total++;
+          // Если поле НЕ в списке исправленных → ИИ угадал
+          if (!correctedFields.includes(field)) {
+            defaults[field].correct++;
+          }
+        }
+      }
+    }
+
+    // Вычисляем rate
+    for (const field of Object.keys(defaults)) {
+      if (defaults[field].total > 0) {
+        defaults[field].rate = Math.round((defaults[field].correct / defaults[field].total) * 1000) / 1000;
+      }
+    }
+
+    return defaults;
+  } catch (e) {
+    console.error('[Z-Report Intelligence] Accuracy stats error:', e.message);
+    return defaults;
+  }
+}
+
+/**
+ * Получить ожидаемые диапазоны для конкретного магазина
+ * Возвращает { totalSum: {min, max}, cashSum: {min, max}, ofdNotSent: {min, max}, resourceKeys: {min, max} }
+ */
+function getExpectedRanges(intelligence, shopAddress) {
+  if (!intelligence?.shopProfiles?.[shopAddress]) return null;
+
+  const profile = intelligence.shopProfiles[shopAddress];
+  const ranges = {};
+
+  // totalSum: avg ± 2*stddev
+  if (profile.totalSum && profile.totalSum.count >= MIN_REPORTS_FOR_RANGE) {
+    const s = profile.totalSum;
+    ranges.totalSum = {
+      min: Math.max(0, Math.round(s.avg - 2 * s.stddev)),
+      max: Math.round(s.avg + 2 * s.stddev),
+      avg: s.avg,
+    };
+  }
+
+  // cashSum: avg ± 2*stddev, ограничен totalSum.max
+  if (profile.cashSum && profile.cashSum.count >= MIN_REPORTS_FOR_RANGE) {
+    const s = profile.cashSum;
+    ranges.cashSum = {
+      min: Math.max(0, Math.round(s.avg - 2 * s.stddev)),
+      max: Math.round(s.avg + 2 * s.stddev),
+      avg: s.avg,
+    };
+    // cashSum не может быть больше totalSum
+    if (ranges.totalSum) {
+      ranges.cashSum.max = Math.min(ranges.cashSum.max, ranges.totalSum.max);
+    }
+  }
+
+  // ofdNotSent: обычно 0-5, максимум из истории + запас
+  if (profile.ofdNotSent && profile.ofdNotSent.count >= MIN_REPORTS_FOR_RANGE) {
+    ranges.ofdNotSent = {
+      min: 0,
+      max: Math.max(10, profile.ofdNotSent.max + 2),
+      avg: profile.ofdNotSent.avg,
+    };
+  }
+
+  // resourceKeys: убывает со временем, предсказываем по тренду
+  if (profile.resourceKeys && profile.resourceKeys.count >= 3) {
+    const rk = profile.resourceKeys;
+    if (rk.lastKnown && rk.lastDate) {
+      const daysSince = Math.max(0, (Date.now() - new Date(rk.lastDate).getTime()) / (1000 * 60 * 60 * 24));
+      const expected = rk.lastKnown + Math.round(rk.trend * daysSince);
+      ranges.resourceKeys = {
+        min: Math.max(0, expected - 20),
+        max: expected + 10,
+        avg: expected,
+      };
+    } else {
+      ranges.resourceKeys = {
+        min: Math.max(0, rk.min - 20),
+        max: rk.max + 10,
+        avg: Math.round((rk.min + rk.max) / 2),
+      };
+    }
+  }
+
+  return Object.keys(ranges).length > 0 ? ranges : null;
+}
+
+/**
+ * Загрузить intelligence (JSON → DB fallback)
+ */
+async function loadZReportIntelligence() {
+  try {
+    // Сначала JSON
+    if (await fileExists(INTELLIGENCE_FILE)) {
+      return JSON.parse(await fsp.readFile(INTELLIGENCE_FILE, 'utf8'));
+    }
+
+    // Fallback: DB
+    if (USE_DB) {
+      const row = await db.findById('app_settings', 'z_report_intelligence', 'key');
+      if (row?.value) return JSON.parse(row.value);
+    }
+
+    return null;
+  } catch (e) {
+    console.error('[Z-Report Intelligence] Load error:', e.message);
+    return null;
+  }
+}
+
+/**
+ * Загрузить все отчёты конвертов (DB или JSON)
+ */
+async function loadAllReports() {
+  if (USE_DB) {
+    try {
+      return await db.findAll('envelope_reports', {
+        orderBy: 'created_at DESC',
+        limit: 500, // последние 500 для анализа
+      });
+    } catch (e) {
+      console.error('[Z-Report Intelligence] DB load error:', e.message);
+    }
+  }
+
+  // Fallback: JSON
+  const reportsDir = path.join(DATA_DIR, 'envelope-reports');
+  if (!(await fileExists(reportsDir))) return [];
+
+  const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
+  const reports = [];
+  for (const file of files) {
+    try {
+      const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
+      reports.push(data);
+    } catch (e) { /* skip */ }
+  }
+  return reports;
+}
+
+module.exports = {
+  buildZReportIntelligence,
+  loadZReportIntelligence,
+  getExpectedRanges,
+};

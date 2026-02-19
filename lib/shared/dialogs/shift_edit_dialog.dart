@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../features/work_schedule/models/work_schedule_model.dart';
+import '../../features/work_schedule/work_schedule_validator.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/shops/models/shop_model.dart';
 import '../../features/shops/models/shop_settings_model.dart';
@@ -8,7 +9,7 @@ import '../../features/shops/services/shop_service.dart';
 import '../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-/// Диалог редактирования смены с двумя вкладками
+/// Диалог редактирования смены с вкладками
 class ShiftEditDialog extends StatefulWidget {
   final WorkScheduleEntry? existingEntry;
   final DateTime date;
@@ -16,8 +17,9 @@ class ShiftEditDialog extends StatefulWidget {
   final WorkSchedule schedule;
   final List<Employee> allEmployees;
   final List<Shop> shops;
-  final ShiftType? requiredShiftType; // Если указан - тип смены блокируется
-  final Shop? requiredShop; // Если указан - магазин блокируется
+  final ShiftType? requiredShiftType;
+  final Shop? requiredShop;
+  final List<ScheduleError> cellErrors; // Ошибки/предупреждения для этой ячейки
 
   const ShiftEditDialog({
     super.key,
@@ -29,6 +31,7 @@ class ShiftEditDialog extends StatefulWidget {
     required this.shops,
     this.requiredShiftType,
     this.requiredShop,
+    this.cellErrors = const [],
   });
 
   @override
@@ -49,7 +52,11 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: widget.cellErrors.isNotEmpty ? 3 : 2,
+      vsync: this,
+      initialIndex: widget.cellErrors.isNotEmpty ? 2 : 0, // Открываем "Причины" если есть ошибки
+    );
 
     // Инициализируем значения
     _selectedEmployee = widget.employee;
@@ -124,9 +131,21 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
             TabBar(
               controller: _tabController,
               labelColor: AppColors.primaryGreen,
+              isScrollable: true,
               tabs: [
                 Tab(text: 'Редактировать'),
-                Tab(text: 'Свободные сотрудники'),
+                Tab(text: 'Свободные'),
+                if (widget.cellErrors.isNotEmpty)
+                  Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.warning, size: 16, color: Colors.orange),
+                        SizedBox(width: 4),
+                        Text('Причины'),
+                      ],
+                    ),
+                  ),
               ],
             ),
             Expanded(
@@ -135,6 +154,8 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
                 children: [
                   _buildEditTab(),
                   _buildAvailableEmployeesTab(),
+                  if (widget.cellErrors.isNotEmpty)
+                    _buildReasonsTab(),
                 ],
               ),
             ),
@@ -386,6 +407,94 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
         );
       },
     );
+  }
+
+  /// Вкладка "Причины" — показывает почему у ячейки восклицательный знак
+  Widget _buildReasonsTab() {
+    return ListView.builder(
+      padding: EdgeInsets.all(12.w),
+      itemCount: widget.cellErrors.length,
+      itemBuilder: (context, index) {
+        final error = widget.cellErrors[index];
+        final isCritical = error.isCritical;
+
+        return Container(
+          margin: EdgeInsets.only(bottom: 8.h),
+          padding: EdgeInsets.all(12.w),
+          decoration: BoxDecoration(
+            color: isCritical
+                ? Colors.red.withOpacity(0.1)
+                : Colors.orange.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(
+              color: isCritical
+                  ? Colors.red.withOpacity(0.3)
+                  : Colors.orange.withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                isCritical ? Icons.error : Icons.warning,
+                color: isCritical ? Colors.red : Colors.orange,
+                size: 20,
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isCritical ? 'Ошибка' : 'Предупреждение',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13.sp,
+                        color: isCritical ? Colors.red : Colors.orange,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      error.displayMessage,
+                      style: TextStyle(fontSize: 13.sp),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      _getErrorExplanation(error),
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        color: Colors.grey,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Человекопонятное объяснение ошибки
+  String _getErrorExplanation(ScheduleError error) {
+    switch (error.type) {
+      case ScheduleErrorType.missingMorning:
+        return 'В магазине нет утренней смены на эту дату. Назначьте сотрудника.';
+      case ScheduleErrorType.missingEvening:
+        return 'В магазине нет вечерней смены на эту дату. Назначьте сотрудника.';
+      case ScheduleErrorType.duplicateMorning:
+        return 'На одну утреннюю смену назначено несколько сотрудников. Удалите лишнюю смену.';
+      case ScheduleErrorType.duplicateEvening:
+        return 'На одну вечернюю смену назначено несколько сотрудников. Удалите лишнюю смену.';
+      case ScheduleErrorType.morningAfterEvening:
+        return 'Сотрудник работал в вечернюю смену вчера и стоит в утреннюю сегодня. Это менее 12 часов отдыха.';
+      case ScheduleErrorType.eveningAfterMorning:
+        return 'Сотрудник работает и утром, и вечером в один день. Это более 16 часов работы.';
+      case ScheduleErrorType.dayAfterEvening:
+        return 'Сотрудник работал в вечернюю смену вчера и стоит в дневную сегодня. Недостаточно времени для отдыха.';
+    }
   }
 
   /// Получить список свободных сотрудников с сортировкой

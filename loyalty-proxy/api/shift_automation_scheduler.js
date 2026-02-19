@@ -82,26 +82,31 @@ class ShiftScheduler extends BaseReportScheduler {
 
   // ==================== GENERATE PENDING ====================
 
-  async generatePendingReports(shiftType) {
+  async generatePendingReports(shiftType, targetDate = null) {
     const settings = await this.getSettings();
     const shops = await this.getAllShops();
-    const today = getMoscowDateString();
+    // targetDate used for midnight-crossing windows (pre-midnight generates for tomorrow)
+    const today = targetDate || getMoscowDateString();
 
     if (shops.length === 0) {
       console.log(`${this.tag} No shops found, skipping ${shiftType} report generation`);
       return 0;
     }
 
-    let reports = await this.loadTodayReports();
+    // Use target date for reports file (may be tomorrow's file)
+    const reportsFile = path.join(this.SHIFT_REPORTS_DIR, `${today}.json`);
+    let reports = await loadJsonFile(reportsFile, []);
     let created = 0;
 
-    // DB: проверяем уже сданные отчёты (которых может не быть в файлах)
+    // DB: проверяем уже СДАННЫЕ отчёты (review/confirmed) — не блокируем на failed
     let dbSubmittedSet = new Set();
     if (USE_DB) {
       try {
         const result = await db.query(
-          'SELECT shop_address, shift_type FROM shift_reports WHERE date = $1 OR created_at::date = $2::date',
-          [today, today]
+          `SELECT shop_address, shift_type FROM shift_reports
+           WHERE (date = $1 OR created_at::date = $1::date)
+           AND status IN ('review', 'confirmed')`,
+          [today]
         );
         for (const row of result.rows) {
           dbSubmittedSet.add(`${row.shop_address}|${row.shift_type}`);
@@ -125,7 +130,7 @@ class ShiftScheduler extends BaseReportScheduler {
       );
       if (exists) continue;
 
-      // DB: пропускаем если отчёт уже есть в БД
+      // DB: пропускаем если отчёт уже СДАН (review/confirmed)
       if (dbSubmittedSet.has(`${shop.address}|${shiftType}`)) continue;
 
       const report = {
@@ -164,7 +169,7 @@ class ShiftScheduler extends BaseReportScheduler {
             shift_type: report.shiftType,
             status: 'pending',
             answers: '[]',
-            date: getMoscowDateString(),
+            date: today,
             created_at: report.createdAt,
             deadline: report.deadline,
             updated_at: report.createdAt
@@ -174,14 +179,14 @@ class ShiftScheduler extends BaseReportScheduler {
         }
       }
 
-      console.log(`${this.tag} Created pending ${shiftType} report for ${shop.name} (${shop.address})`);
+      console.log(`${this.tag} Created pending ${shiftType} report for ${shop.name} (${shop.address}) [date=${today}]`);
     }
 
     if (created > 0) {
-      await this.saveTodayReports(reports);
+      await writeJsonFile(reportsFile, reports);
     }
 
-    console.log(`${this.tag} Generated ${created} pending ${shiftType} reports`);
+    console.log(`${this.tag} Generated ${created} pending ${shiftType} reports for ${today}`);
     return created;
   }
 
@@ -433,10 +438,32 @@ class ShiftScheduler extends BaseReportScheduler {
     // Morning window (supports midnight crossover, e.g. 23:01 - 13:00)
     if (this.isInTimeWindow(settings.morningStartTime, settings.morningEndTime)) {
       const lastGen = state.lastMorningGeneration;
-      if (!lastGen || !this.isSameDay(new Date(lastGen), now)) {
-        const created = await this.generatePendingReports('morning');
+
+      // FIX: For midnight-crossing windows (e.g. 23:01-13:00), when we're in the
+      // pre-midnight part (23:01-23:59), pending reports are for TOMORROW's morning.
+      // Compare lastGen against tomorrow so we don't skip generation.
+      let compareDate = now;
+      let targetDate = null;
+      const mStart = this.parseTime(settings.morningStartTime);
+      const mEnd = this.parseTime(settings.morningEndTime);
+      const startMin = mStart.hours * 60 + mStart.minutes;
+      const endMin = mEnd.hours * 60 + mEnd.minutes;
+      if (startMin > endMin) {
+        // Midnight-crossing window
+        const moscowNow = moscow.getUTCHours() * 60 + moscow.getUTCMinutes();
+        if (moscowNow >= startMin) {
+          // Pre-midnight part: reports are for tomorrow's morning
+          compareDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+          const tomorrowMoscow = new Date(moscow.getTime() + 24 * 60 * 60 * 1000);
+          targetDate = tomorrowMoscow.toISOString().split('T')[0];
+          console.log(`${this.tag} Pre-midnight morning window detected, generating for ${targetDate}`);
+        }
+      }
+
+      if (!lastGen || !this.isSameDay(new Date(lastGen), compareDate)) {
+        const created = await this.generatePendingReports('morning', targetDate);
         if (created > 0) {
-          state.lastMorningGeneration = now.toISOString();
+          state.lastMorningGeneration = compareDate.toISOString();
         }
       }
     }

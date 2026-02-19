@@ -711,8 +711,31 @@ app.post('/api/fcm-tokens', async (req, res) => {
 
     const normalizedPhone = phone.replace(/[^\d]/g, '');
 
-    // 1. JSON file (primary)
+    // 0. Удаляем этот же токен у других телефонов (одно устройство = один владелец)
     const tokenDir = `${DATA_DIR}/fcm-tokens`;
+    if (await fileExists(tokenDir)) {
+      try {
+        const files = await fsp.readdir(tokenDir);
+        for (const file of files) {
+          if (!file.endsWith('.json')) continue;
+          const otherPhone = file.replace('.json', '');
+          if (otherPhone === normalizedPhone) continue;
+          try {
+            const filePath = path.join(tokenDir, file);
+            const content = await fsp.readFile(filePath, 'utf8');
+            const data = JSON.parse(content);
+            if (data.token === token) {
+              await fsp.unlink(filePath);
+              console.log(`FCM токен удален у ${maskPhone(otherPhone)} (устройство перешло к ${maskPhone(normalizedPhone)})`);
+            }
+          } catch (_) {}
+        }
+      } catch (err) {
+        console.error('Ошибка очистки дублей FCM токенов:', err.message);
+      }
+    }
+
+    // 1. JSON file (primary)
     if (!await fileExists(tokenDir)) {
       await fsp.mkdir(tokenDir, { recursive: true });
     }
@@ -726,6 +749,8 @@ app.post('/api/fcm-tokens', async (req, res) => {
 
     // 2. PostgreSQL (dual-write, BUG-02)
     try {
+      // Удаляем дубли токена в БД
+      await db.query('DELETE FROM fcm_tokens WHERE token = $1 AND phone != $2', [token, normalizedPhone]);
       await db.upsert('fcm_tokens', {
         phone: normalizedPhone,
         token,
@@ -735,7 +760,7 @@ app.post('/api/fcm-tokens', async (req, res) => {
       console.error('DB fcm_tokens write error:', dbErr.message);
     }
 
-    console.log(`FCM токен сохранен для ${normalizedPhone}`);
+    console.log(`FCM токен сохранен для ${maskPhone(normalizedPhone)}`);
     res.json({ success: true });
   } catch (err) {
     console.error('Ошибка сохранения FCM токена:', err);

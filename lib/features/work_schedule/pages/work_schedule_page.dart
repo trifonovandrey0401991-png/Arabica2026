@@ -497,6 +497,9 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     Logger.debug('Магазинов доступно: ${_shops.length}');
 
     try {
+      // Собираем все ошибки/предупреждения для этой ячейки
+      final cellErrors = _getCellErrors(employee.id, date);
+
       final result = await showDialog<Map<String, dynamic>>(
         context: context,
         builder: (context) => ShiftEditDialog(
@@ -506,6 +509,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           schedule: _schedule!,
           allEmployees: _employees,
           shops: _shops,
+          cellErrors: cellErrors,
         ),
       );
       
@@ -764,6 +768,8 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       }
     }
 
+    final cellErrors = _getCellErrors(employee.id, date);
+
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => ShiftEditDialog(
@@ -775,6 +781,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         shops: _shops,
         requiredShiftType: requiredShiftType,
         requiredShop: requiredShop,
+        cellErrors: cellErrors,
       ),
     );
 
@@ -851,42 +858,44 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
   /// Получить ошибку для конкретной ячейки
   ScheduleError? _getCellError(String employeeId, DateTime day) {
-    if (_validationResult == null) return null;
+    final errors = _getCellErrors(employeeId, day);
+    return errors.isNotEmpty ? errors.first : null;
+  }
 
-    // Проверяем критичные ошибки
+  /// Получить ВСЕ ошибки и предупреждения для ячейки
+  List<ScheduleError> _getCellErrors(String employeeId, DateTime day) {
+    if (_validationResult == null) return [];
+
+    final result = <ScheduleError>[];
+    final emp = _employees.firstWhere(
+      (e) => e.id == employeeId,
+      orElse: () => Employee(id: '', name: ''),
+    );
+    if (emp.name.isEmpty) return [];
+
+    // Критичные ошибки
     for (var error in _validationResult!.criticalErrors) {
       if (error.date.year == day.year &&
           error.date.month == day.month &&
           error.date.day == day.day &&
-          error.employeeName != null) {
-        // Проверяем, относится ли ошибка к этому сотруднику
-        final emp = _employees.firstWhere(
-          (e) => e.id == employeeId,
-          orElse: () => Employee(id: '', name: ''),
-        );
-        if (emp.name == error.employeeName) {
-          return error;
-        }
+          error.employeeName != null &&
+          emp.name == error.employeeName) {
+        result.add(error);
       }
     }
 
-    // Проверяем предупреждения
+    // Предупреждения
     for (var warning in _validationResult!.warnings) {
       if (warning.date.year == day.year &&
           warning.date.month == day.month &&
           warning.date.day == day.day &&
-          warning.employeeName != null) {
-        final emp = _employees.firstWhere(
-          (e) => e.id == employeeId,
-          orElse: () => Employee(id: '', name: ''),
-        );
-        if (emp.name == warning.employeeName) {
-          return warning;
-        }
+          warning.employeeName != null &&
+          emp.name == warning.employeeName) {
+        result.add(warning);
       }
     }
 
-    return null;
+    return result;
   }
 
   List<DateTime> _getDaysInMonth() {
@@ -1734,17 +1743,19 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       // при replaceExisting=true (строки 35-40 в auto_fill_schedule_service.dart)
 
       // Выполняем автозаполнение
-      final newEntries = await AutoFillScheduleService.autoFill(
+      final autoFillResult = await AutoFillScheduleService.autoFill(
         startDate: startDate,
         endDate: endDate,
         employees: _employees,
         shops: _shops,
-        shopSettingsCache: _shopSettingsCache,
         existingSchedule: _schedule,
         replaceExisting: replaceExisting,
       );
 
-      Logger.info('🔄 Автозаполнение создало ${newEntries.length} записей');
+      final newEntries = autoFillResult.entries;
+      final autoFillWarnings = autoFillResult.warnings;
+
+      Logger.info('🔄 Автозаполнение создало ${newEntries.length} записей, предупреждений: ${autoFillWarnings.length}');
 
       // Сохраняем новые смены батчами по 50 записей
       if (newEntries.isNotEmpty) {
@@ -1814,7 +1825,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
       // Показываем результаты
       if (mounted) {
-        _showAutoFillResults(newEntries.length);
+        _showAutoFillResults(newEntries.length, autoFillWarnings);
       }
     } catch (e) {
       // Закрываем индикатор загрузки
@@ -1834,7 +1845,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   }
 
   /// Показывает результаты автозаполнения
-  void _showAutoFillResults(int entriesCount) {
+  void _showAutoFillResults(int entriesCount, List<String> warnings) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1844,7 +1855,57 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           side: BorderSide(color: Colors.white.withOpacity(0.15)),
         ),
         title: Text('Автозаполнение завершено', style: TextStyle(color: Colors.white.withOpacity(0.95))),
-        content: Text('Создано смен: $entriesCount', style: TextStyle(color: Colors.white.withOpacity(0.7))),
+        content: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.8,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Создано смен: $entriesCount',
+                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 16.sp),
+              ),
+              if (warnings.isNotEmpty) ...[
+                SizedBox(height: 12),
+                Text(
+                  'Предупреждения (${warnings.length}):',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: 200),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: warnings.length,
+                    itemBuilder: (context, index) => Padding(
+                      padding: EdgeInsets.only(bottom: 4.h),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.warning, color: Colors.orange, size: 14),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              warnings[index],
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.6),
+                                fontSize: 12.sp,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),

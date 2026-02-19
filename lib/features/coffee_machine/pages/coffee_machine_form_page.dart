@@ -43,7 +43,6 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
   final Map<String, int?> _machineAiNumbers = {};
   final Map<String, TextEditingController> _machineControllers = {};
   final Map<String, bool> _machineWasEdited = {};
-  final Map<String, bool> _machineOcrDone = {};
   final Map<String, Map<String, double>?> _machineSelectedRegions = {};
   final Map<String, String> _machineBase64 = {}; // base64 фото для повторного OCR
 
@@ -51,7 +50,6 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
   File? _computerPhoto;
   int? _computerAiNumber;
   final _computerController = TextEditingController();
-  bool _computerOcrDone = false;
   String? _computerBase64;
 
   // Текущий шаг
@@ -105,7 +103,6 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       // Инициализировать контроллеры
       for (final t in templates) {
         _machineControllers[t.id] = TextEditingController();
-        _machineOcrDone[t.id] = false;
       }
 
       if (!mounted) return;
@@ -160,10 +157,8 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
     setState(() {
       if (isComputer) {
         _computerAiNumber = result.number;
-        _computerOcrDone = true;
       } else {
         _machineAiNumbers[templateId] = result.number;
-        _machineOcrDone[templateId] = true;
       }
     });
 
@@ -830,8 +825,8 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
 
   Widget _buildMachineStep(CoffeeMachineTemplate template) {
     final photo = _machinePhotos[template.id];
-    final ocrDone = _machineOcrDone[template.id] ?? false;
     final controller = _machineControllers[template.id]!;
+    final hasNumber = controller.text.isNotEmpty;
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(16.w),
@@ -885,19 +880,31 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           ),
           SizedBox(height: 20),
 
-          // Поле ввода числа
-          _buildNumberInput(
-            controller: controller,
-            label: 'Показание счётчика',
-            ocrDone: ocrDone,
-            aiNumber: _machineAiNumbers[template.id],
-          ),
+          // Показание: только после фото + распознавания
+          if (hasNumber)
+            _buildConfirmedNumberDisplay(
+              number: controller.text,
+              aiNumber: _machineAiNumbers[template.id],
+              onRetakePhoto: () => _pickAndRecognize(template.id),
+              onManualEdit: () => _promptManualInput(templateId: template.id, isComputer: false),
+            )
+          else if (photo != null)
+            // Фото сделано, но число ещё не подтверждено — кнопки повторить / ввести вручную
+            _buildOcrFallbackButtons(
+              onRetakePhoto: () => _pickAndRecognize(template.id),
+              onManualInput: () => _promptManualInput(templateId: template.id, isComputer: false),
+            )
+          else
+            // Ещё нет фото — подсказка
+            _buildPhotoHint(),
         ],
       ),
     );
   }
 
   Widget _buildComputerStep() {
+    final hasNumber = _computerController.text.isNotEmpty;
+
     return SingleChildScrollView(
       padding: EdgeInsets.all(16.w),
       child: Column(
@@ -950,8 +957,22 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           ),
           SizedBox(height: 20),
 
-          // Поле ввода (разрешаем минус, пробел, запятую, точку для компьютерного числа)
-          _buildComputerNumberInput(),
+          // Показание: только после фото + распознавания
+          if (hasNumber)
+            _buildConfirmedNumberDisplay(
+              number: _computerController.text,
+              aiNumber: _computerAiNumber,
+              isComputer: true,
+              onRetakePhoto: () => _pickAndRecognize('', isComputer: true),
+              onManualEdit: () => _promptManualInput(templateId: '', isComputer: true),
+            )
+          else if (_computerPhoto != null)
+            _buildOcrFallbackButtons(
+              onRetakePhoto: () => _pickAndRecognize('', isComputer: true),
+              onManualInput: () => _promptManualInput(templateId: '', isComputer: true),
+            )
+          else
+            _buildPhotoHint(),
         ],
       ),
     );
@@ -1153,113 +1174,181 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
     );
   }
 
-  Widget _buildNumberInput({
-    required TextEditingController controller,
-    required String label,
-    required bool ocrDone,
-    int? aiNumber,
-  }) {
+
+  /// Подсказка: сделайте фото счётчика
+  Widget _buildPhotoHint() {
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        color: Colors.blue.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.blue.withOpacity(0.2)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          if (ocrDone && aiNumber != null) ...[
-            Row(
-              children: [
-                Icon(Icons.smart_toy, color: AppColors.gold, size: 18),
-                SizedBox(width: 6),
-                Text(
-                  'ИИ распознал: $aiNumber',
-                  style: TextStyle(color: AppColors.gold, fontSize: 13.sp),
-                ),
-              ],
+          Icon(Icons.info_outline, color: Colors.blue.withOpacity(0.7), size: 22),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Сделайте фото — ИИ автоматически определит число на счётчике',
+              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13.sp),
             ),
-            SizedBox(height: 10),
-          ],
-          TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: TextStyle(color: Colors.white, fontSize: 24.sp, fontWeight: FontWeight.bold),
-            decoration: InputDecoration(
-              labelText: label,
-              labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.r),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.r),
-                borderSide: BorderSide(color: AppColors.gold, width: 2),
-              ),
-              prefixIcon: Icon(Icons.numbers, color: Colors.white.withOpacity(0.4)),
-            ),
-            onChanged: (_) => setState(() {}),
           ),
         ],
       ),
     );
   }
 
-  /// Поле ввода числа компьютера (только цифры, минус добавляется автоматически)
-  Widget _buildComputerNumberInput() {
+  /// Подтверждённое число (read-only карточка)
+  Widget _buildConfirmedNumberDisplay({
+    required String number,
+    int? aiNumber,
+    bool isComputer = false,
+    required VoidCallback onRetakePhoto,
+    required VoidCallback onManualEdit,
+  }) {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
+        color: Colors.green.withOpacity(0.08),
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.green.withOpacity(0.3)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_computerOcrDone && _computerAiNumber != null) ...[
-            Row(
-              children: [
-                Icon(Icons.smart_toy, color: AppColors.gold, size: 18),
-                SizedBox(width: 6),
+          Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 22),
+              SizedBox(width: 8),
+              Text(
+                isComputer ? 'Показание компьютера' : 'Показание счётчика',
+                style: TextStyle(color: Colors.green, fontSize: 14.sp, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (isComputer)
                 Text(
-                  'ИИ распознал: $_computerAiNumber',
-                  style: TextStyle(color: AppColors.gold, fontSize: 13.sp),
+                  '− ',
+                  style: TextStyle(color: Colors.red, fontSize: 32.sp, fontWeight: FontWeight.bold),
+                ),
+              Text(
+                number,
+                style: TextStyle(color: Colors.white, fontSize: 32.sp, fontWeight: FontWeight.bold, letterSpacing: 2),
+              ),
+            ],
+          ),
+          if (aiNumber != null) ...[
+            SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.smart_toy, color: AppColors.gold.withOpacity(0.6), size: 14),
+                SizedBox(width: 4),
+                Text(
+                  'ИИ распознал: $aiNumber',
+                  style: TextStyle(color: AppColors.gold.withOpacity(0.6), fontSize: 12.sp),
                 ),
               ],
             ),
-            SizedBox(height: 10),
           ],
-          TextField(
-            controller: _computerController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: TextStyle(color: Colors.white, fontSize: 24.sp, fontWeight: FontWeight.bold),
-            decoration: InputDecoration(
-              labelText: 'Остаток по компьютеру',
-              hintText: '138141',
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 16.sp),
-              labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.r),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+          SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onRetakePhoto,
+                  icon: Icon(Icons.camera_alt, size: 18),
+                  label: Text('Переснять', style: TextStyle(fontSize: 12.sp)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white70,
+                    side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                  ),
+                ),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.r),
-                borderSide: BorderSide(color: AppColors.gold, width: 2),
+              SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onManualEdit,
+                  icon: Icon(Icons.edit, size: 18),
+                  label: Text('Исправить', style: TextStyle(fontSize: 12.sp)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orange,
+                    side: BorderSide(color: Colors.orange.withOpacity(0.3)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                  ),
+                ),
               ),
-              prefixIcon: Icon(Icons.computer, color: Colors.white.withOpacity(0.4)),
-              prefixText: '− ',
-              prefixStyle: TextStyle(color: Colors.red, fontSize: 24.sp, fontWeight: FontWeight.bold),
-            ),
-            onChanged: (_) => setState(() {}),
+            ],
           ),
-          SizedBox(height: 6),
-          Text(
-            'Минус применяется автоматически',
-            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp),
+        ],
+      ),
+    );
+  }
+
+  /// Кнопки-фоллбек: переснять фото / ввести вручную (когда OCR не дал число)
+  Widget _buildOcrFallbackButtons({
+    required VoidCallback onRetakePhoto,
+    required VoidCallback onManualInput,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.orange.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 22),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Число не подтверждено. Переснимите фото или введите вручную.',
+                  style: TextStyle(color: Colors.orange.withOpacity(0.8), fontSize: 13.sp),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: onRetakePhoto,
+                  icon: Icon(Icons.camera_alt, size: 18),
+                  label: Text('Переснять', style: TextStyle(fontSize: 13.sp)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.gold,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                  ),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onManualInput,
+                  icon: Icon(Icons.edit, size: 18),
+                  label: Text('Вручную', style: TextStyle(fontSize: 13.sp)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orange,
+                    side: BorderSide(color: Colors.orange.withOpacity(0.4)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

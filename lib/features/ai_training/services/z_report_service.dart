@@ -54,18 +54,24 @@ class ZReportService {
   }
 
   /// Распознать Z-отчёт по фото (с автоматическим сжатием)
-  static Future<ZReportParseResult> parseZReportFromBytes(Uint8List imageBytes) async {
+  static Future<ZReportParseResult> parseZReportFromBytes(Uint8List imageBytes, {String? shopAddress}) async {
     final compressedBase64 = await compressImage(imageBytes);
-    return parseZReport(compressedBase64);
+    return parseZReport(compressedBase64, shopAddress: shopAddress);
   }
 
   /// Распознать Z-отчёт по фото
-  static Future<ZReportParseResult> parseZReport(String imageBase64) async {
+  /// [shopAddress] — адрес магазина для подсказки ожидаемых диапазонов (intelligence)
+  static Future<ZReportParseResult> parseZReport(String imageBase64, {String? shopAddress}) async {
     try {
+      final body = <String, dynamic>{'imageBase64': imageBase64};
+      if (shopAddress != null && shopAddress.isNotEmpty) {
+        body['shopAddress'] = shopAddress;
+      }
+
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/parse'),
         headers: ApiConstants.headersWithApiKey,
-        body: jsonEncode({'imageBase64': imageBase64}),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
@@ -85,6 +91,26 @@ class ZReportService {
     }
   }
 
+  /// Получить ожидаемые диапазоны (intelligence) для магазина
+  static Future<Map<String, dynamic>?> getIntelligence(String shopAddress) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}/api/z-report/intelligence?shopAddress=${Uri.encodeComponent(shopAddress)}'),
+        headers: ApiConstants.headersWithApiKey,
+      ).timeout(ApiConstants.shortTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return data['expectedRanges'] as Map<String, dynamic>?;
+        }
+      }
+    } catch (_) {
+      // Intelligence не критична — молча пропускаем ошибки
+    }
+    return null;
+  }
+
   /// Сохранить образец для обучения
   static Future<bool> saveSample({
     required String imageBase64,
@@ -94,22 +120,29 @@ class ZReportService {
     int? resourceKeys,
     String? shopAddress,
     String? employeeName,
+    Map<String, Map<String, double>>? fieldRegions,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'imageBase64': imageBase64,
+        'correctData': {
+          'totalSum': totalSum,
+          'cashSum': cashSum,
+          'ofdNotSent': ofdNotSent,
+          'resourceKeys': resourceKeys,
+        },
+        'shopAddress': shopAddress,
+        'shopId': shopAddress,
+        'employeeName': employeeName,
+      };
+      if (fieldRegions != null) {
+        body['fieldRegions'] = fieldRegions;
+      }
+
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/training-samples'),
         headers: ApiConstants.headersWithApiKey,
-        body: jsonEncode({
-          'imageBase64': imageBase64,
-          'correctData': {
-            'totalSum': totalSum,
-            'cashSum': cashSum,
-            'ofdNotSent': ofdNotSent,
-            'resourceKeys': resourceKeys,
-          },
-          'shopAddress': shopAddress,
-          'employeeName': employeeName,
-        }),
+        body: jsonEncode(body),
       );
 
       return response.statusCode == 200;

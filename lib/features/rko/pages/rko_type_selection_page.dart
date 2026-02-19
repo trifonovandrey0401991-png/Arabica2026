@@ -150,7 +150,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                 ),
               ),
               Expanded(
-                child: Padding(
+                child: SingleChildScrollView(
                   padding: EdgeInsets.all(20.w),
                   child: Column(
                     children: [
@@ -237,7 +237,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
                           );
                         },
                       ),
-                      Spacer(),
+                      SizedBox(height: 28),
                       // Подсказка внизу
                       Container(
                         padding: EdgeInsets.all(14.w),

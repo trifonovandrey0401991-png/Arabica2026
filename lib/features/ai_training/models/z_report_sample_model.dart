@@ -3,12 +3,14 @@ class ZReportParseResult {
   final String? error;
   final String? rawText;
   final ZReportData? data;
+  final Map<String, dynamic>? expectedRanges; // Intelligence: ожидаемые диапазоны
 
   ZReportParseResult({
     required this.success,
     this.error,
     this.rawText,
     this.data,
+    this.expectedRanges,
   });
 
   factory ZReportParseResult.fromJson(Map<String, dynamic> json) {
@@ -17,6 +19,7 @@ class ZReportParseResult {
       error: json['error'],
       rawText: json['rawText'],
       data: json['data'] != null ? ZReportData.fromJson(json['data']) : null,
+      expectedRanges: json['expectedRanges'] as Map<String, dynamic>?,
     );
   }
 }

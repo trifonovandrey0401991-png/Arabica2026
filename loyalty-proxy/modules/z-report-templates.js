@@ -351,7 +351,8 @@ async function addTrainingSample({
   correctData,
   recognizedData,
   shopId,
-  templateId
+  templateId,
+  fieldRegions, // { totalSum: {x,y,width,height}, cashSum: {...}, ... }
 }) {
   const data = await loadTrainingSamples();
   let samples = data.samples || [];
@@ -364,6 +365,7 @@ async function addTrainingSample({
     recognizedData,
     shopId,
     templateId,
+    fieldRegions: fieldRegions || null,
     // Вычисляем какие поля были исправлены
     correctedFields: Object.keys(correctData).filter(
       key => correctData[key] !== recognizedData?.[key]
@@ -394,6 +396,13 @@ async function addTrainingSample({
 
   // Анализируем образцы для улучшения паттернов
   const learningResult = await analyzeAndImprovePatterns(samples);
+
+  // Обновляем выученные регионы если указаны
+  if (fieldRegions && shopId) {
+    updateLearnedRegions(shopId).catch(e =>
+      console.error('[Training] Ошибка обновления регионов:', e.message)
+    );
+  }
 
   // Возвращаем образец вместе с результатом обучения
   return {
@@ -895,6 +904,148 @@ async function getTrainingStats() {
   return stats;
 }
 
+// ============ Обучение регионам (4 поля) ============
+
+const LEARNED_REGIONS_FILE = path.join(__dirname, '../data/z-report-learned-regions.json');
+
+/**
+ * Загрузить выученные регионы
+ */
+async function loadLearnedRegions() {
+  if (USE_DB) {
+    try {
+      const row = await db.findById('app_settings', 'z_report_learned_regions', 'key');
+      if (row && row.data) return row.data;
+    } catch (e) {
+      console.error('[Z-Report] DB loadLearnedRegions error:', e.message);
+    }
+  }
+  try {
+    await ensureDataDir();
+    const data = await fs.readFile(LEARNED_REGIONS_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch {
+    return { shops: {}, lastUpdated: null };
+  }
+}
+
+/**
+ * Сохранить выученные регионы
+ */
+async function saveLearnedRegions(data) {
+  await ensureDataDir();
+  await writeJsonFile(LEARNED_REGIONS_FILE, data);
+
+  if (USE_DB) {
+    try {
+      await db.upsert('app_settings', {
+        key: 'z_report_learned_regions',
+        data: data,
+        updated_at: new Date().toISOString(),
+      }, 'key');
+    } catch (e) {
+      console.error('[Z-Report] DB saveLearnedRegions error:', e.message);
+    }
+  }
+}
+
+/**
+ * Усреднение координат регионов по магазину для каждого из 4 полей
+ * Берёт последние N образцов с регионами и вычисляет среднее
+ * @param {string} shopId - ID/адрес магазина
+ * @returns {Object|null} - { totalSum: {x,y,width,height}, cashSum: {...}, ... } или null
+ */
+async function computeAveragedRegions(shopId) {
+  if (!shopId) return null;
+
+  const data = await loadTrainingSamples();
+  const samples = (data.samples || [])
+    .filter(s => s.shopId === shopId && s.fieldRegions)
+    .slice(-10); // Последние 10 с регионами
+
+  if (samples.length < 2) return null; // Минимум 2 образца
+
+  const fields = ['totalSum', 'cashSum', 'ofdNotSent', 'resourceKeys'];
+  const result = {};
+
+  for (const field of fields) {
+    // Собираем регионы для поля
+    const regions = samples
+      .filter(s => s.fieldRegions[field] && s.fieldRegions[field].width > 0)
+      .map(s => s.fieldRegions[field]);
+
+    if (regions.length < 2) continue;
+
+    // Усредняем координаты
+    const avg = { x: 0, y: 0, width: 0, height: 0 };
+    for (const r of regions) {
+      avg.x += r.x;
+      avg.y += r.y;
+      avg.width += r.width;
+      avg.height += r.height;
+    }
+    avg.x /= regions.length;
+    avg.y /= regions.length;
+    avg.width /= regions.length;
+    avg.height /= regions.length;
+
+    // Добавляем 10% запас к размерам (чтобы не обрезать)
+    avg.x = Math.max(0, avg.x - avg.width * 0.05);
+    avg.y = Math.max(0, avg.y - avg.height * 0.05);
+    avg.width = Math.min(1 - avg.x, avg.width * 1.1);
+    avg.height = Math.min(1 - avg.y, avg.height * 1.1);
+
+    result[field] = avg;
+  }
+
+  return Object.keys(result).length > 0 ? result : null;
+}
+
+/**
+ * Получить выученные регионы для магазина
+ * Если есть в кэше — возвращает из кэша, иначе вычисляет
+ */
+async function getLearnedRegions(shopId) {
+  if (!shopId) return null;
+
+  const cached = await loadLearnedRegions();
+  if (cached.shops && cached.shops[shopId]) {
+    return cached.shops[shopId];
+  }
+
+  // Вычисляем и кэшируем
+  const regions = await computeAveragedRegions(shopId);
+  if (regions) {
+    if (!cached.shops) cached.shops = {};
+    cached.shops[shopId] = regions;
+    cached.lastUpdated = new Date().toISOString();
+    await saveLearnedRegions(cached);
+    console.log(`[Z-Report] Выучены регионы для ${shopId}:`, Object.keys(regions).join(', '));
+  }
+
+  return regions;
+}
+
+/**
+ * Обновить выученные регионы для магазина (после нового образца)
+ */
+async function updateLearnedRegions(shopId) {
+  if (!shopId) return;
+
+  const regions = await computeAveragedRegions(shopId);
+  const cached = await loadLearnedRegions();
+
+  if (regions) {
+    if (!cached.shops) cached.shops = {};
+    cached.shops[shopId] = regions;
+  } else if (cached.shops) {
+    delete cached.shops[shopId];
+  }
+
+  cached.lastUpdated = new Date().toISOString();
+  await saveLearnedRegions(cached);
+}
+
 module.exports = {
   getTemplates,
   getTemplate,
@@ -905,5 +1056,7 @@ module.exports = {
   addTrainingSample,
   getTrainingStats,
   getLearnedPatterns,
-  analyzeAndImprovePatterns
+  analyzeAndImprovePatterns,
+  getLearnedRegions,
+  updateLearnedRegions,
 };

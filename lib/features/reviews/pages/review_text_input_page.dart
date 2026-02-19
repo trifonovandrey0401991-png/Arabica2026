@@ -27,7 +27,7 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
   bool get _isPositive => widget.reviewType == 'positive';
   Color get _accentColor => _isPositive
       ? AppColors.success
-      : Color(0xFFEF5350);
+      : AppColors.error;
 
   @override
   void dispose() {
@@ -139,20 +139,31 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
             children: [
               _buildAppBar(),
               Expanded(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 20.h),
-                  child: Column(
-                    children: [
-                      // Магазин + тип отзыва
-                      _buildInfoCard(),
-                      SizedBox(height: 16),
-                      // Поле ввода
-                      Expanded(child: _buildTextInput()),
-                      SizedBox(height: 16),
-                      // Кнопки
-                      _buildButtons(),
-                    ],
-                  ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Высота текстового поля: всё доступное минус остальные элементы (~250)
+                    // Минимум 150 чтобы поле было видно при открытой клавиатуре
+                    final textFieldHeight = (constraints.maxHeight - 250.h).clamp(150.0, double.infinity);
+                    return SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 20.h),
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                      child: Column(
+                        children: [
+                          // Магазин + тип отзыва
+                          _buildInfoCard(),
+                          SizedBox(height: 16),
+                          // Поле ввода
+                          SizedBox(
+                            height: textFieldHeight,
+                            child: _buildTextInput(),
+                          ),
+                          SizedBox(height: 16),
+                          // Кнопки
+                          _buildButtons(),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             ],

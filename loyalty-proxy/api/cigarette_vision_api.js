@@ -484,31 +484,8 @@ async function setupCigaretteVisionAPI(app) {
         expectedCount: employeeAnswer || null,
       });
 
-      // НОВАЯ ЛОГИКА: Сохраняем фото для товаров с isAiActive=true (для обучения)
-      // Не зависит от результата детекции - сохраняем ВСЕ фото
-      // Проверяем как boolean так и string 'true'
-      const shouldSave = isAiActive === true || isAiActive === 'true';
-      console.log(`[Cigarette Vision API] shouldSave=${shouldSave}`);
-      if (shouldSave) {
-        // Fire-and-forget: сохраняем sample асинхронно, не блокируя ответ
-        (async () => {
-          try {
-            const saveResult = await cigaretteVision.saveCountingTrainingSample({
-              imageBase64,
-              productId,
-              productName: productName || '',
-              shopAddress: shopAddress || '',
-              employeeAnswer: employeeAnswer || null,
-              selectedRegion: selectedRegion || null,
-            });
-            if (saveResult.success) {
-              console.log(`[Cigarette Vision API] Counting sample сохранён для ${productName || productId}`);
-            }
-          } catch (err) {
-            console.warn('[Cigarette Vision API] Ошибка сохранения counting sample:', err.message);
-          }
-        })();
-      }
+      // Авто-сохранение убрано: фото уходит на обучение только после проверки админом
+      // через POST /api/cigarette-vision/submit-report-photo-for-training
 
       res.json(result);
     } catch (error) {
@@ -556,6 +533,53 @@ async function setupCigaretteVisionAPI(app) {
       }
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка получения counting image:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ SUBMIT REPORT PHOTO FOR TRAINING ============
+
+  // Отправить фото из отчёта пересчёта в counting-pending (по решению админа)
+  // Фото уже на сервере — читаем по photoUrl, не передаём base64 с телефона
+  app.post('/api/cigarette-vision/submit-report-photo-for-training', requireAuth, async (req, res) => {
+    try {
+      const { photoUrl, productId, productName, shopAddress, employeeAnswer, selectedRegion } = req.body;
+
+      if (!photoUrl || !productId) {
+        return res.status(400).json({ success: false, error: 'photoUrl и productId обязательны' });
+      }
+
+      // Определяем путь к файлу на диске по photoUrl
+      let imagePath;
+      const fileName = path.basename(new URL(photoUrl, 'https://arabica26.ru').pathname);
+      const safeName = sanitizeFileName(fileName);
+
+      if (photoUrl.includes('/shift-photos/')) {
+        imagePath = path.join(DATA_DIR, 'shift-photos', safeName);
+      } else {
+        return res.status(400).json({ success: false, error: 'Неподдерживаемый формат photoUrl' });
+      }
+
+      if (!(await fileExists(imagePath))) {
+        return res.status(404).json({ success: false, error: 'Файл фото не найден на сервере' });
+      }
+
+      const imageBuffer = await fsp.readFile(imagePath);
+      const imageBase64 = imageBuffer.toString('base64');
+
+      const result = await cigaretteVision.saveCountingTrainingSample({
+        imageBase64,
+        productId,
+        productName: productName || '',
+        shopAddress: shopAddress || '',
+        employeeAnswer: employeeAnswer || null,
+        selectedRegion: selectedRegion || null,
+      });
+
+      console.log(`[Cigarette Vision API] Фото из отчёта отправлено на обучение: ${productName || productId}`);
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка отправки фото из отчёта на обучение:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

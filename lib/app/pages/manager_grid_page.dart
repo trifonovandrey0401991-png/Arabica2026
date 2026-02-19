@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/multitenancy_filter_service.dart';
+import '../../core/services/firebase_service.dart';
 
 // Отчёты
 import '../../features/rko/pages/rko_reports_page.dart';
@@ -53,6 +54,7 @@ import '../../features/tasks/services/recurring_task_service.dart';
 import '../../features/shifts/services/shift_report_service.dart';
 import '../../features/recount/services/recount_service.dart';
 import '../../features/employees/services/user_role_service.dart';
+import '../../features/employees/models/user_role_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/job_application/services/job_application_service.dart';
 import '../../features/referrals/services/referral_service.dart';
@@ -99,6 +101,9 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
   int _myTasksCount = 0;
   Timer? _badgeTimer;
 
+  // Роль текущего пользователя (для условного скрытия элементов)
+  UserRoleData? _userRole;
+
   // Шапка: рейтинг и эффективность
   EmployeeRating? _employeeRating;
   double? _efficiencyPoints;
@@ -109,7 +114,9 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
     WidgetsBinding.instance.addObserver(this);
     _loadAllCounts();
     if (widget.isHomePage) _loadHeaderData();
-    // Обновляем счётчик заказов каждые 30 сек (чтобы бейдж обновился после пуша)
+    // Мгновенное обновление бейджа при получении push о заказе
+    FirebaseService.onOrderPushReceived = _loadOrdersCount;
+    // Обновляем счётчик заказов каждые 30 сек (резервный механизм)
     _badgeTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _loadOrdersCount();
     });
@@ -118,6 +125,9 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
   @override
   void dispose() {
     _badgeTimer?.cancel();
+    if (FirebaseService.onOrderPushReceived == _loadOrdersCount) {
+      FirebaseService.onOrderPushReceived = null;
+    }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -165,6 +175,12 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
   }
 
   Future<void> _loadAllCounts() async {
+    // Загружаем роль для условного отображения элементов меню
+    try {
+      final role = await UserRoleService.loadUserRole();
+      if (mounted && role != null) setState(() => _userRole = role);
+    } catch (_) {}
+
     // Запускаем все загрузки параллельно
     await Future.wait([
       _loadReportCounts(),
@@ -983,7 +999,8 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
             'color': null,
             'badge': null,
           },
-          {
+          // Задачи скрыты для управляющей (admin) — видны только developer
+          if (_userRole?.role != UserRole.admin) {
             'icon': Icons.task_alt_outlined,
             'label': 'Задачи',
             'onTap': () async {

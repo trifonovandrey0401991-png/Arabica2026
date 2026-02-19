@@ -1275,7 +1275,11 @@ function setupPointsSettingsAPI(app) {
     try {
       await ensureDir();
 
-      const { submittedPoints, notSubmittedPoints } = req.body;
+      const {
+        submittedPoints, notSubmittedPoints,
+        morningStartTime, morningEndTime,
+        eveningStartTime, eveningEndTime
+      } = req.body;
 
       // Validation
       if (submittedPoints === undefined || notSubmittedPoints === undefined) {
@@ -1308,9 +1312,22 @@ function setupPointsSettingsAPI(app) {
         settings.createdAt = new Date().toISOString();
       }
 
-      // Update settings
+      // Update points
       settings.submittedPoints = parseFloat(submittedPoints);
       settings.notSubmittedPoints = parseFloat(notSubmittedPoints);
+
+      // Update time windows (if provided)
+      if (morningStartTime) settings.morningStartTime = morningStartTime;
+      if (morningEndTime) {
+        settings.morningEndTime = morningEndTime;
+        settings.morningDeadline = morningEndTime; // scheduler uses morningDeadline
+      }
+      if (eveningStartTime) settings.eveningStartTime = eveningStartTime;
+      if (eveningEndTime) {
+        settings.eveningEndTime = eveningEndTime;
+        settings.eveningDeadline = eveningEndTime; // scheduler uses eveningDeadline
+      }
+
       settings.updatedAt = new Date().toISOString();
 
       await saveSettings(ENVELOPE_POINTS_FILE, settings);

@@ -1898,9 +1898,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
           children: [
             CircularProgressIndicator(color: Colors.white.withOpacity(0.8)),
             SizedBox(width: 16),
-            Text(
-              'Определяем местоположение...',
-              style: TextStyle(color: Colors.white.withOpacity(0.9)),
+            Expanded(
+              child: Text(
+                'Определяем местоположение...',
+                style: TextStyle(color: Colors.white.withOpacity(0.9)),
+              ),
             ),
           ],
         ),

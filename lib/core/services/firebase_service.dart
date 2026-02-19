@@ -63,6 +63,9 @@ class FirebaseService {
   static bool _initialized = false;
   static BuildContext? _globalContext;
 
+  /// Callback для мгновенного обновления бейджа заказов при получении push
+  static VoidCallback? onOrderPushReceived;
+
   /// Цвет уведомлений (основной цвет бренда Арабика)
   static final Color _notificationColor = AppColors.primaryGreen;
 
@@ -280,6 +283,11 @@ class FirebaseService {
           Logger.debug('Получено уведомление об отзыве верификации в foreground');
           _showVerificationRevokedDialog();
           return;
+        }
+
+        // Мгновенное обновление бейджа заказов при получении push
+        if (type == 'new_order' || type == 'order_unconfirmed' || type == 'order_status' || type == 'order_rejected') {
+          onOrderPushReceived?.call();
         }
 
         _showLocalNotification(message);

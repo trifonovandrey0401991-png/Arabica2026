@@ -303,41 +303,45 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
       body: Column(
         children: [
           // Градиентный заголовок с камерой
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  _primaryColor,
-                  _primaryColor.withOpacity(0.8),
-                ],
+          Flexible(
+            flex: 3,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    _primaryColor,
+                    _primaryColor.withOpacity(0.8),
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(32.r),
+                  bottomRight: Radius.circular(32.r),
+                ),
               ),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(32.r),
-                bottomRight: Radius.circular(32.r),
-              ),
-            ),
-            child: Column(
-              children: [
-                Padding(
-                  padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 20.h),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20.r),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 20,
-                          offset: Offset(0, 10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 20.h),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 20,
+                              offset: Offset(0, 10),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20.r),
-                      child: AspectRatio(
-                        aspectRatio: 1,
-                        child: Stack(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20.r),
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: Stack(
                           children: [
                             MobileScanner(
                               controller: _controller,
@@ -398,6 +402,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                     ),
                   ),
                 ),
+                  ),
                 // Подсказка
                 Padding(
                   padding: EdgeInsets.only(bottom: 24.h),
@@ -429,6 +434,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                 ),
               ],
             ),
+          ),
           ),
           // Нижняя часть с информацией
           Expanded(

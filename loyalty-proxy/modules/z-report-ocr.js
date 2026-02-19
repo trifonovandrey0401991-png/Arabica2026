@@ -207,4 +207,75 @@ async function cleanupTempFiles(files) {
   }
 }
 
-module.exports = { extractZReportText };
+/**
+ * Обрезать изображение по региону и распознать текст
+ * Регион задаётся в нормализованных координатах (0.0-1.0)
+ *
+ * @param {string} imageBase64 - Полное изображение в base64
+ * @param {Object} region - { x, y, width, height } (0.0-1.0)
+ * @returns {Promise<{text, success}>}
+ */
+async function extractZReportTextFromRegion(imageBase64, region) {
+  const ts = Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  const inputPath = path.join(TEMP_DIR, `zr_region_${ts}_input.jpg`);
+  const croppedPath = path.join(TEMP_DIR, `zr_region_${ts}_crop.jpg`);
+
+  try {
+    const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const imageBuffer = Buffer.from(cleanBase64, 'base64');
+    await fsp.writeFile(inputPath, imageBuffer);
+
+    // Получаем размеры изображения и кропаем
+    const sharp = require('sharp');
+    const metadata = await sharp(inputPath).metadata();
+    const imgW = metadata.width;
+    const imgH = metadata.height;
+
+    const left = Math.round(region.x * imgW);
+    const top = Math.round(region.y * imgH);
+    const width = Math.round(region.width * imgW);
+    const height = Math.round(region.height * imgH);
+
+    if (width < 10 || height < 10) {
+      await cleanupTempFiles([inputPath]);
+      return { text: '', success: false, error: 'Регион слишком маленький' };
+    }
+
+    await sharp(inputPath)
+      .extract({ left, top, width, height })
+      .sharpen()
+      .toFile(croppedPath);
+
+    // OCR кропнутого фрагмента
+    let text = '';
+
+    // Пробуем EasyOCR
+    const easyOCRAvailable = await checkEasyOCR();
+    if (easyOCRAvailable) {
+      try {
+        const easyResult = await callEasyOCRText(croppedPath);
+        if (easyResult.success && easyResult.text) {
+          text = easyResult.text;
+        }
+      } catch { /* fallback to tesseract */ }
+    }
+
+    // Tesseract fallback
+    if (!text) {
+      const tessResult = await tesseractFullText(croppedPath);
+      if (tessResult.success) {
+        text = tessResult.text;
+      }
+    }
+
+    await cleanupTempFiles([inputPath, croppedPath]);
+    return { text: text.trim(), success: text.trim().length > 0 };
+
+  } catch (error) {
+    console.error('[Z-Report OCR] Region crop error:', error.message);
+    await cleanupTempFiles([inputPath, croppedPath]);
+    return { text: '', success: false, error: error.message };
+  }
+}
+
+module.exports = { extractZReportText, extractZReportTextFromRegion };

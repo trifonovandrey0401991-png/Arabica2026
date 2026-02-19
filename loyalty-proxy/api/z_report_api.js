@@ -8,6 +8,7 @@ const path = require('path');
 
 const templatesModule = require('../modules/z-report-templates');
 const visionModule = require('../modules/z-report-vision');
+const intelligenceModule = require('../modules/z-report-intelligence');
 const { sanitizeId } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { requireAuth } = require('../utils/session_middleware');
@@ -209,13 +210,36 @@ async function setupZReportAPI(app) {
   // Распознать Z-отчёт
   app.post('/api/z-report/parse', requireAuth, async (req, res) => {
     try {
-      const { imageBase64 } = req.body;
+      const { imageBase64, shopAddress } = req.body;
 
       if (!imageBase64) {
         return res.status(400).json({ success: false, error: 'Изображение не передано' });
       }
 
-      const result = await visionModule.parseZReport(imageBase64);
+      // Загружаем intelligence для подсказки ожидаемых диапазонов
+      let expectedRanges = null;
+      let learnedRegions = null;
+      if (shopAddress) {
+        try {
+          const intelligence = await intelligenceModule.loadZReportIntelligence();
+          expectedRanges = intelligenceModule.getExpectedRanges(intelligence, shopAddress);
+        } catch (e) {
+          console.error('[Z-Report API] Intelligence load error:', e.message);
+        }
+        try {
+          learnedRegions = await templatesModule.getLearnedRegions(shopAddress);
+        } catch (e) {
+          console.error('[Z-Report API] Learned regions load error:', e.message);
+        }
+      }
+
+      const result = await visionModule.parseZReport(imageBase64, expectedRanges, learnedRegions);
+
+      // Добавляем intelligence в ответ (для отображения подсказок в UI)
+      if (expectedRanges) {
+        result.expectedRanges = expectedRanges;
+      }
+
       res.json(result);
     } catch (error) {
       console.error('[Z-Report API] Ошибка распознавания:', error);
@@ -256,7 +280,7 @@ async function setupZReportAPI(app) {
   // Сохранить образец для обучения
   app.post('/api/z-report/training-samples', requireAuth, async (req, res) => {
     try {
-      const { imageBase64, rawText, correctData, recognizedData, shopId, templateId } = req.body;
+      const { imageBase64, rawText, correctData, recognizedData, shopId, templateId, fieldRegions } = req.body;
 
       const result = await templatesModule.addTrainingSample({
         imageBase64,
@@ -265,7 +289,13 @@ async function setupZReportAPI(app) {
         recognizedData,
         shopId,
         templateId,
+        fieldRegions,
       });
+
+      // Фоновое обновление intelligence после нового образца
+      intelligenceModule.buildZReportIntelligence().catch(e =>
+        console.error('[Z-Report API] Intelligence rebuild error:', e.message)
+      );
 
       // Возвращаем sample и результат обучения
       res.json({
@@ -286,6 +316,99 @@ async function setupZReportAPI(app) {
       res.json({ success: true, ...stats });
     } catch (error) {
       console.error('[Z-Report API] Ошибка получения статистики:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ INTELLIGENCE ============
+
+  // Получить ожидаемые диапазоны для магазина
+  app.get('/api/z-report/intelligence', requireAuth, async (req, res) => {
+    try {
+      const { shopAddress } = req.query;
+      const intelligence = await intelligenceModule.loadZReportIntelligence();
+
+      if (shopAddress) {
+        const ranges = intelligenceModule.getExpectedRanges(intelligence, shopAddress);
+        const profile = intelligence?.shopProfiles?.[shopAddress] || null;
+        return res.json({
+          success: true,
+          shopAddress,
+          expectedRanges: ranges,
+          profile,
+        });
+      }
+
+      // Без shopAddress — вернуть всю статистику
+      res.json({
+        success: true,
+        shopCount: intelligence?.shopProfiles ? Object.keys(intelligence.shopProfiles).length : 0,
+        shops: intelligence?.shopProfiles || {},
+        updatedAt: intelligence?.updatedAt || null,
+      });
+    } catch (error) {
+      console.error('[Z-Report API] Intelligence error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Статистика точности по всем магазинам
+  app.get('/api/z-report/intelligence/stats', requireAuth, async (req, res) => {
+    try {
+      const intelligence = await intelligenceModule.loadZReportIntelligence();
+      const profiles = intelligence?.shopProfiles || {};
+      const shops = [];
+
+      // Собираем overall accuracy
+      const overall = { totalSum: { total: 0, correct: 0 }, cashSum: { total: 0, correct: 0 }, ofdNotSent: { total: 0, correct: 0 }, resourceKeys: { total: 0, correct: 0 } };
+
+      for (const [addr, profile] of Object.entries(profiles)) {
+        const accuracy = profile.accuracy || {};
+        const hasRegions = !!(await templatesModule.getLearnedRegions(addr));
+        shops.push({
+          shopAddress: addr,
+          totalReports: profile.totalReports || 0,
+          accuracy,
+          hasLearnedRegions: hasRegions,
+        });
+
+        for (const field of Object.keys(overall)) {
+          if (accuracy[field]) {
+            overall[field].total += accuracy[field].total || 0;
+            overall[field].correct += accuracy[field].correct || 0;
+          }
+        }
+      }
+
+      // Вычисляем rate
+      const overallAccuracy = {};
+      for (const [field, stats] of Object.entries(overall)) {
+        overallAccuracy[field] = stats.total > 0
+          ? Math.round((stats.correct / stats.total) * 1000) / 1000
+          : null;
+      }
+
+      res.json({
+        success: true,
+        shopCount: shops.length,
+        overallAccuracy,
+        shops,
+        updatedAt: intelligence?.updatedAt || null,
+      });
+    } catch (error) {
+      console.error('[Z-Report API] Intelligence stats error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Принудительно перестроить intelligence
+  app.post('/api/z-report/intelligence/rebuild', requireAuth, async (req, res) => {
+    try {
+      const data = await intelligenceModule.buildZReportIntelligence();
+      const shopCount = data?.shopProfiles ? Object.keys(data.shopProfiles).length : 0;
+      res.json({ success: true, shopCount, updatedAt: data?.updatedAt });
+    } catch (error) {
+      console.error('[Z-Report API] Intelligence rebuild error:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

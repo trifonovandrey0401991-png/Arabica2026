@@ -175,6 +175,39 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
     );
   }
 
+  Widget _buildOverallPercentageBadge(double percentage) {
+    final percent = (percentage * 100).clamp(0, 100).round();
+    Color bgColor;
+    Color textColor;
+    if (percentage >= 0.8) {
+      bgColor = Colors.green.withOpacity(0.2);
+      textColor = Colors.green;
+    } else if (percentage >= 0.5) {
+      bgColor = Colors.orange.withOpacity(0.2);
+      textColor = Colors.orange;
+    } else {
+      bgColor = Colors.red.withOpacity(0.2);
+      textColor = Colors.red;
+    }
+
+    return Container(
+      margin: EdgeInsets.only(left: 6.w),
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Text(
+        '$percent%',
+        style: TextStyle(
+          fontSize: 11.sp,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
   Widget _buildIndicatorWithFraction(IconData icon, String fraction, double percentage) {
     Color fractionColor;
     if (percentage >= 1.0) {
@@ -231,15 +264,22 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
           children: [
             Row(
               children: [
-                Text(
-                  label,
-                  style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.9)),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        label,
+                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.9)),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        monthLabel,
+                        style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5)),
+                      ),
+                    ],
+                  ),
                 ),
-                SizedBox(width: 8),
-                Text(
-                  monthLabel,
-                  style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5)),
-                ),
+                _buildOverallPercentageBadge(stats.overallPercentage),
               ],
             ),
             SizedBox(height: 2),
@@ -378,6 +418,9 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
                                             ],
                                           ),
                                         ),
+                                        // Общий процент
+                                        if (monthlyStats != null && monthlyStats.isNotEmpty)
+                                          _buildOverallPercentageBadge(monthlyStats[0].overallPercentage),
                                         // Стрелка раскрытия
                                         Icon(
                                           isExpanded ? Icons.expand_less : Icons.expand_more,
