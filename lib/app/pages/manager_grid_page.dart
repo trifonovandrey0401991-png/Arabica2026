@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../core/theme/app_colors.dart';
@@ -90,16 +91,22 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
   int _referralsCount = 0;
   int _ordersCount = 0;
   int _myTasksCount = 0;
+  Timer? _badgeTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadAllCounts();
+    // Обновляем счётчик заказов каждые 30 сек (чтобы бейдж обновился после пуша)
+    _badgeTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _loadOrdersCount();
+    });
   }
 
   @override
   void dispose() {
+    _badgeTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

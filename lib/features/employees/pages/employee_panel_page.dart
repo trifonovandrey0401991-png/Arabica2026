@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../training/pages/training_page.dart';
@@ -54,6 +55,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
   int _unreadProductQuestionsCount = 0;
   int _activeTasksCount = 0;
   int _shiftTransferUnreadCount = 0;
+  Timer? _badgeTimer;
 
   @override
   void initState() {
@@ -65,10 +67,15 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
     _loadUnreadProductQuestionsCount();
     _loadActiveTasksCount();
     _loadShiftTransferUnreadCount();
+    // Обновляем счётчики каждые 30 сек (чтобы бейдж обновился после пуша)
+    _badgeTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _loadPendingOrdersCount();
+    });
   }
 
   @override
   void dispose() {
+    _badgeTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
