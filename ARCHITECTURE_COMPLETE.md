@@ -3178,57 +3178,109 @@ async function checkManagerAccess(phone, shopAddress) {
 | 9 `_settings` полей в pages | Неиспользуемые поля |
 | TODO: "Обновить PIN на сервере" | auth_service.dart |
 
-## 11.5 Рекомендации по приоритету
+## 11.5 Что сделано (19.02.2026)
 
-### Неделя 1 — 🔴 Критические (блокеры):
-| # | Задача | Файл(ы) | Оценка |
-|---|--------|---------|--------|
-| 1 | Добавить `isAdmin` проверку на все write-эндпоинты | Все api/ файлы | 3-4 часа |
-| 2 | Удалить pinHash/salt из ответа регистрации | `auth_api.js` | 15 мин |
-| 3 | Вынести API ключ из Flutter кода в build config | `api_constants.dart` | 1 час |
-| 4 | Сделать `API_KEY_ENABLED=true` по умолчанию | `index.js` | 15 мин |
-| 5 | Исправить product_questions scheduler — Moscow time | `product_questions_penalty_scheduler.js` | 30 мин |
-| 6 | Подключить file_lock.js ко всем API | Все api/ файлы | 2-3 часа |
-| 7 | Исправить clients broadcast body mismatch | `client_service.dart` / `clients_api.js` | 30 мин |
-| 8 | Добавить `/api/auth/refresh-session` endpoint | `auth_api.js` | 30 мин |
+| # | Задача | Статус |
+|---|--------|--------|
+| 1 | Auth middleware (requireAuth/requireAdmin) на ВСЕ эндпоинты | ✅ 55 файлов, 570 route middleware |
+| 2 | Пагинация на 14+ endpoints | ✅ 12 файлов, opt-in |
+| 3 | DB миграция 3 AI модулей (z-report, cigarette-vision, shift-ai) | ✅ 4 таблицы + 3 singleton |
+| 4 | 44 таблицы в PostgreSQL, все модули на dual-write | ✅ |
+| 5 | Inline `if (!req.user)` проверки заменены на middleware | ✅ 49 проверок удалено |
 
-### Неделя 2 — 🟠 Важные:
-| # | Задача | Файл(ы) | Оценка |
-|---|--------|---------|--------|
-| 9 | Пагинация на 15+ list endpoints | Все api/ файлы | 2-3 часа |
-| 10 | Исправить 5 сломанных категорий efficiency_calc | `efficiency_calc.js` | 2 часа |
-| 11 | Заменить Image.network → CachedNetworkImage (30+ мест) | Flutter pages | 1 час |
-| 12 | Сжатие фото в PhotoUploadService | `photo_upload_service.dart` | 30 мин |
-| 13 | Расширить окно генерации envelope/coffee_machine schedulers | 2 файла | 1 час |
-| 14 | Сделать admin_cache.js async | `admin_cache.js` | 1 час |
-| 15 | Сделать WebSocket auth обязательной | `employee_chat_websocket.js` | 30 мин |
-| 16 | Убрать /upload-photo из publicPaths | `index.js` | 5 мин |
-| 17 | Добавить кэш employees/shops на сервере | Новый модуль | 2 часа |
+## 11.6 Результаты критического анализа (19.02.2026)
 
-### Неделя 3+ — 🟡 Рекомендации:
+> **Метод:** 4 параллельных глубоких аудита: Backend, Flutter, Scalability, Security
+> **Покрытие:** 468 Dart файлов, 67 API файлов, 13 утилит, 10 шедулеров
+
+### КРИТИЧЕСКИЕ проблемы
+
+| # | Файл | Проблема | Категория |
+|---|------|----------|-----------|
+| 1 | `db.js:25`, `admin-bot/index.js:38` | Пароль БД `arabica2026secure` захардкожен в коде | SECURITY |
+| 2 | `index.js:32-36` | `uncaughtException` НЕ вызывает `process.exit(1)` — процесс продолжает работу в сломанном состоянии | BUG |
+| 3 | `employee_chat_api.js:128-133` | `SELECT * FROM chat_messages` без LIMIT — загрузка ВСЕЙ истории чата | SCALABILITY |
+| 4 | `employee_chat_websocket.js:385-402` | `notifyNewMessage` отправляет ВСЕм пользователям, не только участникам чата | SECURITY/BUG |
+| 5 | `clients_api.js:952-978` | N+1 запросы: 101 SQL запрос на 50 клиентов в `/api/management-dialogs` | SCALABILITY |
+| 6 | `dashboard_batch_api.js:16-48` | Dashboard counters читает файлы вместо DB на каждом открытии приложения | SCALABILITY |
+| 7 | `POST /api/clients` + `index.js:299` | Полностью без авторизации + можно установить `isAdmin: true` | SECURITY |
+| 8 | `POST /upload-photo` + `index.js:283` | Загрузка фото без авторизации — любой может загрузить файлы | SECURITY |
+| 9 | `notification_service.dart:44` | Статический `BuildContext` хранится бессрочно → memory leak | FLUTTER BUG |
+| 10 | `coffee_machine_form_page.dart:209,225,232` | `firstWhere` без `orElse` → краш при удалённом шаблоне | FLUTTER BUG |
+
+### ВЫСОКИЕ проблемы
+
+| # | Файл | Проблема | Категория |
+|---|------|----------|-----------|
+| 11 | `db.js:29` | Пул БД = 10 коннектов vs 9 шедулеров + API → pool exhaustion | SCALABILITY |
+| 12 | `execution_chain_api.js:528-542` | 8 параллельных SQL запросов на каждого сотрудника при открытии | SCALABILITY |
+| 13 | Множество таблиц | Отсутствуют индексы на date, status, shop_address, employee_name | PERFORMANCE |
+| 14 | `session_middleware.js:29-59` | Полное пересканирование файлов каждые 5 мин с потерей auth на время rebuild | SCALABILITY |
+| 15 | `shifts_api.js:48-123` | Полный скан директории сотрудников для отправки уведомления | PERFORMANCE |
+| 16 | `file_lock.js:150` | `new Error().stack` на каждом захвате лока — GC pressure | PERFORMANCE |
+| 17 | `rko_api.js:30-264` | Один JSON файл метаданных без ограничений — read+rewrite при каждой загрузке | SCALABILITY |
+| 18 | `index.js:283-312` | `PUBLIC_WRITE_PATHS` содержит 20+ путей — слишком широкий whitelist | SECURITY |
+| 19 | `main_menu_page.dart` (2567 строк) | God Widget — 19 setState, 12 типов данных, полный rebuild | FLUTTER |
+| 20 | `cigarette_training_page.dart:363` и др. | `ListView` (не builder) для списков до 200 элементов | FLUTTER PERF |
+| 21 | `manager_grid_page.dart:236-290` | 6 пустых `catch (_) {}` глотают ошибки | FLUTTER BUG |
+| 22 | `admin_cache.js:66-80` | Читает admin статус из JSON файлов, игнорируя БД | ARCHITECTURE |
+
+### СРЕДНИЕ проблемы
+
+| # | Файл | Проблема |
+|---|------|----------|
+| 23 | `pagination.js` + все вызовы | Загружает ВСЕ записи из БД, потом slice — нет DB-level пагинации |
+| 24 | `base_http_service.dart:107` | Хардкод `limit=200` на все запросы — нет "загрузить ещё" |
+| 25 | `auth_api.js:52-79` | bcryptjs опционален — fallback на SHA-256 |
+| 26 | `rko_api.js:245` | `fs.renameSync` блокирует event loop |
+| 27 | `shift_questions_page.dart:293` | `Future.delayed(500ms)` как "визуальная задержка" — race condition |
+| 28 | `envelope_form_page.dart` | 4 фото одновременно в памяти — до 60 MB RAM |
+| 29 | `employee_chat_websocket.js:26` | `typingStatus` Map никогда не очищается |
+| 30 | `main_menu_page.dart:293` | `Future.delayed(500ms)` для ожидания `_employeeId` — polling |
+| 31 | `auth_service.dart:615` | Нормализация телефона не убирает `()` и `-` |
+| 32 | `ecosystem.config.js:8` | Google Apps Script URL захардкожен и закоммичен |
+
+## 11.7 Приоритетный план исправлений
+
+### Немедленно (1-2 часа):
+| # | Задача | Оценка |
+|---|--------|--------|
+| 1 | Ротация пароля БД, убрать хардкод из `db.js` | 15 мин |
+| 2 | Включить `process.exit(1)` в uncaughtException | 1 мин |
+| 3 | Добавить `LIMIT 100` к chat_messages SELECT | 5 мин |
+| 4 | Scoping WebSocket уведомлений по участникам чата | 30 мин |
+| 5 | `requireAuth` на `/upload-photo` и `/api/fcm-tokens` | 10 мин |
+| 6 | Убрать caller-controlled `isAdmin` из POST /api/clients | 10 мин |
+
+### Эта неделя (4-8 часов):
+| # | Задача | Оценка |
+|---|--------|--------|
+| 7 | Мигрировать dashboard_batch_api на DB COUNT запросы | 1 час |
+| 8 | Добавить недостающие PostgreSQL индексы (5 таблиц) | 30 мин |
+| 9 | Увеличить пул БД до 20, разнести шедулеры по времени | 30 мин |
+| 10 | Включить API_KEY в production env | 15 мин |
+| 11 | Исправить N+1 в management-dialogs (1 CTE запрос) | 1 час |
+| 12 | Session middleware: читать из БД вместо файлов | 2 часа |
+
+### Следующий спринт:
 | # | Задача |
 |---|--------|
-| 18 | Certificate pinning в Flutter |
-| 19 | `--obfuscate` для Flutter build |
-| 20 | Автоматическая ротация/очистка данных |
-| 21 | Rate limit на auth endpoints (10/мин) |
-| 22 | Batch API для MainMenuPage |
-| 23 | Batch API для MyEfficiencyPage |
-| 24 | Кэширование settings в efficiency_calc.js batch |
-| 25 | Стандартизация формата pending/failed endpoints |
-| 26 | Очистка onlineStatus Map в WebSocket |
-| 27 | Прекомпиляция sort/filter вне build() |
-| 28 | Удалить мёртвый код (MenuService, ReferralSettings) |
-| 29 | Исправить 45 warnings из flutter analyze |
-| 30 | Добавить get-by-ID endpoints для отчётов |
-| 31 | Стабилизировать penalty file format |
+| 13 | Разбить MainMenuPage на sub-widgets |
+| 14 | Заменить ListView → ListView.builder в AI training |
+| 15 | Добавить DB-level pagination (LIMIT/OFFSET) вместо array slice |
+| 16 | Убрать Future.delayed polling, использовать Completer |
+| 17 | Сделать bcryptjs обязательной зависимостью |
+| 18 | Сократить PUBLIC_WRITE_PATHS до минимума |
 
-### Долгосрочно (P3 — 3-6 месяцев):
-32. Миграция на SQLite/PostgreSQL
-33. State management (Riverpod/Bloc)
-34. Router (go_router)
-35. Рефакторинг страниц >1000 строк
-36. CI/CD pipeline
+### Долгосрочно (1-3 месяца):
+| # | Задача |
+|---|--------|
+| 19 | State management (Riverpod/Bloc) |
+| 20 | go_router для навигации |
+| 21 | CI/CD pipeline |
+| 22 | Certificate pinning |
+| 23 | Рефакторинг страниц >2000 строк |
+| 24 | Локальное кэширование данных (TTL) во Flutter |
 
 ---
 

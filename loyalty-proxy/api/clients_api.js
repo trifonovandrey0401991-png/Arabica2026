@@ -168,7 +168,7 @@ function setupClientsAPI(app) {
           fcm_token: client.fcmToken !== undefined ? client.fcmToken : null,
           referred_by: client.referredBy !== undefined ? client.referredBy : null,
           referred_at: client.referredAt !== undefined ? client.referredAt : null,
-          is_admin: client.isAdmin === true,
+          is_admin: false, // SECURITY: isAdmin нельзя устанавливать через API
           employee_name: client.employeeName !== undefined ? client.employeeName : null,
           updated_at: now
         };
@@ -181,7 +181,7 @@ function setupClientsAPI(app) {
           if (client.fcmToken !== undefined) updateData.fcm_token = client.fcmToken;
           if (client.referredBy !== undefined) updateData.referred_by = client.referredBy;
           if (client.referredAt !== undefined) updateData.referred_at = client.referredAt;
-          if (client.isAdmin !== undefined) updateData.is_admin = client.isAdmin === true;
+          // SECURITY: isAdmin игнорируется — нельзя менять через API
           if (client.employeeName !== undefined) updateData.employee_name = client.employeeName;
           const row = await db.updateById('clients', phone, updateData, 'phone');
           updated = dbClientToCamel(row);
@@ -200,6 +200,7 @@ function setupClientsAPI(app) {
             existing = JSON.parse(content);
           }
           const merged = { ...existing, ...client, phone };
+          merged.isAdmin = existing.isAdmin || false; // SECURITY: isAdmin нельзя устанавливать через API
           merged.updatedAt = new Date().toISOString();
           await fsp.writeFile(filePath, JSON.stringify(merged, null, 2), 'utf8');
           return merged;

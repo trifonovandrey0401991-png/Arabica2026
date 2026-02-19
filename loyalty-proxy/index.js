@@ -31,8 +31,8 @@ process.on('unhandledRejection', (reason, promise) => {
 // Предотвращение падения сервера от неотловленных исключений
 process.on('uncaughtException', (error) => {
   console.error('🚨 UNCAUGHT EXCEPTION:', error);
-  // Для критических ошибок лучше перезапустить через PM2
-  // process.exit(1);
+  // Критическая ошибка — PM2 автоматически перезапустит процесс
+  process.exit(1);
 });
 
 // Логируем предупреждения

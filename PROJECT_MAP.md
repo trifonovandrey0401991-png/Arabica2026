@@ -41,8 +41,10 @@ Flutter App (lib/)                    Backend (loyalty-proxy/)
 - 7 модулей бэкенда (modules/): OCR, vision, orders push
 - 13 утилит бэкенда (utils/): кэш, пагинация, сессии, файловые операции, db.js, moscow_time и др.
 - 6 ролей пользователей
-- PostgreSQL (arabica_db, ~40 таблиц, 10400+ записей) + JSON файлы как backup/fallback
-- 41 feature flag (`USE_DB_*=true`) для переключения между PostgreSQL и JSON
+- PostgreSQL (arabica_db, ~44 таблицы, 10400+ записей) + JSON файлы как backup/fallback
+- 44 feature flag (`USE_DB_*=true`) для переключения между PostgreSQL и JSON
+- Auth middleware: `requireAuth`/`requireAdmin` на всех 570 route handlers (добавлено 19.02.2026)
+- Opt-in пагинация на 28+ эндпоинтах
 
 ---
 
