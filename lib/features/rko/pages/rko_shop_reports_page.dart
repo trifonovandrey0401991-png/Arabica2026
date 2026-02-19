@@ -1566,13 +1566,20 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
                             ],
                           ),
                         )
-                      : ListView(
+                      : ListView.builder(
                           padding: EdgeInsets.all(16.w),
-                          children: [
-                            ..._currentMonthDays.map((day) => _buildDayTile(day)),
-                            ..._previousMonths.map((month) => _buildMonthTile(month)),
-                            ..._previousYears.map((year) => _buildYearTile(year)),
-                          ],
+                          itemCount: _currentMonthDays.length + _previousMonths.length + _previousYears.length,
+                          itemBuilder: (context, index) {
+                            if (index < _currentMonthDays.length) {
+                              return _buildDayTile(_currentMonthDays[index]);
+                            }
+                            final monthIndex = index - _currentMonthDays.length;
+                            if (monthIndex < _previousMonths.length) {
+                              return _buildMonthTile(_previousMonths[monthIndex]);
+                            }
+                            final yearIndex = monthIndex - _previousMonths.length;
+                            return _buildYearTile(_previousYears[yearIndex]);
+                          },
                         ),
                 ),
               ],

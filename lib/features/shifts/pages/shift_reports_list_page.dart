@@ -125,15 +125,16 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     // Step 1: Show cached data instantly
     final cached = CacheManager.get<Map<String, dynamic>>('reports_shifts');
     if (cached != null && mounted) {
-      _allReports = cached['allReports'] as List<ShiftReport>;
-      _allShops = cached['allShops'] as List<Shop>;
-      _pendingShifts = cached['pendingShifts'] as List<PendingShiftReport>;
-      _failedShifts = cached['failedShifts'] as List<PendingShiftReport>;
-      _expiredReports = cached['expiredReports'] as List<ShiftReport>;
-      _shiftSettings = cached['shiftSettings'] as ShiftPointsSettings?;
-      _summaryItems = cached['summaryItems'] as List<ShiftSummaryItem>;
-      _isLoading = false;
-      setState(() {});
+      setState(() {
+        _allReports = cached['allReports'] as List<ShiftReport>;
+        _allShops = cached['allShops'] as List<Shop>;
+        _pendingShifts = cached['pendingShifts'] as List<PendingShiftReport>;
+        _failedShifts = cached['failedShifts'] as List<PendingShiftReport>;
+        _expiredReports = cached['expiredReports'] as List<ShiftReport>;
+        _shiftSettings = cached['shiftSettings'] as ShiftPointsSettings?;
+        _summaryItems = cached['summaryItems'] as List<ShiftSummaryItem>;
+        _isLoading = false;
+      });
     }
 
     // Step 2: Fetch fresh data (6 parallel requests)

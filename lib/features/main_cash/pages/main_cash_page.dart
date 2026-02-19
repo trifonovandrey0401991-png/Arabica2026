@@ -64,10 +64,20 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     try {
       Logger.debug('🔄 Начало загрузки данных главной кассы');
 
-      final balances = await MainCashService.getShopBalances();
-      Logger.debug('✅ Загружено балансов: ${balances.length}');
+      // Параллельная загрузка балансов и выемок
+      late List<ShopCashBalance> balances;
+      late List<Withdrawal> allWithdrawals;
 
-      final allWithdrawals = await WithdrawalService.getWithdrawals();
+      await Future.wait([
+        () async {
+          balances = await MainCashService.getShopBalances();
+          Logger.debug('✅ Загружено балансов: ${balances.length}');
+        }(),
+        () async {
+          allWithdrawals = await WithdrawalService.getWithdrawals();
+        }(),
+      ]);
+
       // Фильтрация по мультитенантности — управляющий видит только выемки своих магазинов
       final withdrawals = await MultitenancyFilterService.filterByShopAddress(
         allWithdrawals,

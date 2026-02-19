@@ -42,9 +42,10 @@ class _TestReportPageState extends State<TestReportPage>
     // Step 1: Show cached data instantly
     final cached = CacheManager.get<Map<String, dynamic>>('reports_tests');
     if (cached != null && mounted) {
-      _allResults = cached['allResults'] as List<TestResult>;
-      _isLoading = false;
-      setState(() {});
+      setState(() {
+        _allResults = cached['allResults'] as List<TestResult>;
+        _isLoading = false;
+      });
     }
 
     // Step 2: Fetch fresh data

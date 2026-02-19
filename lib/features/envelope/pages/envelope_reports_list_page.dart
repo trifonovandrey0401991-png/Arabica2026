@@ -60,16 +60,29 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     // Step 1: Show cached data instantly
     final cached = CacheManager.get<Map<String, dynamic>>('reports_envelope');
     if (cached != null && mounted) {
-      _allReports = cached['allReports'] as List<EnvelopeReport>;
-      _pendingReports = cached['pendingReports'] as List<PendingEnvelopeReport>;
-      _isLoading = false;
-      setState(() {});
+      setState(() {
+        _allReports = cached['allReports'] as List<EnvelopeReport>;
+        _pendingReports = cached['pendingReports'] as List<PendingEnvelopeReport>;
+        _isLoading = false;
+      });
     }
 
-    // Step 2: Fetch fresh data (no spinner if cache shown)
+    // Step 2: Fetch fresh data in parallel (no spinner if cache shown)
+    List<EnvelopeReport> reports = [];
+    List<PendingEnvelopeReport> pendingReports = [];
+
     try {
-      final reports = await EnvelopeReportService.getReportsForCurrentUser();
-      final pendingReports = await EnvelopeReportService.getPendingReportsForCurrentUser();
+      await Future.wait([
+        () async {
+          try { reports = await EnvelopeReportService.getReportsForCurrentUser(); }
+          catch (e) { Logger.error('Ошибка загрузки отчетов конвертов', e); }
+        }(),
+        () async {
+          try { pendingReports = await EnvelopeReportService.getPendingReportsForCurrentUser(); }
+          catch (e) { Logger.error('Ошибка загрузки pending конвертов', e); }
+        }(),
+      ]);
+
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       pendingReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       if (!mounted) return;

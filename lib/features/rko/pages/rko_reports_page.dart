@@ -58,12 +58,13 @@ class _RKOReportsPageState extends State<RKOReportsPage>
     // Step 1: Show cached data instantly
     final cached = CacheManager.get<Map<String, dynamic>>('reports_rko');
     if (cached != null && mounted) {
-      _employees = cached['employees'] as List<Employee>;
-      _shops = cached['shops'] as List<Shop>;
-      _pendingRKOs = cached['pendingRKOs'] as List<dynamic>;
-      _failedRKOs = cached['failedRKOs'] as List<dynamic>;
-      _isLoading = false;
-      setState(() {});
+      setState(() {
+        _employees = cached['employees'] as List<Employee>;
+        _shops = cached['shops'] as List<Shop>;
+        _pendingRKOs = cached['pendingRKOs'] as List<dynamic>;
+        _failedRKOs = cached['failedRKOs'] as List<dynamic>;
+        _isLoading = false;
+      });
     }
 
     // Step 2: Fetch fresh data

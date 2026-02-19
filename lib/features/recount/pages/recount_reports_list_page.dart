@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../models/recount_report_model.dart';
-import '../models/recount_answer_model.dart';
 import '../models/pending_recount_model.dart';
 import '../models/recount_pivot_model.dart';
 import '../services/recount_service.dart';
@@ -14,9 +12,13 @@ import '../../efficiency/models/points_settings_model.dart';
 import '../../efficiency/services/points_settings_service.dart';
 import 'recount_report_view_page.dart';
 import 'recount_summary_report_page.dart';
-import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../widgets/recount_report_card.dart';
+import '../widgets/expired_recount_report_card.dart';
+import '../widgets/pending_recount_card.dart';
+import '../widgets/failed_recount_card.dart';
+import '../widgets/recount_filters_section.dart';
 
 /// Модель строки сводного отчёта (дата + смена) - аналог ShiftSummaryItem
 class RecountSummaryItem {
@@ -164,14 +166,6 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     }
   }
 
-  /// Переключить дату pivot-таблицы
-  void _changePivotDate(int days) {
-    if (mounted) setState(() {
-      _pivotDate = _pivotDate.add(Duration(days: days));
-      _pivotTable = null;
-    });
-    _loadPivotTable();
-  }
 
   /// Загрузить настройки пересчёта
   Future<void> _loadSettings() async {
@@ -199,26 +193,41 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     // Step 1: Show cached data instantly
     final cached = CacheManager.get<Map<String, dynamic>>('reports_recount');
     if (cached != null && mounted) {
-      _allReports = cached['allReports'] as List<RecountReport>;
-      _allShops = cached['allShops'] as List<Shop>;
-      _pendingRecounts = cached['pendingRecounts'] as List<PendingRecount>;
-      _failedRecounts = cached['failedRecounts'] as List<PendingRecount>;
-      _expiredReports = cached['expiredReports'] as List<RecountReport>;
-      _recountSettings = cached['recountSettings'] as RecountPointsSettings?;
-      _summaryItems = cached['summaryItems'] as List<RecountSummaryItem>;
-      _isLoading = false;
-      setState(() {});
+      setState(() {
+        _allReports = cached['allReports'] as List<RecountReport>;
+        _allShops = cached['allShops'] as List<Shop>;
+        _pendingRecounts = cached['pendingRecounts'] as List<PendingRecount>;
+        _failedRecounts = cached['failedRecounts'] as List<PendingRecount>;
+        _expiredReports = cached['expiredReports'] as List<RecountReport>;
+        _recountSettings = cached['recountSettings'] as RecountPointsSettings?;
+        _summaryItems = cached['summaryItems'] as List<RecountSummaryItem>;
+        _isLoading = false;
+      });
     }
 
-    // Step 2: Fetch fresh data
+    // Step 2: Fetch fresh data in parallel
+    List<Shop> shops = [];
+    List<RecountReport> expiredReports = [];
+    List<RecountReport> serverReports = [];
+
     try {
-      final shops = await ShopService.getShopsForCurrentUser();
+      await Future.wait([
+        () async {
+          try { shops = await ShopService.getShopsForCurrentUser(); }
+          catch (e) { Logger.error('Ошибка загрузки магазинов', e); }
+        }(),
+        () async {
+          try { expiredReports = await RecountService.getExpiredReportsForCurrentUser(); }
+          catch (e) { Logger.error('Ошибка загрузки просроченных пересчётов', e); }
+        }(),
+        () async {
+          try { serverReports = await RecountService.getReportsForCurrentUser(); }
+          catch (e) { Logger.error('Ошибка загрузки пересчётов', e); }
+        }(),
+      ]);
+
       _allShops = shops;
-
-      final expiredReports = await RecountService.getExpiredReportsForCurrentUser();
       _expiredReports = expiredReports;
-
-      final serverReports = await RecountService.getReportsForCurrentUser();
       _allReports = serverReports.where((r) => r.status != 'pending').toList();
       _allReports.sort((a, b) => b.completedAt.compareTo(a.completedAt));
 
@@ -633,32 +642,6 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     return _applyFilters(rated);
   }
 
-  /// Отчёты, сданные НЕ В СРОК (за пределами временных окон из настроек)
-  List<RecountReport> get _lateReports {
-    final settings = _recountSettings ?? RecountPointsSettings.defaults();
-
-    // Парсим временные окна
-    final morningEnd = _parseTime(settings.morningEndTime);
-    final eveningEnd = _parseTime(settings.eveningEndTime);
-
-    final morningEndMinutes = morningEnd.hour * 60 + morningEnd.minute;
-    final eveningEndMinutes = eveningEnd.hour * 60 + eveningEnd.minute;
-
-    final late = _allReports.where((report) {
-      final reportMinutes = report.completedAt.hour * 60 + report.completedAt.minute;
-      final shiftType = _getShiftType(report.completedAt);
-
-      if (shiftType == 'morning') {
-        // Утренний пересчёт должен быть сдан до morningEndTime
-        return reportMinutes > morningEndMinutes;
-      } else {
-        // Вечерний пересчёт должен быть сдан до eveningEndTime
-        return reportMinutes > eveningEndMinutes;
-      }
-    }).toList();
-
-    return _applyFilters(late);
-  }
 
   List<String> get _uniqueShops {
     return _allReports.map((r) => r.shopAddress).where((a) => a.trim().isNotEmpty).toSet().toList()..sort();
@@ -749,7 +732,27 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
               // Фильтры (только для вкладок с отчётами, не для "Ожидают" и "Не прошли")
               if (_tabController.index >= 2)
-                _buildFiltersSection(),
+                RecountFiltersSection(
+                  selectedShop: _selectedShop,
+                  selectedEmployee: _selectedEmployee,
+                  selectedDate: _selectedDate,
+                  uniqueShops: _uniqueShops,
+                  uniqueEmployees: _uniqueEmployees,
+                  onShopChanged: (value) {
+                    if (mounted) setState(() { _selectedShop = value; });
+                  },
+                  onEmployeeChanged: (value) {
+                    if (mounted) setState(() { _selectedEmployee = value; });
+                  },
+                  onDateTap: () => _selectDate(context),
+                  onReset: () {
+                    if (mounted) setState(() {
+                      _selectedShop = null;
+                      _selectedEmployee = null;
+                      _selectedDate = null;
+                    });
+                  },
+                ),
 
               // Вкладки с отчётами
               Expanded(
@@ -903,154 +906,6 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     );
   }
 
-  /// Построение секции фильтров
-  Widget _buildFiltersSection() {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 12.w),
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: Column(
-        children: [
-          // Магазин
-          DropdownButtonFormField<String>(
-            value: _selectedShop,
-            isExpanded: true,
-            dropdownColor: AppColors.emeraldDark,
-            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
-            decoration: InputDecoration(
-              labelText: 'Магазин',
-              labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: AppColors.gold)),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-            ),
-            iconEnabledColor: AppColors.gold,
-            items: [
-              DropdownMenuItem<String>(
-                value: null,
-                child: Text('Все магазины', style: TextStyle(color: Colors.white.withOpacity(0.9))),
-              ),
-              ..._uniqueShops.map((shop) => DropdownMenuItem<String>(
-                value: shop,
-                child: Text(shop, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.9))),
-              )),
-            ],
-            onChanged: (value) {
-              if (mounted) setState(() {
-                _selectedShop = value;
-              });
-            },
-          ),
-          SizedBox(height: 10),
-          // Сотрудник и Дата в одном ряду
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedEmployee,
-                  isExpanded: true,
-                  dropdownColor: AppColors.emeraldDark,
-                  style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
-                  decoration: InputDecoration(
-                    labelText: 'Сотрудник',
-                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: AppColors.gold)),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                  ),
-                  iconEnabledColor: AppColors.gold,
-                  items: [
-                    DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('Все', style: TextStyle(color: Colors.white.withOpacity(0.9))),
-                    ),
-                    ..._uniqueEmployees.map((employee) => DropdownMenuItem<String>(
-                      value: employee,
-                      child: Text(employee, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.9))),
-                    )),
-                  ],
-                  onChanged: (value) {
-                    if (mounted) setState(() {
-                      _selectedEmployee = value;
-                    });
-                  },
-                ),
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: InkWell(
-                  onTap: () => _selectDate(context),
-                  borderRadius: BorderRadius.circular(10.r),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10.r),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Дата', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp)),
-                              Text(
-                                _selectedDate != null
-                                    ? '${_selectedDate!.day}.${_selectedDate!.month}'
-                                    : 'Все',
-                                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(Icons.calendar_today, size: 18, color: AppColors.gold),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          // Сброс фильтров
-          if (_selectedShop != null || _selectedEmployee != null || _selectedDate != null)
-            Padding(
-              padding: EdgeInsets.only(top: 10.h),
-              child: GestureDetector(
-                onTap: () {
-                  if (mounted) setState(() {
-                    _selectedShop = null;
-                    _selectedEmployee = null;
-                    _selectedDate = null;
-                  });
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10.r),
-                    border: Border.all(color: Colors.red.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.clear, size: 18, color: Colors.red),
-                      SizedBox(width: 6),
-                      Text('Сбросить фильтры', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 
   /// Виджет пустого состояния
   Widget _buildEmptyState({
@@ -1112,138 +967,9 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       padding: EdgeInsets.all(12.w),
       itemCount: _pendingRecounts.length,
       itemBuilder: (context, index) {
-        final pending = _pendingRecounts[index];
-        final isMorning = pending.shiftType == 'morning';
-
-        return Container(
-          margin: EdgeInsets.only(bottom: 10.h),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(14.r),
-            border: Border.all(
-              color: isMorning ? Colors.orange.withOpacity(0.3) : Colors.purple.withOpacity(0.3),
-            ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(14.w),
-            child: Row(
-              children: [
-                // Иконка смены
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isMorning
-                          ? [Colors.orange.shade400, Colors.amber.shade600]
-                          : [Colors.deepPurple.shade400, Colors.purple.shade600],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                  child: Icon(
-                    isMorning ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded,
-                    color: Colors.white,
-                    size: 26,
-                  ),
-                ),
-                SizedBox(width: 14),
-                // Информация
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        pending.shopAddress,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15.sp,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today,
-                            size: 14,
-                            color: Colors.white.withOpacity(0.4),
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            todayStr,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: 13.sp,
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                            decoration: BoxDecoration(
-                              color: isMorning ? Colors.blue.withOpacity(0.15) : Colors.purple.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8.r),
-                              border: Border.all(
-                                color: isMorning ? Colors.blue.withOpacity(0.3) : Colors.purple.withOpacity(0.3),
-                              ),
-                            ),
-                            child: Text(
-                              pending.shiftName,
-                              style: TextStyle(
-                                color: isMorning ? Colors.blue.shade300 : Colors.purple.shade300,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 11.sp,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 6),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.warning_amber_rounded, size: 14, color: Colors.orange),
-                            SizedBox(width: 4),
-                            Text(
-                              'Пересчёт не проведён',
-                              style: TextStyle(
-                                color: Colors.orange,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12.sp,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Индикатор
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                  child: Icon(
-                    Icons.schedule_rounded,
-                    color: Colors.orange,
-                    size: 22,
-                  ),
-                ),
-              ],
-            ),
-          ),
+        return PendingRecountCard(
+          pending: _pendingRecounts[index],
+          todayStr: todayStr,
         );
       },
     );
@@ -1264,147 +990,9 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       padding: EdgeInsets.all(12.w),
       itemCount: _failedRecounts.length,
       itemBuilder: (context, index) {
-        final failed = _failedRecounts[index];
-        final isMorning = failed.shiftType == 'morning';
-
-        // Получаем дедлайн из настроек
-        final deadline = isMorning
-            ? (_recountSettings?.morningEndTime ?? '13:00')
-            : (_recountSettings?.eveningEndTime ?? '23:00');
-
-        return Container(
-          margin: EdgeInsets.only(bottom: 10.h),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(14.r),
-            border: Border.all(color: Colors.red.withOpacity(0.3)),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(14.w),
-            child: Row(
-              children: [
-                // Иконка с предупреждением
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.red.shade400, Colors.red.shade700],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(
-                        isMorning ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                      Positioned(
-                        right: 0.w,
-                        bottom: 0.h,
-                        child: Container(
-                          padding: EdgeInsets.all(2.w),
-                          decoration: BoxDecoration(
-                            color: AppColors.emeraldDark,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.error, color: Colors.red, size: 14),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 14),
-                // Информация
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        failed.shopAddress,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15.sp,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                            decoration: BoxDecoration(
-                              color: isMorning ? Colors.orange.withOpacity(0.15) : Colors.indigo.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(6.r),
-                            ),
-                            child: Text(
-                              failed.shiftName,
-                              style: TextStyle(
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.bold,
-                                color: isMorning ? Colors.orange : Colors.indigo.shade300,
-                              ),
-                            ),
-                          ),
-                          Spacer(),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(6.r),
-                            ),
-                            child: Text(
-                              'ПРОСРОЧЕНО',
-                              style: TextStyle(
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.access_time, size: 14, color: Colors.red[400]),
-                          SizedBox(width: 4),
-                          Text(
-                            'Дедлайн: $deadline',
-                            style: TextStyle(fontSize: 12.sp, color: Colors.red[400]),
-                          ),
-                          if (_recountSettings != null) ...[
-                            Spacer(),
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                              decoration: BoxDecoration(
-                                color: Colors.deepOrange.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(4.r),
-                              ),
-                              child: Text(
-                                '${_recountSettings!.missedPenalty.toStringAsFixed(1)} б.',
-                                style: TextStyle(
-                                  fontSize: 11.sp,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.deepOrange,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+        return FailedRecountCard(
+          failed: _failedRecounts[index],
+          recountSettings: _recountSettings,
         );
       },
     );
@@ -1474,7 +1062,21 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
             } else if (child is RecountReport) {
               return Padding(
                 padding: EdgeInsets.only(left: 12.0.w * (depth + 1)),
-                child: _buildExpiredReportCard(child),
+                child: ExpiredRecountReportCard(
+                  report: child,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => RecountReportViewPage(
+                          report: child,
+                          isReadOnly: true,
+                          onReportUpdated: () { _loadData(); },
+                        ),
+                      ),
+                    );
+                  },
+                ),
               );
             }
             return SizedBox.shrink();
@@ -1483,164 +1085,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     );
   }
 
-  /// Карточка просроченного отчёта
-  Widget _buildExpiredReportCard(RecountReport report) {
-    final now = DateTime.now();
-    final waitingHours = now.difference(report.completedAt).inHours;
-    final isFromExpiredList = report.isExpired || report.expiredAt != null;
-    final statusColor = isFromExpiredList ? Colors.red : Colors.orange;
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RecountReportViewPage(
-              report: report,
-              isReadOnly: true,
-              onReportUpdated: () {
-                _loadData();
-              },
-            ),
-          ),
-        );
-      },
-      child: Container(
-        margin: EdgeInsets.only(bottom: 10.h, right: 8.w),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(
-            color: statusColor.withOpacity(0.3),
-          ),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(14.w),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Заголовок с иконкой
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: isFromExpiredList
-                            ? [Colors.red.shade400, Colors.red.shade600]
-                            : [Colors.orange.shade400, Colors.orange.shade600],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                    child: Icon(
-                      isFromExpiredList ? Icons.cancel_rounded : Icons.access_time_rounded,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          report.shopAddress,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15.sp,
-                            color: Colors.white.withOpacity(0.9),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          report.employeeName,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 13.sp,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: Colors.white.withOpacity(0.3),
-                    size: 18,
-                  ),
-                ],
-              ),
-              SizedBox(height: 12),
-              // Информация о дате и времени
-              Row(
-                children: [
-                  _buildInfoChip(
-                    Icons.calendar_today_rounded,
-                    '${report.completedAt.day}.${report.completedAt.month}.${report.completedAt.year}',
-                    Colors.blue,
-                  ),
-                  SizedBox(width: 8),
-                  _buildInfoChip(
-                    Icons.access_time_rounded,
-                    '${report.completedAt.hour.toString().padLeft(2, '0')}:${report.completedAt.minute.toString().padLeft(2, '0')}',
-                    Colors.indigo,
-                  ),
-                  SizedBox(width: 8),
-                  _buildInfoChip(
-                    Icons.timer_outlined,
-                    report.formattedDuration,
-                    Colors.teal,
-                  ),
-                ],
-              ),
-              SizedBox(height: 10),
-              // Статус просрочки
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10.r),
-                  border: Border.all(color: statusColor.withOpacity(0.3)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isFromExpiredList ? Icons.error_rounded : Icons.schedule_rounded,
-                      size: 16,
-                      color: isFromExpiredList ? Colors.red.shade700 : Colors.orange.shade700,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      isFromExpiredList && report.expiredAt != null
-                          ? 'Просрочен: ${report.expiredAt!.day}.${report.expiredAt!.month}.${report.expiredAt!.year}'
-                          : 'Ожидает: $waitingHours ч. (более 5 часов)',
-                      style: TextStyle(
-                        color: isFromExpiredList ? Colors.red.shade700 : Colors.orange.shade700,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12.sp,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color _getRatingColor(int rating) {
-    if (rating <= 3) return Colors.red;
-    if (rating <= 5) return Colors.orange;
-    if (rating <= 7) return Colors.amber.shade700;
-    return Colors.green;
-  }
 
   /// Получить начало недели для указанной даты
   DateTime _getWeekStart(DateTime date) {
@@ -1888,7 +1333,20 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
             } else if (child is RecountReport) {
               return Padding(
                 padding: EdgeInsets.only(left: 12.0.w * (depth + 1)),
-                child: _buildRecountReportCard(child),
+                child: RecountReportCard(
+                  report: child,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => RecountReportViewPage(
+                          report: child,
+                          onReportUpdated: () { _loadData(); },
+                        ),
+                      ),
+                    );
+                  },
+                ),
               );
             }
             return SizedBox.shrink();
@@ -1897,227 +1355,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     );
   }
 
-  /// Карточка отчёта пересчёта
-  Widget _buildRecountReportCard(RecountReport report) {
-    final statusColor = report.isRated ? Colors.green : Colors.amber;
-    final statusIcon = report.isRated ? Icons.check_circle_rounded : Icons.hourglass_empty_rounded;
-    final statusText = report.isRated ? 'Оценён' : 'Ожидает оценки';
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RecountReportViewPage(
-              report: report,
-              onReportUpdated: () {
-                _loadData();
-              },
-            ),
-          ),
-        );
-      },
-      child: Container(
-        margin: EdgeInsets.only(bottom: 10.h, right: 8.w),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(
-            color: statusColor.withOpacity(0.3),
-          ),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(14.w),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Заголовок с иконкой и статусом
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: report.isRated
-                            ? [Colors.green.shade400, Colors.teal.shade600]
-                            : [Colors.amber.shade400, Colors.orange.shade600],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                    child: Icon(statusIcon, color: Colors.white, size: 24),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          report.shopAddress,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15.sp,
-                            color: Colors.white.withOpacity(0.9),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          report.employeeName,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 13.sp,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: Colors.white.withOpacity(0.3),
-                    size: 18,
-                  ),
-                ],
-              ),
-              SizedBox(height: 12),
-              // Информация о дате и времени
-              Row(
-                children: [
-                  _buildInfoChip(
-                    Icons.calendar_today_rounded,
-                    '${report.completedAt.day}.${report.completedAt.month}.${report.completedAt.year}',
-                    Colors.blue,
-                  ),
-                  SizedBox(width: 8),
-                  _buildInfoChip(
-                    Icons.access_time_rounded,
-                    '${report.completedAt.hour.toString().padLeft(2, '0')}:${report.completedAt.minute.toString().padLeft(2, '0')}',
-                    Colors.indigo,
-                  ),
-                  SizedBox(width: 8),
-                  _buildInfoChip(
-                    Icons.timer_outlined,
-                    report.formattedDuration,
-                    Colors.teal,
-                  ),
-                ],
-              ),
-              // Оценка (если есть)
-              if (report.isRated) ...[
-                SizedBox(height: 10),
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            _getRatingColor(report.adminRating!).withOpacity(0.8),
-                            _getRatingColor(report.adminRating!),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(10.r),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _getRatingColor(report.adminRating!).withOpacity(0.3),
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.star_rounded, color: Colors.white, size: 18),
-                          SizedBox(width: 4),
-                          Text(
-                            '${report.adminRating}/10',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14.sp,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (report.adminName != null) ...[
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Проверил: ${report.adminName}',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: Colors.white.withOpacity(0.5),
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ] else ...[
-                SizedBox(height: 10),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(color: Colors.amber.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.hourglass_empty_rounded, size: 14, color: Colors.amber.shade700),
-                      SizedBox(width: 4),
-                      Text(
-                        statusText,
-                        style: TextStyle(
-                          color: Colors.amber.shade700,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.sp,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Вспомогательный чип для отображения информации
-  Widget _buildInfoChip(IconData icon, String text, Color color) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color.withOpacity(0.8)),
-          SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   /// Построить группированный список
   Widget _buildGroupedList(List<RecountReportGroup> groups, String emptyMessage) {
@@ -2151,306 +1389,11 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     return _buildGroupedList(groups, emptyMessage);
   }
 
-  /// Виджет для списка отчётов, сданных НЕ В СРОК
-  Widget _buildLateReportsList() {
-    final reports = _lateReports;
-    final groups = _groupRecountReports(reports, 'late');
-
-    if (groups.isEmpty) {
-      return _buildEmptyState(
-        icon: Icons.thumb_up_rounded,
-        title: 'Все пересчёты в срок!',
-        subtitle: 'Нет отчётов, сданных позже дедлайна',
-        color: Colors.green,
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      color: AppColors.gold,
-      backgroundColor: AppColors.emeraldDark,
-      child: ListView.builder(
-        padding: EdgeInsets.all(8.w),
-        itemCount: groups.length,
-        itemBuilder: (context, index) {
-          return _buildLateGroupTile(groups[index], 0);
-        },
-      ),
-    );
-  }
-
-  /// Плитка группы отчётов "Не в срок" с дочерними элементами
-  Widget _buildLateGroupTile(RecountReportGroup group, int depth) {
-    final isExpanded = _expandedGroups[group.key] ?? false;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildGroupHeader(group, depth),
-        if (isExpanded)
-          ...group.children.map((child) {
-            if (child is RecountReportGroup) {
-              return _buildLateGroupTile(child, depth + 1);
-            } else if (child is RecountReport) {
-              return Padding(
-                padding: EdgeInsets.only(left: 12.0.w * (depth + 1)),
-                child: _buildLateReportCard(child),
-              );
-            }
-            return SizedBox.shrink();
-          }),
-      ],
-    );
-  }
-
-  /// Карточка отчёта, сданного НЕ В СРОК
-  Widget _buildLateReportCard(RecountReport report) {
-    final settings = _recountSettings ?? RecountPointsSettings.defaults();
-    final shiftType = _getShiftType(report.completedAt);
-    final isMorning = shiftType == 'morning';
-
-    // Определяем дедлайн для этой смены
-    final deadline = isMorning ? settings.morningEndTime : settings.eveningEndTime;
-    final shiftName = isMorning ? 'Утренняя' : 'Вечерняя';
-
-    // Вычисляем опоздание
-    final deadlineParts = deadline.split(':');
-    final deadlineMinutes = int.parse(deadlineParts[0]) * 60 + int.parse(deadlineParts[1]);
-    final reportMinutes = report.completedAt.hour * 60 + report.completedAt.minute;
-    final lateMinutes = reportMinutes - deadlineMinutes;
-    final lateHours = lateMinutes ~/ 60;
-    final lateRemainingMinutes = lateMinutes % 60;
-    final lateText = lateHours > 0
-        ? 'Опоздание: $lateHours ч. $lateRemainingMinutes мин.'
-        : 'Опоздание: $lateMinutes мин.';
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RecountReportViewPage(
-              report: report,
-              onReportUpdated: () {
-                _loadData();
-              },
-            ),
-          ),
-        );
-      },
-      child: Container(
-        margin: EdgeInsets.only(bottom: 10.h, right: 8.w),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(
-            color: Colors.deepPurple.withOpacity(0.3),
-          ),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(14.w),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Заголовок с иконкой
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.deepPurple.shade400, Colors.purple.shade600],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                    child: Icon(
-                      Icons.timer_off_rounded,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          report.shopAddress,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15.sp,
-                            color: Colors.white.withOpacity(0.9),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          report.employeeName,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 13.sp,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: Colors.white.withOpacity(0.3),
-                    size: 18,
-                  ),
-                ],
-              ),
-              SizedBox(height: 12),
-              // Информация о дате и времени
-              Row(
-                children: [
-                  _buildInfoChip(
-                    Icons.calendar_today_rounded,
-                    '${report.completedAt.day}.${report.completedAt.month}.${report.completedAt.year}',
-                    Colors.blue,
-                  ),
-                  SizedBox(width: 8),
-                  _buildInfoChip(
-                    Icons.access_time_rounded,
-                    '${report.completedAt.hour.toString().padLeft(2, '0')}:${report.completedAt.minute.toString().padLeft(2, '0')}',
-                    Colors.indigo,
-                  ),
-                  SizedBox(width: 8),
-                  _buildInfoChip(
-                    isMorning ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded,
-                    shiftName,
-                    isMorning ? Colors.orange : Colors.indigo,
-                  ),
-                ],
-              ),
-              SizedBox(height: 10),
-              // Информация о дедлайне и опоздании
-              Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.schedule_rounded, size: 14, color: Colors.white.withOpacity(0.5)),
-                        SizedBox(width: 4),
-                        Text(
-                          'Дедлайн: $deadline',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12.sp,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-                    decoration: BoxDecoration(
-                      color: Colors.deepPurple.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8.r),
-                      border: Border.all(color: Colors.deepPurple.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.timer_off_rounded, size: 14, color: Colors.deepPurple.shade700),
-                        SizedBox(width: 4),
-                        Text(
-                          lateText,
-                          style: TextStyle(
-                            color: Colors.deepPurple.shade700,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12.sp,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              // Оценка (если есть)
-              if (report.isRated) ...[
-                SizedBox(height: 10),
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            _getRatingColor(report.adminRating!).withOpacity(0.8),
-                            _getRatingColor(report.adminRating!),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(10.r),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _getRatingColor(report.adminRating!).withOpacity(0.3),
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.star_rounded, color: Colors.white, size: 18),
-                          SizedBox(width: 4),
-                          Text(
-                            '${report.adminRating}/10',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14.sp,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (report.adminName != null) ...[
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Проверил: ${report.adminName}',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: Colors.white.withOpacity(0.5),
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   // ============================================================
   // СВОДНЫЙ ОТЧЁТ ЗА 30 ДНЕЙ (ИЕРАРХИЧЕСКИЙ СПИСОК)
   // ============================================================
 
-  /// Проверить, является ли дата сегодняшней
-  bool _isToday(DateTime date) {
-    final now = DateTime.now();
-    return date.year == now.year && date.month == now.month && date.day == now.day;
-  }
 
   /// Группировка сводных отчётов по дате для иерархического отображения
   List<RecountReportGroup> _groupSummaryItems(List<RecountSummaryItem> items, String prefix) {
@@ -2750,244 +1693,6 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     );
   }
 
-  /// Построить ячейку с разницей
-  Widget _buildDifferenceCell(int? difference) {
-    if (difference == null) {
-      return Center(
-        child: Text('—', style: TextStyle(color: Colors.grey, fontSize: 14.sp)),
-      );
-    }
-    if (difference == 0) {
-      return Container(
-        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-        decoration: BoxDecoration(
-          color: Colors.green.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(6.r),
-        ),
-        child: Text(
-          '0',
-          style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13.sp),
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
 
-    final isPositive = difference > 0;
-    final color = isPositive ? Colors.blue : Colors.red;
-    final sign = isPositive ? '+' : '';
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(6.r),
-      ),
-      child: Text(
-        '$sign$difference',
-        style: TextStyle(color: color.shade700, fontWeight: FontWeight.bold, fontSize: 13.sp),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-
-  /// Показать диалог с деталями отчёта по товару и магазину
-  void _showReportDetailDialog(RecountPivotShop shop, String productName) async {
-    // Показываем индикатор загрузки
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Center(child: CircularProgressIndicator(color: AppColors.gold)),
-    );
-
-    try {
-      // Загружаем отчёты за выбранную дату
-      final allReports = await RecountService.getReportsForCurrentUser(date: _pivotDate);
-
-      // Фильтруем по магазину
-      final shopReports = allReports.where((r) => r.shopAddress == shop.shopId).toList();
-
-      // Находим ответ по товару
-      RecountAnswer? foundAnswer;
-      RecountReport? foundReport;
-
-      for (final report in shopReports) {
-        for (final answer in report.answers) {
-          if (answer.question == productName) {
-            foundAnswer = answer;
-            foundReport = report;
-            break;
-          }
-        }
-        if (foundAnswer != null) break;
-      }
-
-      if (!mounted) return;
-      Navigator.pop(context); // Закрываем индикатор загрузки
-
-      // Показываем диалог с деталями
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-          title: Text(
-            productName,
-            style: TextStyle(fontSize: 16.sp),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Магазин
-                _buildDetailRow('Магазин', shop.shopAddress ?? shop.shopName),
-                Divider(),
-
-                if (foundReport != null) ...[
-                  // Сотрудник
-                  _buildDetailRow('Сотрудник', foundReport.employeeName),
-                  _buildDetailRow('Время', DateFormat('HH:mm').format(foundReport.completedAt)),
-                  _buildDetailRow('Смена', foundReport.shiftType == 'morning' ? 'Утро' : 'Вечер'),
-                  _buildDetailRow('Статус', _getStatusLabel(foundReport.status ?? '')),
-                  Divider(),
-                ],
-
-                if (foundAnswer != null) ...[
-                  // Результат
-                  _buildDetailRow('По программе', '${foundAnswer.programBalance ?? 0} шт'),
-                  _buildDetailRow('По факту', '${foundAnswer.actualBalance ?? foundAnswer.programBalance ?? 0} шт'),
-                  _buildDetailRow('Разница', _formatAnswerDifference(foundAnswer)),
-
-                  // Фото если есть
-                  if (foundAnswer.photoUrl != null && foundAnswer.photoUrl!.isNotEmpty) ...[
-                    SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8.r),
-                      child: AppCachedImage(
-                        imageUrl: foundAnswer.photoUrl!,
-                        height: 150,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(
-                          height: 60,
-                          color: Colors.white.withOpacity(0.06),
-                          child: Center(
-                            child: Icon(Icons.broken_image, color: Colors.white.withOpacity(0.3)),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ] else
-                  Padding(
-                    padding: EdgeInsets.all(8.0.w),
-                    child: Text('Данные не найдены', style: TextStyle(color: Colors.grey)),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('Закрыть'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context); // Закрываем индикатор загрузки
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка загрузки: $e')),
-      );
-    }
-  }
-
-  /// Построить строку деталей
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
-          SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              value,
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13.sp),
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Форматировать разницу из ответа
-  String _formatAnswerDifference(RecountAnswer answer) {
-    if (answer.isMatching) return '0 (сходится)';
-    if (answer.moreBy != null && answer.moreBy! > 0) return '+${answer.moreBy} (больше)';
-    if (answer.lessBy != null && answer.lessBy! > 0) return '-${answer.lessBy} (меньше)';
-    if (answer.difference != null && answer.difference != 0) {
-      final sign = answer.difference! > 0 ? '+' : '';
-      return '$sign${answer.difference}';
-    }
-    return '0';
-  }
-
-  /// Получить текстовый статус
-  String _getStatusLabel(String status) {
-    switch (status) {
-      case 'pending': return 'Ожидает';
-      case 'review': return 'На проверке';
-      case 'confirmed': return 'Проверено';
-      case 'failed': return 'Не прошёл';
-      case 'rejected': return 'Отклонён';
-      default: return status;
-    }
-  }
-
-  /// Построить элемент статистики
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 20.sp,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
-        ),
-      ],
-    );
-  }
-
-  /// Построить элемент легенды
-  Widget _buildLegendItem(String symbol, String label, Color color) {
-    return Row(
-      children: [
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(4.r),
-          ),
-          child: Text(
-            symbol,
-            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11.sp),
-          ),
-        ),
-        SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 10.sp, color: Colors.white.withOpacity(0.5))),
-      ],
-    );
-  }
 }

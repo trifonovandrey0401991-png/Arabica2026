@@ -21,6 +21,8 @@ import '../../../shared/dialogs/schedule_errors_dialog.dart';
 import 'employee_bulk_schedule_dialog.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../widgets/employee_list_tab.dart';
+import '../widgets/schedule_toolbar.dart';
 import 'period_selection_dialog.dart';
 import 'pdf_preview_page.dart';
 
@@ -124,11 +126,27 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     });
 
     try {
-      final employees = await EmployeeService.getEmployees();
-      final shops = await ShopService.getShopsForCurrentUser();
-      final schedule = await WorkScheduleService.getSchedule(_selectedMonth);
-      
-      // Загружаем настройки магазинов для получения аббревиатур
+      // Параллельная загрузка сотрудников, магазинов и графика
+      List<Employee> employees = [];
+      List<Shop> shops = [];
+      WorkSchedule? schedule;
+
+      await Future.wait([
+        () async {
+          try { employees = await EmployeeService.getEmployees(); }
+          catch (e) { Logger.error('Ошибка загрузки сотрудников', e); }
+        }(),
+        () async {
+          try { shops = await ShopService.getShopsForCurrentUser(); }
+          catch (e) { Logger.error('Ошибка загрузки магазинов', e); }
+        }(),
+        () async {
+          try { schedule = await WorkScheduleService.getSchedule(_selectedMonth); }
+          catch (e) { Logger.error('Ошибка загрузки графика', e); }
+        }(),
+      ]);
+
+      // Загружаем настройки магазинов (зависит от shops)
       await _loadShopSettings(shops);
 
       if (mounted) {
@@ -1142,7 +1160,14 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                         ? _buildErrorState()
                         : Column(
                             children: [
-                              _buildScheduleToolbar(),
+                              ScheduleToolbar(
+                                hasSchedule: _schedule != null,
+                                onSelectPeriod: _selectPeriod,
+                                onSelectMonth: _selectMonth,
+                                onAutoFill: _showAutoFillDialog,
+                                onExportPdf: _exportToPdf,
+                                onClear: _confirmClearSchedule,
+                              ),
                               Expanded(
                                 child: TabBarView(
                                   controller: _tabController,
@@ -1150,7 +1175,12 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                                     _schedule == null
                                         ? Center(child: Text('График не загружен', style: TextStyle(color: Colors.white.withOpacity(0.5))))
                                         : _buildCalendarGrid(),
-                                    _buildByEmployeesTab(),
+                                    EmployeeListTab(
+                                      employees: _employees,
+                                      schedule: _schedule,
+                                      selectedMonth: _selectedMonth,
+                                      onEmployeeTap: _showEmployeeScheduleDialog,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1173,137 +1203,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
               ),
             )
           : null,
-    );
-  }
-
-  /// Строит тулбар с кнопками управления графиком
-  Widget _buildScheduleToolbar() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white.withOpacity(0.06),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Ряд 1: Период | Месяц | Автозаполнение
-          Row(
-            children: [
-              Expanded(
-                child: _buildToolbarChip(
-                  icon: Icons.date_range,
-                  label: 'Период',
-                  onTap: _selectPeriod,
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: _buildToolbarChip(
-                  icon: Icons.calendar_today,
-                  label: 'Месяц',
-                  onTap: _selectMonth,
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: _buildToolbarChip(
-                  icon: Icons.auto_fix_high,
-                  label: 'Автозаполнение',
-                  onTap: _schedule != null ? _showAutoFillDialog : null,
-                  enabled: _schedule != null,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          // Ряд 2: PDF | Очистка (по центру)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 120,
-                child: _buildToolbarChip(
-                  icon: Icons.picture_as_pdf,
-                  label: 'PDF',
-                  onTap: _schedule != null ? _exportToPdf : null,
-                  enabled: _schedule != null,
-                ),
-              ),
-              SizedBox(width: 16),
-              SizedBox(
-                width: 120,
-                child: _buildToolbarChip(
-                  icon: Icons.cleaning_services,
-                  label: 'Очистка',
-                  onTap: _schedule != null ? _confirmClearSchedule : null,
-                  enabled: _schedule != null,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Строит кнопку-чип для тулбара
-  Widget _buildToolbarChip({
-    required IconData icon,
-    required String label,
-    required VoidCallback? onTap,
-    bool enabled = true,
-    Color? color,
-  }) {
-    final isEnabled = enabled && onTap != null;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: isEnabled ? Colors.white.withOpacity(0.06) : Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(
-          color: isEnabled ? Colors.white.withOpacity(0.15) : Colors.white.withOpacity(0.06),
-          width: 1,
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: isEnabled ? onTap : null,
-          borderRadius: BorderRadius.circular(8.r),
-          child: Container(
-            padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 8.w),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 18,
-                  color: isEnabled ? Colors.white.withOpacity(0.8) : Colors.white.withOpacity(0.3),
-                ),
-                SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
-                      color: isEnabled ? Colors.white.withOpacity(0.8) : Colors.white.withOpacity(0.3),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -1400,41 +1299,40 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                         ),
                       ),
                     ),
-                    // Список имён сотрудников
+                    // Список имён сотрудников (ListView.builder — ленивый рендер)
                     Expanded(
-                      child: SingleChildScrollView(
+                      child: ListView.builder(
                         controller: _namesVerticalController,
-                        child: Column(
-                          children: _employees.asMap().entries.map((entry) {
-                            final index = entry.key;
-                            final employee = entry.value;
-                            final isEven = index % 2 == 0;
-                            return InkWell(
-                              onTap: () => _showEmployeeBulkScheduleDialog(employee),
-                              child: Container(
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: isEven ? Colors.white.withOpacity(0.04) : Colors.white.withOpacity(0.08),
-                                  border: Border(
-                                    bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
-                                    right: BorderSide(color: Colors.white.withOpacity(0.1), width: 2),
-                                  ),
-                                ),
-                                padding: EdgeInsets.symmetric(horizontal: 8.w),
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  employee.name,
-                                  style: TextStyle(
-                                    fontSize: 12.sp,
-                                    color: Colors.white.withOpacity(0.9),
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                        itemCount: _employees.length,
+                        itemExtent: 40,
+                        itemBuilder: (context, index) {
+                          final employee = _employees[index];
+                          final isEven = index % 2 == 0;
+                          return InkWell(
+                            onTap: () => _showEmployeeBulkScheduleDialog(employee),
+                            child: Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: isEven ? Colors.white.withOpacity(0.04) : Colors.white.withOpacity(0.08),
+                                border: Border(
+                                  bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
+                                  right: BorderSide(color: Colors.white.withOpacity(0.1), width: 2),
                                 ),
                               ),
-                            );
-                          }).toList(),
-                        ),
+                              padding: EdgeInsets.symmetric(horizontal: 8.w),
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                employee.name,
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -1497,21 +1395,21 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                             }).toList(),
                           ),
                         ),
-                        // Ячейки со сменами
+                        // Ячейки со сменами (ListView.builder — ленивый рендер)
                         Expanded(
-                          child: SingleChildScrollView(
+                          child: ListView.builder(
                             controller: _gridVerticalController,
-                            child: Column(
-                              children: _employees.asMap().entries.map((entry) {
-                                final employee = entry.value;
-                                return SizedBox(
-                                  height: 40,
-                                  child: Row(
-                                    children: days.map((day) => _buildCell(employee, day)).toList(),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
+                            itemCount: _employees.length,
+                            itemExtent: 40,
+                            itemBuilder: (context, index) {
+                              final employee = _employees[index];
+                              return SizedBox(
+                                height: 40,
+                                child: Row(
+                                  children: days.map((day) => _buildCell(employee, day)).toList(),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ],
@@ -1957,406 +1855,8 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     );
   }
 
-  /// Карточка заявки на передачу смены для администратора
-  Widget _buildAdminNotificationCard(ShiftTransferRequest request) {
-    final isUnread = !request.isReadByAdmin;
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(
-          color: isUnread ? Colors.orange.withOpacity(0.6) : Colors.white.withOpacity(0.1),
-          width: isUnread ? 2 : 1,
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12.r),
-        onTap: () async {
-          if (isUnread) {
-            // SECURITY: Получаем phone для верификации на сервере
-            final prefs = await SharedPreferences.getInstance();
-            final phone = prefs.getString('user_phone') ?? prefs.getString('userPhone');
-            await ShiftTransferService.markAsRead(request.id, phone: phone);
-            _loadAdminNotifications();
-          }
-        },
-        child: Padding(
-          padding: EdgeInsets.all(16.w),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Заголовок с индикатором непрочитанного
-              Row(
-                children: [
-                  if (isUnread)
-                    Container(
-                      width: 10,
-                      height: 10,
-                      margin: EdgeInsets.only(right: 8.w),
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  Expanded(
-                    child: Text(
-                      'Заявка на передачу смены',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16.sp,
-                        color: isUnread ? Colors.orange : Colors.white.withOpacity(0.9),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                    child: Text(
-                      'Ожидает одобрения',
-                      style: TextStyle(
-                        fontSize: 11.sp,
-                        color: Colors.orange,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 12),
-              Divider(height: 1, color: Colors.white.withOpacity(0.1)),
-              SizedBox(height: 12),
-
-              // Информация о передаче
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Передаёт:',
-                          style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          request.fromEmployeeName,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14.sp,
-                            color: Colors.white.withOpacity(0.9),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.arrow_forward, color: Colors.white.withOpacity(0.3)),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'Принимает:',
-                          style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5)),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          request.acceptedByEmployeeName ?? 'Неизвестно',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14.sp,
-                            color: Colors.white.withOpacity(0.9),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.right,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 12),
-
-              // Детали смены
-              Container(
-                padding: EdgeInsets.all(12.w),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.04),
-                  borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
-                ),
-                child: Column(
-                  children: [
-                    _buildDetailRow(
-                      Icons.calendar_today,
-                      'Дата:',
-                      '${request.shiftDate.day}.${request.shiftDate.month.toString().padLeft(2, '0')}.${request.shiftDate.year}',
-                    ),
-                    SizedBox(height: 8),
-                    _buildDetailRow(
-                      Icons.access_time,
-                      'Смена:',
-                      request.shiftType.label,
-                    ),
-                    SizedBox(height: 8),
-                    _buildDetailRow(
-                      Icons.store,
-                      'Магазин:',
-                      request.shopName.isNotEmpty ? request.shopName : request.shopAddress,
-                    ),
-                  ],
-                ),
-              ),
-
-              // Комментарий
-              if (request.comment != null && request.comment!.isNotEmpty) ...[
-                SizedBox(height: 12),
-                Container(
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(color: Colors.blue.withOpacity(0.2)),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.comment, size: 18, color: Colors.blue[300]),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          request.comment!,
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            color: Colors.blue[200],
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              SizedBox(height: 16),
-
-              // Кнопки действий
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _declineRequest(request),
-                      icon: Icon(Icons.close, size: 18),
-                      label: Text('Отклонить'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: BorderSide(color: Colors.red.withOpacity(0.5)),
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => _approveRequest(request),
-                      icon: Icon(Icons.check, size: 18),
-                      label: Text('Одобрить'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.white.withOpacity(0.5)),
-        SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.5)),
-        ),
-        SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.9)),
-            textAlign: TextAlign.right,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Одобрить заявку на передачу смены
-  Future<void> _approveRequest(ShiftTransferRequest request) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.emeraldDark,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-          side: BorderSide(color: Colors.white.withOpacity(0.15)),
-        ),
-        title: Text('Одобрить заявку?', style: TextStyle(color: Colors.white.withOpacity(0.95))),
-        content: SingleChildScrollView(
-          child: Text(
-            'Смена ${request.shiftDate.day}.${request.shiftDate.month} (${request.shiftType.label}) '
-            'будет передана от ${request.fromEmployeeName} к ${request.acceptedByEmployeeName}.\n\n'
-            'График будет обновлен автоматически.',
-            style: TextStyle(color: Colors.white.withOpacity(0.7)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.7))),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: Text('Одобрить', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      final success = await ShiftTransferService.approveRequest(request.id);
-      if (success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Заявка одобрена, график обновлен'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-        await _loadAdminNotifications();
-        await _loadData(); // Обновляем график
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Ошибка одобрения заявки'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
-  }
-
-  /// Отклонить заявку на передачу смены
-  Future<void> _declineRequest(ShiftTransferRequest request) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.emeraldDark,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-          side: BorderSide(color: Colors.white.withOpacity(0.15)),
-        ),
-        title: Text('Отклонить заявку?', style: TextStyle(color: Colors.white.withOpacity(0.95))),
-        content: SingleChildScrollView(
-          child: Text(
-            'Заявка на передачу смены ${request.shiftDate.day}.${request.shiftDate.month} '
-            'от ${request.fromEmployeeName} к ${request.acceptedByEmployeeName} будет отклонена.',
-            style: TextStyle(color: Colors.white.withOpacity(0.7)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.7))),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text('Отклонить', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      final success = await ShiftTransferService.declineRequest(request.id);
-      if (success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Заявка отклонена'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        await _loadAdminNotifications();
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Ошибка отклонения заявки'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
-  }
-
-  /// Виджет статистики для вкладки очистки
-  Widget _buildClearStatItem({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-  }) {
-    return Column(
-      children: [
-        Container(
-          padding: EdgeInsets.all(12.w),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(12.r),
-          ),
-          child: Icon(icon, color: color, size: 28),
-        ),
-        SizedBox(height: 12),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 28.sp,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13.sp,
-            color: Colors.white.withOpacity(0.5),
-          ),
-        ),
-      ],
-    );
-  }
+  // Removed dead code: _buildAdminNotificationCard, _buildDetailRow,
+  // _approveRequest, _declineRequest, _buildClearStatItem (no call sites)
 
   /// Показывает диалог со списком смен сотрудника
   void _showEmployeeScheduleDialog(Employee employee) {
@@ -2528,251 +2028,4 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     );
   }
 
-  /// Строит вкладку "По сотрудникам"
-  Widget _buildByEmployeesTab() {
-    if (_employees.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: EdgeInsets.all(24.w),
-              decoration: BoxDecoration(
-                color: AppColors.emerald.withOpacity(0.3),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.people_outline, size: 64, color: Colors.white.withOpacity(0.4)),
-            ),
-            SizedBox(height: 24),
-            Text(
-              'Нет сотрудников',
-              style: TextStyle(
-                fontSize: 18.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.white.withOpacity(0.9),
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Добавьте сотрудников для управления графиком',
-              style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.5)),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Подсчёт статистики смен для каждого сотрудника
-    Map<String, int> employeeShiftCount = {};
-    if (_schedule != null) {
-      for (var entry in _schedule!.entries) {
-        employeeShiftCount[entry.employeeId] =
-            (employeeShiftCount[entry.employeeId] ?? 0) + 1;
-      }
-    }
-
-    return Column(
-      children: [
-        // Заголовок с информацией
-        Container(
-          padding: EdgeInsets.all(16.w),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.emerald, AppColors.emeraldDark],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(12.w),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                child: Icon(Icons.people, color: AppColors.gold, size: 28),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Сотрудники',
-                      style: TextStyle(
-                        fontSize: 20.sp,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white.withOpacity(0.95),
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      '${_employees.length} человек • ${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        color: Colors.white.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Список сотрудников
-        Expanded(
-          child: ListView.builder(
-            padding: EdgeInsets.all(16.w),
-            itemCount: _employees.length,
-            itemBuilder: (context, index) {
-              final employee = _employees[index];
-              final shiftCount = employeeShiftCount[employee.id] ?? 0;
-
-              return Container(
-                margin: EdgeInsets.only(bottom: 12.h),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(16.r),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(16.r),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16.r),
-                    onTap: () => _showEmployeeScheduleDialog(employee),
-                    child: Padding(
-                      padding: EdgeInsets.all(16.w),
-                      child: Row(
-                        children: [
-                          // Аватар с градиентом
-                          Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [AppColors.emerald, AppColors.emeraldLight],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(16.r),
-                            ),
-                            child: Center(
-                              child: Text(
-                                employee.name.isNotEmpty
-                                    ? employee.name[0].toUpperCase()
-                                    : '?',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22.sp,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          // Информация о сотруднике
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  employee.name,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16.sp,
-                                    color: Colors.white.withOpacity(0.95),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                SizedBox(height: 6),
-                                Row(
-                                  children: [
-                                    // Количество смен
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 10.w,
-                                        vertical: 4.h,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: shiftCount > 0
-                                            ? AppColors.emerald.withOpacity(0.3)
-                                            : Colors.white.withOpacity(0.04),
-                                        borderRadius: BorderRadius.circular(8.r),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.calendar_today,
-                                            size: 14,
-                                            color: shiftCount > 0
-                                                ? AppColors.gold
-                                                : Colors.white.withOpacity(0.3),
-                                          ),
-                                          SizedBox(width: 4),
-                                          Text(
-                                            '$shiftCount смен',
-                                            style: TextStyle(
-                                              fontSize: 12.sp,
-                                              fontWeight: FontWeight.w500,
-                                              color: shiftCount > 0
-                                                  ? Colors.white.withOpacity(0.8)
-                                                  : Colors.white.withOpacity(0.3),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    if (employee.phone != null) ...[
-                                      SizedBox(width: 8),
-                                      Icon(
-                                        Icons.phone_outlined,
-                                        size: 14,
-                                        color: Colors.white.withOpacity(0.4),
-                                      ),
-                                      SizedBox(width: 4),
-                                      Expanded(
-                                        child: Text(
-                                          employee.phone!,
-                                          style: TextStyle(
-                                            fontSize: 12.sp,
-                                            color: Colors.white.withOpacity(0.4),
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Стрелка
-                          Container(
-                            padding: EdgeInsets.all(8.w),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.06),
-                              borderRadius: BorderRadius.circular(10.r),
-                            ),
-                            child: Icon(
-                              Icons.arrow_forward_ios,
-                              size: 14,
-                              color: Colors.white.withOpacity(0.4),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
 }

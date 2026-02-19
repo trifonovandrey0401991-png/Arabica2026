@@ -50,11 +50,12 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
     // Step 1: Show cached data instantly
     final cached = CacheManager.get<Map<String, dynamic>>('reports_coffee_machine');
     if (cached != null && mounted) {
-      _allReports = cached['allReports'] as List<CoffeeMachineReport>;
-      _pendingReports = cached['pendingReports'] as List<PendingCoffeeMachineReport>;
-      _failedReports = cached['failedReports'] as List<PendingCoffeeMachineReport>;
-      _isLoading = false;
-      setState(() {});
+      setState(() {
+        _allReports = cached['allReports'] as List<CoffeeMachineReport>;
+        _pendingReports = cached['pendingReports'] as List<PendingCoffeeMachineReport>;
+        _failedReports = cached['failedReports'] as List<PendingCoffeeMachineReport>;
+        _isLoading = false;
+      });
     }
 
     // Step 2: Fetch fresh data
