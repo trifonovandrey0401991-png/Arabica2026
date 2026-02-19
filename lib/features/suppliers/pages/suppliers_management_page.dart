@@ -42,13 +42,14 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final results = await Future.wait([
         SupplierService.getSuppliers(),
         ShopService.getShopsForCurrentUser(),  // Фильтрация по роли
         EmployeeService.getEmployees(),
       ]);
+      if (!mounted) return;
       setState(() {
         _suppliers = results[0] as List<Supplier>;
         _shops = results[1] as List<Shop>;
@@ -61,6 +62,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1074,7 +1076,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                         ),
                         onChanged: (value) {
-                          setState(() {
+                          if (mounted) setState(() {
                             _searchQuery = value;
                           });
                         },

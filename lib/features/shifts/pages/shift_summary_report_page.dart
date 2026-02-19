@@ -87,6 +87,7 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
       _reportsByShop[report.shopAddress.toLowerCase().trim()] = report;
     }
 
+    if (!mounted) return;
     setState(() {
       _questions = filteredQuestions;
       _isLoading = false;

@@ -27,7 +27,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final results = await Future.wait([
@@ -60,7 +60,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
     final newValue = !product.isAiActive;
 
     // Оптимистичное обновление
-    setState(() {
+    if (mounted) setState(() {
       final index = _products.indexWhere((p) => p.barcode == product.barcode);
       if (index != -1) {
         _products[index] = product.copyWith(isAiActive: newValue);
@@ -322,7 +322,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
             label: 'Все',
             isSelected: _selectedGroup == null,
             onTap: () {
-              setState(() => _selectedGroup = null);
+              if (mounted) setState(() => _selectedGroup = null);
               _loadData();
             },
           ),
@@ -330,7 +330,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
                 label: group,
                 isSelected: _selectedGroup == group,
                 onTap: () {
-                  setState(() => _selectedGroup = group);
+                  if (mounted) setState(() => _selectedGroup = group);
                   _loadData();
                 },
               )),

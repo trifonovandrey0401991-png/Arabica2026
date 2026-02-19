@@ -26,7 +26,7 @@ class _ClientReviewsListPageState extends State<ClientReviewsListPage> {
   }
 
   Future<void> _loadReviews() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
@@ -35,6 +35,7 @@ class _ClientReviewsListPageState extends State<ClientReviewsListPage> {
       final clientPhone = prefs.getString('user_phone') ?? '';
 
       if (clientPhone.isEmpty) {
+        if (!mounted) return;
         setState(() {
           _isLoading = false;
         });
@@ -46,11 +47,13 @@ class _ClientReviewsListPageState extends State<ClientReviewsListPage> {
       // Сортируем по дате (новые сверху)
       reviews.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
+      if (!mounted) return;
       setState(() {
         _reviews = reviews;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });

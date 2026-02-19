@@ -34,8 +34,8 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
         imageQuality: 85,
       );
 
-      if (image != null) {
-        setState(() {
+      if (image != null && mounted) {
+        if (mounted) setState(() {
           _selectedImage = File(image.path);
         });
       }
@@ -62,8 +62,8 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
         imageQuality: 85,
       );
 
-      if (image != null) {
-        setState(() {
+      if (image != null && mounted) {
+        if (mounted) setState(() {
           _selectedImage = File(image.path);
         });
       }
@@ -178,7 +178,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
 
     if (_isSending) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isSending = true;
     });
 

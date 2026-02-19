@@ -62,7 +62,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
 
   /// Загрузить магазины и информацию о синхронизации
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       // Загружаем параллельно
@@ -76,6 +76,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
       final syncInfoList = results[1] as List<ShopSyncInfo>;
       final photos = results[2] as Map<String, String>;
 
+      if (!mounted) return;
       setState(() {
         _shops = shops;
         _shopsSyncInfo = {for (var s in syncInfoList) s.shopId: s};
@@ -86,7 +87,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
       Logger.debug('📦 Загружено ${shops.length} магазинов, ${syncInfoList.length} с DBF, ${photos.length} фото');
     } catch (e) {
       Logger.error('Ошибка загрузки данных', e);
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -128,7 +129,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
 
   /// Переключить в режим поиска
   void _startSearch({String? shopId, String? shopName}) {
-    setState(() {
+    if (mounted) setState(() {
       _mode = _SearchMode.search;
       _selectedShopId = shopId;
       _selectedShopName = shopName;
@@ -140,7 +141,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
 
   /// Вернуться к списку магазинов
   void _backToShopsList() {
-    setState(() {
+    if (mounted) setState(() {
       _mode = _SearchMode.shopsList;
       _selectedShopId = null;
       _selectedShopName = null;
@@ -161,14 +162,14 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
   /// Выполнить поиск
   Future<void> _performSearch(String query) async {
     if (query.length < 2) {
-      setState(() {
+      if (mounted) setState(() {
         _searchQuery = query;
         _searchResults = [];
       });
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _searchQuery = query;
       _isSearching = true;
     });
@@ -189,13 +190,14 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
       // Сортируем по релевантности
       scored.sort((a, b) => b.value.compareTo(a.value));
 
+      if (!mounted) return;
       setState(() {
         _searchResults = scored.map((e) => e.key).toList();
         _isSearching = false;
       });
     } catch (e) {
       Logger.error('Ошибка поиска', e);
-      setState(() => _isSearching = false);
+      if (mounted) setState(() => _isSearching = false);
     }
   }
 

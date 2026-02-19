@@ -54,7 +54,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
   void _onPinEntered(String pin) {
     if (!_isConfirmStep) {
       // Первый ввод - переходим к подтверждению
-      setState(() {
+      if (mounted) setState(() {
         _firstPin = pin;
         _isConfirmStep = true;
         _clearPin = true;
@@ -75,7 +75,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
       if (pin == _firstPin) {
         _completeSetup(pin);
       } else {
-        setState(() {
+        if (mounted) setState(() {
           _showError = true;
           _errorMessage = 'PIN-коды не совпадают';
           _clearPin = true;
@@ -93,7 +93,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
   }
 
   Future<void> _completeSetup(String pin) async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _showError = false;
     });
@@ -143,7 +143,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } else {
-      setState(() {
+      if (mounted) setState(() {
         _showError = true;
         _errorMessage = result.error;
         _isConfirmStep = false;
@@ -163,7 +163,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
 
   void _goBack() {
     if (_isConfirmStep) {
-      setState(() {
+      if (mounted) setState(() {
         _isConfirmStep = false;
         _firstPin = '';
         _clearPin = true;

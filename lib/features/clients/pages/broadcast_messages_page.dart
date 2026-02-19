@@ -33,14 +33,14 @@ class _BroadcastMessagesPageState extends State<BroadcastMessagesPage> {
   }
 
   Future<void> _loadMessages() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
       _userPhone = prefs.getString('user_phone') ?? prefs.getString('userPhone') ?? '';
 
       if (_userPhone!.isEmpty) {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
 
@@ -51,6 +51,7 @@ class _BroadcastMessagesPageState extends State<BroadcastMessagesPage> {
         ManagementMessageService.markAsReadByClient(_userPhone!, type: 'broadcast');
       }
 
+      if (!mounted) return;
       setState(() {
         _messages = data.broadcastMessages;
         _isLoading = false;
@@ -67,6 +68,7 @@ class _BroadcastMessagesPageState extends State<BroadcastMessagesPage> {
         }
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

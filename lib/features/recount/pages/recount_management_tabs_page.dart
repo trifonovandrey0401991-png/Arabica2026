@@ -53,15 +53,17 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
   }
 
   Future<void> _loadProducts() async {
-    setState(() => _isProductsLoading = true);
+    if (mounted) setState(() => _isProductsLoading = true);
 
     try {
       final products = await RecountQuestionService.getQuestions();
+      if (!mounted) return;
       setState(() {
         _products = products;
         _isProductsLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isProductsLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -987,7 +989,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                         icon: Icon(Icons.close, color: Colors.white.withOpacity(0.5), size: 20),
                         onPressed: () {
                           _searchController.clear();
-                          setState(() => _searchQuery = '');
+                          if (mounted) setState(() => _searchQuery = '');
                         },
                       )
                     : null,

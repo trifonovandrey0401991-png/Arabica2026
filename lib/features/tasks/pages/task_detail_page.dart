@@ -67,6 +67,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     );
 
     if (confirmed != true) return;
+    if (!mounted) return;
 
     setState(() => _isLoading = true);
 
@@ -88,7 +89,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         Navigator.pop(context, true);
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

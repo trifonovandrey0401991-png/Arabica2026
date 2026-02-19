@@ -72,18 +72,20 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
   }
 
   Future<void> _loadQuestions() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
     try {
       final questions = await ShiftQuestionService.getQuestions();
+      if (!mounted) return;
       setState(() {
         _questions = questions;
         _applyFilters();
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -396,7 +398,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                 if (_selectedTypeFilter != null)
                   TextButton(
                     onPressed: () {
-                      setState(() {
+                      if (mounted) setState(() {
                         _selectedTypeFilter = null;
                         _applyFilters();
                       });
@@ -459,7 +461,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
         child: InkWell(
           borderRadius: BorderRadius.circular(14.r),
           onTap: () {
-            setState(() {
+            if (mounted) setState(() {
               _selectedTypeFilter = isSelected ? null : value;
               _applyFilters();
             });
@@ -541,7 +543,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                       label: 'Поиск: "$_searchQuery"',
                       onRemove: () {
                         _searchController.clear();
-                        setState(() {
+                        if (mounted) setState(() {
                           _searchQuery = '';
                           _applyFilters();
                         });
@@ -552,7 +554,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                       label: 'Тип: ${_getTypeFilterLabel(_selectedTypeFilter!)}',
                       color: _getTypeFilterColor(_selectedTypeFilter!),
                       onRemove: () {
-                        setState(() {
+                        if (mounted) setState(() {
                           _selectedTypeFilter = null;
                           _applyFilters();
                         });
@@ -767,7 +769,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                         icon: Icon(Icons.close, color: Colors.white.withOpacity(0.5), size: 20),
                         onPressed: () {
                           _searchController.clear();
-                          setState(() {
+                          if (mounted) setState(() {
                             _searchQuery = '';
                             _applyFilters();
                           });
@@ -931,7 +933,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
   }
 
   void _toggleTypeFilter(String type) {
-    setState(() {
+    if (mounted) setState(() {
       if (_selectedTypeFilter == type) {
         _selectedTypeFilter = null;
       } else {
@@ -942,7 +944,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
   }
 
   void _onReorder(int oldIndex, int newIndex) {
-    setState(() {
+    if (mounted) setState(() {
       if (newIndex > oldIndex) newIndex--;
       final item = _questions.removeAt(oldIndex);
       _questions.insert(newIndex, item);
@@ -1151,7 +1153,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
           TextButton.icon(
             onPressed: () {
               _searchController.clear();
-              setState(() {
+              if (mounted) setState(() {
                 _searchQuery = '';
                 _selectedTypeFilter = null;
                 _applyFilters();
@@ -1477,13 +1479,15 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
 
   Future<void> _loadShops() async {
     try {
-      setState(() => _isLoadingShops = true);
+      if (mounted) setState(() => _isLoadingShops = true);
       final shops = await Shop.loadShopsFromServer();
+      if (!mounted) return;
       setState(() {
         _allShops = shops;
         _isLoadingShops = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoadingShops = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1516,6 +1520,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           photoFile = File(image.path);
         }
 
+        if (!mounted) return;
         setState(() {
           _referencePhotoFiles[shopAddress] = photoFile;
         });
@@ -1539,7 +1544,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
 
   Future<void> _uploadReferencePhoto(String questionId, String shopAddress, File photoFile) async {
     try {
-      setState(() => _isUploadingPhotos = true);
+      if (mounted) setState(() => _isUploadingPhotos = true);
 
       final photoUrl = await ShiftQuestionService.uploadReferencePhoto(
         questionId: questionId,
@@ -1548,6 +1553,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
       );
 
       if (photoUrl != null) {
+        if (!mounted) return;
         setState(() {
           _referencePhotoUrls[shopAddress] = photoUrl;
         });
@@ -1564,7 +1570,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
 
         if (updatedQuestion != null) {
           Logger.success('Вопрос успешно обновлен с эталонным фото');
-          setState(() => _isUploadingPhotos = false);
+          if (mounted) setState(() => _isUploadingPhotos = false);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -1576,7 +1582,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           }
         } else {
           Logger.error('Не удалось обновить вопрос с эталонным фото');
-          setState(() => _isUploadingPhotos = false);
+          if (mounted) setState(() => _isUploadingPhotos = false);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -1587,7 +1593,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           }
         }
       } else {
-        setState(() => _isUploadingPhotos = false);
+        if (mounted) setState(() => _isUploadingPhotos = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1599,7 +1605,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
       }
     } catch (e) {
       Logger.error('Исключение при загрузке эталонного фото', e);
-      setState(() => _isUploadingPhotos = false);
+      if (mounted) setState(() => _isUploadingPhotos = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1622,7 +1628,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isSaving = true;
     });
 
@@ -1979,7 +1985,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                             ),
                             value: _isForAllShops,
                             onChanged: (value) {
-                              setState(() {
+                              if (mounted) setState(() {
                                 _isForAllShops = value ?? false;
                                 if (_isForAllShops) {
                                   _selectedShopAddresses.clear();
@@ -2031,7 +2037,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                       ),
                                       value: isSelected,
                                       onChanged: (value) {
-                                        setState(() {
+                                        if (mounted) setState(() {
                                           if (value ?? false) {
                                             _selectedShopAddresses.add(shop.address);
                                           } else {
@@ -2082,7 +2088,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                             child: CheckboxListTile(
                               value: _isAiCheck,
                               onChanged: (value) {
-                                setState(() => _isAiCheck = value ?? false);
+                                if (mounted) setState(() => _isAiCheck = value ?? false);
                               },
                               title: Text(
                                 'Проверка ИИ',
@@ -2275,7 +2281,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
 
     return GestureDetector(
       onTap: () {
-        setState(() {
+        if (mounted) setState(() {
           _selectedAnswerType = value;
         });
       },
@@ -2454,7 +2460,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                         _buildPhotoActionButton(
                           icon: Icons.delete_outline,
                           onPressed: () {
-                            setState(() {
+                            if (mounted) setState(() {
                               _referencePhotoFiles.remove(shopAddress);
                               _referencePhotoUrls.remove(shopAddress);
                             });

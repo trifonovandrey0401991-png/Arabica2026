@@ -173,7 +173,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         employeeId: _employeeId,
       );
       if (counters != null && mounted) {
-        setState(() {
+        if (mounted) setState(() {
           _totalReportsCount = counters.totalPendingReports;
           _pendingOrdersCount = counters.pendingOrders;
           _activeTasksCount = counters.activeTaskAssignments;
@@ -280,7 +280,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         orElse: () => throw StateError('Employee not found'),
       );
       if (mounted && employee.referralCode != null) {
-        setState(() => _referralCode = employee.referralCode);
+        if (mounted) setState(() => _referralCode = employee.referralCode);
       }
     } catch (e) {
       Logger.error('Ошибка загрузки referralCode', e);
@@ -305,7 +305,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     try {
       final employeeId = await EmployeesPage.getCurrentEmployeeId();
       if (mounted && employeeId != null) {
-        setState(() => _employeeId = employeeId);
+        if (mounted) setState(() => _employeeId = employeeId);
         _loadEmployeeRating();
       }
     } catch (e) {
@@ -2469,7 +2469,7 @@ class _ShopSelectionPageState extends State<_ShopSelectionPage> {
               SizedBox(height: 24),
               OutlinedButton.icon(
                 onPressed: () {
-                  setState(() {
+                  if (mounted) setState(() {
                     _isLoading = true;
                     _error = null;
                   });

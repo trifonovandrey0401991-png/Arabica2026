@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 import '../models/recount_report_model.dart';
+import '../models/recount_answer_model.dart';
 import '../services/recount_service.dart';
 import '../services/recount_points_service.dart';
 import '../../ai_training/services/cigarette_vision_service.dart';
@@ -38,10 +39,9 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
   final Map<int, String> _aiErrorDecisions = {}; // questionIndex -> decision
   final Set<int> _processingAiDecisions = {}; // в процессе отправки решения
 
-  // Pending counting samples для обучения ИИ
-  Map<String, List<dynamic>> _pendingSamplesByProduct = {}; // productId -> samples
-  final Map<String, String> _approvedSamples = {}; // sampleId -> 'approved' или 'rejected'
-  final Set<String> _processingSamples = {}; // в процессе approve/reject
+  // Отправка фото на обучение ИИ из отчёта (по решению админа)
+  final Map<int, String> _trainingSubmitStatus = {}; // answerIndex -> 'sent'
+  final Set<int> _submittingForTraining = {}; // в процессе отправки
 
   @override
   void initState() {
@@ -51,7 +51,6 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
     _loadAdminName();
     _loadPhotoVerifications();
     _loadAiErrorDecisions();
-    _loadPendingCountingSamples();
   }
 
   /// Загрузить решения по ошибкам ИИ из ответов
@@ -64,53 +63,31 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
     }
   }
 
-  /// Загрузить pending counting samples для товаров из отчёта
-  Future<void> _loadPendingCountingSamples() async {
-    try {
-      final allPending = await CigaretteVisionService.getAllPendingCountingSamples();
-      final Map<String, List<dynamic>> byProduct = {};
-
-      for (final sample in allPending) {
-        // Индексируем по productId/barcode
-        final productId = sample.productId.isNotEmpty ? sample.productId : sample.barcode;
-        if (productId.isNotEmpty) {
-          byProduct.putIfAbsent(productId, () => []);
-          byProduct[productId]!.add(sample);
-        }
-        // Также индексируем по productName для совместимости со старыми отчётами
-        final productName = sample.productName;
-        if (productName.isNotEmpty) {
-          byProduct.putIfAbsent(productName, () => []);
-          byProduct[productName]!.add(sample);
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _pendingSamplesByProduct = byProduct;
-        });
-      }
-    } catch (e) {
-      Logger.error('Ошибка загрузки pending samples', e);
-    }
-  }
-
-  /// Одобрить pending фото для обучения ИИ
-  Future<void> _approvePendingSample(String sampleId) async {
-    setState(() {
-      _processingSamples.add(sampleId);
+  /// Отправить фото из отчёта на обучение ИИ (по решению админа)
+  Future<void> _submitReportPhotoForTraining(int answerIndex, RecountAnswer answer) async {
+    if (mounted) setState(() {
+      _submittingForTraining.add(answerIndex);
     });
 
     try {
-      final success = await CigaretteVisionService.approvePendingCountingSample(sampleId);
+      final success = await CigaretteVisionService.submitReportPhotoForTraining(
+        photoUrl: answer.photoUrl!,
+        productId: answer.productId ?? answer.question,
+        productName: answer.question,
+        shopAddress: _currentReport.shopAddress,
+        employeeAnswer: answer.employeeConfirmedQuantity ?? answer.actualBalance ?? answer.quantity,
+        selectedRegion: answer.selectedRegion,
+      );
+
       if (success) {
+        if (!mounted) return;
         setState(() {
-          _approvedSamples[sampleId] = 'approved';
+          _trainingSubmitStatus[answerIndex] = 'sent';
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('✅ Фото добавлено в обучение ИИ'),
+              content: Text('Фото отправлено на обучение ИИ'),
               backgroundColor: Colors.green,
             ),
           );
@@ -119,170 +96,78 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Ошибка одобрения фото'),
+              content: Text('Ошибка отправки фото на обучение'),
               backgroundColor: Colors.red,
             ),
           );
         }
       }
     } catch (e) {
-      Logger.error('Ошибка одобрения pending sample', e);
+      Logger.error('Ошибка отправки фото на обучение', e);
     } finally {
-      setState(() {
-        _processingSamples.remove(sampleId);
-      });
-    }
-  }
-
-  /// Отклонить pending фото
-  Future<void> _rejectPendingSample(String sampleId) async {
-    setState(() {
-      _processingSamples.add(sampleId);
-    });
-
-    try {
-      final success = await CigaretteVisionService.rejectPendingCountingSample(sampleId);
-      if (success) {
+      if (mounted) {
         setState(() {
-          _approvedSamples[sampleId] = 'rejected';
+          _submittingForTraining.remove(answerIndex);
         });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Фото отклонено'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
       }
-    } catch (e) {
-      Logger.error('Ошибка отклонения pending sample', e);
-    } finally {
-      setState(() {
-        _processingSamples.remove(sampleId);
-      });
     }
   }
 
-  /// Построить кнопки для pending фото обучения ИИ
-  Widget _buildPendingTrainingButtons(String productId) {
-    final pendingSamples = _pendingSamplesByProduct[productId] ?? [];
-    if (pendingSamples.isEmpty) return SizedBox.shrink();
+  /// Кнопка "В обучение ИИ" для фото из отчёта
+  Widget _buildReportTrainingButton(int answerIndex, RecountAnswer answer) {
+    // Показываем только если: есть фото на сервере и есть данные ИИ
+    final hasPhoto = answer.photoUrl != null;
+    final hasAiData = answer.selectedRegion != null || answer.aiVerified == true;
+    if (!hasPhoto || !hasAiData || widget.isReadOnly) return SizedBox.shrink();
 
-    return Column(
-      children: pendingSamples.map<Widget>((sample) {
-        final sampleId = sample.id ?? '';
-        final status = _approvedSamples[sampleId];
-        final isProcessing = _processingSamples.contains(sampleId);
+    final status = _trainingSubmitStatus[answerIndex];
+    final isSubmitting = _submittingForTraining.contains(answerIndex);
 
-        // Если уже обработан
-        if (status != null) {
-          return Container(
-            margin: EdgeInsets.only(top: 8.h),
-            padding: EdgeInsets.all(10.w),
-            decoration: BoxDecoration(
-              color: status == 'approved'
-                  ? Colors.green.withOpacity(0.15)
-                  : Colors.orange.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(
-                color: status == 'approved' ? Colors.green : Colors.orange,
+    // Если уже отправлено
+    if (status == 'sent') {
+      return Container(
+        margin: EdgeInsets.only(top: 8.h),
+        padding: EdgeInsets.all(10.w),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(color: Colors.green),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.school, color: Colors.green, size: 20),
+            SizedBox(width: 8),
+            Text(
+              'Отправлено на обучение ИИ',
+              style: TextStyle(
+                color: Colors.green[700],
+                fontWeight: FontWeight.bold,
               ),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  status == 'approved' ? Icons.school : Icons.cancel,
-                  color: status == 'approved' ? Colors.green : Colors.orange,
-                  size: 20,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  status == 'approved'
-                      ? 'Добавлено в обучение ИИ'
-                      : 'Фото отклонено',
-                  style: TextStyle(
-                    color: status == 'approved' ? Colors.green[700] : Colors.orange[700],
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
+          ],
+        ),
+      );
+    }
 
-        // Кнопки одобрить/отклонить
-        return Container(
-          margin: EdgeInsets.only(top: 8.h),
-          padding: EdgeInsets.all(10.w),
-          decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8.r),
-            border: Border.all(color: Colors.blue.withOpacity(0.5)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.smart_toy, color: Colors.blue, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Фото для обучения ИИ',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue,
-                      fontSize: 13.sp,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: isProcessing ? null : () => _approvePendingSample(sampleId),
-                      icon: isProcessing
-                          ? SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : Icon(Icons.check, size: 16),
-                      label: Text('В обучение', style: TextStyle(fontSize: 12.sp)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 8.h),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: isProcessing ? null : () => _rejectPendingSample(sampleId),
-                      icon: isProcessing
-                          ? SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : Icon(Icons.close, size: 16),
-                      label: Text('Отклонить', style: TextStyle(fontSize: 12.sp)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 8.h),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      }).toList(),
+    // Кнопка отправки
+    return Container(
+      margin: EdgeInsets.only(top: 8.h),
+      child: ElevatedButton.icon(
+        onPressed: isSubmitting ? null : () => _submitReportPhotoForTraining(answerIndex, answer),
+        icon: isSubmitting
+            ? SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : Icon(Icons.school, size: 16),
+        label: Text('В обучение ИИ', style: TextStyle(fontSize: 12.sp)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 16.w),
+        ),
+      ),
     );
   }
 
@@ -302,6 +187,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
   Future<void> _loadAdminName() async {
     final prefs = await SharedPreferences.getInstance();
     final name = prefs.getString('user_name');
+    if (!mounted) return;
     setState(() {
       _adminName = name;
     });
@@ -319,7 +205,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _verifyingPhotos.add(photoIndex);
     });
 
@@ -333,6 +219,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
       );
 
       if (success) {
+        if (!mounted) return;
         setState(() {
           _photoVerificationStatus[photoIndex] = status;
         });
@@ -373,9 +260,11 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
         );
       }
     } finally {
-      setState(() {
-        _verifyingPhotos.remove(photoIndex);
-      });
+      if (mounted) {
+        setState(() {
+          _verifyingPhotos.remove(photoIndex);
+        });
+      }
     }
   }
 
@@ -608,7 +497,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
 
     final answer = _currentReport.answers[questionIndex];
 
-    setState(() {
+    if (mounted) setState(() {
       _processingAiDecisions.add(questionIndex);
     });
 
@@ -624,6 +513,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
       );
 
       if (result.success) {
+        if (!mounted) return;
         setState(() {
           _aiErrorDecisions[questionIndex] = decision;
         });
@@ -681,9 +571,11 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
         );
       }
     } finally {
-      setState(() {
-        _processingAiDecisions.remove(questionIndex);
-      });
+      if (mounted) {
+        setState(() {
+          _processingAiDecisions.remove(questionIndex);
+        });
+      }
     }
   }
 
@@ -698,7 +590,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isRating = true;
     });
 
@@ -717,6 +609,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
           ratedAt: DateTime.now(),
         );
         
+        if (!mounted) return;
         setState(() {
           _currentReport = updatedReport;
         });
@@ -754,9 +647,11 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
         );
       }
     } finally {
-      setState(() {
-        _isRating = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isRating = false;
+        });
+      }
     }
   }
 
@@ -950,7 +845,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                                   label: Text('$rating'),
                                   selected: _selectedRating == rating,
                                   onSelected: (selected) {
-                                    setState(() {
+                                    if (mounted) setState(() {
                                       _selectedRating = selected ? rating : null;
                                     });
                                   },
@@ -1413,15 +1308,9 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                             // Фото
                             if (answer.photoUrl != null || answer.photoPath != null) ...[
                               SizedBox(height: 12),
-                              Container(
-                                height: 200,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  border: Border.all(color: Colors.grey),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  child: answer.photoUrl != null
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final imageWidget = answer.photoUrl != null
                                       ? AppCachedImage(
                                           imageUrl: answer.photoUrl!,
                                           fit: BoxFit.cover,
@@ -1441,7 +1330,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                                                       child: Icon(Icons.error),
                                                     );
                                                   },
-                                                )
+                                                ) as Widget
                                               : Image.file(
                                                   File(answer.photoPath!),
                                                   fit: BoxFit.cover,
@@ -1453,16 +1342,41 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                                                 )
                                           : Center(
                                               child: Icon(Icons.image_not_supported),
-                                            ),
-                                ),
+                                            ) as Widget;
+
+                                  return Container(
+                                    height: 200,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12.r),
+                                      border: Border.all(color: Colors.grey),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12.r),
+                                      child: answer.selectedRegion != null
+                                          ? Stack(
+                                              fit: StackFit.expand,
+                                              children: [
+                                                imageWidget,
+                                                // Красный прямоугольник — область, выделенная сотрудником
+                                                CustomPaint(
+                                                  painter: _RegionOverlayPainter(
+                                                    region: answer.selectedRegion!,
+                                                    containerWidth: constraints.maxWidth,
+                                                    containerHeight: 200,
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          : imageWidget,
+                                    ),
+                                  );
+                                },
                               ),
                               // Кнопки верификации фото
                               SizedBox(height: 8),
                               _buildPhotoVerificationButtons(index),
-                              // Кнопки для обучения ИИ (pending samples)
-                              // Ищем по productId или по question (название товара)
-                              if (!widget.isReadOnly)
-                                _buildPendingTrainingButtons(answer.productId ?? answer.question),
+                              // Кнопка "В обучение ИИ" (по решению админа)
+                              _buildReportTrainingButton(index, answer),
                             ],
                           ],
                         ),
@@ -1476,5 +1390,38 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
         ),
       ),
     );
+  }
+}
+
+/// Рисует красный прямоугольник поверх фото — область, выделенная сотрудником
+class _RegionOverlayPainter extends CustomPainter {
+  final Map<String, double> region;
+  final double containerWidth;
+  final double containerHeight;
+
+  _RegionOverlayPainter({
+    required this.region,
+    required this.containerWidth,
+    required this.containerHeight,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final x = (region['x'] ?? 0) * size.width;
+    final y = (region['y'] ?? 0) * size.height;
+    final w = (region['width'] ?? 0) * size.width;
+    final h = (region['height'] ?? 0) * size.height;
+
+    final paint = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+
+    canvas.drawRect(Rect.fromLTWH(x, y, w, h), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RegionOverlayPainter oldDelegate) {
+    return oldDelegate.region != region;
   }
 }

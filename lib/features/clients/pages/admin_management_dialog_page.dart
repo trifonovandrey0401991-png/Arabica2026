@@ -49,6 +49,7 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
 
   Future<void> _loadAdminPhone() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _adminPhone = prefs.getString('user_phone') ?? prefs.getString('userPhone');
     });
@@ -74,7 +75,7 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
     // Guard against empty phone
     if (widget.client.phone.isEmpty) {
       Logger.debug('Cannot load messages: empty phone number');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
 
@@ -167,6 +168,7 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
 
     if (file == null) return;
 
+    if (!mounted) return;
     setState(() => _isUploading = true);
 
     final mediaUrl = await MediaUploadService.uploadMedia(
@@ -174,10 +176,11 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
       type: isVideo ? MediaType.video : MediaType.image,
     );
 
+    if (!mounted) return;
     setState(() => _isUploading = false);
 
     if (mediaUrl != null) {
-      setState(() {
+      if (mounted) setState(() {
         _pendingMediaUrl = mediaUrl;
         _pendingIsVideo = isVideo;
       });
@@ -194,7 +197,7 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
   }
 
   void _clearPendingMedia() {
-    setState(() {
+    if (mounted) setState(() {
       _pendingMediaUrl = null;
       _pendingIsVideo = false;
     });
@@ -206,11 +209,11 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
 
     if (text.isEmpty && !hasMedia) return;
 
-    setState(() => _isSending = true);
+    if (mounted) setState(() => _isSending = true);
 
     // SECURITY: Проверяем что adminPhone загружен
     if (_adminPhone == null || _adminPhone!.isEmpty) {
-      setState(() => _isSending = false);
+      if (mounted) setState(() => _isSending = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ошибка: не удалось определить телефон админа'), backgroundColor: Colors.red),
@@ -226,10 +229,11 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
       imageUrl: _pendingMediaUrl,
     );
 
+    if (!mounted) return;
     setState(() => _isSending = false);
 
     if (message != null) {
-      setState(() {
+      if (mounted) setState(() {
         _messages.add(message);
         _messageController.clear();
         _pendingMediaUrl = null;

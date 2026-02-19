@@ -35,6 +35,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
     _adminName = prefs.getString('employeeName') ?? prefs.getString('name') ?? 'Администратор';
 
     final employees = await EmployeeService.getEmployees();
+    if (!mounted) return;
     setState(() {
       _employees = employees;
       _isLoading = false;
@@ -348,7 +349,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
   }
 
   Future<void> _createRecord(Employee employee, double amount, String comment) async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     // Используем телефон как ID для совместимости с "Моя эффективность"
     final employeeId = employee.phone?.isNotEmpty == true ? employee.phone! : employee.id;
@@ -387,7 +388,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
         ),
       );
-      setState(() => _selectedType = null);
+      if (mounted) setState(() => _selectedType = null);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

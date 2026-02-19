@@ -40,6 +40,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
 
   Future<void> _loadEmployeeData() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _employeePhone = prefs.getString('user_phone');
       _employeeName = prefs.getString('user_name') ?? 'Сотрудник';
@@ -60,7 +61,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
     }
     // Проверяем, что это QR-токен приза (начинается с qr_)
     if (!code.startsWith('qr_')) {
-      setState(() {
+      if (mounted) setState(() {
         _errorMessage = 'Это не QR-код приза';
         _scannedPrize = null;
       });
@@ -71,7 +72,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
   }
 
   Future<void> _processScan(String qrToken) async {
-    setState(() {
+    if (mounted) setState(() {
       _isProcessing = true;
       _errorMessage = null;
     });
@@ -81,11 +82,11 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
 
       if (mounted) {
         if (result != null && result['success'] == true) {
-          setState(() {
+          if (mounted) setState(() {
             _scannedPrize = result['prize'];
           });
         } else {
-          setState(() {
+          if (mounted) setState(() {
             _errorMessage = result?['error'] ?? 'Ошибка при сканировании QR-кода';
             _scannedPrize = null;
           });
@@ -110,7 +111,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
   Future<void> _issuePrize() async {
     if (_scannedPrize == null) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isProcessing = true;
     });
 
@@ -152,7 +153,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
           );
           _resetScanner();
         } else {
-          setState(() {
+          if (mounted) setState(() {
             _errorMessage = 'Не удалось выдать приз';
           });
         }
@@ -175,7 +176,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
   Future<void> _postponePrize() async {
     if (_scannedPrize == null) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isProcessing = true;
     });
 
@@ -215,7 +216,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
           );
           _resetScanner();
         } else {
-          setState(() {
+          if (mounted) setState(() {
             _errorMessage = 'Не удалось отложить приз';
           });
         }
@@ -236,7 +237,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
   }
 
   void _resetScanner() {
-    setState(() {
+    if (mounted) setState(() {
       _scannedPrize = null;
       _errorMessage = null;
       _lastQr = null;
@@ -350,7 +351,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
                     IconButton(
                       icon: Icon(Icons.close, color: Colors.white),
                       onPressed: () {
-                        setState(() {
+                        if (mounted) setState(() {
                           _errorMessage = null;
                           _lastQr = null;
                         });

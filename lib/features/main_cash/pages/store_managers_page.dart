@@ -30,7 +30,7 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
@@ -97,6 +97,7 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
     );
 
     if (result != null) {
+      if (!mounted) return;
       setState(() => _isLoading = true);
 
       final success = await StoreManagerService.updateShopAssignments(
@@ -122,7 +123,7 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
               backgroundColor: Colors.red,
             ),
           );
-          setState(() => _isLoading = false);
+          if (mounted) setState(() => _isLoading = false);
         }
       }
     }
@@ -409,7 +410,7 @@ class _ShopAssignmentDialogState extends State<_ShopAssignmentDialog> {
   }
 
   void _toggleShop(Shop shop) {
-    setState(() {
+    if (mounted) setState(() {
       // Используем address как ID привязки (как и в остальной части main_cash)
       final key = shop.address;
       if (_selected.contains(key) || _selected.contains(shop.id)) {

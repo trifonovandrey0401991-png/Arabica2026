@@ -79,7 +79,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       // Загружаем изображения для каждого формата
@@ -90,7 +90,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
         );
 
         if (imageBytes != null && mounted) {
-          setState(() {
+          if (mounted) setState(() {
             _setImages[regionSet.id] = imageBytes;
           });
         }
@@ -125,7 +125,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
       name: 'Формат ${_regionSets.length + 1}',
       regions: [],
     );
-    setState(() {
+    if (mounted) setState(() {
       _regionSets.add(newSet);
       _currentSetIndex = _regionSets.length - 1;
       _selectedField = null;
@@ -156,7 +156,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              setState(() {
+              if (mounted) setState(() {
                 _setImages.remove(_currentSet.id);
                 _regionSets.removeAt(_currentSetIndex);
                 if (_currentSetIndex >= _regionSets.length) {
@@ -193,7 +193,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
           TextButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                setState(() {
+                if (mounted) setState(() {
                   _regionSets[_currentSetIndex] =
                       _currentSet.copyWith(name: controller.text.trim());
                 });
@@ -216,12 +216,14 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
       );
       if (picked != null) {
         final bytes = await picked.readAsBytes();
-        setState(() {
-          _setImages[_currentSet.id] = bytes;
-          // Сбрасываем области для текущего набора
-          _regionSets[_currentSetIndex] =
-              _currentSet.copyWith(regions: []);
-        });
+        if (mounted) {
+          setState(() {
+            _setImages[_currentSet.id] = bytes;
+            // Сбрасываем области для текущего набора
+            _regionSets[_currentSetIndex] =
+                _currentSet.copyWith(regions: []);
+          });
+        }
       }
     } catch (e) {
       _showError('Ошибка выбора изображения: $e');
@@ -237,11 +239,13 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
       );
       if (picked != null) {
         final bytes = await picked.readAsBytes();
-        setState(() {
-          _setImages[_currentSet.id] = bytes;
-          _regionSets[_currentSetIndex] =
-              _currentSet.copyWith(regions: []);
-        });
+        if (mounted) {
+          setState(() {
+            _setImages[_currentSet.id] = bytes;
+            _regionSets[_currentSetIndex] =
+                _currentSet.copyWith(regions: []);
+          });
+        }
       }
     } catch (e) {
       _showError('Ошибка камеры: $e');
@@ -249,13 +253,13 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
   }
 
   void _selectField(String fieldName) {
-    setState(() {
+    if (mounted) setState(() {
       _selectedField = _selectedField == fieldName ? null : fieldName;
     });
   }
 
   void _onRegionsChanged(List<FieldRegion> regions) {
-    setState(() {
+    if (mounted) setState(() {
       _regionSets[_currentSetIndex] = _currentSet.copyWith(regions: regions);
     });
   }
@@ -276,7 +280,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
       return;
     }
 
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     try {
       final template = ZReportTemplate(
@@ -491,7 +495,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
               }).toList(),
               onChanged: (index) {
                 if (index != null) {
-                  setState(() {
+                  if (mounted) setState(() {
                     _currentSetIndex = index;
                     _selectedField = null;
                   });

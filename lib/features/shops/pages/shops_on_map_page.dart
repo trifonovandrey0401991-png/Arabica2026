@@ -92,7 +92,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
   }
 
   Future<void> _loadGeofenceSettings() async {
-    setState(() => _isLoadingSettings = true);
+    if (mounted) setState(() => _isLoadingSettings = true);
     try {
       final response = await http.get(
         Uri.parse('${ApiConstants.serverUrl}/api/geofence-settings'),
@@ -103,6 +103,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['settings'] != null) {
           final settings = data['settings'];
+          if (!mounted) return;
           setState(() {
             _geofenceEnabled = settings['enabled'] ?? true;
             _radiusController.text = (settings['radiusMeters'] ?? 500).toString();
@@ -122,7 +123,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
   }
 
   Future<void> _saveGeofenceSettings() async {
-    setState(() => _isSavingSettings = true);
+    if (mounted) setState(() => _isSavingSettings = true);
     try {
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/geofence-settings'),
@@ -182,7 +183,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
   }
 
   Future<void> _loadData() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -194,6 +195,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
       // Фильтруем только магазины с координатами
       final shopsWithCoords = shops.where((s) => s.latitude != null && s.longitude != null).toList();
 
+      if (!mounted) return;
       setState(() {
         _shops = shopsWithCoords;
         _isLoading = false;
@@ -204,6 +206,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
       // Получаем текущую геолокацию
       _getCurrentLocation();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Ошибка загрузки магазинов: $e';
         _isLoading = false;
@@ -212,7 +215,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
   }
 
   Future<void> _getCurrentLocation() async {
-    setState(() => _isLoadingLocation = true);
+    if (mounted) setState(() => _isLoadingLocation = true);
 
     try {
       // Проверяем включены ли службы геолокации
@@ -239,7 +242,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             ),
           );
         }
-        setState(() => _isLoadingLocation = false);
+        if (mounted) setState(() => _isLoadingLocation = false);
         return;
       }
 
@@ -248,7 +251,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          setState(() => _isLoadingLocation = false);
+          if (mounted) setState(() => _isLoadingLocation = false);
           return;
         }
       }
@@ -277,7 +280,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             ),
           );
         }
-        setState(() => _isLoadingLocation = false);
+        if (mounted) setState(() => _isLoadingLocation = false);
         return;
       }
 

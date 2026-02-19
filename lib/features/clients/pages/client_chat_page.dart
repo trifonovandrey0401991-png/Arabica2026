@@ -156,6 +156,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
 
     if (file == null) return;
 
+    if (!mounted) return;
     setState(() => _isUploading = true);
 
     final mediaUrl = await MediaUploadService.uploadMedia(
@@ -163,22 +164,21 @@ class _ClientChatPageState extends State<ClientChatPage> {
       type: isVideo ? MediaType.video : MediaType.image,
     );
 
+    if (!mounted) return;
     setState(() => _isUploading = false);
 
     if (mediaUrl != null) {
-      setState(() {
+      if (mounted) setState(() {
         _pendingMediaUrl = mediaUrl;
         _pendingIsVideo = isVideo;
       });
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка загрузки ${isVideo ? "видео" : "фото"}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка загрузки ${isVideo ? "видео" : "фото"}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -204,7 +204,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
   }
 
   void _clearPendingMedia() {
-    setState(() {
+    if (mounted) setState(() {
       _pendingMediaUrl = null;
       _pendingIsVideo = false;
     });
@@ -220,7 +220,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
 
     if (_isSending) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isSending = true;
     });
 
@@ -237,10 +237,12 @@ class _ClientChatPageState extends State<ClientChatPage> {
 
       if (result != null) {
         _messageController.clear();
-        setState(() {
-          _pendingMediaUrl = null;
-          _pendingIsVideo = false;
-        });
+        if (mounted) {
+          setState(() {
+            _pendingMediaUrl = null;
+            _pendingIsVideo = false;
+          });
+        }
         await _loadMessages();
       } else {
         if (mounted) {

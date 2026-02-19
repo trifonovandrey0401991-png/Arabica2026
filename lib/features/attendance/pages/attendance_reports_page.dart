@@ -47,7 +47,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   }
 
   Future<void> _loadAllData() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -162,7 +162,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
     final isSelected = _tabController.index == index;
     return GestureDetector(
       onTap: () {
-        setState(() {
+        if (mounted) setState(() {
           _tabController.animateTo(index);
         });
       },
@@ -564,7 +564,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
               color: AppColors.gold,
             ),
             onTap: () {
-              setState(() {
+              if (mounted) setState(() {
                 if (isExpanded) {
                   _expandedShops.remove(summary.shopAddress);
                 } else {

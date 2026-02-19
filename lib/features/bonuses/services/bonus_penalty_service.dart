@@ -1,6 +1,7 @@
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../models/bonus_penalty_model.dart';
 
 /// Сервис для управления премиями и штрафами сотрудников.
@@ -19,24 +20,40 @@ import '../models/bonus_penalty_model.dart';
 /// - Отображаются на странице "Моя эффективность"
 class BonusPenaltyService {
   static const String _baseEndpoint = ApiConstants.bonusPenaltiesEndpoint;
+  static const Duration _cacheDuration = Duration(minutes: 2);
 
-  /// Получить все премии/штрафы за месяц
-  static Future<List<BonusPenalty>> getRecords({String? month, String? employeeId}) async {
-    try {
-      final queryParams = <String, String>{};
-      if (month != null) queryParams['month'] = month;
-      if (employeeId != null) queryParams['employeeId'] = employeeId;
+  /// Получить все премии/штрафы за месяц (с кешированием на 2 мин)
+  static Future<List<BonusPenalty>> getRecords({String? month, String? employeeId, bool forceRefresh = false}) async {
+    final cacheKey = 'bonus_penalty_${month ?? 'all'}_${employeeId ?? 'all'}';
 
-      return await BaseHttpService.getList<BonusPenalty>(
-        endpoint: _baseEndpoint,
-        fromJson: (json) => BonusPenalty.fromJson(json),
-        listKey: 'records',
-        queryParams: queryParams.isNotEmpty ? queryParams : null,
-      );
-    } catch (e) {
-      Logger.error('Ошибка получения премий/штрафов', e);
-      return [];
-    }
+    if (forceRefresh) CacheManager.remove(cacheKey);
+
+    return CacheManager.getOrFetch<List<BonusPenalty>>(
+      cacheKey,
+      () async {
+        try {
+          final queryParams = <String, String>{};
+          if (month != null) queryParams['month'] = month;
+          if (employeeId != null) queryParams['employeeId'] = employeeId;
+
+          return await BaseHttpService.getList<BonusPenalty>(
+            endpoint: _baseEndpoint,
+            fromJson: (json) => BonusPenalty.fromJson(json),
+            listKey: 'records',
+            queryParams: queryParams.isNotEmpty ? queryParams : null,
+          );
+        } catch (e) {
+          Logger.error('Ошибка получения премий/штрафов', e);
+          return [];
+        }
+      },
+      duration: _cacheDuration,
+    );
+  }
+
+  /// Очистить кеш премий/штрафов
+  static void clearCache() {
+    CacheManager.clearByPattern('bonus_penalty_');
   }
 
   /// Создать премию или штраф
@@ -51,7 +68,7 @@ class BonusPenaltyService {
     try {
       Logger.debug('POST $_baseEndpoint: $type $amount для $employeeName');
 
-      return await BaseHttpService.post<BonusPenalty>(
+      final result = await BaseHttpService.post<BonusPenalty>(
         endpoint: _baseEndpoint,
         body: {
           'employeeId': employeeId,
@@ -64,6 +81,8 @@ class BonusPenaltyService {
         fromJson: (json) => BonusPenalty.fromJson(json),
         itemKey: 'record',
       );
+      if (result != null) clearCache();
+      return result;
     } catch (e) {
       Logger.error('Ошибка создания премии/штрафа', e);
       return null;
@@ -79,7 +98,9 @@ class BonusPenaltyService {
       }
 
       Logger.debug('DELETE $endpoint');
-      return await BaseHttpService.delete(endpoint: endpoint);
+      final success = await BaseHttpService.delete(endpoint: endpoint);
+      if (success) clearCache();
+      return success;
     } catch (e) {
       Logger.error('Ошибка удаления премии/штрафа', e);
       return false;

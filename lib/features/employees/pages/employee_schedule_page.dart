@@ -59,7 +59,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
   }
 
   Future<void> _initializeData() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
     await _refreshSchedule();
@@ -69,6 +69,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
   Future<void> _refreshSchedule() async {
     try {
       final schedule = await WorkScheduleService.getSchedule(widget.selectedMonth);
+      if (!mounted) return;
       setState(() {
         _schedule = schedule;
       });
@@ -125,11 +126,12 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
       }
     }
     
+    if (!mounted) return;
     setState(() {
       _allAbbreviations = abbreviations;
       _isLoading = false;
     });
-    
+
     // Загружаем существующие смены после загрузки аббревиатур
     _loadExistingShifts();
   }
@@ -216,7 +218,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
 
   /// Обработка выбора аббревиатуры
   void _toggleAbbreviation(DateTime day, String abbreviation) {
-    setState(() {
+    if (mounted) setState(() {
       if (_selectedAbbreviations[day] == abbreviation) {
         // Отмена выбора
         _selectedAbbreviations.remove(day);
@@ -236,6 +238,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
     if (result == true) {
       // Обновляем данные сотрудника
       final updatedEmployee = await EmployeeService.getEmployee(_employee.id);
+      if (!mounted) return;
       if (updatedEmployee != null) {
         setState(() {
           _employee = updatedEmployee;
@@ -255,7 +258,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isSaving = true;
     });
 
@@ -313,9 +316,11 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
         );
         
         if (shouldContinue != true) {
-          setState(() {
-            _isSaving = false;
-          });
+          if (mounted) {
+            setState(() {
+              _isSaving = false;
+            });
+          }
           return;
         }
       }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../models/recount_report_model.dart';
 import '../models/recount_answer_model.dart';
@@ -75,6 +76,7 @@ class RecountReportsListPage extends StatefulWidget {
 class _RecountReportsListPageState extends State<RecountReportsListPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isLoading = true;
   String? _selectedShop;
   String? _selectedEmployee;
   DateTime? _selectedDate;
@@ -118,13 +120,13 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   void _onTabChanged() {
     // Когда открываем вкладку "Не прошли" (index 1), обнуляем счётчик
     if (_tabController.index == 1 && _failedRecountsBadgeCount > 0) {
-      setState(() {
+      if (mounted) setState(() {
         _failedRecountsBadgeCount = 0;
       });
     } else if (_tabController.index == 5) {
       // При открытии вкладки "Отчёт" обнуляем счётчик непросмотренных
       if (_summaryBadgeCount > 0) {
-        setState(() {
+        if (mounted) setState(() {
           _summaryBadgeCount = 0;
         });
       }
@@ -134,7 +136,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       }
     } else {
       // Обновляем UI для подсветки активной вкладки
-      setState(() {});
+      if (mounted) setState(() {});
     }
   }
 
@@ -142,18 +144,20 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   Future<void> _loadPivotTable() async {
     if (_isPivotLoading) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isPivotLoading = true;
     });
 
     try {
       final table = await RecountService.getPivotTableForDate(_pivotDate);
+      if (!mounted) return;
       setState(() {
         _pivotTable = table;
         _isPivotLoading = false;
       });
     } catch (e) {
       Logger.error('Ошибка загрузки pivot-таблицы', e);
+      if (!mounted) return;
       setState(() {
         _isPivotLoading = false;
       });
@@ -162,7 +166,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
   /// Переключить дату pivot-таблицы
   void _changePivotDate(int days) {
-    setState(() {
+    if (mounted) setState(() {
       _pivotDate = _pivotDate.add(Duration(days: days));
       _pivotTable = null;
     });
@@ -173,6 +177,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   Future<void> _loadSettings() async {
     try {
       final settings = await PointsSettingsService.getRecountPointsSettings();
+      if (!mounted) return;
       setState(() {
         _recountSettings = settings;
       });
@@ -191,46 +196,59 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   Future<void> _loadData() async {
     Logger.info('Загрузка отчетов пересчёта...');
 
-    // Загружаем магазины из API
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>('reports_recount');
+    if (cached != null && mounted) {
+      _allReports = cached['allReports'] as List<RecountReport>;
+      _allShops = cached['allShops'] as List<Shop>;
+      _pendingRecounts = cached['pendingRecounts'] as List<PendingRecount>;
+      _failedRecounts = cached['failedRecounts'] as List<PendingRecount>;
+      _expiredReports = cached['expiredReports'] as List<RecountReport>;
+      _recountSettings = cached['recountSettings'] as RecountPointsSettings?;
+      _summaryItems = cached['summaryItems'] as List<RecountSummaryItem>;
+      _isLoading = false;
+      setState(() {});
+    }
+
+    // Step 2: Fetch fresh data
     try {
       final shops = await ShopService.getShopsForCurrentUser();
       _allShops = shops;
-      Logger.success('Загружено магазинов (с учётом роли): ${shops.length}');
-    } catch (e) {
-      Logger.error('Ошибка загрузки магазинов', e);
-    }
 
-    // Загружаем просроченные отчёты
-    try {
       final expiredReports = await RecountService.getExpiredReportsForCurrentUser();
       _expiredReports = expiredReports;
-      Logger.success('Загружено просроченных отчётов: ${expiredReports.length}');
-    } catch (e) {
-      Logger.error('Ошибка загрузки просроченных отчётов', e);
-    }
 
-    // Загружаем отчеты с сервера
-    try {
       final serverReports = await RecountService.getReportsForCurrentUser();
-      Logger.success('Загружено отчетов с сервера: ${serverReports.length}');
-
-      // Исключаем pending файлы шедулера (они не являются отчётами сотрудников)
       _allReports = serverReports.where((r) => r.status != 'pending').toList();
       _allReports.sort((a, b) => b.completedAt.compareTo(a.completedAt));
 
-      // Загружаем pending и failed пересчёты
       await _loadPendingAndFailedRecounts();
-      // Вычисляем сводные данные за 30 дней
       _calculateSummaryItems();
 
       Logger.success('Всего отчетов: ${_allReports.length}');
-      setState(() {});
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Step 3: Save to cache
+      CacheManager.set('reports_recount', {
+        'allReports': _allReports,
+        'allShops': _allShops,
+        'pendingRecounts': _pendingRecounts,
+        'failedRecounts': _failedRecounts,
+        'expiredReports': _expiredReports,
+        'recountSettings': _recountSettings,
+        'summaryItems': _summaryItems,
+      });
     } catch (e) {
       Logger.error('Ошибка загрузки отчетов', e);
-      // Fallback
       _calculatePendingRecountsFallback();
       _calculateSummaryItems();
-      setState(() {});
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -657,8 +675,8 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       firstDate: DateTime.now().subtract(Duration(days: 30)),
       lastDate: DateTime.now(),
     );
-    if (picked != null) {
-      setState(() {
+    if (picked != null && mounted) {
+      if (mounted) setState(() {
         _selectedDate = picked;
       });
     }
@@ -735,17 +753,19 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
               // Вкладки с отчётами
               Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildPendingRecountsList(),
-                    _buildFailedRecountsList(),
-                    _buildReportsList(_awaitingReports, isPending: true),
-                    _buildReportsList(_ratedReports, isPending: false),
-                    _buildExpiredReportsList(),
-                    _buildSummaryReportsList(),
-                  ],
-                ),
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildPendingRecountsList(),
+                          _buildFailedRecountsList(),
+                          _buildReportsList(_awaitingReports, isPending: true),
+                          _buildReportsList(_ratedReports, isPending: false),
+                          _buildExpiredReportsList(),
+                          _buildSummaryReportsList(),
+                        ],
+                      ),
               ),
             ],
           ),
@@ -801,7 +821,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
         child: InkWell(
           onTap: () {
             _tabController.animateTo(index);
-            setState(() {});
+            if (mounted) setState(() {});
           },
           borderRadius: BorderRadius.circular(10.r),
           child: Container(
@@ -921,7 +941,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
               )),
             ],
             onChanged: (value) {
-              setState(() {
+              if (mounted) setState(() {
                 _selectedShop = value;
               });
             },
@@ -956,7 +976,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                     )),
                   ],
                   onChanged: (value) {
-                    setState(() {
+                    if (mounted) setState(() {
                       _selectedEmployee = value;
                     });
                   },
@@ -1003,7 +1023,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
               padding: EdgeInsets.only(top: 10.h),
               child: GestureDetector(
                 onTap: () {
-                  setState(() {
+                  if (mounted) setState(() {
                     _selectedShop = null;
                     _selectedEmployee = null;
                     _selectedDate = null;
@@ -1796,7 +1816,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
     return GestureDetector(
       onTap: () {
-        setState(() {
+        if (mounted) setState(() {
           _expandedGroups[group.key] = !isExpanded;
         });
       },

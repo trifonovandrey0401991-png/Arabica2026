@@ -41,7 +41,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
   }
 
   Future<void> _loadMonthTurnover() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final turnover = await TurnoverService.getMonthTurnover(
@@ -50,18 +50,20 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
         _selectedMonth.month,
       );
 
+      if (!mounted) return;
       setState(() {
         _monthTurnover = turnover;
         _isLoading = false;
       });
     } catch (e) {
       Logger.error('Ошибка загрузки оборота', e);
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
 
   Future<void> _loadComparison(DateTime date) async {
-    setState(() {
+    if (mounted) setState(() {
       _selectedDate = date;
       _isLoadingComparison = true;
     });
@@ -72,18 +74,20 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
         date,
       );
 
+      if (!mounted) return;
       setState(() {
         _comparison = comparison;
         _isLoadingComparison = false;
       });
     } catch (e) {
       Logger.error('Ошибка загрузки сравнения', e);
+      if (!mounted) return;
       setState(() => _isLoadingComparison = false);
     }
   }
 
   void _previousMonth() {
-    setState(() {
+    if (mounted) setState(() {
       _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
       _selectedDate = null;
       _comparison = null;
@@ -98,7 +102,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
     // Не переходим в будущее
     if (nextMonth.isAfter(DateTime(now.year, now.month + 1))) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _selectedMonth = nextMonth;
       _selectedDate = null;
       _comparison = null;

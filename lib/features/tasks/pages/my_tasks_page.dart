@@ -24,6 +24,7 @@ import '../../coffee_machine/pages/coffee_machine_report_view_page.dart';
 import '../../employees/services/user_role_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница "Мои Задачи" для работника с вкладками
 class MyTasksPage extends StatefulWidget {
@@ -87,14 +88,21 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
     if (mounted) _loadAssignments();
   }
 
+  static const Duration _reportCacheDuration = Duration(seconds: 90);
+
   Future<void> _loadAssignments({bool forceRefresh = false}) async {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
       if (_employeeId == null) {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         return;
+      }
+
+      // Очищаем кеш отчётов при forceRefresh
+      if (forceRefresh) {
+        CacheManager.clearByPattern('my_tasks_');
       }
 
       List<TaskAssignment> assignments = [];
@@ -104,8 +112,12 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
       List<EnvelopeReport> envelopePending = [];
       List<CoffeeMachineReport> coffeeMachinePending = [];
 
+      // Роль загружаем один раз, а не 4 раза
+      final role = await UserRoleService.loadUserRole();
+      final isAdmin = role != null && role.isAdminOrAbove;
+
       await Future.wait([
-        // Обычные задачи
+        // Обычные задачи (уже имеют кеш в TaskService)
         () async {
           try {
             assignments = await TaskService.getMyAssignmentsCached(
@@ -124,11 +136,18 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
           if (_userPhone != null && _userPhone!.isNotEmpty) {
             try {
               final yearMonth = '$_selectedYear-${_selectedMonth.toString().padLeft(2, '0')}';
-              recurringInstances = await RecurringTaskService.getInstancesForAssignee(
-                assigneePhone: _userPhone!,
-                yearMonth: yearMonth,
+              recurringInstances = await CacheManager.getOrFetch<List<RecurringTaskInstance>>(
+                'my_tasks_recurring_${_userPhone}_$yearMonth',
+                () async {
+                  final result = await RecurringTaskService.getInstancesForAssignee(
+                    assigneePhone: _userPhone!,
+                    yearMonth: yearMonth,
+                  );
+                  result.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                  return result;
+                },
+                duration: _reportCacheDuration,
               );
-              recurringInstances.sort((a, b) => b.createdAt.compareTo(a.createdAt));
             } catch (e) {
               Logger.warning('Ошибка загрузки циклических задач: $e');
             }
@@ -136,60 +155,68 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         }(),
         // Отчёты пересменки на проверке (только для управляющей/developer)
         () async {
+          if (!isAdmin) return;
           try {
-            final role = await UserRoleService.loadUserRole();
-            if (role != null && role.isAdminOrAbove) {
-              final allReports = await ShiftReportService.getReportsForCurrentUser();
-              shiftReviews = allReports
-                  .where((r) => r.status == 'review')
-                  .toList();
-              shiftReviews.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-            }
+            final allReports = await CacheManager.getOrFetch<List<ShiftReport>>(
+              'my_tasks_shift_reviews',
+              () => ShiftReportService.getReportsForCurrentUser(),
+              duration: _reportCacheDuration,
+            );
+            shiftReviews = allReports
+                .where((r) => r.status == 'review')
+                .toList();
+            shiftReviews.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           } catch (e) {
             Logger.warning('Ошибка загрузки отчётов пересменки: $e');
           }
         }(),
         // Отчёты пересчёта на проверке (только для управляющей/developer)
         () async {
+          if (!isAdmin) return;
           try {
-            final role = await UserRoleService.loadUserRole();
-            if (role != null && role.isAdminOrAbove) {
-              final allReports = await RecountService.getReportsForCurrentUser();
-              recountReviews = allReports
-                  .where((r) => r.status == 'review')
-                  .toList();
-              recountReviews.sort((a, b) => b.completedAt.compareTo(a.completedAt));
-            }
+            final allReports = await CacheManager.getOrFetch<List<RecountReport>>(
+              'my_tasks_recount_reviews',
+              () => RecountService.getReportsForCurrentUser(),
+              duration: _reportCacheDuration,
+            );
+            recountReviews = allReports
+                .where((r) => r.status == 'review')
+                .toList();
+            recountReviews.sort((a, b) => b.completedAt.compareTo(a.completedAt));
           } catch (e) {
             Logger.warning('Ошибка загрузки отчётов пересчёта: $e');
           }
         }(),
         // Конверты на проверке (только для управляющей/developer)
         () async {
+          if (!isAdmin) return;
           try {
-            final role = await UserRoleService.loadUserRole();
-            if (role != null && role.isAdminOrAbove) {
-              final allReports = await EnvelopeReportService.getReportsForCurrentUser();
-              envelopePending = allReports
-                  .where((r) => r.status == 'pending')
-                  .toList();
-              envelopePending.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-            }
+            final allReports = await CacheManager.getOrFetch<List<EnvelopeReport>>(
+              'my_tasks_envelope_pending',
+              () => EnvelopeReportService.getReportsForCurrentUser(),
+              duration: _reportCacheDuration,
+            );
+            envelopePending = allReports
+                .where((r) => r.status == 'pending')
+                .toList();
+            envelopePending.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           } catch (e) {
             Logger.warning('Ошибка загрузки конвертов: $e');
           }
         }(),
         // Счётчики кофемашин на проверке (только для управляющей/developer)
         () async {
+          if (!isAdmin) return;
           try {
-            final role = await UserRoleService.loadUserRole();
-            if (role != null && role.isAdminOrAbove) {
-              final allReports = await CoffeeMachineReportService.getReportsForCurrentUser();
-              coffeeMachinePending = allReports
-                  .where((r) => r.status == 'pending')
-                  .toList();
-              coffeeMachinePending.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-            }
+            final allReports = await CacheManager.getOrFetch<List<CoffeeMachineReport>>(
+              'my_tasks_coffee_pending',
+              () => CoffeeMachineReportService.getReportsForCurrentUser(),
+              duration: _reportCacheDuration,
+            );
+            coffeeMachinePending = allReports
+                .where((r) => r.status == 'pending')
+                .toList();
+            coffeeMachinePending.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           } catch (e) {
             Logger.warning('Ошибка загрузки счётчиков кофемашин: $e');
           }
@@ -370,7 +397,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
               color: AppColors.emeraldDark,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
               onSelected: (monthData) {
-                setState(() {
+                if (mounted) setState(() {
                   _selectedYear = monthData['year'] as int;
                   _selectedMonth = monthData['month'] as int;
                 });
@@ -1065,7 +1092,10 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         builder: (context) => ShiftReportViewPage(report: report),
       ),
     );
-    if (mounted) _loadAssignments();
+    if (mounted) {
+      CacheManager.clearByPattern('my_tasks_');
+      _loadAssignments();
+    }
   }
 
   Widget _buildRecountReviewCard(RecountReport report) {
@@ -1173,7 +1203,10 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         builder: (context) => RecountReportViewPage(report: report),
       ),
     );
-    if (mounted) _loadAssignments();
+    if (mounted) {
+      CacheManager.clearByPattern('my_tasks_');
+      _loadAssignments();
+    }
   }
 
   Widget _buildEnvelopeCard(EnvelopeReport report) {
@@ -1281,7 +1314,10 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         builder: (context) => EnvelopeReportViewPage(report: report, isAdmin: true),
       ),
     );
-    if (mounted) _loadAssignments();
+    if (mounted) {
+      CacheManager.clearByPattern('my_tasks_');
+      _loadAssignments();
+    }
   }
 
   Widget _buildCoffeeMachineCard(CoffeeMachineReport report) {
@@ -1390,7 +1426,10 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         builder: (context) => CoffeeMachineReportViewPage(report: report),
       ),
     );
-    if (mounted) _loadAssignments();
+    if (mounted) {
+      CacheManager.clearByPattern('my_tasks_');
+      _loadAssignments();
+    }
   }
 
   void _openTaskDetail(TaskAssignment assignment) {

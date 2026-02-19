@@ -54,7 +54,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
   }
 
   Future<void> _loadOrders() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
@@ -73,6 +73,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
     final unconfirmed = results[3] as List<Map<String, dynamic>>;
     final allowedAddresses = results[4] as List<String>?;
 
+    if (!mounted) return;
     setState(() {
       _pendingOrders = _filterOrdersByShop(pending, allowedAddresses);
       _acceptedOrders = _filterOrdersByShop(accepted, allowedAddresses);
@@ -411,7 +412,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
 
     return GestureDetector(
       onTap: () {
-        setState(() {
+        if (mounted) setState(() {
           _tabController.animateTo(tabIndex);
         });
       },

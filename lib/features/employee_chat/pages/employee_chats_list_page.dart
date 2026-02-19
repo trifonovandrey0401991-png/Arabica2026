@@ -53,6 +53,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
     final userRole = prefs.getString('user_role') ?? '';
     final isAdmin = userRole == 'admin' || userRole == 'developer';
 
+    if (!mounted) return;
     setState(() {
       _userPhone = phone;
       _userName = systemEmployeeName ?? fallbackName;
@@ -71,11 +72,11 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
 
   Future<void> _loadChats({bool silent = false}) async {
     if (!silent) {
-      setState(() => _isLoading = true);
+      if (mounted) setState(() => _isLoading = true);
     }
 
     if (_userPhone == null || _userPhone!.isEmpty) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
 

@@ -25,11 +25,13 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
   Future<void> _loadShops() async {
     try {
       final shops = await Shop.loadShopsFromServer();
+      if (!mounted) return;
       setState(() {
         _shops = shops;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Ошибка загрузки магазинов: $e';
         _isLoading = false;
@@ -137,7 +139,7 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
             SizedBox(height: 20),
             GestureDetector(
               onTap: () {
-                setState(() {
+                if (mounted) setState(() {
                   _isLoading = true;
                   _errorMessage = null;
                 });

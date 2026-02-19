@@ -42,7 +42,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final results = await Future.wait([
         CoffeeMachineTemplateService.getTemplates(),
@@ -50,6 +50,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
         ShopService.getShops().then((shops) => shops.map((s) => s.address).toList()),
       ]);
 
+      if (!mounted) return;
       setState(() {
         _templates = results[0] as List<CoffeeMachineTemplate>;
         _shopConfigs = results[1] as List<CoffeeMachineShopConfig>;
@@ -57,6 +58,7 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }

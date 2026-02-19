@@ -85,7 +85,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
   void _onTransformChanged() {
     final scale = _transformController.value.getMaxScaleOnAxis();
     if (scale != _currentScale) {
-      setState(() {
+      if (mounted) setState(() {
         _currentScale = scale;
       });
     }
@@ -109,13 +109,15 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
   Future<void> _loadImage() async {
     final codec = await ui.instantiateImageCodec(widget.imageBytes);
     final frame = await codec.getNextFrame();
-    setState(() {
-      _image = frame.image;
-      _imageSize = Size(
-        frame.image.width.toDouble(),
-        frame.image.height.toDouble(),
-      );
-    });
+    if (mounted) {
+      setState(() {
+        _image = frame.image;
+        _imageSize = Size(
+          frame.image.width.toDouble(),
+          frame.image.height.toDouble(),
+        );
+      });
+    }
   }
 
   Color _getFieldColor(String fieldName) {
@@ -143,7 +145,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
   void _onPanStart(DragStartDetails details, Size displaySize) {
     if (widget.currentField == null) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _startPoint = details.localPosition;
       _currentPoint = details.localPosition;
       _drawingField = widget.currentField;
@@ -153,7 +155,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
   void _onPanUpdate(DragUpdateDetails details, Size displaySize) {
     if (_startPoint == null) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _currentPoint = details.localPosition;
     });
   }
@@ -169,7 +171,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
 
     // Минимальный размер области (5 пикселей - для узких строк)
     if (rect.width.abs() < 5 && rect.height.abs() < 5) {
-      setState(() {
+      if (mounted) setState(() {
         _startPoint = null;
         _currentPoint = null;
         _drawingField = null;
@@ -190,7 +192,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
     );
 
     // Удаляем старую область для этого поля и добавляем новую
-    setState(() {
+    if (mounted) setState(() {
       _regions.removeWhere((r) => r.fieldName == _drawingField);
       _regions.add(region);
       _startPoint = null;
@@ -202,7 +204,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
   }
 
   void _removeRegion(String fieldName) {
-    setState(() {
+    if (mounted) setState(() {
       _regions.removeWhere((r) => r.fieldName == fieldName);
       if (_editingRegionField == fieldName) {
         _editingRegionField = null;
@@ -226,7 +228,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
     final scaleX = _currentDisplaySize!.width / _imageSize!.width;
     final scaleY = _currentDisplaySize!.height / _imageSize!.height;
 
-    setState(() {
+    if (mounted) setState(() {
       _editingRegionField = fieldName;
       _editingRect = Rect.fromLTWH(
         region.x * _imageSize!.width * scaleX,
@@ -262,7 +264,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
       height: (normalizedRect.height * scaleY) / _imageSize!.height,
     );
 
-    setState(() {
+    if (mounted) setState(() {
       _regions.removeWhere((r) => r.fieldName == _editingRegionField);
       _regions.add(newRegion);
       _editingRegionField = null;
@@ -275,7 +277,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
 
   /// Отменить редактирование
   void _cancelEditingRegion() {
-    setState(() {
+    if (mounted) setState(() {
       _editingRegionField = null;
       _editingRect = null;
       _activeHandle = null;
@@ -286,7 +288,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
   void _onHandleDrag(Offset delta) {
     if (_editingRect == null || _activeHandle == null || _currentDisplaySize == null) return;
 
-    setState(() {
+    if (mounted) setState(() {
       double left = _editingRect!.left;
       double top = _editingRect!.top;
       double right = _editingRect!.right;
@@ -385,7 +387,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
                   onInteractionStart: (details) {
                     // Начинаем рисование только если выбрано поле и один палец
                     if (widget.currentField != null && details.pointerCount == 1) {
-                      setState(() => _isDrawing = true);
+                      if (mounted) setState(() => _isDrawing = true);
                       // Трансформируем координаты с учётом масштаба
                       final transformedPoint = _transformToImageCoordinates(
                         details.localFocalPoint,
@@ -420,7 +422,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
                   onInteractionEnd: (details) {
                     if (_isDrawing) {
                       _onPanEnd(DragEndDetails(), displaySize);
-                      setState(() => _isDrawing = false);
+                      if (mounted) setState(() => _isDrawing = false);
                     }
                   },
                   child: SizedBox(
@@ -737,7 +739,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
       height: _handleSize,
       child: GestureDetector(
         onPanStart: (_) {
-          setState(() => _activeHandle = handle);
+          if (mounted) setState(() => _activeHandle = handle);
         },
         onPanUpdate: (details) {
           // Трансформируем дельту с учётом зума
@@ -748,7 +750,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
           _onHandleDrag(scaledDelta);
         },
         onPanEnd: (_) {
-          setState(() => _activeHandle = null);
+          if (mounted) setState(() => _activeHandle = null);
         },
         child: Container(
           decoration: BoxDecoration(

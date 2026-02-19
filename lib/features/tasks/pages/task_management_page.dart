@@ -239,7 +239,7 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
   }
 
   Future<void> _loadTasks() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });

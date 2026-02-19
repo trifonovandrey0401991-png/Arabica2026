@@ -38,9 +38,11 @@ class _TemplateCameraPageState extends State<TemplateCameraPage> {
     try {
       _cameras = await availableCameras();
       if (_cameras == null || _cameras!.isEmpty) {
-        setState(() {
-          _error = 'Камера не найдена';
-        });
+        if (mounted) {
+          setState(() {
+            _error = 'Камера не найдена';
+          });
+        }
         return;
       }
 
@@ -64,9 +66,11 @@ class _TemplateCameraPageState extends State<TemplateCameraPage> {
         });
       }
     } catch (e) {
-      setState(() {
-        _error = 'Ошибка инициализации камеры: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Ошибка инициализации камеры: $e';
+        });
+      }
     }
   }
 
@@ -81,7 +85,7 @@ class _TemplateCameraPageState extends State<TemplateCameraPage> {
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isTakingPhoto = true;
     });
 

@@ -307,6 +307,45 @@ class CigaretteVisionService {
     }
   }
 
+  /// Отправить фото из отчёта пересчёта на обучение ИИ (в pending)
+  /// Фото уже на сервере (photoUrl), сервер прочитает его сам
+  static Future<bool> submitReportPhotoForTraining({
+    required String photoUrl,
+    required String productId,
+    String? productName,
+    String? shopAddress,
+    int? employeeAnswer,
+    Map<String, double>? selectedRegion,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'photoUrl': photoUrl,
+        'productId': productId,
+        'productName': productName,
+        'shopAddress': shopAddress,
+        'employeeAnswer': employeeAnswer,
+      };
+      if (selectedRegion != null) {
+        body['selectedRegion'] = selectedRegion;
+      }
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/submit-report-photo-for-training'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode(body),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error('Ошибка отправки фото из отчёта на обучение', e);
+      return false;
+    }
+  }
+
   /// Получить подтверждённые counting фото для товара
   static Future<List<TrainingSample>> getCountingSamplesForProduct(String productId) async {
     try {

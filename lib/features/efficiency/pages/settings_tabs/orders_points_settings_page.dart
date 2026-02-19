@@ -34,7 +34,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
   }
 
   Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       // Загружаем настройки баллов за принятие/отклонение
       final settings = await PointsSettingsService.getOrdersPointsSettings();
@@ -42,6 +42,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
       // Загружаем настройки таймаута для пропущенных заказов
       final timeoutSettings = await OrderTimeoutSettingsService.getSettings();
 
+      if (!mounted) return;
       setState(() {
         _acceptedPoints = settings.acceptedPoints;
         _rejectedPoints = settings.rejectedPoints;
@@ -50,6 +51,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -60,7 +62,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
   }
 
   Future<void> _saveSettings() async {
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
     try {
       // Сохраняем настройки баллов за принятие/отклонение
       final result = await PointsSettingsService.saveOrdersPointsSettings(
@@ -75,6 +77,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
       );
 
       if (result != null && timeoutResult) {
+        if (!mounted) return;
         setState(() { _isSaving = false; });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -96,6 +99,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
         throw Exception('Не удалось сохранить настройки');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isSaving = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

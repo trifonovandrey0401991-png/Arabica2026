@@ -40,7 +40,7 @@ class BaseHttpService {
   /// Максимум одновременных HTTP-запросов к серверу.
   /// 6 — стандартный лимит браузеров на один хост.
   /// Предотвращает перегрузку сервера при массовой загрузке данных.
-  static const int _maxConcurrent = 6;
+  static const int _maxConcurrent = 15;
   static int _activeRequests = 0;
   static final List<Completer<void>> _waitQueue = [];
 

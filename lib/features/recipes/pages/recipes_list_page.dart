@@ -32,7 +32,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
   }
 
   void _refreshRecipes() {
-    setState(() {
+    if (mounted) setState(() {
       _recipesFuture = Recipe.loadRecipesFromServer();
     });
   }
@@ -44,7 +44,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
         // Удаляем старый TabController, если он существует
         _tabController?.dispose();
         
-        setState(() {
+        if (mounted) setState(() {
           _userRole = roleData?.role;
           _isLoadingRole = false;
           // Создаем TabController в зависимости от роли
@@ -64,7 +64,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
       Logger.error('❌ Ошибка загрузки роли', e);
       if (mounted) {
         _tabController?.dispose();
-        setState(() {
+        if (mounted) setState(() {
           _isLoadingRole = false;
           _tabController = TabController(length: 1, vsync: this);
         });
@@ -173,7 +173,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                     contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                   ),
                   onChanged: (value) {
-                    setState(() {
+                    if (mounted) setState(() {
                       _searchQuery = value.toLowerCase();
                     });
                   },
@@ -223,7 +223,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                               )),
                         ],
                         onChanged: (value) {
-                          setState(() {
+                          if (mounted) setState(() {
                             _selectedCategory = value;
                           });
                         },

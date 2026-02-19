@@ -95,7 +95,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       );
 
       if (time != null && mounted) {
-        setState(() {
+        if (mounted) setState(() {
           _deadline = DateTime(
             date.year,
             date.month,
@@ -118,8 +118,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       ),
     );
 
-    if (result != null) {
-      setState(() {
+    if (result != null && mounted) {
+      if (mounted) setState(() {
         _recipients = result;
       });
     }
@@ -130,7 +130,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     final pickedFile = await picker.pickImage(source: ImageSource.camera, maxWidth: 1280, imageQuality: 75);
 
     if (pickedFile != null && mounted) {
-      setState(() {
+      if (mounted) setState(() {
         _attachments.add(File(pickedFile.path));
       });
     }
@@ -149,7 +149,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   }
 
   void _removeAttachment(int index) {
-    setState(() {
+    if (mounted) setState(() {
       _attachments.removeAt(index);
     });
   }
@@ -157,7 +157,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   Future<void> _createTask() async {
     if (!_formKey.currentState!.validate() || !_isFormValid) return;
 
-    setState(() => _isSubmitting = true);
+    if (mounted) setState(() => _isSubmitting = true);
 
     try {
       List<String> attachmentUrls = [];
@@ -864,7 +864,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   SizedBox(width: 6),
                   GestureDetector(
                     onTap: () {
-                      setState(() {
+                      if (mounted) setState(() {
                         _recipients.remove(r);
                       });
                     },

@@ -35,7 +35,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
   }
 
   Future<void> _loadEmployees() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final employees = await KPIService.getAllEmployees();
@@ -335,7 +335,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                     ),
                   ),
                   onChanged: (value) {
-                    setState(() => _searchQuery = value);
+                    if (mounted) setState(() => _searchQuery = value);
                   },
                 ),
               ),
@@ -377,7 +377,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                                     ),
                                     child: InkWell(
                                       onTap: () {
-                                        setState(() {
+                                        if (mounted) setState(() {
                                           if (isExpanded) {
                                             _expandedEmployees.remove(employee);
                                           } else {

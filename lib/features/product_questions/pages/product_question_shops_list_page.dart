@@ -40,7 +40,7 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
     final phone = prefs.getString('user_phone') ?? '';
 
     if (phone.isEmpty) {
-      setState(() {
+      if (mounted) setState(() {
         _isLoading = false;
       });
       return;

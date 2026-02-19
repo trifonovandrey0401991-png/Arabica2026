@@ -35,7 +35,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
   }
 
   Future<void> _loadClients() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
@@ -60,12 +60,14 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
         // По имени
         return a.name.compareTo(b.name);
       });
+      if (!mounted) return;
       setState(() {
         _clients = clients;
         _filteredClients = clients;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -83,13 +85,13 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
   void _filterClients() {
     final query = _searchController.text.toLowerCase().trim();
     if (query.isEmpty) {
-      setState(() {
+      if (mounted) setState(() {
         _filteredClients = _clients;
       });
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _filteredClients = _clients.where((client) {
         final nameMatch = client.name.toLowerCase().contains(query);
         final phoneMatch = client.phone.toLowerCase().contains(query);

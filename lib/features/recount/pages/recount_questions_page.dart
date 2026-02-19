@@ -164,6 +164,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         if (mounted) setState(() => _isModelTrained = trained);
       });
 
+      if (!mounted) return;
       setState(() {
         _selectedQuestions = selectedQuestions;
         _photoRequiredIndices = photoIndices;
@@ -181,18 +182,17 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         );
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка загрузки вопросов: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        Navigator.pop(context);
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка загрузки вопросов: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      Navigator.pop(context);
     }
   }
 
@@ -230,6 +230,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           savedPhotoPath = savedFile.path;
         }
 
+        if (!mounted) return;
         setState(() {
           _photoPath = savedPhotoPath;
         });
@@ -301,7 +302,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
     _answers[_currentQuestionIndex] = answer;
     // Помечаем, что ответ сохранен
-    setState(() {
+    if (mounted) setState(() {
       _answerSaved = true;
     });
   }
@@ -341,7 +342,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       return;
     }
 
-    setState(() => _isVerifyingAI = true);
+    if (mounted) setState(() => _isVerifyingAI = true);
 
     try {
       // Читаем фото
@@ -544,7 +545,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
     if (result == 'retake') {
       // Перефото — очищаем и открываем камеру
-      setState(() => _photoPath = null);
+      if (mounted) setState(() => _photoPath = null);
       _answers[questionIndex] = _answers[questionIndex].copyWith(photoPath: null);
       await _takePhoto();
     } else if (result == 'region') {
@@ -575,10 +576,12 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     if (region == null || !mounted) return;
 
     // Сохраняем выбранную область
+    if (!mounted) return;
     setState(() => _selectedRegion = region);
     _answers[questionIndex] = _answers[questionIndex].copyWith(selectedRegion: region);
 
     // Повторный ИИ с регионом
+    if (!mounted) return;
     setState(() => _isVerifyingAI = true);
     try {
       Logger.info('🤖 Повторная проверка ИИ с регионом для: ${question.productName}');
@@ -906,7 +909,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     // Дополнительный вызов здесь не нужен
 
     if (_currentQuestionIndex < _selectedQuestions!.length - 1) {
-      setState(() {
+      if (mounted) setState(() {
         _currentQuestionIndex++;
         _selectedAnswer = null;
         _moreByController.clear();
@@ -958,14 +961,14 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
             backgroundColor: Colors.orange,
           ),
         );
-        setState(() {
+        if (mounted) setState(() {
           _currentQuestionIndex = i;
         });
         return;
       }
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isSubmitting = true;
       _completedAt = DateTime.now();
     });
@@ -1014,7 +1017,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
               backgroundColor: Colors.red,
             ),
           );
-          setState(() {
+          if (mounted) setState(() {
             _isSubmitting = false;
           });
         }
@@ -1028,7 +1031,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() {
+        if (mounted) setState(() {
           _isSubmitting = false;
         });
       }
@@ -1367,7 +1370,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                       isSelected: _selectedAnswer == 'сходится',
                                       color: AppColors.success,
                                       onPressed: _answerSaved ? null : () {
-                                        setState(() {
+                                        if (mounted) setState(() {
                                           _selectedAnswer = 'сходится';
                                         });
                                       },
@@ -1381,7 +1384,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                       isSelected: _selectedAnswer == 'не сходится',
                                       color: Color(0xFFEF5350),
                                       onPressed: _answerSaved ? null : () {
-                                        setState(() {
+                                        if (mounted) setState(() {
                                           _selectedAnswer = 'не сходится';
                                         });
                                       },
@@ -1453,7 +1456,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                     if (value.isNotEmpty && int.tryParse(value) != null && int.parse(value) > 0) {
                                       _lessByController.clear();
                                     }
-                                    setState(() {});
+                                    if (mounted) setState(() {});
                                   },
                                 ),
                                 SizedBox(height: 14),
@@ -1469,7 +1472,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                     if (value.isNotEmpty && int.tryParse(value) != null && int.parse(value) > 0) {
                                       _moreByController.clear();
                                     }
-                                    setState(() {});
+                                    if (mounted) setState(() {});
                                   },
                                 ),
                                 // Предпросмотр результата
@@ -1598,7 +1601,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                         ),
                         child: IconButton(
                           onPressed: () {
-                            setState(() {
+                            if (mounted) setState(() {
                               _currentQuestionIndex--;
                               _selectedAnswer = null;
                               _moreByController.clear();

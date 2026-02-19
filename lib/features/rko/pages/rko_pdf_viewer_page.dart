@@ -44,7 +44,7 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
   }
 
   Future<void> _openDocx() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
@@ -75,10 +75,12 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
       Logger.success('Файл открыт в системном приложении');
     } catch (e) {
       Logger.error('Ошибка открытия файла', e);
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Ошибка открытия файла: $e';
       });
     } finally {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -201,7 +203,7 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
                   SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
-                      setState(() {
+                      if (mounted) setState(() {
                         _errorMessage = null;
                       });
                     },

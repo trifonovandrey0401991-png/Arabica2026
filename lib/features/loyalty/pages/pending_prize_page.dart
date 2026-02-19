@@ -30,12 +30,12 @@ class _PendingPrizePageState extends State<PendingPrizePage> {
   }
 
   Future<void> _regenerateQr() async {
-    setState(() => _regenerating = true);
+    if (mounted) setState(() => _regenerating = true);
 
     final newToken = await LoyaltyGamificationService.generateNewQrToken(_prize.id);
 
     if (newToken != null && mounted) {
-      setState(() {
+      if (mounted) setState(() {
         _prize = _prize.copyWith(qrToken: newToken, qrUsed: false);
         _regenerating = false;
       });

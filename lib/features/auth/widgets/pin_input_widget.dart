@@ -106,7 +106,7 @@ class _PinInputWidgetState extends State<PinInputWidget>
   }
 
   void _clearPin() {
-    setState(() {
+    if (mounted) setState(() {
       _pin = '';
     });
   }
@@ -114,7 +114,7 @@ class _PinInputWidgetState extends State<PinInputWidget>
   void _addDigit(String digit) {
     if (_pin.length >= widget.pinLength) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _pin += digit;
     });
 
@@ -131,7 +131,7 @@ class _PinInputWidgetState extends State<PinInputWidget>
   void _removeDigit() {
     if (_pin.isEmpty) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _pin = _pin.substring(0, _pin.length - 1);
     });
 

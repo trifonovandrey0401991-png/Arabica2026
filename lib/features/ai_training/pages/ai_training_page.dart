@@ -85,23 +85,25 @@ class _AITrainingPageState extends State<AITrainingPage>
                       SizedBox(height: 32),
 
                       // Карточки обучения
-                      _buildTrainingCard(
-                        title: 'Z-отчёт',
-                        description: 'Обучение распознаванию кассовых Z-отчётов',
-                        icon: Icons.receipt_long,
-                        gradient: [AppColors.indigo, AppColors.purple],
-                        stats: '3 шаблона',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ZReportTrainingPage(),
-                            ),
-                          );
-                        },
-                      ),
+                      // Z-отчёт — только для управляющей и разработчиков
+                      if (_isAdmin)
+                        _buildTrainingCard(
+                          title: 'Z-отчёт',
+                          description: 'Обучение распознаванию кассовых Z-отчётов',
+                          icon: Icons.receipt_long,
+                          gradient: [AppColors.indigo, AppColors.purple],
+                          stats: '3 шаблона',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ZReportTrainingPage(),
+                              ),
+                            );
+                          },
+                        ),
 
-                      SizedBox(height: 16),
+                      if (_isAdmin) SizedBox(height: 16),
 
                       _buildTrainingCard(
                         title: 'Подсчёт сигарет',

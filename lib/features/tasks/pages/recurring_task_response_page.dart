@@ -52,7 +52,7 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
     final pickedFile = await picker.pickImage(source: ImageSource.camera, maxWidth: 1280, imageQuality: 75);
 
     if (pickedFile != null && mounted) {
-      setState(() {
+      if (mounted) setState(() {
         _photos.add(File(pickedFile.path));
       });
     }
@@ -71,7 +71,7 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
   }
 
   void _removePhoto(int index) {
-    setState(() {
+    if (mounted) setState(() {
       _photos.removeAt(index);
     });
   }
@@ -79,7 +79,7 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
   Future<void> _completeTask() async {
     if (!_canSubmit) return;
 
-    setState(() => _isSubmitting = true);
+    if (mounted) setState(() => _isSubmitting = true);
 
     try {
       // Загружаем фото

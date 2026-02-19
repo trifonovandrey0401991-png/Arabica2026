@@ -29,7 +29,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
   }
 
   Future<void> _loadRecipes() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final recipes = await RecipeService.getRecipes();
       if (mounted) {
@@ -330,7 +330,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                       contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                     ),
                     onChanged: (value) {
-                      setState(() {
+                      if (mounted) setState(() {
                         _searchQuery = value.toLowerCase();
                       });
                     },
@@ -376,7 +376,7 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
                           )),
                     ],
                     onChanged: (value) {
-                      setState(() {
+                      if (mounted) setState(() {
                         _selectedCategory = value;
                       });
                     },

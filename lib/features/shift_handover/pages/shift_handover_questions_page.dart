@@ -141,12 +141,14 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
           }
         }
       }
+      if (!mounted) return;
       setState(() {
         _questions = questions;
         _isLoading = false;
       });
     } catch (e) {
       Logger.error('Ошибка загрузки вопросов', e);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -243,6 +245,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
           final bytes = await photo.readAsBytes();
           final base64String = base64Encode(bytes);
           final dataUrl = 'data:image/jpeg;base64,$base64String';
+          if (!mounted) return;
           setState(() {
             _photoPath = dataUrl;
           });
@@ -253,6 +256,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
           final savedFile = File(path.join(appDir.path, fileName));
           final bytes = await photo.readAsBytes();
           await savedFile.writeAsBytes(bytes);
+          if (!mounted) return;
           setState(() {
             _photoPath = savedFile.path;
           });
@@ -309,7 +313,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
   void _nextQuestion() {
     if (_questions == null) return;
     if (_currentQuestionIndex < _questions!.length - 1) {
-      setState(() {
+      if (mounted) setState(() {
         _currentQuestionIndex++;
         _textController.clear();
         _numberController.clear();
@@ -347,7 +351,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
 
   void _previousQuestion() {
     if (_currentQuestionIndex > 0) {
-      setState(() {
+      if (mounted) setState(() {
         _currentQuestionIndex--;
         if (_questions != null && _currentQuestionIndex < _questions!.length) {
           final question = _questions![_currentQuestionIndex];
@@ -453,7 +457,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
   Future<void> _submitReport() async {
     if (_questions == null) return;
 
-    setState(() => _isSubmitting = true);
+    if (mounted) setState(() => _isSubmitting = true);
 
     try {
       _saveAnswer();
@@ -1140,7 +1144,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
             color: Color(0xFF43A047),
             icon: Icons.check_rounded,
             onTap: () {
-              setState(() => _selectedYesNo = 'Да');
+              if (mounted) setState(() => _selectedYesNo = 'Да');
               if (_canProceed()) {
                 _saveAndNext();
               }
@@ -1155,7 +1159,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
             color: Color(0xFFE53935),
             icon: Icons.close_rounded,
             onTap: () {
-              setState(() => _selectedYesNo = 'Нет');
+              if (mounted) setState(() => _selectedYesNo = 'Нет');
               if (_canProceed()) {
                 _saveAndNext();
               }

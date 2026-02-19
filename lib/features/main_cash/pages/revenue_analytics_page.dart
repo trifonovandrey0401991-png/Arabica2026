@@ -55,7 +55,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
   }
 
   Future<void> _loadShopAddresses() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final allAddresses = await RevenueAnalyticsService.getShopAddresses();
       // Фильтрация по мультитенантности — управляющий видит только свои магазины
@@ -150,7 +150,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
   }
 
   void _selectMode(AnalyticsMode mode) {
-    setState(() {
+    if (mounted) setState(() {
       _mode = mode;
       _showRevenueTable = false;
       _showWeeklyTable = false;
@@ -196,7 +196,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              setState(() => _mode = AnalyticsMode.none);
+              if (mounted) setState(() => _mode = AnalyticsMode.none);
               _showModeSelectionDialog();
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.gold),
@@ -208,12 +208,12 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
   }
 
   void _selectShop(String shopAddress) {
-    setState(() => _selectedShop = shopAddress);
+    if (mounted) setState(() => _selectedShop = shopAddress);
     _loadSingleShopData(shopAddress);
   }
 
   Future<void> _loadSingleShopData(String shopAddress) async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final now = DateTime.now();
@@ -298,7 +298,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
   }
 
   Future<void> _loadAllShopsData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final now = DateTime.now();
@@ -420,15 +420,15 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
                 onPressed: () {
                   // Если показывается таблица - закрыть её
                   if (_showWeeklyTable) {
-                    setState(() => _showWeeklyTable = false);
+                    if (mounted) setState(() => _showWeeklyTable = false);
                     return;
                   }
                   if (_showRevenueTable) {
-                    setState(() => _showRevenueTable = false);
+                    if (mounted) setState(() => _showRevenueTable = false);
                     return;
                   }
                   // Иначе вернуться к выбору режима
-                  setState(() {
+                  if (mounted) setState(() {
                     _mode = AnalyticsMode.none;
                     _selectedShop = null;
                     _showRevenueTable = false;
@@ -519,7 +519,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
 
   Future<void> _loadWeeklyRevenues() async {
     Logger.debug('🔵 _loadWeeklyRevenues() вызван для магазина: $_selectedShop');
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final data = await RevenueAnalyticsService.getWeeklyRevenuesAllMonths(
         shopAddress: _selectedShop!,
@@ -1416,7 +1416,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
   }
 
   Future<void> _loadAllShopsWeeklyData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final results = await Future.wait([
         RevenueAnalyticsService.getWeeklyRevenuesAllShops(),
@@ -1510,7 +1510,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
           // Заголовок магазина (сворачиваемый)
           InkWell(
             onTap: () {
-              setState(() {
+              if (mounted) setState(() {
                 if (isCollapsed) {
                   _collapsedShops.remove(shopAddress);
                 } else {

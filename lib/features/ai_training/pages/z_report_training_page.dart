@@ -287,11 +287,13 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
       final bytes = await file.readAsBytes();
       final base64 = base64Encode(bytes);
 
-      setState(() {
-        _selectedImage = file;
-        _imageBase64 = base64;
-        _parseResult = null;
-      });
+      if (mounted) {
+        setState(() {
+          _selectedImage = file;
+          _imageBase64 = base64;
+          _parseResult = null;
+        });
+      }
 
       await _parseImage();
     }
@@ -300,7 +302,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
   Future<void> _parseImage() async {
     if (_imageBase64 == null) return;
 
-    setState(() => _isParsing = true);
+    if (mounted) setState(() => _isParsing = true);
 
     try {
       ZReportParseResult result;
@@ -381,7 +383,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final success = await ZReportTemplateService.saveTrainingSample(
@@ -532,7 +534,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
                   );
                 }).toList(),
                 onChanged: (template) {
-                  setState(() => _selectedTemplate = template);
+                  if (mounted) setState(() => _selectedTemplate = template);
                   if (_imageBase64 != null) {
                     _parseImage();
                   }
@@ -1034,7 +1036,7 @@ class _TemplatesTabState extends State<_TemplatesTab> {
   }
 
   Future<void> _loadTemplates() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final templates = await ZReportTemplateService.getTemplates();
       if (mounted) {
@@ -1381,7 +1383,7 @@ class _StatsTabState extends State<_StatsTab> {
   }
 
   Future<void> _loadStats() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final stats = await ZReportTemplateService.getTrainingStats();
       if (mounted) {

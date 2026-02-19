@@ -307,7 +307,7 @@ class _PhotoTemplatesPageState extends State<PhotoTemplatesPage> {
 
     // Если успешно сохранено — отмечаем шаблон как выполненный
     if (annotationResult == true && mounted) {
-      setState(() {
+      if (mounted) setState(() {
         if (!_completedTemplates.contains(template.id)) {
           _completedTemplates.add(template.id);
         }

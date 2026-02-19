@@ -36,7 +36,7 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
   }
 
   Future<void> _loadShops() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       Logger.debug('Загрузка списка магазинов для KPI...');
@@ -271,7 +271,7 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
               ),
             ),
             onChanged: (value) {
-              setState(() => _searchQuery = value);
+              if (mounted) setState(() => _searchQuery = value);
             },
           ),
         ),
@@ -313,7 +313,7 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
                                 color: Colors.transparent,
                                 child: InkWell(
                                   onTap: () {
-                                    setState(() {
+                                    if (mounted) setState(() {
                                       if (isExpanded) {
                                         _expandedShops.remove(shop.address);
                                       } else {

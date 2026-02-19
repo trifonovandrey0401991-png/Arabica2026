@@ -42,7 +42,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
   }
 
   Future<void> _loadShops() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
     _animationController.reset();
@@ -68,6 +68,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
       );
       final Map<String, ShopSettings?> settings = Map.fromEntries(entries);
 
+      if (!mounted) return;
       setState(() {
         _shops = validShops;
         _settings = settings;
@@ -76,6 +77,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
       _animationController.forward();
     } catch (e) {
       Logger.error('Ошибка загрузки магазинов', e);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -214,7 +216,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   morningStart,
                   morningEnd,
                   (start, end) {
-                    setState(() {
+                    if (mounted) setState(() {
                       morningStart = start;
                       morningEnd = end;
                     });
@@ -231,7 +233,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   dayStart,
                   dayEnd,
                   (start, end) {
-                    setState(() {
+                    if (mounted) setState(() {
                       dayStart = start;
                       dayEnd = end;
                     });
@@ -248,7 +250,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   nightStart,
                   nightEnd,
                   (start, end) {
-                    setState(() {
+                    if (mounted) setState(() {
                       nightStart = start;
                       nightEnd = end;
                     });
@@ -300,13 +302,13 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: isGettingLocation ? null : () async {
-                        setState(() => isGettingLocation = true);
+                        if (mounted) setState(() => isGettingLocation = true);
                         try {
                           final position = await AttendanceService.getCurrentLocation()
                               .timeout(Duration(seconds: 15), onTimeout: () {
                             throw Exception('Таймаут получения геолокации');
                           });
-                          setState(() {
+                          if (mounted) setState(() {
                             latitude = position.latitude;
                             longitude = position.longitude;
                             isGettingLocation = false;
@@ -328,7 +330,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                             );
                           }
                         } catch (e) {
-                          setState(() => isGettingLocation = false);
+                          if (mounted) setState(() => isGettingLocation = false);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -698,7 +700,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   morningStart,
                   morningEnd,
                   (start, end) {
-                    setState(() {
+                    if (mounted) setState(() {
                       morningStart = start;
                       morningEnd = end;
                     });
@@ -715,7 +717,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   dayStart,
                   dayEnd,
                   (start, end) {
-                    setState(() {
+                    if (mounted) setState(() {
                       dayStart = start;
                       dayEnd = end;
                     });
@@ -732,7 +734,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                   nightStart,
                   nightEnd,
                   (start, end) {
-                    setState(() {
+                    if (mounted) setState(() {
                       nightStart = start;
                       nightEnd = end;
                     });
@@ -1401,7 +1403,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                   ),
                   onChanged: (value) {
-                    setState(() {
+                    if (mounted) setState(() {
                       _searchQuery = value.trim().toLowerCase();
                     });
                   },

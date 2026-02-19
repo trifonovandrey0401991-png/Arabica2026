@@ -64,7 +64,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
   }
 
   void _addTextBlock() {
-    setState(() {
+    if (mounted) setState(() {
       _contentBlocks.add(ContentBlock(
         id: 'block_${DateTime.now().millisecondsSinceEpoch}',
         type: ContentBlockType.text,
@@ -119,7 +119,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       Navigator.pop(context); // Закрываем индикатор
 
       if (imageUrl != null) {
-        setState(() {
+        if (mounted) setState(() {
           _contentBlocks.add(ContentBlock.image(imageUrl));
         });
       } else {
@@ -145,7 +145,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
 
   void _removeBlock(int index) {
     if (_contentBlocks.length > 1) {
-      setState(() {
+      if (mounted) setState(() {
         _contentBlocks.removeAt(index);
       });
     }
@@ -153,7 +153,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
 
   void _moveBlockUp(int index) {
     if (index > 0) {
-      setState(() {
+      if (mounted) setState(() {
         final block = _contentBlocks.removeAt(index);
         _contentBlocks.insert(index - 1, block);
       });
@@ -162,7 +162,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
 
   void _moveBlockDown(int index) {
     if (index < _contentBlocks.length - 1) {
-      setState(() {
+      if (mounted) setState(() {
         final block = _contentBlocks.removeAt(index);
         _contentBlocks.insert(index + 1, block);
       });
@@ -170,13 +170,13 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
   }
 
   void _updateTextBlock(int index, String text) {
-    setState(() {
+    if (mounted) setState(() {
       _contentBlocks[index] = _contentBlocks[index].copyWith(content: text);
     });
   }
 
   void _updateImageCaption(int index, String caption) {
-    setState(() {
+    if (mounted) setState(() {
       _contentBlocks[index] = _contentBlocks[index].copyWith(caption: caption);
     });
   }
@@ -212,7 +212,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isSaving = true;
     });
 
@@ -531,7 +531,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
     final isSelected = _visibility == value;
     return InkWell(
       onTap: () {
-        setState(() {
+        if (mounted) setState(() {
           _visibility = value;
         });
       },
@@ -878,7 +878,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       if (imageUrl != null) {
         // Сохраняем подпись при замене изображения
         final currentCaption = _contentBlocks[index].caption;
-        setState(() {
+        if (mounted) setState(() {
           _contentBlocks[index] = ContentBlock(
             id: _contentBlocks[index].id,
             type: ContentBlockType.image,
@@ -996,7 +996,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         children: [
           InkWell(
             onTap: () {
-              setState(() {
+              if (mounted) setState(() {
                 _showUrlField = !_showUrlField;
                 if (!_showUrlField) {
                   _urlController.clear();

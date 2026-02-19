@@ -27,7 +27,7 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
   }
 
   Future<void> _loadEmployees() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
@@ -38,12 +38,14 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
         allEmployees,
         (emp) => emp.phone ?? '',
       );
+      if (!mounted) return;
       setState(() {
         _employees = employees;
         _isLoading = false;
       });
     } catch (e) {
       Logger.error('Ошибка загрузки сотрудников', e);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -80,7 +82,7 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
                 ),
               ),
               onChanged: (value) {
-                setState(() {
+                if (mounted) setState(() {
                   _searchQuery = value.trim().toLowerCase();
                 });
               },
@@ -170,12 +172,13 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
   }
 
   Future<void> _loadRKOs() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
     try {
       final data = await RKOReportsService.getEmployeeRKOs(widget.employeeName);
+      if (!mounted) return;
       if (data != null) {
         setState(() {
           _latest = data['latest'] ?? [];
@@ -183,12 +186,13 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
           _isLoading = false;
         });
       } else {
-        setState(() {
+        if (mounted) setState(() {
           _isLoading = false;
         });
       }
     } catch (e) {
       Logger.error('Ошибка загрузки РКО', e);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -555,7 +559,7 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            setState(() {
+            if (mounted) setState(() {
               _showAllTime = !_showAllTime;
             });
           },

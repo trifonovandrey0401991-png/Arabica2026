@@ -268,7 +268,7 @@ class _CoffeeMachinePointsSettingsPageState
               max: 24,
               divisions: 23,
               onChanged: (value) {
-                setState(() => _adminReviewTimeoutHours = value.round());
+                if (mounted) setState(() => _adminReviewTimeoutHours = value.round());
               },
             ),
           ),

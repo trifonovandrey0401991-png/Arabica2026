@@ -31,7 +31,7 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
   }
 
   Future<void> _loadStats() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });

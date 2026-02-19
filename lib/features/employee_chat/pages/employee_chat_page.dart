@@ -107,7 +107,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     _newMessageSub = ws.onNewMessage.listen((event) {
       if (event.chatId == widget.chat.id && mounted) {
         if (!_messages.any((m) => m.id == event.message.id)) {
-          setState(() {
+          if (mounted) setState(() {
             _messages.add(event.message);
           });
           if (_scrollController.hasClients &&
@@ -122,7 +122,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
 
     _messageDeletedSub = ws.onMessageDeleted.listen((event) {
       if (event.chatId == widget.chat.id && mounted) {
-        setState(() {
+        if (mounted) setState(() {
           _messages.removeWhere((m) => m.id == event.messageId);
         });
       }
@@ -130,7 +130,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
 
     _chatClearedSub = ws.onChatCleared.listen((event) {
       if (event.chatId == widget.chat.id && mounted) {
-        setState(() {
+        if (mounted) setState(() {
           _messages.clear();
         });
       }
@@ -140,7 +140,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
       if (event.chatId == widget.chat.id &&
           event.phone != widget.userPhone &&
           mounted) {
-        setState(() {
+        if (mounted) setState(() {
           _typingPhone = event.isTyping ? event.phone : null;
         });
       }
@@ -184,7 +184,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
       }
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _messages[index] = msg.copyWith(reactions: newReactions);
     });
   }
@@ -203,7 +203,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
 
   Future<void> _loadMessages({bool silent = false}) async {
     if (!silent) {
-      setState(() => _isLoading = true);
+      if (mounted) setState(() => _isLoading = true);
     }
 
     try {
@@ -219,7 +219,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
             _scrollController.position.pixels >=
                 _scrollController.position.maxScrollExtent - 100;
 
-        setState(() {
+        if (mounted) setState(() {
           _messages = messages;
           _isLoading = false;
         });
@@ -262,7 +262,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
   Future<void> _loadMoreMessages() async {
     if (_messages.isEmpty || !_hasMore || _isLoadingMore) return;
 
-    setState(() => _isLoadingMore = true);
+    if (mounted) setState(() => _isLoadingMore = true);
 
     try {
       final oldestTimestamp = _messages.first.timestamp.toIso8601String();
@@ -277,7 +277,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
         // Сохраняем позицию прокрутки
         final prevMaxExtent = _scrollController.position.maxScrollExtent;
 
-        setState(() {
+        if (mounted) setState(() {
           _messages.insertAll(0, olderMessages);
           _hasMore = olderMessages.length >= 50;
           _isLoadingMore = false;
@@ -318,7 +318,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     final text = _messageController.text.trim();
     if (text.isEmpty && imageUrl == null) return;
 
-    setState(() => _isSending = true);
+    if (mounted) setState(() => _isSending = true);
     _messageController.clear();
     HapticFeedback.lightImpact();
 
@@ -332,7 +332,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
       );
 
       if (message != null && mounted) {
-        setState(() {
+        if (mounted) setState(() {
           _messages.add(message);
           _isSending = false;
         });
@@ -396,7 +396,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
   }
 
   Future<void> _uploadAndSendImage(File imageFile) async {
-    setState(() => _isSending = true);
+    if (mounted) setState(() => _isSending = true);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -450,7 +450,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
   void _showImageError(dynamic e) {
     if (mounted) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      setState(() => _isSending = false);
+      if (mounted) setState(() => _isSending = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Ошибка: $e'),
@@ -683,14 +683,14 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
 
   Future<void> _searchMessages(String query) async {
     if (query.length < 2) {
-      setState(() {
+      if (mounted) setState(() {
         _searchResults = [];
         _isSearchLoading = false;
       });
       return;
     }
 
-    setState(() => _isSearchLoading = true);
+    if (mounted) setState(() => _isSearchLoading = true);
 
     try {
       final results = await EmployeeChatService.searchMessages(
@@ -714,7 +714,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     final index = _messages.indexWhere((m) => m.id == messageId);
     if (index == -1) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isSearching = false;
       _searchController.clear();
       _searchResults = [];
@@ -1043,7 +1043,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
           IconButton(
             icon: Icon(Icons.arrow_back_rounded, color: Colors.white.withOpacity(0.8)),
             onPressed: () {
-              setState(() {
+              if (mounted) setState(() {
                 _isSearching = false;
                 _searchController.clear();
                 _searchResults = [];
@@ -1078,7 +1078,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
               icon: Icon(Icons.close_rounded, color: Colors.white.withOpacity(0.7)),
               onPressed: () {
                 _searchController.clear();
-                setState(() => _searchResults = []);
+                if (mounted) setState(() => _searchResults = []);
               },
             ),
         ],

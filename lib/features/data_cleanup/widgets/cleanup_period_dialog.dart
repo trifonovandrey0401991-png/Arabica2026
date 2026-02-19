@@ -34,7 +34,7 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
   }
 
   Future<void> _loadPreview() async {
-    setState(() => _isLoadingPreview = true);
+    if (mounted) setState(() => _isLoadingPreview = true);
 
     try {
       final count = await CleanupService.getDeleteCount(
@@ -82,7 +82,7 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
     );
 
     if (picked != null && picked != _selectedDate) {
-      setState(() => _selectedDate = picked);
+      if (mounted) setState(() => _selectedDate = picked);
       _loadPreview();
     }
   }
@@ -141,7 +141,7 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
 
     if (confirmed != true) return;
 
-    setState(() => _isDeleting = true);
+    if (mounted) setState(() => _isDeleting = true);
 
     try {
       final result = await CleanupService.cleanupCategory(
@@ -203,7 +203,7 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
-        setState(() => _isDeleting = false);
+        if (mounted) setState(() => _isDeleting = false);
       }
     } catch (e) {
       if (mounted) {
@@ -229,7 +229,7 @@ class _CleanupPeriodDialogState extends State<CleanupPeriodDialog> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
-        setState(() => _isDeleting = false);
+        if (mounted) setState(() => _isDeleting = false);
       }
     }
   }

@@ -81,7 +81,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
   }
 
   Future<void> _loadShopSettings() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     for (var shop in widget.shops) {
       try {
@@ -94,7 +94,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
       }
     }
 
-    setState(() => _isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
@@ -176,7 +176,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
               );
             }).toList(),
             onChanged: (value) {
-              setState(() {
+              if (mounted) setState(() {
                 _selectedEmployee = value;
               });
             },
@@ -222,7 +222,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
               );
             }).toList(),
             onChanged: widget.requiredShiftType != null ? null : (value) {
-              setState(() {
+              if (mounted) setState(() {
                 _selectedShiftType = value;
               });
             },
@@ -289,7 +289,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
               );
             }).toList(),
             onChanged: widget.requiredShop != null ? null : (value) {
-              setState(() {
+              if (mounted) setState(() {
                 _selectedShop = value;
               });
             },

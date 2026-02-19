@@ -48,17 +48,18 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
   }
 
   Future<void> _loadQuestions() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final questions = await TestQuestionService.getQuestions();
+      if (!mounted) return;
       setState(() {
         _questions = questions;
         _applyFilter();
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -100,6 +101,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
       minimumScore: result.minimumScore,
     );
     if (success) {
+      if (!mounted) return;
       setState(() {
         _testDurationMinutes = result.durationMinutes;
         _minimumScore = result.minimumScore;
@@ -441,7 +443,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                         icon: Icon(Icons.close, size: 18, color: Colors.white.withOpacity(0.4)),
                         onPressed: () {
                           _searchController.clear();
-                          setState(() {
+                          if (mounted) setState(() {
                             _searchQuery = '';
                             _applyFilter();
                           });
@@ -452,7 +454,7 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
               onChanged: (value) {
-                setState(() {
+                if (mounted) setState(() {
                   _searchQuery = value;
                   _applyFilter();
                 });
@@ -1217,7 +1219,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
       return;
     }
 
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     try {
       final options = _optionControllers
@@ -1235,7 +1237,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
             margin: EdgeInsets.all(16.w),
           ),
         );
-        setState(() => _isSaving = false);
+        if (mounted) setState(() => _isSaving = false);
         return;
       }
 
@@ -1249,7 +1251,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
             margin: EdgeInsets.all(16.w),
           ),
         );
-        setState(() => _isSaving = false);
+        if (mounted) setState(() => _isSaving = false);
         return;
       }
 
@@ -1596,7 +1598,7 @@ class _TestQuestionFormBottomSheetState extends State<TestQuestionFormBottomShee
               child: InkWell(
                 onTap: () {
                   if (_optionControllers[index].text.trim().isNotEmpty) {
-                    setState(() => _selectedCorrectAnswer = index);
+                    if (mounted) setState(() => _selectedCorrectAnswer = index);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(

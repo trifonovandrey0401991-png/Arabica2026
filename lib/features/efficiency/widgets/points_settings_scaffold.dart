@@ -93,7 +93,7 @@ class _PointsSettingsScaffoldState extends State<PointsSettingsScaffold> {
   }
 
   Future<void> _save() async {
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
     try {
       final ok = await widget.onSave();
       if (!mounted) return;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../models/shift_report_model.dart';
 import '../models/pending_shift_report_model.dart';
 import '../services/shift_report_service.dart';
@@ -72,6 +73,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     with SingleTickerProviderStateMixin {
 
   late TabController _tabController;
+  bool _isLoading = true;
   Future<List<String>> _shopsFuture = Future.value([]);
   String? _selectedShop;
   String? _selectedEmployee;
@@ -101,12 +103,12 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   void _onTabChanged() {
     // Когда открываем вкладку "Не прошли" (index 1), обнуляем счётчик
     if (_tabController.index == 1 && _failedShiftsBadgeCount > 0) {
-      setState(() {
+      if (mounted) setState(() {
         _failedShiftsBadgeCount = 0;
       });
     } else {
       // Обновляем UI для подсветки активной вкладки
-      setState(() {});
+      if (mounted) setState(() {});
     }
   }
 
@@ -120,7 +122,21 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   Future<void> _loadData() async {
     Logger.info('Загрузка отчетов пересменки...');
 
-    // Запускаем ВСЕ запросы параллельно (6 запросов одновременно)
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>('reports_shifts');
+    if (cached != null && mounted) {
+      _allReports = cached['allReports'] as List<ShiftReport>;
+      _allShops = cached['allShops'] as List<Shop>;
+      _pendingShifts = cached['pendingShifts'] as List<PendingShiftReport>;
+      _failedShifts = cached['failedShifts'] as List<PendingShiftReport>;
+      _expiredReports = cached['expiredReports'] as List<ShiftReport>;
+      _shiftSettings = cached['shiftSettings'] as ShiftPointsSettings?;
+      _summaryItems = cached['summaryItems'] as List<ShiftSummaryItem>;
+      _isLoading = false;
+      setState(() {});
+    }
+
+    // Step 2: Fetch fresh data (6 parallel requests)
     ShiftPointsSettings? settings;
     List<Shop> shops = [];
     List<ShiftReport> serverReports = [];
@@ -129,49 +145,39 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     List<ShiftReport> pendingReports = [];
 
     await Future.wait([
-      // 1. Настройки пересменки
       () async {
         try { settings = await PointsSettingsService.getShiftPointsSettings(); }
         catch (e) { Logger.error('Ошибка загрузки настроек пересменки', e); }
       }(),
-      // 2. Магазины
       () async {
         try { shops = await ShopService.getShopsForCurrentUser(); }
         catch (e) { Logger.error('Ошибка загрузки магазинов', e); }
       }(),
-      // 3. Все отчёты с сервера
       () async {
         try { serverReports = await ShiftReportService.getReportsForCurrentUser(); }
         catch (e) { Logger.error('Ошибка загрузки отчетов с сервера', e); }
       }(),
-      // 4. Просроченные отчёты
       () async {
         try { expiredReports = await ShiftReportService.getExpiredReportsForCurrentUser(); }
         catch (e) { Logger.error('Ошибка загрузки просроченных отчётов', e); }
       }(),
-      // 5. Локальные отчёты
       () async {
         try { localReports = await ShiftReport.loadAllReports(); }
         catch (e) { Logger.error('Ошибка загрузки локальных отчетов', e); }
       }(),
-      // 6. Pending отчёты (ожидающие)
       () async {
         try { pendingReports = await ShiftReportService.getPendingReportsForCurrentUser(); }
         catch (e) { Logger.error('Ошибка загрузки pending отчётов', e); }
       }(),
     ]);
 
-    // Сохраняем настройки
     if (settings != null) {
       _shiftSettings = settings;
-      final s = settings!;
-      Logger.success('Настройки: утро ${s.morningStartTime}-${s.morningEndTime}, вечер ${s.eveningStartTime}-${s.eveningEndTime}');
     }
 
     _allShops = shops;
     _expiredReports = expiredReports;
 
-    // Объединяем серверные и локальные отчёты (серверные приоритетнее)
     final Map<String, ShiftReport> reportsMap = {};
     for (var report in localReports) {
       reportsMap[report.id] = report;
@@ -182,19 +188,31 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     _allReports = reportsMap.values.toList();
     _allReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    // Извлекаем адреса из уже загруженных данных (без повторного запроса)
     final addresses = <String>{};
     for (var report in _allReports) {
       if (report.shopAddress.trim().isNotEmpty) addresses.add(report.shopAddress);
     }
     _shopsFuture = Future.value(addresses.toList()..sort());
 
-    // Обрабатываем pending/failed из уже загруженных данных
     _processPendingAndFailed(pendingReports);
     _calculateSummaryItems();
 
     Logger.success('Загружено: ${_allReports.length} отчётов, ${shops.length} магазинов, ${_pendingShifts.length} pending, ${_failedShifts.length} failed');
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+    });
+
+    // Step 3: Save to cache
+    CacheManager.set('reports_shifts', {
+      'allReports': _allReports,
+      'allShops': _allShops,
+      'pendingShifts': _pendingShifts,
+      'failedShifts': _failedShifts,
+      'expiredReports': _expiredReports,
+      'shiftSettings': _shiftSettings,
+      'summaryItems': _summaryItems,
+    });
   }
 
   /// Определить тип смены по времени отчёта
@@ -524,8 +542,8 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       firstDate: DateTime.now().subtract(Duration(days: 7)),
       lastDate: DateTime.now(),
     );
-    if (picked != null) {
-      setState(() {
+    if (picked != null && mounted) {
+      if (mounted) setState(() {
         _selectedDate = picked;
       });
     }
@@ -631,7 +649,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         child: InkWell(
           onTap: () {
             _tabController.animateTo(index);
-            setState(() {});
+            if (mounted) setState(() {});
           },
           borderRadius: BorderRadius.circular(10.r),
           child: Container(
@@ -870,7 +888,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   Widget _buildResetButton() {
     return InkWell(
       onTap: () {
-        setState(() {
+        if (mounted) setState(() {
           _selectedShop = null;
           _selectedEmployee = null;
           _selectedDate = null;
@@ -960,20 +978,16 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
 
               // Вкладки с отчётами
               Expanded(
-                child: TabBarView(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
+                    : TabBarView(
                   controller: _tabController,
                   children: [
-                    // Вкладка 0: "Ожидают" - непройденные пересменки (время ещё не истекло)
                     _buildPendingShiftsList(),
-                    // Вкладка 1: "Не прошли" - просроченные пересменки
                     _buildFailedShiftsList(),
-                    // Вкладка 2: "На проверке" - сданные отчёты ожидают подтверждения
                     _buildReportsList(_awaitingReports, isPending: true),
-                    // Вкладка 3: "Подтверждённые" (с иерархической группировкой)
                     _buildGroupedReportsList(_confirmedReports, isConfirmed: true),
-                    // Вкладка 4: "Не подтверждённые" (с иерархической группировкой)
                     _buildGroupedReportsList([..._expiredReports, ..._overdueUnconfirmedReports], isConfirmed: false),
-                    // Вкладка 5: "Отчёт" - сводные данные за 30 дней
                     _buildSummaryReportsList(),
                   ],
                 ),
@@ -1872,7 +1886,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
 
     return GestureDetector(
       onTap: () {
-        setState(() {
+        if (mounted) setState(() {
           _expandedGroups[group.key] = !isExpanded;
         });
       },

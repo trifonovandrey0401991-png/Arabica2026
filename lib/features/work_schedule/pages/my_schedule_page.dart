@@ -69,7 +69,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   void _onTabChanged() {
     // Обновляем UI для кастомного TabBar только когда анимация завершена
     if (!_tabController.indexIsChanging && mounted) {
-      setState(() {});
+      if (mounted) setState(() {});
     }
 
     if (_tabController.index == 1 && _employeeId != null) {
@@ -92,7 +92,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   }
 
   Future<void> _loadEmployeeId() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -103,6 +103,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
       if (employeeId == null) {
         Logger.warning('Не удалось определить ID сотрудника');
+        if (!mounted) return;
         setState(() {
           _error = 'Не удалось определить сотрудника. Убедитесь, что вы вошли в систему.';
           _isLoading = false;
@@ -157,7 +158,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     Logger.debug('Загрузка графика для сотрудника: $_employeeId');
     Logger.debug('Месяц: ${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}');
 
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -192,7 +193,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   Future<void> _loadNotifications() async {
     if (_employeeId == null) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isLoadingNotifications = true;
     });
 
@@ -233,7 +234,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   Future<void> _loadOutgoingRequests() async {
     if (_employeeId == null) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isLoadingOutgoing = true;
     });
 
@@ -288,6 +289,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     );
 
     if (picked != null) {
+      if (!mounted) return;
       setState(() {
         _selectedMonth = DateTime(picked.year, picked.month);
       });
@@ -427,7 +429,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     return GestureDetector(
       onTap: () {
         _tabController.animateTo(index);
-        setState(() {});
+        if (mounted) setState(() {});
       },
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 8.w),
@@ -1504,7 +1506,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     if (_employeeId == null || _employeeName == null) return;
     if (_isLoadingWorked) return;
 
-    setState(() => _isLoadingWorked = true);
+    if (mounted) setState(() => _isLoadingWorked = true);
 
     try {
       final now = DateTime.now();
@@ -1751,7 +1753,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     Logger.debug('_loadGeneralSchedule вызван, _isLoadingGeneral=$_isLoadingGeneral');
     if (_isLoadingGeneral) return;
 
-    setState(() => _isLoadingGeneral = true);
+    if (mounted) setState(() => _isLoadingGeneral = true);
 
     try {
       Logger.debug('Загрузка общего графика на месяц: $_selectedMonth');
@@ -2388,7 +2390,7 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
                     // Кнопка "Отправить всем"
                     GestureDetector(
                       onTap: () {
-                        setState(() {
+                        if (mounted) setState(() {
                           _sendToAll = true;
                           _selectedEmployeeId = null;
                           _selectedEmployeeName = null;
@@ -2469,7 +2471,7 @@ class _RecipientSelectionDialogState extends State<_RecipientSelectionDialog> {
 
                           return GestureDetector(
                             onTap: () {
-                              setState(() {
+                              if (mounted) setState(() {
                                 _sendToAll = false;
                                 _selectedEmployeeId = employee.id;
                                 _selectedEmployeeName = employee.name;

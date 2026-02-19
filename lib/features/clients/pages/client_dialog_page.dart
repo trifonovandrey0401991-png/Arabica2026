@@ -52,7 +52,7 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
       final clientPhone = prefs.getString('user_phone') ?? '';
       
       if (clientPhone.isEmpty) {
-        setState(() {
+        if (mounted) setState(() {
           _isLoading = false;
         });
         return;

@@ -93,6 +93,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
   Future<void> _loadUserData() async {
     try {
       final roleData = await UserRoleService.loadUserRole();
+      if (!mounted) return;
       setState(() {
         _userRole = roleData;
         _userName = roleData?.displayName;
@@ -114,7 +115,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
           orElse: () => throw StateError('Employee not found'),
         );
         if (mounted && employee.referralCode != null) {
-          setState(() {
+          if (mounted) setState(() {
             _referralCode = employee.referralCode;
           });
         }

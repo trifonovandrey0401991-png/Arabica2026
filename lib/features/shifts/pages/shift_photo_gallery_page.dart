@@ -142,7 +142,7 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
                 controller: _pageController,
                 itemCount: photos.length,
                 onPageChanged: (index) {
-                  setState(() {
+                  if (mounted) setState(() {
                     _currentIndex = index;
                   });
                 },

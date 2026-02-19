@@ -78,12 +78,14 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
   Future<void> _loadShops() async {
     try {
       final shops = await ShopService.getShops();
+      if (!mounted) return;
       setState(() {
         _shops = shops;
         _isLoading = false;
       });
     } catch (e) {
       Logger.error('Ошибка загрузки магазинов', e);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -91,7 +93,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
   }
 
   Future<void> _savePreferences() async {
-    setState(() {
+    if (mounted) setState(() {
       _isSaving = true;
     });
 
@@ -257,7 +259,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                         title: Text(_dayNames[day] ?? day),
                         value: isSelected,
                         onChanged: (value) {
-                          setState(() {
+                          if (mounted) setState(() {
                             if (value == true) {
                               _selectedDays.add(day);
                             } else {
@@ -307,7 +309,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                           ),
                           value: isSelected,
                           onChanged: (value) {
-                            setState(() {
+                            if (mounted) setState(() {
                               if (value == true) {
                                 // Удаляем старые значения (адрес) и добавляем ID
                                 _selectedShops.remove(shop.address);
@@ -365,7 +367,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                                   value: grade,
                                   groupValue: currentGrade,
                                   onChanged: (value) {
-                                    setState(() {
+                                    if (mounted) setState(() {
                                       _shiftPreferences[shiftKey] = value!;
                                     });
                                   },

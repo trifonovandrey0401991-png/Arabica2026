@@ -85,7 +85,7 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
   }
 
   Future<void> _acceptOrder() async {
-    setState(() {
+    if (mounted) setState(() {
       _isProcessing = true;
     });
 
@@ -204,6 +204,7 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
 
     if (reason == null || reason.isEmpty) return;
 
+    if (!mounted) return;
     setState(() {
       _isProcessing = true;
     });

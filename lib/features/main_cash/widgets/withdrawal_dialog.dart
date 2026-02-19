@@ -48,6 +48,7 @@ class _WithdrawalDialogState extends State<WithdrawalDialog> {
 
   Future<void> _loadAdminName() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _adminName = prefs.getString('userName') ??
                    prefs.getString('user_name') ??
@@ -64,7 +65,7 @@ class _WithdrawalDialogState extends State<WithdrawalDialog> {
       return;
     }
 
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     try {
       final amount = double.parse(_amountController.text.replaceAll(' ', ''));
@@ -156,7 +157,7 @@ class _WithdrawalDialogState extends State<WithdrawalDialog> {
                   );
                 }).toList(),
                 onChanged: (value) {
-                  setState(() => _selectedShop = value);
+                  if (mounted) setState(() => _selectedShop = value);
                 },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -181,7 +182,7 @@ class _WithdrawalDialogState extends State<WithdrawalDialog> {
                       value: 'ooo',
                       groupValue: _selectedType,
                       onChanged: (value) {
-                        setState(() => _selectedType = value!);
+                        if (mounted) setState(() => _selectedType = value!);
                       },
                       contentPadding: EdgeInsets.zero,
                       dense: true,
@@ -193,7 +194,7 @@ class _WithdrawalDialogState extends State<WithdrawalDialog> {
                       value: 'ip',
                       groupValue: _selectedType,
                       onChanged: (value) {
-                        setState(() => _selectedType = value!);
+                        if (mounted) setState(() => _selectedType = value!);
                       },
                       contentPadding: EdgeInsets.zero,
                       dense: true,

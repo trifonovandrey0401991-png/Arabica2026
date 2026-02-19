@@ -47,13 +47,15 @@ class BoundingBoxPainterState extends State<BoundingBoxPainter> {
   Future<void> _loadImage() async {
     final codec = await ui.instantiateImageCodec(widget.imageBytes);
     final frame = await codec.getNextFrame();
-    setState(() {
-      _image = frame.image;
-      _imageSize = Size(
-        frame.image.width.toDouble(),
-        frame.image.height.toDouble(),
-      );
-    });
+    if (mounted) {
+      setState(() {
+        _image = frame.image;
+        _imageSize = Size(
+          frame.image.width.toDouble(),
+          frame.image.height.toDouble(),
+        );
+      });
+    }
   }
 
   @override
@@ -126,12 +128,12 @@ class BoundingBoxPainterState extends State<BoundingBoxPainter> {
 
     if (tappedIndex != null) {
       // Выделяем box для удаления
-      setState(() {
+      if (mounted) setState(() {
         _selectedBoxIndex = tappedIndex;
       });
     } else {
       // Начинаем рисовать новый box
-      setState(() {
+      if (mounted) setState(() {
         _selectedBoxIndex = null;
         _isDrawing = true;
         _startPoint = Offset(
@@ -146,7 +148,7 @@ class BoundingBoxPainterState extends State<BoundingBoxPainter> {
   void _onPanUpdate(DragUpdateDetails details, Size displaySize) {
     if (!_isDrawing) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _currentPoint = Offset(
         (details.localPosition.dx / displaySize.width).clamp(0.0, 1.0),
         (details.localPosition.dy / displaySize.height).clamp(0.0, 1.0),
@@ -156,7 +158,7 @@ class BoundingBoxPainterState extends State<BoundingBoxPainter> {
 
   void _onPanEnd(Size displaySize) {
     if (!_isDrawing || _startPoint == null || _currentPoint == null) {
-      setState(() {
+      if (mounted) setState(() {
         _isDrawing = false;
       });
       return;
@@ -167,13 +169,13 @@ class BoundingBoxPainterState extends State<BoundingBoxPainter> {
 
     // Минимальный размер 2% от изображения
     if (rect.width > 0.02 && rect.height > 0.02) {
-      setState(() {
+      if (mounted) setState(() {
         _boxes.add(rect);
       });
       widget.onBoxesChanged(_boxes);
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isDrawing = false;
       _startPoint = null;
       _currentPoint = null;
@@ -189,14 +191,14 @@ class BoundingBoxPainterState extends State<BoundingBoxPainter> {
       if (_boxes[i].contains(Offset(normalizedX, normalizedY))) {
         if (_selectedBoxIndex == i) {
           // Повторный тап — удаляем
-          setState(() {
+          if (mounted) setState(() {
             _boxes.removeAt(i);
             _selectedBoxIndex = null;
           });
           widget.onBoxesChanged(_boxes);
         } else {
           // Первый тап — выделяем
-          setState(() {
+          if (mounted) setState(() {
             _selectedBoxIndex = i;
           });
         }
@@ -205,14 +207,14 @@ class BoundingBoxPainterState extends State<BoundingBoxPainter> {
     }
 
     // Тап в пустое место — снять выделение
-    setState(() {
+    if (mounted) setState(() {
       _selectedBoxIndex = null;
     });
   }
 
   /// Очистить все рамки
   void clearBoxes() {
-    setState(() {
+    if (mounted) setState(() {
       _boxes.clear();
       _selectedBoxIndex = null;
     });
@@ -222,7 +224,7 @@ class BoundingBoxPainterState extends State<BoundingBoxPainter> {
   /// Удалить выбранную рамку
   void deleteSelected() {
     if (_selectedBoxIndex != null && _selectedBoxIndex! < _boxes.length) {
-      setState(() {
+      if (mounted) setState(() {
         _boxes.removeAt(_selectedBoxIndex!);
         _selectedBoxIndex = null;
       });

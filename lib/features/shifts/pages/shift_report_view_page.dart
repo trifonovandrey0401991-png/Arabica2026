@@ -61,6 +61,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
     // Отправляем на сервер
     final serverSuccess = await ShiftReportService.updateReport(confirmedReport);
 
+    if (!mounted) return;
     setState(() {
       _currentReport = confirmedReport;
     });

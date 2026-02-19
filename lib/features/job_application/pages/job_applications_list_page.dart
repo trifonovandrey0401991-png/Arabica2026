@@ -30,6 +30,7 @@ class _JobApplicationsListPageState extends State<JobApplicationsListPage> {
     _adminName = prefs.getString('employeeName') ?? prefs.getString('name') ?? 'Администратор';
 
     final applications = await JobApplicationService.getAll();
+    if (!mounted) return;
     setState(() {
       _applications = applications;
       _isLoading = false;
@@ -37,7 +38,7 @@ class _JobApplicationsListPageState extends State<JobApplicationsListPage> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     await _loadData();
   }
 

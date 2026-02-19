@@ -94,7 +94,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
     );
 
     if (confirm == true && mounted) {
-      setState(() => _isLoading = true);
+      if (mounted) setState(() => _isLoading = true);
       try {
         // Получаем имя текущего авторизованного пользователя (администратора)
         // ВАЖНО: используем user_display_name/user_employee_name, которые НЕ перезаписываются
@@ -135,7 +135,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
         );
         Logger.debug('📝 Результат подтверждения: ${updated != null ? "OK" : "NULL"}');
         if (updated != null && mounted) {
-          setState(() => _report = updated);
+          if (mounted) setState(() => _report = updated);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Отчет подтвержден!'),
@@ -189,7 +189,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
     );
 
     if (confirm == true && mounted) {
-      setState(() => _isLoading = true);
+      if (mounted) setState(() => _isLoading = true);
       try {
         final success = await EnvelopeReportService.deleteReport(_report.id);
         if (success && mounted) {

@@ -44,7 +44,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
   }
 
   Future<void> _runVerification() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     final result = await ShiftAiVerificationService.verifyShiftPhotos(
       photos: widget.photos,
@@ -76,9 +76,11 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
 
     if (result.detected) {
       // ИИ нашёл товар - УСПЕХ
-      setState(() {
-        product.status = ConfirmationStatus.confirmedPresent;
-      });
+      if (mounted) {
+        setState(() {
+          product.status = ConfirmationStatus.confirmedPresent;
+        });
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -89,9 +91,11 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
       }
     } else {
       // ИИ не нашёл - попытка неудачна
-      setState(() {
-        product.verificationAttempts++;
-      });
+      if (mounted) {
+        setState(() {
+          product.verificationAttempts++;
+        });
+      }
 
       final remaining = product.remainingAttempts;
       if (mounted) {
@@ -109,7 +113,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
 
   /// Пропустить ИИ проверку для товара
   void _skipAiVerification(MissingProductInfo product) {
-    setState(() {
+    if (mounted) setState(() {
       product.aiVerificationSkipped = true;
       product.status = ConfirmationStatus.confirmedPresent;
     });
@@ -187,7 +191,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
       );
 
       if (confirmed == true && mounted) {
-        setState(() {
+        if (mounted) setState(() {
           product.status = ConfirmationStatus.confirmedMissing;
           _confirmedShortages.add(ShiftShortage(
             productId: product.productId,
@@ -201,9 +205,11 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
       }
     } else {
       // Нет на остатках — просто отметить как отсутствующий
-      setState(() {
-        product.status = ConfirmationStatus.confirmedMissing;
-      });
+      if (mounted) {
+        setState(() {
+          product.status = ConfirmationStatus.confirmedMissing;
+        });
+      }
     }
   }
 
@@ -940,16 +946,18 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
 
     if (image != null) {
       final bytes = await image.readAsBytes();
-      setState(() {
-        _newPhoto = bytes;
-        _selectedPhotoIndex = -1; // -1 означает новое фото
-        _boundingBox = null;
-      });
+      if (mounted) {
+        setState(() {
+          _newPhoto = bytes;
+          _selectedPhotoIndex = -1; // -1 означает новое фото
+          _boundingBox = null;
+        });
+      }
     }
   }
 
   void _selectExistingPhoto(int index) {
-    setState(() {
+    if (mounted) setState(() {
       _selectedPhotoIndex = index;
       _newPhoto = null;
       _boundingBox = null;
@@ -1117,14 +1125,14 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                 builder: (context, constraints) {
                   return GestureDetector(
                     onPanStart: (details) {
-                      setState(() {
+                      if (mounted) setState(() {
                         _startPoint = details.localPosition;
                         _boundingBox = Rect.fromPoints(_startPoint!, _startPoint!);
                       });
                     },
                     onPanUpdate: (details) {
                       if (_startPoint != null) {
-                        setState(() {
+                        if (mounted) setState(() {
                           _boundingBox = Rect.fromPoints(
                             _startPoint!,
                             details.localPosition,
@@ -1139,7 +1147,7 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                         final context = _imageKey.currentContext;
                         if (context != null) {
                           final RenderBox box = context.findRenderObject() as RenderBox;
-                          setState(() {
+                          if (mounted) setState(() {
                             _imageSize = box.size;
                           });
                         }
@@ -1175,7 +1183,7 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () {
-                        setState(() => _boundingBox = null);
+                        if (mounted) setState(() => _boundingBox = null);
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white.withOpacity(0.7),
@@ -1219,7 +1227,7 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
   Future<void> _verifyAndSave() async {
     if (_boundingBox == null) return;
 
-    setState(() => _isVerifying = true);
+    if (mounted) setState(() => _isVerifying = true);
 
     // Получаем размеры контейнера для нормализации
     final imageContext = _imageKey.currentContext;
@@ -1249,7 +1257,7 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
       employeeName: widget.employeeName,
     );
 
-    setState(() => _isVerifying = false);
+    if (mounted) setState(() => _isVerifying = false);
 
     if (mounted) {
       // Возвращаем результат проверки

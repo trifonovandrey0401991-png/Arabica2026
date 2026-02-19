@@ -302,7 +302,7 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
               max: 24,
               divisions: 23,
               onChanged: (value) {
-                setState(() => _adminReviewTimeout = value.round());
+                if (mounted) setState(() => _adminReviewTimeout = value.round());
               },
             ),
           ),

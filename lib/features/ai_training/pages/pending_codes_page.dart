@@ -36,7 +36,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -797,7 +797,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
 
     Navigator.pop(context); // Закрыть диалог
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final product = await MasterCatalogService.approveCode(
@@ -821,7 +821,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
         widget.onCodeApproved?.call();
         _loadData();
       } else {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -832,7 +832,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
         }
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -881,7 +881,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
 
     if (confirmed != true) return;
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final success = await MasterCatalogService.rejectCode(code.kod);
@@ -897,7 +897,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
         }
         _loadData();
       } else {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -908,7 +908,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
         }
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -956,10 +956,10 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
     _debounce?.cancel();
     _debounce = Timer(Duration(milliseconds: 300), () async {
       if (query.length < 2) {
-        setState(() => _results = []);
+        if (mounted) setState(() => _results = []);
         return;
       }
-      setState(() => _isSearching = true);
+      if (mounted) setState(() => _isSearching = true);
       final results = await MasterCatalogService.searchForAssign(query);
       if (mounted) {
         setState(() {
@@ -997,7 +997,7 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
 
     if (confirmed != true) return;
 
-    setState(() => _isAssigning = true);
+    if (mounted) setState(() => _isAssigning = true);
 
     final success = await MasterCatalogService.assignCodeToProduct(
       kod: widget.code.kod,
@@ -1015,7 +1015,7 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
         );
         widget.onAssigned();
       } else {
-        setState(() => _isAssigning = false);
+        if (mounted) setState(() => _isAssigning = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ошибка привязки кода'), backgroundColor: AppColors.error),
         );
@@ -1085,7 +1085,7 @@ class _AssignToExistingDialogState extends State<_AssignToExistingDialog> {
                             icon: Icon(Icons.clear, color: Colors.white.withOpacity(0.5)),
                             onPressed: () {
                               _searchController.clear();
-                              setState(() => _results = []);
+                              if (mounted) setState(() => _results = []);
                             },
                           )
                         : null,

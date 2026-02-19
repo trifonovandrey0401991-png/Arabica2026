@@ -127,7 +127,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
   }
 
   Future<void> _initialize() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
@@ -185,6 +185,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
         );
       }
 
+      if (!mounted) return;
       setState(() {
         _shops = shops;
         _selectedShop = selectedShopFromList ?? (shops.isNotEmpty ? shops.first : null);
@@ -192,6 +193,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       });
     } catch (e) {
       Logger.error('Ошибка инициализации', e);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -247,7 +249,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       }
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isCreating = true;
     });
 
@@ -267,6 +269,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
             ),
           );
         }
+        if (!mounted) return;
         setState(() {
           _isCreating = false;
         });
@@ -284,6 +287,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
             ),
           );
         }
+        if (!mounted) return;
         setState(() {
           _isCreating = false;
         });
@@ -950,7 +954,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                   final previousShop = _selectedShop;
 
                   // Временно устанавливаем новый магазин
-                  setState(() {
+                  if (mounted) setState(() {
                     _selectedShop = shop;
                   });
 
@@ -959,7 +963,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                     final confirmed = await _validateShopSelection(shop);
                     if (!confirmed && previousShop != null) {
                       // Отменяем выбор
-                      setState(() {
+                      if (mounted) setState(() {
                         _selectedShop = previousShop;
                       });
                     }

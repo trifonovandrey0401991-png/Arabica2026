@@ -52,13 +52,14 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
     if (_currentUserPhone != null) {
       await _loadAllData();
     }
+    if (!mounted) return;
     setState(() => _isLoading = false);
   }
 
   Future<void> _loadAllData() async {
     if (_currentUserPhone == null) return;
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       // Загружаем конфигурацию shop-managers
@@ -83,6 +84,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       Logger.debug('❌ Ошибка загрузки данных: $e');
     }
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
   }
 

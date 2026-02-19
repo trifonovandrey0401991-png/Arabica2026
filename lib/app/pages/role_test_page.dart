@@ -27,6 +27,7 @@ class _RoleTestPageState extends State<RoleTestPage> {
 
   Future<void> _loadCurrentRole() async {
     final roleData = await UserRoleService.loadUserRole();
+    if (!mounted) return;
     setState(() {
       _currentRole = roleData;
       if (roleData != null) {
@@ -222,7 +223,7 @@ class _RoleTestPageState extends State<RoleTestPage> {
                         value: UserRole.admin,
                         groupValue: _selectedRole,
                         onChanged: (value) {
-                          setState(() {
+                          if (mounted) setState(() {
                             _selectedRole = value;
                             _testDisplayName = 'Админ Тестовый';
                             _testEmployeeName = 'Админ Тестовый';
@@ -249,7 +250,7 @@ class _RoleTestPageState extends State<RoleTestPage> {
                         value: UserRole.employee,
                         groupValue: _selectedRole,
                         onChanged: (value) {
-                          setState(() {
+                          if (mounted) setState(() {
                             _selectedRole = value;
                             _testDisplayName = 'Сотрудник Тестовый';
                             _testEmployeeName = 'Сотрудник Тестовый';
@@ -276,7 +277,7 @@ class _RoleTestPageState extends State<RoleTestPage> {
                         value: UserRole.client,
                         groupValue: _selectedRole,
                         onChanged: (value) {
-                          setState(() {
+                          if (mounted) setState(() {
                             _selectedRole = value;
                             _testDisplayName = 'Клиент Тестовый';
                             _testEmployeeName = null;

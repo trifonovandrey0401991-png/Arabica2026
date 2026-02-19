@@ -118,7 +118,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   }
 
   Future<void> _loadData() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -162,6 +162,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     );
 
     if (picked != null) {
+      if (!mounted) return;
       setState(() {
         _selectedMonth = DateTime(picked.year, picked.month);
       });
@@ -403,7 +404,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     if (result != null && result.isNotEmpty) {
       Logger.info('Сохранение ${result.length} смен для ${employee.name}');
 
-      setState(() => _isLoading = true);
+      if (mounted) setState(() => _isLoading = true);
 
       try {
         // Сначала удаляем все старые смены сотрудника в этом периоде
@@ -588,7 +589,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   /// Валидация текущего графика
   void _validateCurrentSchedule() {
     if (_schedule == null || _shops.isEmpty) {
-      setState(() {
+      if (mounted) setState(() {
         _hasErrors = false;
         _errorCount = 0;
         _validationResult = null;
@@ -608,7 +609,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       _shops,
     );
 
-    setState(() {
+    if (mounted) setState(() {
       _hasErrors = _validationResult!.hasErrors;
       _errorCount = _validationResult!.totalCount;
     });
@@ -930,7 +931,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     );
     
     if (result != null) {
-      setState(() {
+      if (mounted) setState(() {
         _startDay = result['startDay'] ?? 1;
         _endDay = result['endDay'] ?? maxDay;
       });
@@ -992,7 +993,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       child: GestureDetector(
         onTap: () {
           _tabController.animateTo(index);
-          setState(() {});
+          if (mounted) setState(() {});
         },
         child: Container(
           padding: EdgeInsets.symmetric(vertical: 10.h),
@@ -1888,6 +1889,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       }
 
       // Обновляем график - принудительно перезагружаем данные
+      if (!mounted) return;
       setState(() {
         _isLoading = true;
       });

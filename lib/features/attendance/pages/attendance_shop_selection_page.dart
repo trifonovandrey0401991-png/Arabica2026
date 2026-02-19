@@ -32,11 +32,13 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
   Future<void> _loadShops() async {
     try {
       final shops = await ShopService.getShopsForCurrentUser();
+      if (!mounted) return;
       setState(() {
         _shops = shops;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Ошибка загрузки магазинов: $e';
         _isLoading = false;
@@ -209,7 +211,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
 
     // Получаем геолокацию
     try {
-      setState(() {
+      if (mounted) setState(() {
         _isMarking = true;
         _errorMessage = null;
       });
@@ -283,7 +285,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
             // Показываем диалог выбора смены
             final selectedShift = await _showShiftSelectionDialog();
             if (selectedShift != null && mounted) {
-              setState(() => _isMarking = true);
+              if (mounted) setState(() => _isMarking = true);
 
               // Подтверждаем выбор смены
               final confirmResult = await AttendanceService.confirmShift(

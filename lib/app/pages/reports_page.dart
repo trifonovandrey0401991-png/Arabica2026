@@ -100,7 +100,7 @@ class _ReportsPageState extends State<ReportsPage> {
         timeout: ApiConstants.longTimeout,
       );
       if (result != null && result['success'] == true && mounted) {
-        setState(() => _managementUnreadCount = result['totalUnread'] ?? 0);
+        if (mounted) setState(() => _managementUnreadCount = result['totalUnread'] ?? 0);
       }
     } catch (e) {
       Logger.error('Ошибка загрузки количества непрочитанных сообщений руководству', e);
@@ -212,7 +212,7 @@ class _ReportsPageState extends State<ReportsPage> {
         }
       }
 
-      setState(() => _userRole = roleData?.role);
+      if (mounted) setState(() => _userRole = roleData?.role);
 
       if (_userRole == UserRole.employee) {
         final prefs = await SharedPreferences.getInstance();
@@ -220,13 +220,13 @@ class _ReportsPageState extends State<ReportsPage> {
         if (phone != null && phone.isNotEmpty) {
           final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
           final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
-          setState(() => _isVerified = registration?.isVerified ?? false);
+          if (mounted) setState(() => _isVerified = registration?.isVerified ?? false);
         }
       }
     } catch (e) {
       Logger.error('Ошибка загрузки роли', e);
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

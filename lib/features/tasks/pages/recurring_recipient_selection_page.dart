@@ -52,15 +52,17 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
   }
 
   Future<void> _loadEmployees() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final employees = await EmployeeService.getEmployees();
+      if (!mounted) return;
       setState(() {
         _allEmployees = employees;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -79,7 +81,7 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
   }
 
   void _toggleEmployee(Employee employee) {
-    setState(() {
+    if (mounted) setState(() {
       if (_selectedIds.contains(employee.id)) {
         _selectedIds.remove(employee.id);
       } else {
@@ -89,7 +91,7 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
   }
 
   void _selectAll() {
-    setState(() {
+    if (mounted) setState(() {
       for (final e in _filteredEmployees) {
         _selectedIds.add(e.id);
       }
@@ -97,7 +99,7 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
   }
 
   void _deselectAll() {
-    setState(() {
+    if (mounted) setState(() {
       for (final e in _filteredEmployees) {
         _selectedIds.remove(e.id);
       }
@@ -207,7 +209,7 @@ class _RecurringRecipientSelectionPageState extends State<RecurringRecipientSele
                         selected: isSelected,
                         onSelected: (selected) {
                           if (selected) {
-                            setState(() => _selectedGroup = group);
+                            if (mounted) setState(() => _selectedGroup = group);
                           }
                         },
                         selectedColor: AppColors.gold,

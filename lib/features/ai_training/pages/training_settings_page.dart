@@ -37,7 +37,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
   }
 
   Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     final settings = await CigaretteVisionService.getSettings();
 
@@ -54,7 +54,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
   }
 
   Future<void> _saveSettings() async {
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     final updated = await CigaretteVisionService.updateSettings(
       requiredRecountPhotos: _requiredRecountPhotos,
@@ -194,7 +194,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
       onTap: isDisabled
           ? null
           : () {
-              setState(() => _catalogSource = value);
+              if (mounted) setState(() => _catalogSource = value);
             },
       borderRadius: BorderRadius.circular(8.r),
       child: Container(
@@ -334,7 +334,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
               min: 5,
               max: 30,
               onChanged: (value) {
-                setState(() => _requiredRecountPhotos = value);
+                if (mounted) setState(() => _requiredRecountPhotos = value);
               },
             ),
             Divider(),
@@ -349,7 +349,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
               min: 1,
               max: 10,
               onChanged: (value) {
-                setState(() => _requiredDisplayPhotosPerShop = value);
+                if (mounted) setState(() => _requiredDisplayPhotosPerShop = value);
               },
             ),
             SizedBox(height: 16),
@@ -684,7 +684,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
   }
 
   Future<void> _loadSamples() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     // Загружаем обычные образцы
     final samples = await CigaretteVisionService.getSamplesForProduct(
@@ -738,7 +738,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
 
     if (mounted) {
       if (success) {
-        setState(() {
+        if (mounted) setState(() {
           _samples.removeWhere((s) => s.id == sample.id);
           _hasChanges = true;
         });
@@ -788,7 +788,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
 
     if (mounted) {
       if (success) {
-        setState(() {
+        if (mounted) setState(() {
           _samples.removeWhere((s) => s.id == sample.id);
           _hasChanges = true;
         });
@@ -838,7 +838,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
 
     if (mounted) {
       if (success) {
-        setState(() {
+        if (mounted) setState(() {
           _samples.removeWhere((s) => s.id == sample.id);
           _hasChanges = true;
         });
@@ -994,7 +994,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
         ],
       ),
       onSelected: (selected) {
-        setState(() => _selectedType = selected ? type : null);
+        if (mounted) setState(() => _selectedType = selected ? type : null);
       },
       selectedColor: chipColor.withOpacity(0.2),
       checkmarkColor: chipColor,

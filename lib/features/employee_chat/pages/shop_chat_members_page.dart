@@ -32,7 +32,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final results = await Future.wait([

@@ -39,7 +39,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
   String? _registrationToken;
 
   Future<void> _verifyCode(String code) async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _showError = false;
       _errorMessage = null;
@@ -68,7 +68,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
         ),
       );
     } else {
-      setState(() {
+      if (mounted) setState(() {
         _showError = true;
         _errorMessage = result.error;
       });
@@ -76,7 +76,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
   }
 
   Future<void> _resendCode() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _showError = false;
       _errorMessage = null;
@@ -106,7 +106,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
         );
       }
     } else {
-      setState(() {
+      if (mounted) setState(() {
         _showError = true;
         _errorMessage = result.error;
       });

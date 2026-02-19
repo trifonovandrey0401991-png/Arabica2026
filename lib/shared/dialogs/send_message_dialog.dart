@@ -108,10 +108,12 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
         final size = await mediaFile.length();
         Logger.debug('Размер файла: ${(size / 1024).toStringAsFixed(2)} KB');
       }
-      setState(() {
-        _selectedMedia = mediaFile;
-        _isVideo = isVideo;
-      });
+      if (mounted) {
+        setState(() {
+          _selectedMedia = mediaFile;
+          _isVideo = isVideo;
+        });
+      }
     }
   }
 
@@ -137,7 +139,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
   }
 
   void _clearMedia() {
-    setState(() {
+    if (mounted) setState(() {
       _selectedMedia = null;
       _isVideo = false;
     });
@@ -148,7 +150,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isSending = true;
     });
 
@@ -158,14 +160,14 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
       // Загружаем медиа, если выбрано
       if (_selectedMedia != null) {
         Logger.debug('Начинаем загрузку медиа: ${_selectedMedia!.path}');
-        setState(() => _isUploading = true);
+        if (mounted) setState(() => _isUploading = true);
 
         mediaUrl = await MediaUploadService.uploadMedia(
           _selectedMedia!.path,
           type: _isVideo ? MediaType.video : MediaType.image,
         );
 
-        setState(() => _isUploading = false);
+        if (mounted) setState(() => _isUploading = false);
         Logger.debug('Результат загрузки медиа: $mediaUrl');
 
         if (mediaUrl == null) {
@@ -178,7 +180,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
               ),
             );
           }
-          setState(() => _isSending = false);
+          if (mounted) setState(() => _isSending = false);
           return;
         }
       }

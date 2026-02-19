@@ -30,7 +30,7 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
   }
 
   Future<void> _loadRecords() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     final records = await FortuneWheelService.getHistory(month: _selectedMonth);
 
@@ -140,8 +140,8 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
       ),
     );
 
-    if (selected != null && selected != _selectedMonth) {
-      setState(() => _selectedMonth = selected);
+    if (selected != null && selected != _selectedMonth && mounted) {
+      if (mounted) setState(() => _selectedMonth = selected);
       _loadRecords();
     }
   }

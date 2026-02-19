@@ -64,7 +64,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
 
   Future<void> _loadShops() async {
     try {
-      setState(() => _isLoading = true);
+      if (mounted) setState(() => _isLoading = true);
       final shops = await ShopService.getShopsForCurrentUser();
       if (mounted) {
         setState(() {
@@ -190,7 +190,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
     );
 
     if (shop != null && mounted) {
-      setState(() {
+      if (mounted) setState(() {
         _selectedShop = shop;
         _dayDataCache.clear();
       });
@@ -201,7 +201,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
   Future<void> _loadMonthData() async {
     if (_selectedShop == null) return;
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final now = DateTime.now();
@@ -293,7 +293,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
 
     Logger.debug('_onDaySelected вызван: ${selectedDay.year}-${selectedDay.month}-${selectedDay.day}');
 
-    setState(() {
+    if (mounted) setState(() {
       _selectedDay = selectedDay;
       _focusedDay = focusedDay;
     });
@@ -616,10 +616,10 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                           ),
                           onDaySelected: _onDaySelected,
                           onFormatChanged: (format) {
-                            setState(() => _calendarFormat = format);
+                            if (mounted) setState(() => _calendarFormat = format);
                           },
                           onPageChanged: (focusedDay) {
-                            setState(() => _focusedDay = focusedDay);
+                            if (mounted) setState(() => _focusedDay = focusedDay);
                             _loadMonthData();
                           },
                         ),
@@ -790,7 +790,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                         if (_tabController.index == 1 && _selectedShop != null) {
                           _loadMonthData();
                         } else {
-                          setState(() {});
+                          if (mounted) setState(() {});
                         }
                       },
                       child: Container(

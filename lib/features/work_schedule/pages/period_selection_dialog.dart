@@ -73,7 +73,7 @@ class _PeriodSelectionDialogState extends State<PeriodSelectionDialog> {
                     }).toList(),
                     onChanged: (value) {
                       if (value != null) {
-                        setState(() {
+                        if (mounted) setState(() {
                           _startDay = value;
                           if (_endDay < _startDay) {
                             _endDay = _startDay;
@@ -118,7 +118,7 @@ class _PeriodSelectionDialogState extends State<PeriodSelectionDialog> {
                     }).toList(),
                     onChanged: (value) {
                       if (value != null) {
-                        setState(() {
+                        if (mounted) setState(() {
                           _endDay = value;
                         });
                       }

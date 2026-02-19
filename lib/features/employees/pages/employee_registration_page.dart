@@ -143,6 +143,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
         final bytes = await image.readAsBytes();
         Logger.debug('📷 Фото выбрано: ${image.path}, размер: ${bytes.length} байт');
 
+        if (!mounted) return;
         setState(() {
           if (photoType == 'front') {
             _passportFrontPhotoBytes = bytes;
@@ -253,7 +254,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
@@ -830,7 +831,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
                 icon: Icons.person,
                 isSelected: _selectedRole == 'employee',
                 onTap: _isLoading ? null : () {
-                  setState(() {
+                  if (mounted) setState(() {
                     _selectedRole = 'employee';
                     _isAdmin = false;
                   });
@@ -845,7 +846,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
                 icon: Icons.admin_panel_settings,
                 isSelected: _selectedRole == 'admin',
                 onTap: _isLoading ? null : () {
-                  setState(() {
+                  if (mounted) setState(() {
                     _selectedRole = 'admin';
                     _isAdmin = true;
                   });
@@ -875,7 +876,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
             ),
             value: _isManager,
             onChanged: _isLoading ? null : (value) {
-              setState(() => _isManager = value ?? false);
+              if (mounted) setState(() => _isManager = value ?? false);
             },
             activeColor: AppColors.gold,
             checkColor: AppColors.night,

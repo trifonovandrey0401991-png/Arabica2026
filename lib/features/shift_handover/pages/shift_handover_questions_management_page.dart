@@ -39,7 +39,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
     _tabController.addListener(() {
       // Перестроить UI когда вкладка меняется
       if (!_tabController.indexIsChanging) {
-        setState(() {});
+        if (mounted) setState(() {});
       }
     });
     _loadQuestions();
@@ -53,17 +53,19 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
   }
 
   Future<void> _loadEnvelopeQuestions() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoadingEnvelope = true;
     });
 
     try {
       final questions = await EnvelopeQuestionService.getQuestions();
+      if (!mounted) return;
       setState(() {
         _envelopeQuestions = questions;
         _isLoadingEnvelope = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoadingEnvelope = false;
       });
@@ -79,17 +81,19 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
   }
 
   Future<void> _loadQuestions() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
     try {
       final questions = await ShiftHandoverQuestionService.getQuestions();
+      if (!mounted) return;
       setState(() {
         _questions = questions;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -1300,13 +1304,15 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
 
   Future<void> _loadShops() async {
     try {
-      setState(() => _isLoadingShops = true);
+      if (mounted) setState(() => _isLoadingShops = true);
       final shops = await Shop.loadShopsFromServer();
+      if (!mounted) return;
       setState(() {
         _allShops = shops;
         _isLoadingShops = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoadingShops = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1341,6 +1347,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
           photoFile = File(image.path);
         }
 
+        if (!mounted) return;
         setState(() {
           _referencePhotoFiles[shopAddress] = photoFile;
           _referencePhotoBytes[shopAddress] = bytes;
@@ -1364,7 +1371,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
 
   Future<void> _uploadReferencePhoto(String questionId, String shopAddress, File photoFile) async {
     try {
-      setState(() => _isUploadingPhotos = true);
+      if (mounted) setState(() => _isUploadingPhotos = true);
 
       final photoUrl = await ShiftHandoverQuestionService.uploadReferencePhoto(
         questionId: questionId,
@@ -1373,12 +1380,12 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
       );
 
       if (photoUrl != null) {
-        setState(() {
+        if (mounted) setState(() {
           _referencePhotoUrls[shopAddress] = photoUrl;
           _isUploadingPhotos = false;
         });
       } else {
-        setState(() => _isUploadingPhotos = false);
+        if (mounted) setState(() => _isUploadingPhotos = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1389,7 +1396,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
         }
       }
     } catch (e) {
-      setState(() => _isUploadingPhotos = false);
+      if (mounted) setState(() => _isUploadingPhotos = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1412,7 +1419,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isSaving = true;
     });
 
@@ -1818,7 +1825,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                     ),
                     value: _isForAllShops,
                     onChanged: (value) {
-                      setState(() {
+                      if (mounted) setState(() {
                         _isForAllShops = value ?? false;
                         if (_isForAllShops) {
                           _selectedShopAddresses.clear();
@@ -1869,7 +1876,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                                 ),
                                 value: isSelected,
                                 onChanged: (value) {
-                                  setState(() {
+                                  if (mounted) setState(() {
                                     if (value ?? false) {
                                       _selectedShopAddresses.add(shop.address);
                                     } else {
@@ -2069,7 +2076,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
 
     return GestureDetector(
       onTap: () {
-        setState(() {
+        if (mounted) setState(() {
           _selectedAnswerType = value;
         });
       },
@@ -2259,7 +2266,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                         _buildPhotoActionButton(
                           icon: Icons.delete_outline,
                           onPressed: () {
-                            setState(() {
+                            if (mounted) setState(() {
                               _referencePhotoFiles.remove(shopAddress);
                               _referencePhotoBytes.remove(shopAddress);
                               _referencePhotoUrls.remove(shopAddress);
@@ -2361,7 +2368,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
 
     return GestureDetector(
       onTap: () {
-        setState(() {
+        if (mounted) setState(() {
           _selectedTargetRole = value;
         });
       },
@@ -2495,6 +2502,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
       if (image != null) {
         final bytes = await image.readAsBytes();
 
+        if (!mounted) return;
         setState(() {
           _selectedPhotoBytes = bytes;
           if (!kIsWeb) {
@@ -2520,7 +2528,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
   Future<void> _uploadPhoto() async {
     if (_selectedPhotoFile == null && _selectedPhotoBytes == null) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isUploadingPhoto = true;
     });
 
@@ -2539,7 +2547,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
       );
 
       if (url != null) {
-        setState(() {
+        if (mounted) setState(() {
           _referencePhotoUrl = url;
         });
       } else {
@@ -2571,7 +2579,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
   }
 
   void _removePhoto() {
-    setState(() {
+    if (mounted) setState(() {
       _referencePhotoUrl = null;
       _selectedPhotoFile = null;
       _selectedPhotoBytes = null;
@@ -2583,7 +2591,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isSaving = true;
     });
 

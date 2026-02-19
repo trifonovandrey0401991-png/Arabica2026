@@ -44,7 +44,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
   }
 
   Future<void> _loadMessages() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -52,7 +52,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
       _userName = prefs.getString('user_name') ?? prefs.getString('userName');
 
       if (_userPhone!.isEmpty) {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
 
@@ -63,6 +63,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
         ManagementMessageService.markAsReadByClient(_userPhone!, type: 'personal');
       }
 
+      if (!mounted) return;
       setState(() {
         _messages = data.personalMessages;
         _isLoading = false;
@@ -79,12 +80,11 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
         }
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка загрузки: $e'), backgroundColor: Colors.red),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка загрузки: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 
@@ -155,6 +155,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
 
     if (file == null) return;
 
+    if (!mounted) return;
     setState(() => _isUploading = true);
 
     final mediaUrl = await MediaUploadService.uploadMedia(
@@ -162,10 +163,11 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
       type: isVideo ? MediaType.video : MediaType.image,
     );
 
+    if (!mounted) return;
     setState(() => _isUploading = false);
 
     if (mediaUrl != null) {
-      setState(() {
+      if (mounted) setState(() {
         _pendingMediaUrl = mediaUrl;
         _pendingIsVideo = isVideo;
       });
@@ -182,7 +184,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
   }
 
   void _clearPendingMedia() {
-    setState(() {
+    if (mounted) setState(() {
       _pendingMediaUrl = null;
       _pendingIsVideo = false;
     });
@@ -195,7 +197,7 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
     if (text.isEmpty && !hasMedia) return;
     if (_userPhone == null || _userPhone!.isEmpty) return;
 
-    setState(() => _isSending = true);
+    if (mounted) setState(() => _isSending = true);
 
     final message = await ManagementMessageService.sendMessage(
       clientPhone: _userPhone!,
@@ -204,10 +206,11 @@ class _ManagementDialogPageState extends State<ManagementDialogPage> {
       clientName: _userName,
     );
 
+    if (!mounted) return;
     setState(() => _isSending = false);
 
     if (message != null) {
-      setState(() {
+      if (mounted) setState(() {
         _messages.add(message);
         _messageController.clear();
         _pendingMediaUrl = null;

@@ -48,7 +48,7 @@ class _ReviewTextInputPageState extends State<ReviewTextInputPage> {
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 

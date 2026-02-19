@@ -65,14 +65,16 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
   // ========== Загрузка данных ==========
 
   Future<void> _loadEmployees() async {
-    setState(() => _loadingEmployees = true);
+    if (mounted) setState(() => _loadingEmployees = true);
     try {
       final employees = await EmployeesPage.loadEmployeesForNotifications();
+      if (!mounted) return;
       setState(() {
         _employees = employees;
         _loadingEmployees = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _loadingEmployees = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -83,12 +85,13 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
   }
 
   Future<void> _loadKpiData() async {
-    setState(() => _loadingKpiData = true);
+    if (mounted) setState(() => _loadingKpiData = true);
     try {
       // Используем тот же метод, что и в меню "Сотрудники"
       // Это гарантирует, что имена будут совпадать с отображением в системе
       final employees = await EmployeesPage.loadEmployeesForNotifications();
       final shops = await Shop.loadShopsFromServer();
+      if (!mounted) return;
       setState(() {
         _allEmployees = employees;
         _allShops = shops;
@@ -102,6 +105,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       });
     } catch (e) {
       Logger.error('Ошибка загрузки данных для KPI', e);
+      if (!mounted) return;
       setState(() => _loadingKpiData = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -241,7 +245,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       lastDate: DateTime(2030),
     );
     if (picked != null) {
-      setState(() => _kpiSelectedDate = picked);
+      if (mounted) setState(() => _kpiSelectedDate = picked);
     }
   }
 
@@ -281,7 +285,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       return false;
     }
 
-    setState(() => _creatingAttendance = true);
+    if (mounted) setState(() => _creatingAttendance = true);
 
     try {
       // Парсим время из текстового поля
@@ -293,7 +297,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
             backgroundColor: Colors.orange,
           ),
         );
-        setState(() => _creatingAttendance = false);
+        if (mounted) setState(() => _creatingAttendance = false);
         return false;
       }
 
@@ -387,7 +391,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       return false;
     }
 
-    setState(() => _creatingShift = true);
+    if (mounted) setState(() => _creatingShift = true);
 
     try {
       // Загружаем вопросы пересменки
@@ -431,7 +435,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
             backgroundColor: Colors.orange,
           ),
         );
-        setState(() => _creatingShift = false);
+        if (mounted) setState(() => _creatingShift = false);
         return false;
       }
 
@@ -508,7 +512,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       return false;
     }
 
-    setState(() => _creatingRecount = true);
+    if (mounted) setState(() => _creatingRecount = true);
 
     try {
       // Загружаем вопросы пересчета
@@ -528,7 +532,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
             backgroundColor: Colors.orange,
           ),
         );
-        setState(() => _creatingRecount = false);
+        if (mounted) setState(() => _creatingRecount = false);
         return false;
       }
 
@@ -798,7 +802,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                               value: employee.name,
                               groupValue: _selectedEmployee,
                               onChanged: (value) {
-                                setState(() => _selectedEmployee = value);
+                                if (mounted) setState(() => _selectedEmployee = value);
                               },
                             )),
                       SizedBox(height: 8),
@@ -936,7 +940,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                     child: Text(emp.name), // Используем name вместо fullName
                   )).toList(),
                   onChanged: (value) {
-                    setState(() => _kpiSelectedEmployee = value);
+                    if (mounted) setState(() => _kpiSelectedEmployee = value);
                   },
                 ),
                 SizedBox(height: 16),
@@ -952,7 +956,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                     child: Text(shop.address),
                   )).toList(),
                   onChanged: (value) {
-                    setState(() => _kpiSelectedShop = value);
+                    if (mounted) setState(() => _kpiSelectedShop = value);
                   },
                 ),
                 SizedBox(height: 16),

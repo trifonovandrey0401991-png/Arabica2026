@@ -56,7 +56,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
     _clientName = prefs.getString('user_name') ?? 'Клиент';
 
     if (_clientPhone!.isEmpty) {
-      setState(() {
+      if (mounted) setState(() {
         _isLoading = false;
       });
       return;
@@ -72,7 +72,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
 
     try {
       final dialogs = await ProductQuestionService.getClientPersonalDialogs(_clientPhone!);
-      setState(() {
+      if (mounted) setState(() {
         _existingDialogShops = dialogs.map((d) => d.shopAddress).toSet();
       });
     } catch (e) {
@@ -87,7 +87,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
       final data = await ProductQuestionService.getClientDialog(_clientPhone!);
 
       if (data != null && mounted) {
-        setState(() {
+        if (mounted) setState(() {
           _messages = data.messages;
           _isLoading = false;
         });
@@ -195,8 +195,8 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
           imageQuality: 85,
         );
 
-        if (image != null) {
-          setState(() {
+        if (image != null && mounted) {
+          if (mounted) setState(() {
             _selectedImage = File(image.path);
           });
         }
@@ -215,7 +215,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
     if (text.isEmpty && _selectedImage == null) return;
     if (_isSending || _clientPhone == null) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isSending = true;
     });
 
@@ -233,7 +233,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
 
       if (result != null && mounted) {
         _messageController.clear();
-        setState(() {
+        if (mounted) setState(() {
           _selectedImage = null;
         });
         await _loadMessages();
@@ -316,7 +316,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
   Future<void> _startPersonalDialog(String shopAddress) async {
     if (_isCreatingDialog || _clientPhone == null) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isCreatingDialog = true;
     });
 
@@ -328,7 +328,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
       );
 
       if (dialog != null && mounted) {
-        setState(() {
+        if (mounted) setState(() {
           _existingDialogShops.add(shopAddress);
         });
 

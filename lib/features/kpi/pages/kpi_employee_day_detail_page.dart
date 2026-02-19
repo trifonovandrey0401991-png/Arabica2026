@@ -39,7 +39,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
   }
 
   Future<void> _loadDetails() async {
-    setState(() => _isLoadingDetails = true);
+    if (mounted) setState(() => _isLoadingDetails = true);
 
     try {
       // Загружаем отчет пересчета, если есть ID

@@ -55,7 +55,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
     final pickedFile = await picker.pickImage(source: ImageSource.camera, maxWidth: 1280, imageQuality: 75);
 
     if (pickedFile != null && mounted) {
-      setState(() {
+      if (mounted) setState(() {
         _selectedPhotos.add(File(pickedFile.path));
       });
     }
@@ -74,7 +74,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
   }
 
   void _removePhoto(int index) {
-    setState(() {
+    if (mounted) setState(() {
       _selectedPhotos.removeAt(index);
     });
   }
@@ -82,7 +82,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
   Future<void> _submitResponse() async {
     if (!_isFormValid || _isSubmitting) return;
 
-    setState(() => _isSubmitting = true);
+    if (mounted) setState(() => _isSubmitting = true);
 
     try {
       // Загружаем фото если есть
@@ -134,7 +134,7 @@ class _TaskResponsePageState extends State<TaskResponsePage> {
 
     if (reason == null) return;
 
-    setState(() => _isSubmitting = true);
+    if (mounted) setState(() => _isSubmitting = true);
 
     try {
       final result = await TaskService.declineTask(

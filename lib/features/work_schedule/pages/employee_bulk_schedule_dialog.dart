@@ -122,7 +122,7 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
   void _onCellTap(Shop shop, DateTime day) {
     final key = '${shop.address}_${day.toIso8601String().split('T')[0]}';
 
-    setState(() {
+    if (mounted) setState(() {
       // Удаляем смену на этот день если есть (одна смена в день)
       _pendingEntries.removeWhere((k, v) =>
         v.date.year == day.year &&
@@ -459,7 +459,7 @@ class _EmployeeBulkScheduleDialogState extends State<EmployeeBulkScheduleDialog>
             child: InkWell(
               onTap: () {
                 // При клике на вечернюю половину - ставим вечернюю смену
-                setState(() {
+                if (mounted) setState(() {
                   final key = '${shop.address}_${day.toIso8601String().split('T')[0]}';
 
                   // Удаляем смену на этот день если есть

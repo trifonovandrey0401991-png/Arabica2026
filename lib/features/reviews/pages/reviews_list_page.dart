@@ -6,6 +6,8 @@ import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import '../../clients/pages/management_dialogs_list_page.dart';
+import '../../employees/services/user_role_service.dart';
+import '../../employees/models/user_role_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -21,16 +23,28 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
   bool _isLoading = true;
   Map<String, ShopReviewStats> _shopStats = {};
   int _managementUnreadCount = 0;
+  bool _showManagementCard = false;
 
   @override
   void initState() {
     super.initState();
     _loadReviews();
-    _loadManagementUnreadCount();
+    _checkRoleAndLoadManagement();
+  }
+
+  Future<void> _checkRoleAndLoadManagement() async {
+    final roleData = await UserRoleService.loadUserRole();
+    // "Связь с руководством" только для admin/developer/manager
+    if (roleData != null && roleData.role != UserRole.employee && roleData.role != UserRole.client) {
+      if (mounted) {
+        setState(() => _showManagementCard = true);
+      }
+      _loadManagementUnreadCount();
+    }
   }
 
   Future<void> _loadReviews() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
@@ -54,11 +68,13 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
         stats[shopAddress]!.addReview(review);
       }
 
+      if (!mounted) return;
       setState(() {
         _shopStats = stats;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -186,15 +202,15 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                             backgroundColor: AppColors.emeraldDark,
                             child: ListView.builder(
                               padding: EdgeInsets.all(16.w),
-                              itemCount: _shopStats.length + 1,
+                              itemCount: _shopStats.length + (_showManagementCard ? 1 : 0),
                               itemBuilder: (context, index) {
-                                // Первый элемент - "Связь с руководством"
-                                if (index == 0) {
+                                // Первый элемент - "Связь с руководством" (только для admin/developer/manager)
+                                if (_showManagementCard && index == 0) {
                                   return _buildManagementCard();
                                 }
 
                                 // Остальные элементы - магазины
-                                final shopIndex = index - 1;
+                                final shopIndex = _showManagementCard ? index - 1 : index;
                                 final shopAddress = _shopStats.keys.elementAt(shopIndex);
                                 final stats = _shopStats[shopAddress]!;
 

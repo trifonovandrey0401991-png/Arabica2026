@@ -79,6 +79,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       // Загрузить конфиг магазина
       final config = await CoffeeMachineTemplateService.getShopConfig(widget.shopAddress);
       if (config == null || config.machineTemplateIds.isEmpty) {
+        if (!mounted) return;
         setState(() {
           _isLoading = false;
           _error = 'Для этого магазина не настроены кофемашины';
@@ -93,6 +94,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       ).toList();
 
       if (templates.isEmpty) {
+        if (!mounted) return;
         setState(() {
           _isLoading = false;
           _error = 'Шаблоны кофемашин не найдены';
@@ -106,11 +108,13 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
         _machineOcrDone[t.id] = false;
       }
 
+      if (!mounted) return;
       setState(() {
         _machineTemplates = templates;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _error = 'Ошибка загрузки: $e';
@@ -132,6 +136,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
     final bytes = await file.readAsBytes();
     final base64Image = base64Encode(bytes);
 
+    if (!mounted) return;
     setState(() {
       if (isComputer) {
         _computerPhoto = file;
@@ -151,6 +156,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
 
     if (result == null) return; // диалог загрузки был закрыт (unmounted)
 
+    if (!mounted) return;
     setState(() {
       if (isComputer) {
         _computerAiNumber = result.number;
@@ -340,7 +346,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
 
   /// Принять OCR-число
   void _acceptOcrNumber(int number, {required String templateId, required bool isComputer}) {
-    setState(() {
+    if (mounted) setState(() {
       if (isComputer) {
         _computerController.text = number.toString();
       } else {
@@ -380,6 +386,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
 
     if (result == null) return;
 
+    if (!mounted) return;
     setState(() {
       if (isComputer) {
         _computerAiNumber = result.number;
@@ -457,7 +464,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
               final text = manualController.text.trim();
               if (text.isEmpty) return;
               Navigator.pop(ctx);
-              setState(() {
+              if (mounted) setState(() {
                 if (isComputer) {
                   _computerController.text = text;
                 } else {
@@ -583,7 +590,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       return;
     }
 
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     try {
       // Загрузить фото машин

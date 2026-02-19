@@ -41,7 +41,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
   }
 
   Future<void> _loadPrizes() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     final prizes = await LoyaltyGamificationService.fetchClientPrizesReport(
       month: _selectedMonth,
@@ -86,7 +86,7 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
     );
 
     if (selected != null && selected != _selectedMonth) {
-      setState(() => _selectedMonth = selected);
+      if (mounted) setState(() => _selectedMonth = selected);
       _loadPrizes();
     }
   }

@@ -6,31 +6,46 @@ import '../../../core/services/base_http_service.dart';
 import '../../../core/services/employee_push_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 
 class WorkScheduleService {
   static const String _baseEndpoint = ApiConstants.workScheduleEndpoint;
+  static const Duration _cacheDuration = Duration(minutes: 3);
 
-  /// Получить график на месяц
-  static Future<WorkSchedule> getSchedule(DateTime month) async {
-    try {
-      final monthStr = '${month.year}-${month.month.toString().padLeft(2, '0')}';
-      Logger.debug('Загрузка графика на месяц: $monthStr');
+  /// Получить график на месяц (с кешированием на 3 мин)
+  static Future<WorkSchedule> getSchedule(DateTime month, {bool forceRefresh = false}) async {
+    final monthStr = '${month.year}-${month.month.toString().padLeft(2, '0')}';
+    final cacheKey = 'work_schedule_$monthStr';
 
-      final result = await BaseHttpService.get<WorkSchedule>(
-        endpoint: '$_baseEndpoint?month=$monthStr',
-        fromJson: (json) => WorkSchedule.fromJson(json),
-        itemKey: 'schedule',
-      );
+    if (forceRefresh) CacheManager.remove(cacheKey);
 
-      if (result != null) {
-        Logger.debug('Загружен график: ${result.entries.length} записей');
-        return result;
-      }
-      return WorkSchedule(month: month, entries: []);
-    } catch (e) {
-      Logger.error('Ошибка загрузки графика', e);
-      return WorkSchedule(month: month, entries: []);
-    }
+    return CacheManager.getOrFetch<WorkSchedule>(
+      cacheKey,
+      () async {
+        try {
+          Logger.debug('Загрузка графика на месяц: $monthStr');
+          final result = await BaseHttpService.get<WorkSchedule>(
+            endpoint: '$_baseEndpoint?month=$monthStr',
+            fromJson: (json) => WorkSchedule.fromJson(json),
+            itemKey: 'schedule',
+          );
+          if (result != null) {
+            Logger.debug('Загружен график: ${result.entries.length} записей');
+            return result;
+          }
+          return WorkSchedule(month: month, entries: []);
+        } catch (e) {
+          Logger.error('Ошибка загрузки графика', e);
+          return WorkSchedule(month: month, entries: []);
+        }
+      },
+      duration: _cacheDuration,
+    );
+  }
+
+  /// Очистить кеш графика
+  static void clearCache() {
+    CacheManager.clearByPattern('work_schedule_');
   }
 
   /// Получить график конкретного сотрудника
@@ -66,10 +81,12 @@ class WorkScheduleService {
       final entryJson = entry.toJson();
       entryJson['month'] = monthStr;
 
-      return await BaseHttpService.simplePost(
+      final success = await BaseHttpService.simplePost(
         endpoint: _baseEndpoint,
         body: entryJson,
       );
+      if (success) clearCache();
+      return success;
     } catch (e) {
       Logger.error('Ошибка сохранения смены', e);
       return false;
@@ -82,9 +99,11 @@ class WorkScheduleService {
       final monthStr = '${entryDate.year}-${entryDate.month.toString().padLeft(2, '0')}';
       Logger.debug('Удаление смены: $entryId, месяц: $monthStr');
 
-      return await BaseHttpService.delete(
+      final success = await BaseHttpService.delete(
         endpoint: '$_baseEndpoint/$entryId?month=$monthStr',
       );
+      if (success) clearCache();
+      return success;
     } catch (e) {
       Logger.error('Ошибка удаления смены', e);
       return false;
@@ -102,6 +121,7 @@ class WorkScheduleService {
       );
 
       if (response != null && response['success'] == true) {
+        clearCache();
         final deletedCount = response['deletedCount'] ?? 0;
         Logger.info('График очищен. Удалено смен: $deletedCount');
         return {
@@ -143,11 +163,13 @@ class WorkScheduleService {
         body['endDate'] = endDate.toIso8601String();
       }
 
-      return await BaseHttpService.simplePost(
+      final success = await BaseHttpService.simplePost(
         endpoint: '$_baseEndpoint/bulk',
         body: body,
         timeout: ApiConstants.longTimeout,
       );
+      if (success) clearCache();
+      return success;
     } catch (e) {
       Logger.error('Ошибка массового создания смен', e);
       return false;

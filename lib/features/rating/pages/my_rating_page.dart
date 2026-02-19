@@ -31,7 +31,7 @@ class _MyRatingPageState extends State<MyRatingPage> {
   }
 
   Future<void> _loadHistory() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     final history = await RatingService.getEmployeeRatingHistory(
       widget.employeeId,

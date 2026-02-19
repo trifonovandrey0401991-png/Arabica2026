@@ -52,10 +52,11 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
   }
 
   Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final settings = await PointsSettingsService.getManagerPointsSettings();
+      if (!mounted) return;
       setState(() {
         // Shift settings
         _shiftConfirmedPoints = settings.shiftSettings.confirmedPoints;
@@ -69,6 +70,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -82,7 +84,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
   }
 
   Future<void> _saveSettings() async {
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     try {
       final result = await PointsSettingsService.saveManagerPointsSettings(
@@ -101,6 +103,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
       );
 
       if (result != null) {
+        if (!mounted) return;
         setState(() {
           _isSaving = false;
         });
@@ -124,6 +127,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
         throw Exception('Не удалось сохранить настройки');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isSaving = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -348,7 +352,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
             borderRadius: BorderRadius.circular(20.r),
             child: InkWell(
               onTap: () {
-                setState(() {
+                if (mounted) setState(() {
                   _expandedSections[key] = !isExpanded;
                 });
               },

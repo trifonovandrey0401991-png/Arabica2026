@@ -43,7 +43,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
   }
 
   Future<void> _processScan(String qr) async {
-    setState(() {
+    if (mounted) setState(() {
       _isProcessing = true;
       _errorMessage = null;
     });
@@ -71,7 +71,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
           errorMessage = 'Превышено время ожидания';
         }
 
-        setState(() {
+        if (mounted) setState(() {
           _errorMessage = errorMessage;
           _client = null;
         });
@@ -89,7 +89,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
     final qr = _client?.qr;
     if (qr == null) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isProcessing = true;
     });
     try {
@@ -143,7 +143,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
           errorMessage = 'Недостаточно баллов для списания';
         }
 
-        setState(() {
+        if (mounted) setState(() {
           _errorMessage = errorMessage;
         });
 
@@ -173,7 +173,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
   }
 
   void _resetScan() {
-    setState(() {
+    if (mounted) setState(() {
       _client = null;
       _lastQr = null;
       _errorMessage = null;

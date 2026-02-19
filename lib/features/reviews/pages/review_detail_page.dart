@@ -54,7 +54,7 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
   Future<void> _loadReview() async {
     final review = await ReviewService.getReviewById(_currentReview.id);
     if (review != null && mounted) {
-      setState(() {
+      if (mounted) setState(() {
         _currentReview = review;
       });
     }
@@ -65,7 +65,7 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 

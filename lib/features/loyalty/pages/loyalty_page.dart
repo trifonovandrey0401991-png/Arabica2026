@@ -74,7 +74,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     // Сначала показываем кэшированные данные (мгновенно, без спиннера)
     final cached = await LoyaltyStorage.read(name: name, phone: phone);
     if (cached != null && mounted) {
-      setState(() {
+      if (mounted) setState(() {
         _info = cached;
         _loading = false;
       });
@@ -93,8 +93,8 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
         return;
       }
 
-      if (showSpinner) {
-        setState(() {
+      if (showSpinner && mounted) {
+        if (mounted) setState(() {
           _loading = true;
         });
       }
@@ -140,7 +140,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
           errorMessage = 'Сервер временно недоступен. Попробуйте позже.';
         }
 
-        setState(() {
+        if (mounted) setState(() {
           _error = errorMessage;
           _loading = false;
         });

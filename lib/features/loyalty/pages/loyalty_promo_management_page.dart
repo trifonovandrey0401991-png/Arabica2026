@@ -37,7 +37,7 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
   }
 
   Future<void> _loadPromoSettings() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -88,7 +88,7 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isSaving = true;
       _error = null;
     });

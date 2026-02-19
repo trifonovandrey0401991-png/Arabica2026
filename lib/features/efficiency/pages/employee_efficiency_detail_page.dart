@@ -38,7 +38,7 @@ class _EmployeeEfficiencyDetailPageState
   }
 
   Future<void> _loadReferralPoints() async {
-    setState(() => _isLoadingReferrals = true);
+    if (mounted) setState(() => _isLoadingReferrals = true);
     try {
       // Загружаем всех сотрудников чтобы найти ID по имени
       final employees = await EmployeeService.getEmployees();

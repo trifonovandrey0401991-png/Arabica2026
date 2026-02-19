@@ -51,18 +51,20 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
   }
 
   Future<void> _loadArticles() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
     try {
       final articles = await TrainingArticleService.getArticles();
+      if (!mounted) return;
       setState(() {
         _articles = articles;
         _applyFilters();
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -559,7 +561,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                         icon: Icon(Icons.close, color: Colors.white.withOpacity(0.5), size: 20),
                         onPressed: () {
                           _searchController.clear();
-                          setState(() {
+                          if (mounted) setState(() {
                             _searchQuery = '';
                             _applyFilters();
                           });
@@ -571,7 +573,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
               ),
               cursorColor: AppColors.gold,
               onChanged: (value) {
-                setState(() {
+                if (mounted) setState(() {
                   _searchQuery = value;
                   _applyFilters();
                 });
@@ -651,7 +653,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
   }) {
     return GestureDetector(
       onTap: () {
-        setState(() {
+        if (mounted) setState(() {
           _selectedGroupFilter = group;
           _applyFilters();
         });
@@ -827,7 +829,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
           TextButton.icon(
             onPressed: () {
               _searchController.clear();
-              setState(() {
+              if (mounted) setState(() {
                 _searchQuery = '';
                 _selectedGroupFilter = null;
                 _applyFilters();
@@ -1126,7 +1128,7 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isSaving = true;
     });
 
@@ -1315,7 +1317,7 @@ class _TrainingArticleFormDialogState extends State<TrainingArticleFormDialog> {
                       // Чекбокс для внешней ссылки
                       InkWell(
                         onTap: () {
-                          setState(() {
+                          if (mounted) setState(() {
                             _showUrlField = !_showUrlField;
                             if (!_showUrlField) {
                               _urlController.clear();

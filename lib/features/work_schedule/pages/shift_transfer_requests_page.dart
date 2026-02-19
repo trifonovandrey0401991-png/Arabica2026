@@ -26,7 +26,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
   }
 
   Future<void> _loadNotifications() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 

@@ -99,18 +99,20 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
   }
 
   Future<void> _loadShops() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
     try {
       final shops = await ShopService.getShopsForCurrentUser();
+      if (!mounted) return;
       setState(() {
         _shops = shops;
         _isLoading = false;
       });
     } catch (e) {
       Logger.error('Ошибка загрузки магазинов', e);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -118,12 +120,13 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
   }
 
   Future<void> _loadShopRKOs(String shopAddress) async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
     try {
       final data = await RKOReportsService.getShopRKOs(shopAddress);
+      if (!mounted) return;
       if (data != null) {
         setState(() {
           _currentMonthRKOs = data['currentMonth'] ?? [];
@@ -132,12 +135,13 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
           _isLoading = false;
         });
       } else {
-        setState(() {
+        if (mounted) setState(() {
           _isLoading = false;
         });
       }
     } catch (e) {
       Logger.error('Ошибка загрузки РКО магазина', e);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -307,7 +311,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
             child: InkWell(
               borderRadius: BorderRadius.circular(12.r),
               onTap: () {
-                setState(() {
+                if (mounted) setState(() {
                   if (isExpanded) {
                     _expandedDays.remove(group.dayKey);
                   } else {
@@ -549,7 +553,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
             child: InkWell(
               borderRadius: BorderRadius.circular(12.r),
               onTap: () {
-                setState(() {
+                if (mounted) setState(() {
                   if (isExpanded) {
                     _expandedMonths.remove(month.monthKey);
                   } else {
@@ -668,7 +672,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
             child: InkWell(
               borderRadius: BorderRadius.circular(12.r),
               onTap: () {
-                setState(() {
+                if (mounted) setState(() {
                   if (isExpanded) {
                     _expandedYears.remove(year.year);
                   } else {
@@ -785,7 +789,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
             child: InkWell(
               borderRadius: BorderRadius.circular(10.r),
               onTap: () {
-                setState(() {
+                if (mounted) setState(() {
                   if (isExpanded) {
                     _expandedMonths.remove(month.monthKey);
                   } else {
@@ -890,7 +894,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
             child: InkWell(
               borderRadius: BorderRadius.circular(8.r),
               onTap: () {
-                setState(() {
+                if (mounted) setState(() {
                   if (isExpanded) {
                     _expandedDays.remove(day.dayKey);
                   } else {
@@ -1040,7 +1044,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                       subtitle: Text(shop.address),
                       trailing: Icon(Icons.chevron_right),
                       onTap: () {
-                        setState(() {
+                        if (mounted) setState(() {
                           _selectedShop = shop;
                         });
                         _loadShopRKOs(shop.address);
@@ -1062,7 +1066,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
-            setState(() {
+            if (mounted) setState(() {
               _selectedShop = null;
               _currentMonthRKOs = [];
               _months = [];
@@ -1274,12 +1278,13 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
   }
 
   Future<void> _loadRKOs() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
     try {
       final data = await RKOReportsService.getShopRKOs(widget.shopAddress);
+      if (!mounted) return;
       if (data != null) {
         setState(() {
           _currentMonthRKOs = data['currentMonth'] ?? [];
@@ -1288,12 +1293,13 @@ class _RKOShopDetailPageState extends State<RKOShopDetailPage> {
           _isLoading = false;
         });
       } else {
-        setState(() {
+        if (mounted) setState(() {
           _isLoading = false;
         });
       }
     } catch (e) {
       Logger.error('Ошибка загрузки РКО магазина', e);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });

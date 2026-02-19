@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../models/coffee_machine_report_model.dart';
 import '../models/pending_coffee_machine_report_model.dart';
 import '../services/coffee_machine_report_service.dart';
@@ -46,7 +47,17 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>('reports_coffee_machine');
+    if (cached != null && mounted) {
+      _allReports = cached['allReports'] as List<CoffeeMachineReport>;
+      _pendingReports = cached['pendingReports'] as List<PendingCoffeeMachineReport>;
+      _failedReports = cached['failedReports'] as List<PendingCoffeeMachineReport>;
+      _isLoading = false;
+      setState(() {});
+    }
+
+    // Step 2: Fetch fresh data
     try {
       final results = await Future.wait([
         CoffeeMachineReportService.getReportsForCurrentUser(),
@@ -54,14 +65,23 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
         CoffeeMachineReportService.getFailedReportsForCurrentUser(),
       ]);
 
+      if (!mounted) return;
       setState(() {
         _allReports = results[0] as List<CoffeeMachineReport>;
         _pendingReports = results[1] as List<PendingCoffeeMachineReport>;
         _failedReports = results[2] as List<PendingCoffeeMachineReport>;
         _isLoading = false;
       });
+      // Step 3: Save to cache
+      CacheManager.set('reports_coffee_machine', {
+        'allReports': _allReports,
+        'pendingReports': _pendingReports,
+        'failedReports': _failedReports,
+      });
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (cached == null && mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -201,7 +221,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
       padding: EdgeInsets.symmetric(horizontal: 3.w),
       child: GestureDetector(
         onTap: () {
-          setState(() {
+          if (mounted) setState(() {
             _selectedTab = index;
             _tabController.animateTo(index);
           });

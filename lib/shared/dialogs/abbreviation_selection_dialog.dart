@@ -46,7 +46,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
 
   Future<void> _loadAbbreviations() async {
     Logger.debug('Начинаем загрузку аббревиатур...');
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
@@ -181,7 +181,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
                       value: abbrev.abbreviation,
                       groupValue: _selectedAbbreviation,
                       onChanged: (value) {
-                        setState(() {
+                        if (mounted) setState(() {
                           _selectedAbbreviation = value;
                         });
                       },

@@ -260,7 +260,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
   void _nextQuestion() {
     if (_questions == null) return;
     if (_currentQuestionIndex < _questions!.length - 1) {
-      setState(() {
+      if (mounted) setState(() {
         _currentQuestionIndex++;
         _textController.clear();
         _numberController.clear();
@@ -298,7 +298,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
   void _previousQuestion() {
     if (_currentQuestionIndex > 0) {
-      setState(() {
+      if (mounted) setState(() {
         _currentQuestionIndex--;
         if (_questions != null && _currentQuestionIndex < _questions!.length) {
           final question = _questions![_currentQuestionIndex];
@@ -494,7 +494,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
     if (_questions == null) return;
     if (_isSubmitting) return; // Защита от повторной отправки
 
-    setState(() => _isSubmitting = true);
+    if (mounted) setState(() => _isSubmitting = true);
 
     try {
       _saveAnswer();
@@ -1000,7 +1000,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                             Expanded(
                               child: ElevatedButton(
                                 onPressed: () {
-                                  setState(() {
+                                  if (mounted) setState(() {
                                     _selectedYesNo = 'Да';
                                   });
                                   // Автоматически переходим к следующему вопросу
@@ -1035,7 +1035,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                             Expanded(
                               child: ElevatedButton(
                                 onPressed: () {
-                                  setState(() {
+                                  if (mounted) setState(() {
                                     _selectedYesNo = 'Нет';
                                   });
                                   // Автоматически переходим к следующему вопросу

@@ -39,7 +39,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
   }
 
   Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     final settings = await FortuneWheelService.getSettings();
 
@@ -56,7 +56,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
         );
       }
 
-      setState(() {
+      if (mounted) setState(() {
         _sectors = sectors;
         _topEmployeesCount = settings?.topEmployeesCount ?? 3; // Читаем topEmployeesCount
         _isLoading = false;
@@ -65,7 +65,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
   }
 
   Future<void> _saveSettings() async {
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     // Валидация topEmployeesCount
     if (_topEmployeesCount < 1 || _topEmployeesCount > 10) {
@@ -75,7 +75,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
           backgroundColor: Colors.red,
         ),
       );
-      setState(() => _isSaving = false);
+      if (mounted) setState(() => _isSaving = false);
       return;
     }
 
@@ -97,7 +97,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
 
     final success = await FortuneWheelService.updateSettings(updatedSettings);
 
-    setState(() => _isSaving = false);
+    if (mounted) setState(() => _isSaving = false);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -168,7 +168,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                           for (int i = 1; i <= 10; i++)
                             GestureDetector(
                               onTap: () {
-                                setState(() {
+                                if (mounted) setState(() {
                                   _topEmployeesCount = i;
                                 });
                               },
@@ -463,7 +463,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                     final current = double.tryParse(_probControllers[index].text) ?? 0;
                     if (current > 0) {
                       _probControllers[index].text = (current - 1).toStringAsFixed(1);
-                      setState(() {});
+                      if (mounted) setState(() {});
                     }
                   },
                 ),
@@ -473,7 +473,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                   onPressed: () {
                     final current = double.tryParse(_probControllers[index].text) ?? 0;
                     _probControllers[index].text = (current + 1).toStringAsFixed(1);
-                    setState(() {});
+                    if (mounted) setState(() {});
                   },
                 ),
               ],

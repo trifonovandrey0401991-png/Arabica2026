@@ -46,7 +46,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
   Future<void> _validateReferralCode(String value) async {
     if (value.isEmpty) {
-      setState(() {
+      if (mounted) setState(() {
         _referralValidationMessage = null;
         _isReferralValid = false;
       });
@@ -55,7 +55,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
     final code = int.tryParse(value);
     if (code == null) {
-      setState(() {
+      if (mounted) setState(() {
         _referralValidationMessage = 'Введите число';
         _isReferralValid = false;
       });
@@ -63,13 +63,14 @@ class _RegistrationPageState extends State<RegistrationPage> {
     }
 
     final result = await ReferralService.validateReferralCode(code);
+    if (!mounted) return;
     if (result != null && result['valid'] == true) {
       setState(() {
         _referralValidationMessage = 'Сотрудник: ${result['employee']?['name'] ?? 'Найден'}';
         _isReferralValid = true;
       });
     } else {
-      setState(() {
+      if (mounted) setState(() {
         _referralValidationMessage = result?['message'] ?? 'Код не найден';
         _isReferralValid = false;
       });
@@ -81,7 +82,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final phone = '+7${_phoneController.text.trim()}';

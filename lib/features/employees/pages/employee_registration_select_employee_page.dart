@@ -86,7 +86,7 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
                 ),
               ),
               onChanged: (value) {
-                setState(() {
+                if (mounted) setState(() {
                   _searchQuery = value.trim().toLowerCase();
                 });
               },
@@ -111,7 +111,7 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
                         SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: () {
-                            setState(() {
+                            if (mounted) setState(() {
                               _employeesFuture = _loadEmployees();
                             });
                           },

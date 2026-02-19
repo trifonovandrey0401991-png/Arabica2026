@@ -72,7 +72,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
   }
 
   Future<void> _onPinEntered(String pin) async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _showError = false;
       _errorMessage = null;
@@ -93,7 +93,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
       }
       widget.onSuccess?.call();
     } else {
-      setState(() {
+      if (mounted) setState(() {
         _showError = true;
         _errorMessage = result.error;
         _clearPin = true;
@@ -135,7 +135,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
 
     if (enable == true && mounted) {
       await _authService.enableBiometric();
-      setState(() {
+      if (mounted) setState(() {
         _biometricEnabled = true;
       });
     }
@@ -176,7 +176,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
 
         if (authenticated && mounted) {
           await _authService.enableBiometric();
-          setState(() {
+          if (mounted) setState(() {
             _biometricEnabled = true;
           });
 
@@ -192,7 +192,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
   }
 
   Future<void> _authenticateWithBiometric() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _showError = false;
     });
@@ -210,7 +210,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
     } else {
       // Не показываем ошибку при отмене биометрии
       if (result.error?.contains('отклонена') != true) {
-        setState(() {
+        if (mounted) setState(() {
           _showError = true;
           _errorMessage = result.error;
         });

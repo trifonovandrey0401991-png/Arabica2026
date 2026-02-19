@@ -69,7 +69,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     if (_tabController.indexIsChanging) return;
     final newIndex = _tabController.index;
     if (newIndex != _currentTabIndex) {
-      setState(() {
+      if (mounted) setState(() {
         _currentTabIndex = newIndex;
         // Переключаем месяц
         if (newIndex == 0) {
@@ -88,7 +88,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
   }
 
   Future<void> _loadData({bool forceRefresh = false}) async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });

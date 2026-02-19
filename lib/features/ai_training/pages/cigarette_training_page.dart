@@ -113,7 +113,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   }
 
   Future<void> _loadData() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -641,7 +641,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   ),
                   onPressed: () {
                     _searchController.clear();
-                    setState(() {
+                    if (mounted) setState(() {
                       _searchQuery = '';
                     });
                   },
@@ -651,7 +651,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         ),
         onChanged: (value) {
-          setState(() {
+          if (mounted) setState(() {
             _searchQuery = value;
           });
         },
@@ -845,7 +845,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             )),
           ],
           onChanged: (value) {
-            setState(() {
+            if (mounted) setState(() {
               _selectedGroup = value;
             });
             _loadData();
@@ -910,7 +910,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             ),
           ],
           onChanged: (value) {
-            setState(() {
+            if (mounted) setState(() {
               _accuracySortMode = value ?? 'none';
             });
           },

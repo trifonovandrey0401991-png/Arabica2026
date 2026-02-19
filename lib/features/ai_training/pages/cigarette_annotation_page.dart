@@ -87,7 +87,7 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
                 key: _painterKey,
                 imageBytes: widget.imageBytes,
                 onBoxesChanged: (boxes) {
-                  setState(() {
+                  if (mounted) setState(() {
                     _boxes = boxes;
                   });
                 },
@@ -212,7 +212,7 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
       return;
     }
 
-    setState(() => _isUploading = true);
+    if (mounted) setState(() => _isUploading = true);
 
     try {
       // Конвертируем Rect в AnnotationBox

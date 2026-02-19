@@ -112,7 +112,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
 
     // Если данные были отредактированы - сохраняем как образец для обучения
     if (_isEditing) {
-      setState(() => _isSaving = true);
+      if (mounted) setState(() => _isSaving = true);
 
       await ZReportService.saveSample(
         imageBase64: widget.imageBase64,
@@ -124,7 +124,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
         employeeName: widget.employeeName,
       );
 
-      setState(() => _isSaving = false);
+      if (mounted) setState(() => _isSaving = false);
     }
 
     if (mounted) {
@@ -139,7 +139,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
   }
 
   void _startEditing() {
-    setState(() => _isEditing = true);
+    if (mounted) setState(() => _isEditing = true);
   }
 
   void _cancel() {

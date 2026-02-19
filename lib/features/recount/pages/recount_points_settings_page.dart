@@ -42,7 +42,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final results = await Future.wait([
@@ -50,12 +50,14 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
         RecountPointsService.getSettings(),
       ]);
 
+      if (!mounted) return;
       setState(() {
         _employeePoints = results[0] as List<RecountPoints>;
         _settings = results[1] as RecountSettings;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -210,7 +212,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
     if (result != null) {
       final success = await RecountPointsService.updateSettings(result);
       if (success && mounted) {
-        setState(() => _settings = result);
+        if (mounted) setState(() => _settings = result);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -504,7 +506,7 @@ class _RecountPointsSettingsPageState extends State<RecountPointsSettingsPage> {
                   icon: Icon(Icons.close, color: Colors.white.withOpacity(0.5), size: 20),
                   onPressed: () {
                     _searchController.clear();
-                    setState(() => _searchQuery = '');
+                    if (mounted) setState(() => _searchQuery = '');
                   },
                 )
               : null,
@@ -1132,7 +1134,7 @@ class _EditPointsBottomSheetState extends State<_EditPointsBottomSheet> {
   void _onPointsChanged() {
     final value = double.tryParse(_pointsController.text);
     if (value != null) {
-      setState(() => _previewPoints = value.clamp(0, 100));
+      if (mounted) setState(() => _previewPoints = value.clamp(0, 100));
     }
   }
 

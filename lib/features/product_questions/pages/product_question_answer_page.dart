@@ -78,7 +78,7 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
       );
       if (updated != null && updated.messages.isNotEmpty && mounted) {
         _updateLastTimestamp(updated.messages);
-        setState(() {
+        if (mounted) setState(() {
           _question = ProductQuestion(
             id: _question!.id,
             clientPhone: _question!.clientPhone,
@@ -112,7 +112,7 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
@@ -121,6 +121,7 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
       final question = await ProductQuestionService.getQuestion(widget.questionId);
       if (question != null) _updateLastTimestamp(question.messages);
 
+      if (!mounted) return;
       setState(() {
         _question = question;
         if (widget.shopAddress != null && widget.shopAddress!.isNotEmpty) {
@@ -139,6 +140,7 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -164,8 +166,8 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
         imageQuality: 85,
       );
 
-      if (image != null) {
-        setState(() {
+      if (image != null && mounted) {
+        if (mounted) setState(() {
           _selectedImage = File(image.path);
         });
       }
@@ -187,8 +189,8 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
         imageQuality: 85,
       );
 
-      if (image != null) {
-        setState(() {
+      if (image != null && mounted) {
+        if (mounted) setState(() {
           _selectedImage = File(image.path);
         });
       }
@@ -298,7 +300,7 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
 
     if (_isSending) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isSending = true;
     });
 
@@ -328,7 +330,7 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
         _answerController.clear();
         // Оптимистичное добавление — сразу показываем ответ
         _updateLastTimestamp([message]);
-        setState(() {
+        if (mounted) setState(() {
           _selectedImage = null;
           _hasAnswered = true;
           if (_question != null) {

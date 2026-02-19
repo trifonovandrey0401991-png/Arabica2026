@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
@@ -43,7 +44,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
   }
 
   void _onTabChanged() {
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
@@ -54,12 +55,19 @@ class _RKOReportsPageState extends State<RKOReportsPage>
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>('reports_rko');
+    if (cached != null && mounted) {
+      _employees = cached['employees'] as List<Employee>;
+      _shops = cached['shops'] as List<Shop>;
+      _pendingRKOs = cached['pendingRKOs'] as List<dynamic>;
+      _failedRKOs = cached['failedRKOs'] as List<dynamic>;
+      _isLoading = false;
+      setState(() {});
+    }
 
+    // Step 2: Fetch fresh data
     try {
-      // Загружаем данные параллельно
       final results = await Future.wait([
         EmployeesPage.loadEmployeesForNotifications(),
         ShopService.getShopsForCurrentUser(),
@@ -68,13 +76,12 @@ class _RKOReportsPageState extends State<RKOReportsPage>
       ]);
 
       final allEmployees = results[0] as List<Employee>;
-
-      // Фильтруем сотрудников по мультитенантности
       final filteredEmployees = await MultitenancyFilterService.filterByEmployeePhone<Employee>(
         allEmployees,
         (emp) => emp.phone ?? '',
       );
 
+      if (!mounted) return;
       setState(() {
         _employees = filteredEmployees;
         _shops = results[1] as List<Shop>;
@@ -82,13 +89,20 @@ class _RKOReportsPageState extends State<RKOReportsPage>
         _failedRKOs = results[3] as List<dynamic>;
         _isLoading = false;
       });
+      // Step 3: Save to cache
+      CacheManager.set('reports_rko', {
+        'employees': _employees,
+        'shops': _shops,
+        'pendingRKOs': _pendingRKOs,
+        'failedRKOs': _failedRKOs,
+      });
 
       Logger.success('Загружено: ${_employees.length} сотрудников, ${_shops.length} магазинов, ${_pendingRKOs.length} pending, ${_failedRKOs.length} failed');
     } catch (e) {
       Logger.error('Ошибка загрузки данных', e);
-      setState(() {
-        _isLoading = false;
-      });
+      if (cached == null && mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -237,7 +251,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
         child: InkWell(
           onTap: () {
             _tabController.animateTo(index);
-            setState(() {});
+            if (mounted) setState(() {});
           },
           borderRadius: BorderRadius.circular(10.r),
           child: Container(
@@ -375,7 +389,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
               onChanged: (value) {
-                setState(() {
+                if (mounted) setState(() {
                   _employeeSearchQuery = value.trim().toLowerCase();
                 });
               },
@@ -536,7 +550,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               ),
               onChanged: (value) {
-                setState(() {
+                if (mounted) setState(() {
                   _shopSearchQuery = value.trim().toLowerCase();
                 });
               },

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import '../models/test_result_model.dart';
@@ -38,27 +39,34 @@ class _TestReportPageState extends State<TestReportPage>
   }
 
   Future<void> _loadResults() async {
-    setState(() {
-      _isLoading = true;
-    });
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>('reports_tests');
+    if (cached != null && mounted) {
+      _allResults = cached['allResults'] as List<TestResult>;
+      _isLoading = false;
+      setState(() {});
+    }
 
+    // Step 2: Fetch fresh data
     try {
       final allResults = await TestResultService.getResults();
-      // Фильтрация по мультитенантности — управляющий видит только свои магазины
       final results = await MultitenancyFilterService.filterByShopAddress(
         allResults,
         (result) => result.shopAddress ?? '',
       );
+      if (!mounted) return;
       setState(() {
         _allResults = results;
         _isLoading = false;
       });
+      // Step 3: Save to cache
+      CacheManager.set('reports_tests', {
+        'allResults': results,
+      });
     } catch (e) {
       Logger.error('Ошибка загрузки результатов', e);
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
+      if (cached == null && mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка загрузки: $e'),

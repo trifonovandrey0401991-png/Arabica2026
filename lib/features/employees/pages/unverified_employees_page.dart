@@ -89,7 +89,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage>
   }
 
   void _refresh() {
-    setState(() {
+    if (mounted) setState(() {
       _employeesFuture = _loadUnverifiedEmployees();
     });
     _animationController.reset();
@@ -200,7 +200,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage>
                       ? IconButton(
                           icon: Icon(Icons.clear, color: Colors.white.withOpacity(0.3)),
                           onPressed: () {
-                            setState(() {
+                            if (mounted) setState(() {
                               _searchQuery = '';
                             });
                           },
@@ -211,7 +211,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage>
                       EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                 ),
                 onChanged: (value) {
-                  setState(() {
+                  if (mounted) setState(() {
                     _searchQuery = value.trim().toLowerCase();
                   });
                 },

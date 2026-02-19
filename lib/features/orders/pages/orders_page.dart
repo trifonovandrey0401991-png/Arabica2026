@@ -34,7 +34,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
   }
 
   Future<void> _loadOrders() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 

@@ -44,17 +44,19 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
   }
 
   Future<void> _loadProducts() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
     try {
       final products = await RecountQuestionService.getQuestions();
+      if (!mounted) return;
       setState(() {
         _products = products;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -527,7 +529,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
                               icon: Icon(Icons.clear),
                               onPressed: () {
                                 _searchController.clear();
-                                setState(() => _searchQuery = '');
+                                if (mounted) setState(() => _searchQuery = '');
                               },
                             )
                           : null,

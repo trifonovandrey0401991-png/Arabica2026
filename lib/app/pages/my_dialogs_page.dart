@@ -79,14 +79,14 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
   }
 
   Future<void> _loadDialogs() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     final prefs = await SharedPreferences.getInstance();
     final phone = prefs.getString('user_phone') ?? '';
     final userName = prefs.getString('user_name') ?? phone;
 
     if (phone.isEmpty) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
 
@@ -135,7 +135,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
     }
 
     // Обновляем состояние один раз со всеми данными
-    setState(() {
+    if (mounted) setState(() {
       _networkData = networkData;
       _managementData = managementData;
       _clientReviews = reviews;

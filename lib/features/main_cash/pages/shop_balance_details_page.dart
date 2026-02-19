@@ -39,16 +39,18 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
   }
 
   Future<void> _loadBalance() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final balance = await MainCashService.getShopBalance(widget.shopAddress);
+      if (!mounted) return;
       setState(() {
         _balance = balance;
         _isLoading = false;
       });
     } catch (e) {
       Logger.error('Ошибка загрузки баланса', e);
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }

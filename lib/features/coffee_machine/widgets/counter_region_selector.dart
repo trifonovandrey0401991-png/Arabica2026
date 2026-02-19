@@ -233,7 +233,7 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
   }
 
   void _onPanStart(DragStartDetails details, Size displaySize) {
-    setState(() {
+    if (mounted) setState(() {
       _isDrawing = true;
       _startPoint = Offset(
         (details.localPosition.dx / displaySize.width).clamp(0.0, 1.0),
@@ -245,7 +245,7 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
 
   void _onPanUpdate(DragUpdateDetails details, Size displaySize) {
     if (!_isDrawing) return;
-    setState(() {
+    if (mounted) setState(() {
       _currentPoint = Offset(
         (details.localPosition.dx / displaySize.width).clamp(0.0, 1.0),
         (details.localPosition.dy / displaySize.height).clamp(0.0, 1.0),
@@ -255,7 +255,7 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
 
   void _onPanEnd() {
     if (!_isDrawing || _startPoint == null || _currentPoint == null) {
-      setState(() => _isDrawing = false);
+      if (mounted) setState(() => _isDrawing = false);
       return;
     }
 
@@ -263,10 +263,10 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
 
     // Минимум 3% по ширине и высоте
     if (rect.width > 0.03 && rect.height > 0.03) {
-      setState(() => _region = rect);
+      if (mounted) setState(() => _region = rect);
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isDrawing = false;
       _startPoint = null;
       _currentPoint = null;

@@ -37,7 +37,7 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
   }
 
   Future<void> _loadData({bool forceRefresh = false}) async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -72,6 +72,7 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
         }).toList();
       }
 
+      if (!mounted) return;
       setState(() {
         _data = data;
         _filteredEmployees = filtered;
@@ -81,6 +82,7 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
       // Загружаем данные о приглашениях после основных данных
       _loadReferralPoints();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Ошибка загрузки данных: $e';
         _isLoading = false;
@@ -209,7 +211,7 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
                       selectedMonth: _selectedMonth,
                       selectedYear: _selectedYear,
                       onMonthSelected: (selection) {
-                        setState(() {
+                        if (mounted) setState(() {
                           _selectedYear = selection['year']!;
                           _selectedMonth = selection['month']!;
                         });

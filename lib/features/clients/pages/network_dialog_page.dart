@@ -37,7 +37,7 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
   }
 
   Future<void> _loadMessages() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -45,7 +45,7 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
       _userName = prefs.getString('user_name') ?? prefs.getString('userName');
 
       if (_userPhone!.isEmpty) {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
 
@@ -56,6 +56,7 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
         NetworkMessageService.markAsReadByClient(_userPhone!);
       }
 
+      if (!mounted) return;
       setState(() {
         _messages = data.messages;
         _isLoading = false;
@@ -72,6 +73,7 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
         }
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -85,7 +87,7 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
     final text = _messageController.text.trim();
     if (text.isEmpty || _userPhone == null || _userPhone!.isEmpty) return;
 
-    setState(() => _isSending = true);
+    if (mounted) setState(() => _isSending = true);
 
     final message = await NetworkMessageService.sendReply(
       clientPhone: _userPhone!,
@@ -93,10 +95,11 @@ class _NetworkDialogPageState extends State<NetworkDialogPage> {
       clientName: _userName,
     );
 
+    if (!mounted) return;
     setState(() => _isSending = false);
 
     if (message != null) {
-      setState(() {
+      if (mounted) setState(() {
         _messages.add(message);
         _messageController.clear();
       });

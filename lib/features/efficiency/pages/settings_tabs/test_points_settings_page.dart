@@ -30,10 +30,11 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
   }
 
   Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final settings = await PointsSettingsService.getTestPointsSettings();
+      if (!mounted) return;
       setState(() {
         _minPoints = settings.minPoints;
         _zeroThreshold = settings.zeroThreshold;
@@ -41,6 +42,7 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -54,7 +56,7 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
   }
 
   Future<void> _saveSettings() async {
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     try {
       final result = await PointsSettingsService.saveTestPointsSettings(
@@ -64,21 +66,21 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
       );
 
       if (result != null) {
+        if (!mounted) return;
         setState(() {
           _isSaving = false;
         });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Настройки сохранены'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Настройки сохранены'),
+            backgroundColor: Colors.green,
+          ),
+        );
       } else {
         throw Exception('Не удалось сохранить настройки');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isSaving = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -143,7 +145,7 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
                           max: 0,
                           divisions: 10,
                           onChanged: (value) {
-                            setState(() => _minPoints = value);
+                            if (mounted) setState(() => _minPoints = value);
                           },
                           valueLabel: _minPoints.toStringAsFixed(1),
                           accentColor: Colors.red,
@@ -160,7 +162,7 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
                           max: 19,
                           divisions: 14,
                           onChanged: (value) {
-                            setState(() => _zeroThreshold = value.round());
+                            if (mounted) setState(() => _zeroThreshold = value.round());
                           },
                           valueLabel: _zeroThreshold.toString(),
                           isInteger: true,
@@ -178,7 +180,7 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
                           max: 5,
                           divisions: 10,
                           onChanged: (value) {
-                            setState(() => _maxPoints = value);
+                            if (mounted) setState(() => _maxPoints = value);
                           },
                           valueLabel: '+${_maxPoints.toStringAsFixed(1)}',
                           accentColor: Colors.green,

@@ -159,7 +159,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       // Загружаем вопросы и поставщиков параллельно
       final results = await Future.wait([
@@ -167,6 +167,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         SupplierService.getSuppliers(),
       ]);
 
+      if (!mounted) return;
       setState(() {
         _questions = results[0] as List<EnvelopeQuestion>;
         _suppliers = results[1] as List<Supplier>;
@@ -307,9 +308,9 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         employeeName: widget.employeeName,
       );
 
-      if (dialogResult != null) {
+      if (dialogResult != null && mounted) {
         // Заполняем поля распознанными/исправленными данными
-        setState(() {
+        if (mounted) setState(() {
           if (isOoo) {
             _oooRevenueController.text = dialogResult.revenue.toStringAsFixed(0);
             _oooCashController.text = dialogResult.cash.toStringAsFixed(0);
@@ -346,14 +347,14 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   void _nextStep() {
     if (_validateCurrentStep()) {
       if (_currentStep < _totalSteps - 1) {
-        setState(() => _currentStep++);
+        if (mounted) setState(() => _currentStep++);
       }
     }
   }
 
   void _prevStep() {
     if (_currentStep > 0) {
-      setState(() => _currentStep--);
+      if (mounted) setState(() => _currentStep--);
     }
   }
 
@@ -442,12 +443,12 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       builder: (context) => AddExpenseDialog(suppliers: oooSuppliers),
     );
     if (result != null) {
-      setState(() => _oooExpenses.add(result));
+      if (mounted) setState(() => _oooExpenses.add(result));
     }
   }
 
   void _removeOooExpense(int index) {
-    setState(() => _oooExpenses.removeAt(index));
+    if (mounted) setState(() => _oooExpenses.removeAt(index));
   }
 
   Future<void> _addExpense() async {
@@ -459,18 +460,18 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       builder: (context) => AddExpenseDialog(suppliers: ipSuppliers),
     );
     if (result != null) {
-      setState(() => _expenses.add(result));
+      if (mounted) setState(() => _expenses.add(result));
     }
   }
 
   void _removeExpense(int index) {
-    setState(() => _expenses.removeAt(index));
+    if (mounted) setState(() => _expenses.removeAt(index));
   }
 
   Future<void> _submitReport() async {
     if (_isSaving) return;
 
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     try {
       // Загружаем все фото

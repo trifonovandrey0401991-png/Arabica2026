@@ -499,7 +499,7 @@ class _TrainingPageState extends State<TrainingPage> {
                   contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
                 ),
                 onChanged: (value) {
-                  setState(() {
+                  if (mounted) setState(() {
                     _searchQuery = value;
                   });
                 },
@@ -509,7 +509,7 @@ class _TrainingPageState extends State<TrainingPage> {
               GestureDetector(
                 onTap: () {
                   _searchController.clear();
-                  setState(() {
+                  if (mounted) setState(() {
                     _searchQuery = '';
                   });
                   _searchFocus.unfocus();

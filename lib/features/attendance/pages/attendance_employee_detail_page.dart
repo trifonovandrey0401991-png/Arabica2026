@@ -32,7 +32,7 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final now = DateTime.now();
@@ -54,11 +54,13 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
         startDate: startDate,
       );
 
+      if (!mounted) return;
       setState(() {
         _records = records;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -227,7 +229,7 @@ class _AttendanceEmployeeDetailPageState extends State<AttendanceEmployeeDetailP
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            setState(() => _selectedPeriod = period);
+            if (mounted) setState(() => _selectedPeriod = period);
             _loadData();
           },
           borderRadius: BorderRadius.circular(10.r),

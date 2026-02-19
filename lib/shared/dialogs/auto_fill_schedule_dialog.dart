@@ -123,7 +123,7 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
                             }).toList(),
                             onChanged: (value) {
                               if (value != null) {
-                                setState(() {
+                                if (mounted) setState(() {
                                   _selectedStartDay = value;
                                   if (_selectedEndDay < _selectedStartDay) {
                                     _selectedEndDay = _selectedStartDay;
@@ -156,7 +156,7 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
                             }).toList(),
                             onChanged: (value) {
                               if (value != null) {
-                                setState(() {
+                                if (mounted) setState(() {
                                   _selectedEndDay = value;
                                 });
                               }
@@ -180,7 +180,7 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
                       value: true,
                       groupValue: _replaceExisting,
                       onChanged: (value) {
-                        setState(() {
+                        if (mounted) setState(() {
                           _replaceExisting = value ?? false;
                         });
                       },
@@ -191,7 +191,7 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
                       value: false,
                       groupValue: _replaceExisting,
                       onChanged: (value) {
-                        setState(() {
+                        if (mounted) setState(() {
                           _replaceExisting = value ?? false;
                         });
                       },

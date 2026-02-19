@@ -32,7 +32,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
   }
 
   Future<void> _loadSamples() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final uri = Uri.parse(
         '${ApiConstants.serverUrl}/api/coffee-machine/training?machineName=${Uri.encodeComponent(widget.machineName)}',
@@ -42,14 +42,17 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final all = (data['samples'] as List?) ?? [];
+        if (!mounted) return;
         setState(() {
           _samples = all.cast<Map<String, dynamic>>();
           _isLoading = false;
         });
       } else {
+        if (!mounted) return;
         setState(() => _isLoading = false);
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -85,6 +88,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
         final response = await http.delete(uri, headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.defaultTimeout);
 
         if (response.statusCode == 200) {
+          if (!mounted) return;
           setState(() {
             _samples.removeWhere((s) => s['id'] == id);
           });

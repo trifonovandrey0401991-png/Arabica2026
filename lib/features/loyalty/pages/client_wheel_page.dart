@@ -60,7 +60,7 @@ class _ClientWheelPageState extends State<ClientWheelPage>
 
     _spinController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        setState(() => _isSpinning = false);
+        if (mounted) setState(() => _isSpinning = false);
         if (_lastResult != null) {
           _showResultDialog();
         }
@@ -99,16 +99,16 @@ class _ClientWheelPageState extends State<ClientWheelPage>
   Future<void> _spin() async {
     if (_isSpinning || _spinsLeft <= 0) return;
 
-    setState(() => _isSpinning = true);
+    if (mounted) setState(() => _isSpinning = true);
 
     final result = await LoyaltyGamificationService.spinWheel(widget.phone);
 
     if (result != null) {
       _lastResult = result;
       _animateToSector(result.sectorIndex);
-      setState(() => _spinsLeft--);
+      if (mounted) setState(() => _spinsLeft--);
     } else {
-      setState(() => _isSpinning = false);
+      if (mounted) setState(() => _isSpinning = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

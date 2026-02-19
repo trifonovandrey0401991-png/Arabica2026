@@ -106,7 +106,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
                   );
                 }).toList(),
                 onChanged: (value) {
-                  setState(() {
+                  if (mounted) setState(() {
                     _selectedShopAddress = value;
                   });
                 },
@@ -130,7 +130,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
                 value: type,
                 groupValue: _selectedShiftType,
                 onChanged: (value) {
-                  setState(() {
+                  if (mounted) setState(() {
                     _selectedShiftType = value;
                   });
                 },
@@ -144,7 +144,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: () {
-                  setState(() {
+                  if (mounted) setState(() {
                     _selectedShopAddress = null;
                     _selectedShiftType = null;
                   });
@@ -227,7 +227,7 @@ class _ShiftEditDialogState extends State<ShiftEditDialog> {
       return;
     }
 
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 

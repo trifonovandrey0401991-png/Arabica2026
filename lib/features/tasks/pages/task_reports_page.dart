@@ -53,7 +53,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
   Future<void> _markExpiredAsViewed() async {
     final success = await TaskService.markExpiredAsViewed();
     if (success && mounted) {
-      setState(() {
+      if (mounted) setState(() {
         _unviewedExpiredCount = 0;
       });
     }
@@ -67,7 +67,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
   }
 
   Future<void> _loadAssignments() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -95,11 +95,13 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
         assignments = assignments.where((a) => allowedIds.contains(a.assigneeId)).toList();
       }
 
+      if (!mounted) return;
       setState(() {
         _allAssignments = assignments;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;

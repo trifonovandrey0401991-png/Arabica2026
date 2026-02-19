@@ -28,15 +28,17 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
   }
 
   Future<void> _loadQuestions() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final questions = await EnvelopeQuestionService.getQuestions();
+      if (!mounted) return;
       setState(() {
         _questions = questions;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -50,6 +50,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
 
   Future<void> _loadUserRole() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _userRole = prefs.getString('user_role') ?? 'employee';
     });
@@ -65,7 +66,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
   }
 
   Future<void> _loadData() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
@@ -74,11 +75,13 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
       await _loadQuestions();
       await _loadPersonalDialogs();
 
+      if (!mounted) return;
       setState(() {
         _shops = shops;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -97,7 +100,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
         dialogs = await ProductQuestionService.getAllPersonalDialogs();
       }
 
-      setState(() {
+      if (mounted) setState(() {
         _personalDialogs = dialogs;
       });
     } catch (e) {
@@ -113,7 +116,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
         shopAddress: _selectedShopAddress,
       );
 
-      setState(() {
+      if (mounted) setState(() {
         _allQuestions = questions;
       });
     } catch (e) {
@@ -539,7 +542,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                     )),
                   ],
                   onChanged: (value) {
-                    setState(() {
+                    if (mounted) setState(() {
                       _selectedShopAddress = value;
                     });
                     _loadQuestions();

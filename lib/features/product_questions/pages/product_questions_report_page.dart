@@ -26,7 +26,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
   }
 
   Future<void> _loadData() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 
@@ -63,12 +63,14 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
         }
       }
 
+      if (!mounted) return;
       setState(() {
         _shopStats = stats;
         _unreadByShop = unviewedCounts;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -221,12 +223,12 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                       : Map.fromEntries(
                           allCounts.entries.where((e) => allowed.contains(e.key)),
                         );
-                  setState(() {
+                  if (mounted) setState(() {
                     _expandedShop = shopAddress;
                     _unreadByShop = unviewedCounts;
                   });
                 } else {
-                  setState(() {
+                  if (mounted) setState(() {
                     _expandedShop = null;
                   });
                 }

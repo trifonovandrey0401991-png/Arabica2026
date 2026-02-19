@@ -114,8 +114,8 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
       },
     );
 
-    if (time != null) {
-      setState(() {
+    if (time != null && mounted) {
+      if (mounted) setState(() {
         _reminderTimes[reminderIndex] = time;
       });
     }
@@ -143,8 +143,8 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
       },
     );
 
-    if (time != null) {
-      setState(() {
+    if (time != null && mounted) {
+      if (mounted) setState(() {
         _startTime = time;
       });
     }
@@ -172,8 +172,8 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
       },
     );
 
-    if (time != null) {
-      setState(() {
+    if (time != null && mounted) {
+      if (mounted) setState(() {
         _endTime = time;
       });
     }
@@ -189,8 +189,8 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
       ),
     );
 
-    if (result != null) {
-      setState(() {
+    if (result != null && mounted) {
+      if (mounted) setState(() {
         _recipients = result;
       });
     }
@@ -199,7 +199,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate() || !_isFormValid) return;
 
-    setState(() => _isSubmitting = true);
+    if (mounted) setState(() => _isSubmitting = true);
 
     try {
       if (_isEditing) {
@@ -578,7 +578,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
         final isSelected = _selectedDays.contains(index);
         return GestureDetector(
           onTap: () {
-            setState(() {
+            if (mounted) setState(() {
               if (isSelected) {
                 _selectedDays.remove(index);
               } else {
@@ -898,7 +898,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
                   SizedBox(width: 6),
                   GestureDetector(
                     onTap: () {
-                      setState(() {
+                      if (mounted) setState(() {
                         _recipients.remove(r);
                       });
                     },

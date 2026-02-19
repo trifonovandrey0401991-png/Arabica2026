@@ -61,7 +61,7 @@ class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
       final question = await ProductQuestionService.getQuestion(widget.questionId);
       if (mounted && question != null) {
         _updateLastTimestamp(question.messages);
-        setState(() {
+        if (mounted) setState(() {
           _question = question;
           _isLoading = false;
         });
@@ -88,7 +88,7 @@ class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
       );
       if (mounted && updated != null && updated.messages.isNotEmpty) {
         _updateLastTimestamp(updated.messages);
-        setState(() {
+        if (mounted) setState(() {
           _question = ProductQuestion(
             id: _question!.id,
             clientPhone: _question!.clientPhone,
@@ -164,7 +164,7 @@ class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty || _isSending) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isSending = true;
     });
 
@@ -192,7 +192,7 @@ class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
         _messageController.clear();
         // Оптимистичное добавление — сразу показываем сообщение
         _updateLastTimestamp([result]);
-        setState(() {
+        if (mounted) setState(() {
           _question = ProductQuestion(
             id: _question!.id,
             clientPhone: _question!.clientPhone,
@@ -250,7 +250,7 @@ class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
           _loadQuestion();
         }
       } else {
-        setState(() => _isCreatingDialog = true);
+        if (mounted) setState(() => _isCreatingDialog = true);
         try {
           final dialog = await ProductQuestionService.createPersonalDialog(
             clientPhone: _clientPhone!,

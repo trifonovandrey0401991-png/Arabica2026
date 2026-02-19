@@ -300,7 +300,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
 
   Future<void> _loadVerificationStatuses() async {
     if (_isLoadingVerification) return;
-    setState(() {
+    if (mounted) setState(() {
       _isLoadingVerification = true;
     });
 
@@ -459,7 +459,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
             child: IconButton(
               icon: Icon(Icons.refresh, color: Colors.white),
               onPressed: () {
-                setState(() {
+                if (mounted) setState(() {
                   _employeesFuture = _loadEmployees();
                 });
                 _loadVerificationStatuses();
@@ -476,7 +476,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
 
   // Метод для обновления данных
   void refreshEmployeesData() {
-    setState(() {
+    if (mounted) setState(() {
       _employeesFuture = _loadEmployees();
     });
     _loadVerificationStatuses();
@@ -507,7 +507,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                       ? IconButton(
                           icon: Icon(Icons.clear, color: Colors.white.withOpacity(0.3)),
                           onPressed: () {
-                            setState(() {
+                            if (mounted) setState(() {
                               _searchQuery = '';
                             });
                           },
@@ -517,7 +517,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                   contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                 ),
                 onChanged: (value) {
-                  setState(() {
+                  if (mounted) setState(() {
                     _searchQuery = value.trim().toLowerCase();
                   });
                 },
@@ -582,7 +582,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                           SizedBox(height: 24),
                           ElevatedButton.icon(
                             onPressed: () {
-                              setState(() {
+                              if (mounted) setState(() {
                                 _employeesFuture = _loadEmployees();
                               });
                               _animationController.reset();
@@ -692,7 +692,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    setState(() {
+                    if (mounted) setState(() {
                       _employeesFuture = _loadEmployees();
                     });
                     await _loadVerificationStatuses();

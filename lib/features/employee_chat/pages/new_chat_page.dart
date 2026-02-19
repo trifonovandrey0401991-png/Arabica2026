@@ -52,7 +52,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final employees = await EmployeeService.getEmployees();
@@ -101,7 +101,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
 
   Future<void> _openPrivateChat(Employee employee) async {
     HapticFeedback.selectionClick();
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final chat = await EmployeeChatService.getOrCreatePrivateChat(
@@ -153,7 +153,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
 
   Future<void> _openShopChat(Shop shop) async {
     HapticFeedback.selectionClick();
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final chat = await EmployeeChatService.getOrCreateShopChat(shop.address, phone: widget.userPhone);

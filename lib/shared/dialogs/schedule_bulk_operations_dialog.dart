@@ -35,7 +35,7 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
-      setState(() {
+      if (mounted) setState(() {
         _selectedTab = _tabController.index;
       });
     });
@@ -121,7 +121,7 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
                   lastDate: DateTime(2030),
                 );
                 if (date != null) {
-                  setState(() {
+                  if (mounted) setState(() {
                     sourceWeekStart = _getWeekStart(date);
                   });
                 }
@@ -141,7 +141,7 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
                   lastDate: DateTime(2030),
                 );
                 if (date != null) {
-                  setState(() {
+                  if (mounted) setState(() {
                     targetWeekStart = _getWeekStart(date);
                   });
                 }
@@ -160,7 +160,7 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
                     title: Text(employee.name),
                     value: isSelected,
                     onChanged: (value) {
-                      setState(() {
+                      if (mounted) setState(() {
                         if (value == true) {
                           selectedEmployees.add(employee.id);
                         } else {
@@ -329,7 +329,7 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Шаблон сохранен')),
         );
-        setState(() {});
+        if (mounted) setState(() {});
       }
     }
   }
@@ -386,7 +386,7 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
           ),
         );
         if (success) {
-          setState(() {}); // Перезагрузит FutureBuilder
+          if (mounted) setState(() {}); // Перезагрузит FutureBuilder
         }
       }
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../models/shift_handover_report_model.dart';
 import '../models/pending_shift_handover_model.dart';
 import '../services/shift_handover_report_service.dart';
@@ -48,6 +49,7 @@ class ShiftHandoverReportsListPage extends StatefulWidget {
 class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isLoading = true;
   Future<List<String>>? _shopsFuture;
   String? _selectedShop;
   String? _selectedEmployee;
@@ -279,58 +281,58 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
   Future<void> _loadData() async {
     Logger.info('Загрузка отчетов сдачи смены...');
 
-    // Загружаем настройки временных окон для сдачи смены
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>('reports_shift_handover');
+    if (cached != null && mounted) {
+      _allReports = cached['allReports'] as List<ShiftHandoverReport>;
+      _allShops = cached['allShops'] as List<Shop>;
+      _pendingHandovers = cached['pendingHandovers'] as List<PendingShiftHandover>;
+      _overdueHandovers = cached['overdueHandovers'] as List<PendingShiftHandover>;
+      _expiredReports = cached['expiredReports'] as List<ShiftHandoverReport>;
+      _handoverSettings = cached['handoverSettings'] as ShiftHandoverPointsSettings?;
+      _isLoading = false;
+      setState(() {});
+    }
+
+    // Step 2: Fetch fresh data
     try {
       final settings = await PointsSettingsService.getShiftHandoverPointsSettings();
       _handoverSettings = settings;
-      Logger.success('Загружены настройки времени сдачи смены: утро ${settings.morningEndTime}, вечер ${settings.eveningEndTime}');
     } catch (e) {
       Logger.error('Ошибка загрузки настроек времени', e);
-      _handoverSettings = ShiftHandoverPointsSettings.defaults();
+      _handoverSettings ??= ShiftHandoverPointsSettings.defaults();
     }
 
     _shopsFuture = _loadShopAddresses();
 
-    // Загружаем магазины из API
     try {
       final shops = await ShopService.getShopsForCurrentUser();
       _allShops = shops;
-      Logger.success('Загружено магазинов (с учётом роли): ${shops.length}');
     } catch (e) {
       Logger.error('Ошибка загрузки магазинов', e);
     }
 
-    // Загружаем просроченные отчёты
     try {
       final expiredReports = await ShiftHandoverReportService.getExpiredReportsForCurrentUser();
       _expiredReports = expiredReports;
-      Logger.success('Загружено просроченных отчётов: ${expiredReports.length}');
     } catch (e) {
       Logger.error('Ошибка загрузки просроченных отчётов', e);
     }
 
-    // Загружаем отчеты с сервера
     try {
       final serverReports = await ShiftHandoverReportService.getReportsForCurrentUser();
-      Logger.success('Загружено отчетов с сервера: ${serverReports.length}');
-
       final localReports = await ShiftHandoverReport.loadAllLocal();
-      Logger.success('Загружено локальных отчетов: ${localReports.length}');
 
       final Map<String, ShiftHandoverReport> reportsMap = {};
-
       for (var report in localReports) {
         reportsMap[report.id] = report;
       }
-
       for (var report in serverReports) {
         reportsMap[report.id] = report;
       }
 
       _allReports = reportsMap.values.toList();
       _allReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-      // Загружаем непройденные сдачи смен с сервера
       await _loadPendingHandovers();
 
       Logger.success('Всего отчетов после объединения: ${_allReports.length}');
@@ -340,9 +342,20 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
       await _loadPendingHandovers();
     }
 
-    if (mounted) {
-      setState(() {});
-    }
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+    });
+
+    // Step 3: Save to cache
+    CacheManager.set('reports_shift_handover', {
+      'allReports': _allReports,
+      'allShops': _allShops,
+      'pendingHandovers': _pendingHandovers,
+      'overdueHandovers': _overdueHandovers,
+      'expiredReports': _expiredReports,
+      'handoverSettings': _handoverSettings,
+    });
   }
 
   List<ShiftHandoverReport> _applyFilters(List<ShiftHandoverReport> reports) {
@@ -410,8 +423,8 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
       firstDate: DateTime.now().subtract(Duration(days: 7)),
       lastDate: DateTime.now(),
     );
-    if (picked != null) {
-      setState(() {
+    if (picked != null && mounted) {
+      if (mounted) setState(() {
         _selectedDate = picked;
       });
     }
@@ -441,21 +454,18 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
 
               // Вкладки с отчётами
               Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // Вкладка "Не пройдены" (в срок)
-                    _buildPendingShiftsList(),
-                    // Вкладка "Не в срок" (просроченные)
-                    _buildOverdueShiftsList(),
-                    // Вкладка "Ожидают" (с иерархической группировкой)
-                    _buildGroupedHandoverReportsList(_awaitingReports, isConfirmed: false, prefix: 'awaiting'),
-                    // Вкладка "Подтверждённые" (с иерархической группировкой)
-                    _buildGroupedHandoverReportsList(_confirmedReports, isConfirmed: true, prefix: 'confirmed'),
-                    // Вкладка "Не подтверждённые" (с иерархической группировкой)
-                    _buildGroupedExpiredReportsList(),
-                  ],
-                ),
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator(color: AppColors.gold))
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildPendingShiftsList(),
+                          _buildOverdueShiftsList(),
+                          _buildGroupedHandoverReportsList(_awaitingReports, isConfirmed: false, prefix: 'awaiting'),
+                          _buildGroupedHandoverReportsList(_confirmedReports, isConfirmed: true, prefix: 'confirmed'),
+                          _buildGroupedExpiredReportsList(),
+                        ],
+                      ),
               ),
             ],
           ),
@@ -570,7 +580,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
         child: InkWell(
           onTap: () {
             _tabController.animateTo(index);
-            setState(() {});
+            if (mounted) setState(() {});
           },
           borderRadius: BorderRadius.circular(10.r),
           child: Container(
@@ -811,7 +821,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
   Widget _buildResetButton() {
     return InkWell(
       onTap: () {
-        setState(() {
+        if (mounted) setState(() {
           _selectedShop = null;
           _selectedEmployee = null;
           _selectedDate = null;
@@ -1740,7 +1750,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
 
     return GestureDetector(
       onTap: () {
-        setState(() {
+        if (mounted) setState(() {
           _expandedGroups[group.key] = !isExpanded;
         });
       },

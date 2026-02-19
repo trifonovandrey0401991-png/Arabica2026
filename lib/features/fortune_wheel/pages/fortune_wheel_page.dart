@@ -72,7 +72,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     final settings = await FortuneWheelService.getSettings();
     final spins =
@@ -90,7 +90,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
   Future<void> _spin() async {
     if (_isSpinning || _availableSpins <= 0) return;
 
-    setState(() => _isSpinning = true);
+    if (mounted) setState(() => _isSpinning = true);
 
     final result = await FortuneWheelService.spin(
       employeeId: widget.employeeId,
@@ -101,7 +101,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
       _wheelKey.currentState?.spinToSector(result.sector.index);
       _lastResult = result;
     } else {
-      setState(() => _isSpinning = false);
+      if (mounted) setState(() => _isSpinning = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -123,7 +123,7 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
   }
 
   void _onSpinComplete() {
-    setState(() {
+    if (mounted) setState(() {
       _isSpinning = false;
       _availableSpins = _lastResult?.remainingSpins ?? 0;
     });

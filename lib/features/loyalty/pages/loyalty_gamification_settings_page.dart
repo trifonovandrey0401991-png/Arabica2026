@@ -78,7 +78,7 @@ class _LoyaltyGamificationSettingsPageState
   }
 
   Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     final settings = await LoyaltyGamificationService.fetchSettings();
 
@@ -125,7 +125,7 @@ class _LoyaltyGamificationSettingsPageState
             .add(TextEditingController(text: sector.prizeValue.toString()));
       }
 
-      setState(() {
+      if (mounted) setState(() {
         _levels = settings.levels;
         _wheelSettings = settings.wheel;
         _isLoading = false;
@@ -167,7 +167,7 @@ class _LoyaltyGamificationSettingsPageState
       return;
     }
 
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     // Получаем телефон админа из SharedPreferences
     final prefs = await SharedPreferences.getInstance();
@@ -216,7 +216,7 @@ class _LoyaltyGamificationSettingsPageState
       employeePhone: adminPhone,
     );
 
-    setState(() => _isSaving = false);
+    if (mounted) setState(() => _isSaving = false);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -677,7 +677,7 @@ class _LoyaltyGamificationSettingsPageState
             final isSelected = _levels[index].color.value == color.value;
             return InkWell(
               onTap: () {
-                setState(() {
+                if (mounted) setState(() {
                   _levels[index] = _levels[index].copyWith(
                     colorHex:
                         '#${color.value.toRadixString(16).substring(2).toUpperCase()}',
@@ -783,7 +783,7 @@ class _LoyaltyGamificationSettingsPageState
 
                 return InkWell(
                   onTap: () {
-                    setState(() {
+                    if (mounted) setState(() {
                       _levels[index] = _levels[index].copyWith(
                         badge: LevelBadge(type: 'icon', value: iconName),
                       );
@@ -891,7 +891,7 @@ class _LoyaltyGamificationSettingsPageState
     }
 
     if (url != null && mounted) {
-      setState(() {
+      if (mounted) setState(() {
         _levels[index] = _levels[index].copyWith(
           badge: LevelBadge(type: 'image', value: url),
         );
@@ -1140,7 +1140,7 @@ class _LoyaltyGamificationSettingsPageState
                 ),
                 value: _wheelSettings.enabled,
                 onChanged: (value) {
-                  setState(() {
+                  if (mounted) setState(() {
                     _wheelSettings = _wheelSettings.copyWith(enabled: value);
                   });
                 },
@@ -1295,7 +1295,7 @@ class _LoyaltyGamificationSettingsPageState
                     ],
                     onChanged: (value) {
                       if (value != null) {
-                        setState(() {
+                        if (mounted) setState(() {
                           final sectors = List<WheelSector>.from(_wheelSettings.sectors);
                           sectors[index] = sectors[index].copyWith(prizeType: value);
                           _wheelSettings = _wheelSettings.copyWith(sectors: sectors);
@@ -1351,7 +1351,7 @@ class _LoyaltyGamificationSettingsPageState
                 _wheelSettings.sectors[index].color.value == color.value;
             return InkWell(
               onTap: () {
-                setState(() {
+                if (mounted) setState(() {
                   final sectors = List<WheelSector>.from(_wheelSettings.sectors);
                   sectors[index] = sectors[index].copyWith(
                     colorHex:
@@ -1406,7 +1406,7 @@ class _LoyaltyGamificationSettingsPageState
     _sectorValueControllers
         .add(TextEditingController(text: newSector.prizeValue.toString()));
 
-    setState(() {
+    if (mounted) setState(() {
       final sectors = List<WheelSector>.from(_wheelSettings.sectors);
       sectors.add(newSector);
       _wheelSettings = _wheelSettings.copyWith(sectors: sectors);
@@ -1440,7 +1440,7 @@ class _LoyaltyGamificationSettingsPageState
     _sectorProbControllers.removeAt(index);
     _sectorValueControllers.removeAt(index);
 
-    setState(() {
+    if (mounted) setState(() {
       final sectors = List<WheelSector>.from(_wheelSettings.sectors);
       sectors.removeAt(index);
       // Обновляем индексы

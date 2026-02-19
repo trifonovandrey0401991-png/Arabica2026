@@ -110,7 +110,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
 
   void _filterSuppliersByType() {
     final targetType = _selectedType == 'ooo' ? 'ООО' : 'ИП';
-    setState(() {
+    if (mounted) setState(() {
       _filteredSuppliers = _allSuppliers
           .where((s) => s.legalType == targetType)
           .toList();
@@ -119,7 +119,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
 
   void _onTypeChanged(String? value) {
     if (value != null) {
-      setState(() {
+      if (mounted) setState(() {
         _selectedType = value;
         _filterSuppliersByType();
         // Сбросить расходы при смене типа
@@ -132,7 +132,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
   }
 
   void _addSupplierExpense() {
-    setState(() {
+    if (mounted) setState(() {
       _expenses.add(ExpenseFormData(
         amountController: TextEditingController(),
         commentController: TextEditingController(),
@@ -142,7 +142,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
   }
 
   void _addOtherExpense() {
-    setState(() {
+    if (mounted) setState(() {
       _expenses.add(ExpenseFormData(
         supplierName: 'Другой расход',
         amountController: TextEditingController(),
@@ -153,7 +153,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
   }
 
   void _removeExpense(int index) {
-    setState(() {
+    if (mounted) setState(() {
       _expenses[index].dispose();
       _expenses.removeAt(index);
     });
@@ -217,7 +217,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
   }
 
   Future<void> _saveWithdrawal(Withdrawal withdrawal) async {
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     try {
       await WithdrawalService.createWithdrawal(withdrawal);
@@ -836,7 +836,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                     );
                   }).toList(),
                   onChanged: (value) {
-                    setState(() {
+                    if (mounted) setState(() {
                       expense.supplierId = value;
                       expense.supplierName = _filteredSuppliers
                           .firstWhere((s) => s.id == value)

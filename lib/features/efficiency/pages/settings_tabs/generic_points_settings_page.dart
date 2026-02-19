@@ -88,10 +88,11 @@ class _GenericPointsSettingsPageState<T>
   }
 
   Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final settings = await widget.loadSettings();
+      if (!mounted) return;
       setState(() {
         _minPoints = widget.getMinPoints(settings);
         _zeroThreshold = widget.getZeroThreshold(settings);
@@ -99,6 +100,7 @@ class _GenericPointsSettingsPageState<T>
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -112,7 +114,7 @@ class _GenericPointsSettingsPageState<T>
   }
 
   Future<void> _saveSettings() async {
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     try {
       final result = await widget.saveSettings(
@@ -122,6 +124,7 @@ class _GenericPointsSettingsPageState<T>
       );
 
       if (result != null) {
+        if (!mounted) return;
         setState(() {
           _isSaving = false;
         });
@@ -137,6 +140,7 @@ class _GenericPointsSettingsPageState<T>
         throw Exception('Не удалось сохранить настройки');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isSaving = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -194,7 +198,7 @@ class _GenericPointsSettingsPageState<T>
                     divisions: ((widget.minPointsMax - widget.minPointsMin) * 2)
                         .toInt(),
                     onChanged: (value) {
-                      setState(() => _minPoints = value);
+                      if (mounted) setState(() => _minPoints = value);
                     },
                   ),
                   SizedBox(height: 24),
@@ -209,7 +213,7 @@ class _GenericPointsSettingsPageState<T>
                     divisions: widget.zeroThresholdMax - widget.zeroThresholdMin,
                     isInteger: true,
                     onChanged: (value) {
-                      setState(() => _zeroThreshold = value.toInt());
+                      if (mounted) setState(() => _zeroThreshold = value.toInt());
                     },
                   ),
                   SizedBox(height: 24),
@@ -224,7 +228,7 @@ class _GenericPointsSettingsPageState<T>
                     divisions: ((widget.maxPointsMax - widget.maxPointsMin) * 2)
                         .toInt(),
                     onChanged: (value) {
-                      setState(() => _maxPoints = value);
+                      if (mounted) setState(() => _maxPoints = value);
                     },
                   ),
                   SizedBox(height: 32),

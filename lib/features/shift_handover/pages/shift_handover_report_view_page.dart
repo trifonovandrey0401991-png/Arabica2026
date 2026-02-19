@@ -60,6 +60,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
     // Отправляем на сервер
     final serverSuccess = await ShiftHandoverReportService.updateReport(confirmedReport);
 
+    if (!mounted) return;
     setState(() {
       _currentReport = confirmedReport;
     });

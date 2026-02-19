@@ -48,7 +48,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   }
 
   Future<void> _loadParticipants() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final results = await Future.wait([
         EmployeeService.getEmployees(),
@@ -88,8 +88,8 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       imageQuality: 80,
     );
 
-    if (pickedFile != null) {
-      setState(() {
+    if (pickedFile != null && mounted) {
+      if (mounted) setState(() {
         _selectedImage = File(pickedFile.path);
       });
     }
@@ -111,7 +111,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       return;
     }
 
-    setState(() => _isCreating = true);
+    if (mounted) setState(() => _isCreating = true);
 
     try {
       String? imageUrl;
@@ -461,7 +461,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       child: CheckboxListTile(
         value: isSelected,
         onChanged: (v) {
-          setState(() {
+          if (mounted) setState(() {
             if (v == true) {
               _selectedParticipants.add(normalizedPhone);
             } else {

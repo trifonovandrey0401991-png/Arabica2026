@@ -58,6 +58,12 @@ import '../../features/job_application/services/job_application_service.dart';
 import '../../features/referrals/services/referral_service.dart';
 import '../../features/orders/services/order_service.dart';
 
+// Для шапки с логотипом, рейтингом и эффективностью
+import '../../features/rating/services/rating_service.dart';
+import '../../features/rating/models/employee_rating_model.dart';
+import '../../features/employees/pages/employees_page.dart';
+import '../../features/efficiency/services/efficiency_data_service.dart';
+
 /// Страница-сетка для управляющего: 8 отчётов + 7 работа с сотрудниками + 3 эффективность + 7 работа с клиентами = 25
 class ManagerGridPage extends StatefulWidget {
   final bool isHomePage;
@@ -93,11 +99,16 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
   int _myTasksCount = 0;
   Timer? _badgeTimer;
 
+  // Шапка: рейтинг и эффективность
+  EmployeeRating? _employeeRating;
+  double? _efficiencyPoints;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadAllCounts();
+    if (widget.isHomePage) _loadHeaderData();
     // Обновляем счётчик заказов каждые 30 сек (чтобы бейдж обновился после пуша)
     _badgeTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _loadOrdersCount();
@@ -116,6 +127,40 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
     // Обновляем счётчики при возврате в приложение (после пуша)
     if (state == AppLifecycleState.resumed && mounted) {
       _loadAllCounts();
+    }
+  }
+
+  /// Загрузка рейтинга и эффективности для шапки
+  Future<void> _loadHeaderData() async {
+    try {
+      final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      if (employeeId == null || !mounted) return;
+
+      // Рейтинг
+      try {
+        final rating = await RatingService.getCurrentEmployeeRating(employeeId);
+        if (mounted) setState(() => _employeeRating = rating);
+      } catch (e) {
+        Logger.warning('Ошибка загрузки рейтинга: $e');
+      }
+
+      // Эффективность
+      try {
+        final employeeName = await EmployeesPage.getCurrentEmployeeName();
+        if (employeeName != null && employeeName.isNotEmpty) {
+          final now = DateTime.now();
+          final data = await EfficiencyDataService.loadMonthData(now.year, now.month);
+          final summary = data.byEmployee.firstWhere(
+            (s) => s.entityName == employeeName,
+            orElse: () => throw StateError('Not found'),
+          );
+          if (mounted) setState(() => _efficiencyPoints = summary.totalPoints);
+        }
+      } catch (e) {
+        Logger.warning('Ошибка загрузки эффективности: $e');
+      }
+    } catch (e) {
+      Logger.warning('Ошибка загрузки данных шапки: $e');
     }
   }
 
@@ -187,7 +232,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
         timeout: ApiConstants.longTimeout,
       );
       if (result != null && result['success'] == true && mounted) {
-        setState(() => _managementCount = result['totalUnread'] ?? 0);
+        if (mounted) setState(() => _managementCount = result['totalUnread'] ?? 0);
       }
     } catch (e) { Logger.error('Ошибка загрузки счётчика сообщений руководству', e); }
   }
@@ -356,40 +401,13 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
           child: Column(
             children: [
               // Custom AppBar
-              Padding(
-                padding: EdgeInsets.fromLTRB(pad, 6.h, pad, 0),
-                child: SizedBox(
-                  height: 40,
-                  child: widget.isHomePage
-                    ? Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              widget.userName != null ? 'Привет, ${_getFirstName(widget.userName)}!' : 'Управляющая(ий)',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.95),
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.w400,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: widget.onLogout,
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.08),
-                                borderRadius: BorderRadius.circular(14.r),
-                                border: Border.all(color: Colors.white.withOpacity(0.1)),
-                              ),
-                              child: Icon(Icons.logout_rounded, color: Colors.white.withOpacity(0.8), size: 20),
-                            ),
-                          ),
-                        ],
-                      )
-                    : Row(
+              widget.isHomePage
+                ? _buildHomeHeader(pad)
+                : Padding(
+                    padding: EdgeInsets.fromLTRB(pad, 6.h, pad, 0),
+                    child: SizedBox(
+                      height: 40,
+                      child: Row(
                         children: [
                           GestureDetector(
                             onTap: () => Navigator.pop(context),
@@ -420,8 +438,8 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
                           SizedBox(width: 40),
                         ],
                       ),
-                ),
-              ),
+                    ),
+                  ),
               SizedBox(height: 8.h),
               // Scrollable sections
               Expanded(
@@ -536,6 +554,154 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Шапка главного экрана: логотип по центру, рейтинг/эффективность слева, выход справа
+  Widget _buildHomeHeader(double pad) {
+    final showRating = _employeeRating != null && _employeeRating!.position > 0;
+    final showEfficiency = _efficiencyPoints != null;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(pad, 6.h, pad, 0),
+      child: Column(
+        children: [
+          // Логотип, бейджи, кнопка выхода
+          SizedBox(
+            height: 40,
+            child: Stack(
+              children: [
+                // Центр — логотип
+                Center(
+                  child: Image.asset(
+                    'assets/images/arabica_logo.png',
+                    height: 40,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+
+                // Слева — бейджи рейтинга и эффективности
+                if (showRating || showEfficiency)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (showRating) _buildRatingBadge(),
+                        if (showRating && showEfficiency) SizedBox(width: 4),
+                        if (showEfficiency) _buildEfficiencyBadge(),
+                      ],
+                    ),
+                  ),
+
+                // Справа — кнопка выхода
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: widget.onLogout,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      ),
+                      child: Icon(Icons.logout_rounded, color: Colors.white.withOpacity(0.8), size: 20),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          SizedBox(height: 4.h),
+
+          // Приветствие
+          Text(
+            widget.userName != null ? 'Привет, ${_getFirstName(widget.userName)}!' : 'Управляющая(ий)',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.95),
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w400,
+              letterSpacing: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Бейдж рейтинга
+  Widget _buildRatingBadge() {
+    if (_employeeRating == null) return SizedBox.shrink();
+    final rating = _employeeRating!;
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: Colors.white.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.leaderboard_outlined, color: Colors.white.withOpacity(0.8), size: 14),
+          SizedBox(width: 4),
+          Text(
+            '${rating.position}/${rating.totalEmployees}',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Бейдж эффективности
+  Widget _buildEfficiencyBadge() {
+    if (_efficiencyPoints == null) return SizedBox.shrink();
+    final points = _efficiencyPoints!;
+    final isPositive = points >= 0;
+    final formattedPoints = isPositive
+        ? '+${points.toStringAsFixed(1)}'
+        : points.toStringAsFixed(1);
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: isPositive
+              ? AppColors.success.withOpacity(0.5)
+              : Colors.orange.withOpacity(0.5),
+        ),
+        color: isPositive
+            ? AppColors.success.withOpacity(0.15)
+            : Colors.orange.withOpacity(0.15),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isPositive ? Icons.trending_up_outlined : Icons.trending_down_outlined,
+            color: isPositive ? AppColors.successLight : Colors.orange.shade300,
+            size: 14,
+          ),
+          SizedBox(width: 4),
+          Text(
+            formattedPoints,
+            style: TextStyle(
+              color: isPositive ? AppColors.successLight : Colors.orange.shade300,
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -740,7 +906,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
               _loadReportCounts();
             },
             'color': null,
-            'badge': _reportCounts.shiftReport,
+            'badge': _reportCounts.shiftHandover,
           },
           {
             'icon': Icons.check_circle_outline_rounded,
@@ -750,7 +916,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
               _loadReportCounts();
             },
             'color': null,
-            'badge': _reportCounts.shiftHandover,
+            'badge': _reportCounts.shiftReport,
           },
           {
             'icon': Icons.mail_outline_rounded,

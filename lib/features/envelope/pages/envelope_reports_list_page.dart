@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../models/envelope_report_model.dart';
 import '../models/pending_envelope_report_model.dart';
 import '../services/envelope_report_service.dart';
@@ -42,7 +43,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
   Future<void> _detectRole() async {
     final roleData = await UserRoleService.loadUserRole();
     if (roleData != null && mounted) {
-      setState(() {
+      if (mounted) setState(() {
         _isAdmin = roleData.role == UserRole.admin ||
                    roleData.role == UserRole.developer;
       });
@@ -56,21 +57,37 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>('reports_envelope');
+    if (cached != null && mounted) {
+      _allReports = cached['allReports'] as List<EnvelopeReport>;
+      _pendingReports = cached['pendingReports'] as List<PendingEnvelopeReport>;
+      _isLoading = false;
+      setState(() {});
+    }
+
+    // Step 2: Fetch fresh data (no spinner if cache shown)
     try {
       final reports = await EnvelopeReportService.getReportsForCurrentUser();
       final pendingReports = await EnvelopeReportService.getPendingReportsForCurrentUser();
-      // Сортируем по дате (новые сверху)
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       pendingReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      if (!mounted) return;
       setState(() {
         _allReports = reports;
         _pendingReports = pendingReports;
         _isLoading = false;
       });
+      // Step 3: Save to cache
+      CacheManager.set('reports_envelope', {
+        'allReports': reports,
+        'pendingReports': pendingReports,
+      });
     } catch (e) {
       Logger.error('Ошибка загрузки отчетов', e);
-      setState(() => _isLoading = false);
+      if (cached == null && mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -165,7 +182,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
       lastDate: DateTime.now(),
     );
     if (picked != null) {
-      setState(() {
+      if (mounted) setState(() {
         _selectedDate = picked;
       });
     }
@@ -287,7 +304,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                         child: Text(shop, overflow: TextOverflow.ellipsis),
                       )).toList(),
                       onChanged: (value) {
-                        setState(() => _selectedShop = value);
+                        if (mounted) setState(() => _selectedShop = value);
                       },
                     ),
                     SizedBox(height: 8),
@@ -301,7 +318,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                         child: Text(emp),
                       )).toList(),
                       onChanged: (value) {
-                        setState(() => _selectedEmployee = value);
+                        if (mounted) setState(() => _selectedEmployee = value);
                       },
                     ),
                     SizedBox(height: 8),
@@ -340,7 +357,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                           SizedBox(width: 8),
                           GestureDetector(
                             onTap: () {
-                              setState(() {
+                              if (mounted) setState(() {
                                 _selectedShop = null;
                                 _selectedEmployee = null;
                                 _selectedDate = null;
@@ -447,7 +464,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
       padding: EdgeInsets.symmetric(horizontal: 3.w),
       child: GestureDetector(
         onTap: () {
-          setState(() {
+          if (mounted) setState(() {
             _tabController.animateTo(index);
           });
         },

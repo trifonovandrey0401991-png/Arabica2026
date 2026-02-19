@@ -390,7 +390,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          setState(() => _trainedReadings.add(reading.templateId));
+          if (mounted) setState(() => _trainedReadings.add(reading.templateId));
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Фото отправлено на обучение'), backgroundColor: Colors.green),
           );
@@ -597,7 +597,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
   }
 
   Future<void> _confirmReport() async {
-    setState(() => _isConfirming = true);
+    if (mounted) setState(() => _isConfirming = true);
     try {
       String adminName = 'Администратор';
       final prefs = await SharedPreferences.getInstance();
@@ -639,7 +639,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
   }
 
   Future<void> _rejectReport() async {
-    setState(() => _isConfirming = true);
+    if (mounted) setState(() => _isConfirming = true);
     try {
       String adminName = 'Администратор';
       final prefs = await SharedPreferences.getInstance();

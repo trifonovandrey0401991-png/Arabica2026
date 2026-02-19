@@ -33,10 +33,11 @@ class _ReferralsPointsSettingsPageState
   }
 
   Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final settings = await ReferralService.getPointsSettings();
+      if (!mounted) return;
       setState(() {
         _basePoints = settings.basePoints.toDouble();
         _milestoneThreshold = settings.milestoneThreshold.toDouble();
@@ -44,6 +45,7 @@ class _ReferralsPointsSettingsPageState
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -57,7 +59,7 @@ class _ReferralsPointsSettingsPageState
   }
 
   Future<void> _saveSettings() async {
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     try {
       final settings = ReferralsPointsSettings(
@@ -68,6 +70,7 @@ class _ReferralsPointsSettingsPageState
 
       final success = await ReferralService.updatePointsSettings(settings);
 
+      if (!mounted) return;
       if (success) {
         setState(() {
           _isSaving = false;
@@ -93,15 +96,14 @@ class _ReferralsPointsSettingsPageState
         throw Exception('Не удалось сохранить настройки');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isSaving = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка сохранения: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка сохранения: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

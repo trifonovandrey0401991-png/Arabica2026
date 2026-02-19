@@ -637,7 +637,7 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
                         label: Text('Все'),
                         selected: _selectedCategory == null,
                         onSelected: (_) {
-                          setState(() => _selectedCategory = null);
+                          if (mounted) setState(() => _selectedCategory = null);
                         },
                         selectedColor: EfficiencyUtils.secondaryColor,
                         checkmarkColor: EfficiencyUtils.primaryColor,
@@ -659,7 +659,7 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
                           label: Text(category.displayName),
                           selected: isSelected,
                           onSelected: (_) {
-                            setState(() {
+                            if (mounted) setState(() {
                               _selectedCategory = isSelected ? null : category;
                             });
                           },

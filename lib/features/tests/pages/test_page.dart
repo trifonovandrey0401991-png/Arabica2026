@@ -96,7 +96,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
   }
 
   void _startTest() {
-    setState(() {
+    if (mounted) setState(() {
       _testStarted = true;
       _currentQuestionIndex = 0;
       _selectedAnswer = null;
@@ -133,7 +133,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     final question = _questions[_currentQuestionIndex];
     final isCorrect = answer.trim() == question.correctAnswer.trim();
 
-    setState(() {
+    if (mounted) setState(() {
       _selectedAnswer = answer;
       _userAnswers[_currentQuestionIndex] = answer;
     });
@@ -150,7 +150,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
   void _nextQuestion() async {
     if (_currentQuestionIndex < _questions.length - 1) {
       await _questionAnimController.reverse();
-      setState(() {
+      if (mounted) setState(() {
         _currentQuestionIndex++;
         _selectedAnswer = _userAnswers.containsKey(_currentQuestionIndex)
             ? _userAnswers[_currentQuestionIndex]
@@ -166,7 +166,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     _timer?.cancel();
 
     if (timeExpired) {
-      setState(() {
+      if (mounted) setState(() {
         _testFinished = true;
       });
       _showTimeExpiredDialog();
@@ -179,7 +179,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
         }
       }
 
-      setState(() {
+      if (mounted) setState(() {
         _score = score;
         _testFinished = true;
       });
@@ -340,7 +340,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
   }
 
   void _retryTest() {
-    setState(() {
+    if (mounted) setState(() {
       _score = 0;
       _selectedAnswer = null;
       _userAnswers.clear();

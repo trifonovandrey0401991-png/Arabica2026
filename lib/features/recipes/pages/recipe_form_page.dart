@@ -65,8 +65,8 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
         imageQuality: 85,
       );
 
-      if (image != null) {
-        setState(() {
+      if (image != null && mounted) {
+        if (mounted) setState(() {
           _selectedPhoto = File(image.path);
           _photoUrl = null; // Сбрасываем URL, так как выбрано новое фото
         });
@@ -227,7 +227,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
       return;
     }
 
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
 
     try {
       Recipe? savedRecipe;

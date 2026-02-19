@@ -39,11 +39,11 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
   }
 
   Future<void> _loadConfig() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final config = await ExecutionChainService.getConfig();
       if (config != null && mounted) {
-        setState(() {
+        if (mounted) setState(() {
           _enabled = config.enabled;
           // Восстанавливаем активные шаги в правильном порядке
           _activeSteps = [];
@@ -61,7 +61,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
   }
 
   Future<void> _saveConfig() async {
-    setState(() => _isSaving = true);
+    if (mounted) setState(() => _isSaving = true);
     try {
       final steps = _activeSteps
           .asMap()
@@ -104,7 +104,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
   }
 
   void _toggleModule(_ModuleItem module) {
-    setState(() {
+    if (mounted) setState(() {
       if (_isModuleActive(module.id)) {
         _activeSteps.removeWhere((s) => s.id == module.id);
       } else {
@@ -333,7 +333,7 @@ class _ExecutionChainPageState extends State<ExecutionChainPage> {
         );
       },
       onReorder: (oldIndex, newIndex) {
-        setState(() {
+        if (mounted) setState(() {
           if (newIndex > oldIndex) newIndex--;
           final item = _activeSteps.removeAt(oldIndex);
           _activeSteps.insert(newIndex, item);

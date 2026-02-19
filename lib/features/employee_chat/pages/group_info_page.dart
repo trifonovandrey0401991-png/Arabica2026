@@ -47,11 +47,11 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
   Future<void> _updateGroupName() async {
     final newName = _nameController.text.trim();
     if (newName.isEmpty || newName == _chat.name) {
-      setState(() => _isEditing = false);
+      if (mounted) setState(() => _isEditing = false);
       return;
     }
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final updated = await EmployeeChatService.updateGroup(
         groupId: _chat.id,
@@ -59,7 +59,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
         name: newName,
       );
       if (updated != null && mounted) {
-        setState(() {
+        if (mounted) setState(() {
           _chat = updated;
           _isEditing = false;
         });
@@ -94,7 +94,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
     if (pickedFile == null) return;
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final imageUrl = await EmployeeChatService.uploadGroupPhoto(File(pickedFile.path));
       if (imageUrl == null) throw Exception('Ошибка загрузки фото');
@@ -106,7 +106,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       );
 
       if (updated != null && mounted) {
-        setState(() => _chat = updated);
+        if (mounted) setState(() => _chat = updated);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Фото обновлено'),
@@ -139,7 +139,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
     if (result == null || result.isEmpty) return;
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final success = await EmployeeChatService.addGroupMembers(
         groupId: _chat.id,
@@ -150,7 +150,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       if (success && mounted) {
         final updated = await EmployeeChatService.getGroupInfo(_chat.id);
         if (updated != null) {
-          setState(() => _chat = updated);
+          if (mounted) setState(() => _chat = updated);
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -199,7 +199,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
     if (confirmed != true) return;
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final success = await EmployeeChatService.removeGroupMember(
         groupId: _chat.id,
@@ -210,7 +210,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       if (success && mounted) {
         final updated = await EmployeeChatService.getGroupInfo(_chat.id);
         if (updated != null) {
-          setState(() => _chat = updated);
+          if (mounted) setState(() => _chat = updated);
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -259,7 +259,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
     if (confirmed != true) return;
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final success = await EmployeeChatService.leaveGroup(
         _chat.id,
@@ -307,7 +307,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
     if (confirmed != true) return;
 
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       final success = await EmployeeChatService.deleteGroup(
         _chat.id,
@@ -471,7 +471,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                   icon: Icon(Icons.close, color: Colors.white.withOpacity(0.5)),
                   onPressed: () {
                     _nameController.text = _chat.name;
-                    setState(() => _isEditing = false);
+                    if (mounted) setState(() => _isEditing = false);
                   },
                 ),
               ],
@@ -799,7 +799,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
             return CheckboxListTile(
               value: isSelected,
               onChanged: (v) {
-                setState(() {
+                if (mounted) setState(() {
                   if (v == true) {
                     _selected.add(phone);
                   } else {
@@ -833,7 +833,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
             return CheckboxListTile(
               value: isSelected,
               onChanged: (v) {
-                setState(() {
+                if (mounted) setState(() {
                   if (v == true) {
                     _selected.add(phone);
                   } else {

@@ -35,7 +35,7 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
 
   /// Загрузить данные за последние 3 месяца
   Future<void> _loadData() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -60,11 +60,13 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
         months.map((m) => EfficiencyDataService.loadMonthData(m['year']!, m['month']!)),
       );
 
+      if (!mounted) return;
       setState(() {
         _monthsData = data;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;

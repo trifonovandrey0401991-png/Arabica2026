@@ -112,7 +112,7 @@ class _OtpInputWidgetState extends State<OtpInputWidget> {
     _remainingSeconds = widget.resendTimeout;
     _resendTimer?.cancel();
     _resendTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-      setState(() {
+      if (mounted) setState(() {
         if (_remainingSeconds > 0) {
           _remainingSeconds--;
         } else {

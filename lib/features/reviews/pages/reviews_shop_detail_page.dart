@@ -32,7 +32,7 @@ class _ReviewsShopDetailPageState extends State<ReviewsShopDetailPage> {
   }
 
   Future<void> _loadReviews() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
     });
 

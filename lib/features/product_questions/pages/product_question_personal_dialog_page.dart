@@ -74,7 +74,7 @@ class _ProductQuestionPersonalDialogPageState extends State<ProductQuestionPerso
 
       if (dialog != null && mounted) {
         _updateLastTimestamp(dialog.messages);
-        setState(() {
+        if (mounted) setState(() {
           _dialog = dialog;
           _isLoading = false;
         });
@@ -101,7 +101,7 @@ class _ProductQuestionPersonalDialogPageState extends State<ProductQuestionPerso
 
       if (updated != null && updated.messages.isNotEmpty && mounted) {
         _updateLastTimestamp(updated.messages);
-        setState(() {
+        if (mounted) setState(() {
           _dialog = PersonalProductDialog(
             id: _dialog!.id,
             clientPhone: _dialog!.clientPhone,
@@ -218,8 +218,8 @@ class _ProductQuestionPersonalDialogPageState extends State<ProductQuestionPerso
           imageQuality: 85,
         );
 
-        if (image != null) {
-          setState(() {
+        if (image != null && mounted) {
+          if (mounted) setState(() {
             _selectedImage = File(image.path);
           });
         }
@@ -238,7 +238,7 @@ class _ProductQuestionPersonalDialogPageState extends State<ProductQuestionPerso
     if (text.isEmpty && _selectedImage == null) return;
     if (_isSending || _clientPhone == null) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isSending = true;
     });
 
@@ -261,7 +261,7 @@ class _ProductQuestionPersonalDialogPageState extends State<ProductQuestionPerso
         _messageController.clear();
         // Оптимистичное добавление
         _updateLastTimestamp([result]);
-        setState(() {
+        if (mounted) setState(() {
           _selectedImage = null;
           if (_dialog != null) {
             _dialog = PersonalProductDialog(

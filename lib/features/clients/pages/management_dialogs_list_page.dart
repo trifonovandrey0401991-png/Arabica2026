@@ -28,7 +28,7 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
   }
 
   Future<void> _loadDialogs() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final result = await BaseHttpService.getRaw(

@@ -28,7 +28,7 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -42,6 +42,7 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
       final statsResult = results[0] as Map<String, dynamic>?;
       final unviewedResult = results[1] as Map<String, int>;
 
+      if (!mounted) return;
       if (statsResult != null) {
         setState(() {
           _totalClients = statsResult['totalClients'] ?? 0;
@@ -51,12 +52,13 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
           _isLoading = false;
         });
       } else {
-        setState(() {
+        if (mounted) setState(() {
           _error = 'Не удалось загрузить данные';
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Ошибка: $e';
         _isLoading = false;

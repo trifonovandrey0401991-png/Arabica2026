@@ -31,7 +31,7 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -93,11 +93,13 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
         ));
       }
 
+      if (!mounted) return;
       setState(() {
         _monthsData = monthsData;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Ошибка загрузки: $e';
         _isLoading = false;

@@ -38,13 +38,14 @@ class _EmployeeReferralsDetailPageState extends State<EmployeeReferralsDetailPag
   }
 
   Future<void> _loadStats() async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
       final result = await ReferralService.getEmployeeStats(widget.employeeId);
+      if (!mounted) return;
       if (result != null) {
         setState(() {
           _today = result['today'] ?? 0;
@@ -55,12 +56,13 @@ class _EmployeeReferralsDetailPageState extends State<EmployeeReferralsDetailPag
           _isLoading = false;
         });
       } else {
-        setState(() {
+        if (mounted) setState(() {
           _error = 'Не удалось загрузить данные';
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Ошибка: $e';
         _isLoading = false;

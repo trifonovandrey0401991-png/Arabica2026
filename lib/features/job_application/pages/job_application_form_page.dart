@@ -60,6 +60,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
       if (draftJson != null) {
         final draft = json.decode(draftJson);
 
+        if (!mounted) return;
         setState(() {
           _fullNameController.text = draft['fullName'] ?? '';
           _phoneController.text = draft['phone'] ?? '';
@@ -131,6 +132,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
 
   Future<void> _loadShops() async {
     final shops = await Shop.loadShopsFromServer();
+    if (!mounted) return;
     setState(() {
       _shops = shops;
       _isLoading = false;
@@ -150,7 +152,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    if (mounted) setState(() => _isSubmitting = true);
 
     final result = await JobApplicationService.create(
       fullName: _fullNameController.text.trim(),
@@ -159,7 +161,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
       shopAddresses: _selectedShopAddresses,
     );
 
-    setState(() => _isSubmitting = false);
+    if (mounted) setState(() => _isSubmitting = false);
 
     if (result != null) {
       // Очищаем черновик после успешной отправки
@@ -576,7 +578,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
 
     return InkWell(
       onTap: () {
-        setState(() => _selectedShift = value);
+        if (mounted) setState(() => _selectedShift = value);
         _saveDraft();
       },
       borderRadius: BorderRadius.circular(14.r),
@@ -640,7 +642,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
       padding: EdgeInsets.only(bottom: 10.h),
       child: InkWell(
         onTap: () {
-          setState(() {
+          if (mounted) setState(() {
             if (isSelected) {
               _selectedShopAddresses.remove(shop.address);
             } else {

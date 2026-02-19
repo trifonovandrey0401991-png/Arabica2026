@@ -86,7 +86,7 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
   Future<void> _requestCode() async {
     if (!_isPhoneValid) return;
 
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _showError = false;
       _errorMessage = null;
@@ -102,11 +102,11 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
 
     if (result.success) {
       _telegramBotLink = result.message;
-      setState(() {
+      if (mounted) setState(() {
         _step = 1;
       });
     } else {
-      setState(() {
+      if (mounted) setState(() {
         _showError = true;
         _errorMessage = result.error;
       });
@@ -115,7 +115,7 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
 
   void _openTelegram() async {
     // Переходим к вводу кода
-    setState(() {
+    if (mounted) setState(() {
       _step = 2;
     });
 
@@ -125,7 +125,7 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
   }
 
   Future<void> _verifyCode(String code) async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _showError = false;
       _errorMessage = null;
@@ -154,7 +154,7 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
         ),
       );
     } else {
-      setState(() {
+      if (mounted) setState(() {
         _showError = true;
         _errorMessage = result.error;
       });

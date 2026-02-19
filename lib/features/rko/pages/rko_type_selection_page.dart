@@ -555,7 +555,7 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
   }
 
   Future<void> _onShopTap(Shop shop) async {
-    setState(() => _isValidating = true);
+    if (mounted) setState(() => _isValidating = true);
 
     try {
       final confirmed = await _validateShopSelection(shop);

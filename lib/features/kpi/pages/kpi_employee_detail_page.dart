@@ -33,7 +33,7 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
   }
 
   Future<void> _loadShopDaysData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final data = await KPIService.getEmployeeShopDaysData(widget.employeeName);

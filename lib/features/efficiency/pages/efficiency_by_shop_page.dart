@@ -30,7 +30,7 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
   }
 
   Future<void> _loadData({bool forceRefresh = false}) async {
-    setState(() {
+    if (mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -41,11 +41,13 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
         _selectedMonth,
         forceRefresh: forceRefresh,
       );
+      if (!mounted) return;
       setState(() {
         _data = data;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Ошибка загрузки данных: $e';
         _isLoading = false;
@@ -93,7 +95,7 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
                       selectedMonth: _selectedMonth,
                       selectedYear: _selectedYear,
                       onMonthSelected: (selection) {
-                        setState(() {
+                        if (mounted) setState(() {
                           _selectedYear = selection['year']!;
                           _selectedMonth = selection['month']!;
                         });

@@ -45,7 +45,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   Future<void> _checkRole() async {
     final roleData = await UserRoleService.loadUserRole();
     if (mounted && roleData != null) {
-      setState(() {
+      if (mounted) setState(() {
         _isDeveloper = roleData.isDeveloper;
       });
     }
@@ -336,6 +336,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     );
 
     if (result == true && selectedShop != null && selectedType != null && selectedEmployeeId != null) {
+      if (!mounted) return;
       setState(() => _isLoading = true);
 
       try {
@@ -376,7 +377,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Ошибка создания внесения'), backgroundColor: Colors.red),
           );
-          setState(() => _isLoading = false);
+          if (mounted) setState(() => _isLoading = false);
         }
       } catch (e) {
         Logger.error('Ошибка создания внесения', e);
@@ -384,7 +385,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
         );
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     }
 
@@ -582,6 +583,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     );
 
     if (result == true && selectedShop != null && transferDirection != null) {
+      if (!mounted) return;
       setState(() => _isLoading = true);
 
       try {
@@ -627,7 +629,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Ошибка создания переноса'), backgroundColor: Colors.red),
           );
-          setState(() => _isLoading = false);
+          if (mounted) setState(() => _isLoading = false);
         }
       } catch (e) {
         Logger.error('Ошибка создания переноса', e);
@@ -635,7 +637,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
         );
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     }
 
@@ -774,31 +776,31 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   tabs: [
                     Tab(
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.account_balance_wallet, size: 18),
-                          SizedBox(width: 6),
-                          Text('Касса'),
+                          SizedBox(width: 4),
+                          Flexible(child: Text('Касса', overflow: TextOverflow.ellipsis)),
                         ],
                       ),
                     ),
                     Tab(
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.upload, size: 18),
-                          SizedBox(width: 6),
-                          Text('Выемки'),
+                          SizedBox(width: 4),
+                          Flexible(child: Text('Выемки', overflow: TextOverflow.ellipsis)),
                         ],
                       ),
                     ),
                     Tab(
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.bar_chart, size: 18),
-                          SizedBox(width: 6),
-                          Text('Аналитика'),
+                          SizedBox(width: 4),
+                          Flexible(child: Text('Аналитика', overflow: TextOverflow.ellipsis)),
                         ],
                       ),
                     ),
@@ -1261,7 +1263,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   )),
                 ],
                 onChanged: (value) {
-                  setState(() => _selectedShopFilter = value);
+                  if (mounted) setState(() => _selectedShopFilter = value);
                 },
                 style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
               ),
