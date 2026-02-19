@@ -419,12 +419,27 @@ async function sendNewOrderNotificationToEmployees(order) {
   try {
     // Получаем список всех сотрудников из БД
     const employees = await db.findAll('employees');
+
+    // Получаем верифицированных из employee_registrations
+    const registrations = await db.findAll('employee_registrations');
+    const verifiedPhones = new Set();
+    for (const reg of registrations) {
+      const data = reg.data || {};
+      if (data.isVerified === true) {
+        const phone = (data.phone || '').replace(/[^\d]/g, '');
+        if (phone) verifiedPhones.add(phone);
+      }
+    }
+
     let sentCount = 0;
 
     for (const employee of employees) {
       try {
         const phone = (employee.phone || '').replace(/[^\d]/g, '');
         if (!phone) continue;
+
+        // Только верифицированные сотрудники получают пуш
+        if (!verifiedPhones.has(phone)) continue;
 
         // Проверяем наличие FCM токена
         const tokenFile = path.join(FCM_TOKENS_DIR, phone + '.json');
