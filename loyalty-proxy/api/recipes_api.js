@@ -12,6 +12,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
+const { compressUpload } = require('../utils/image_compress');
 
 const USE_DB = process.env.USE_DB_RECIPES === 'true';
 
@@ -63,7 +64,7 @@ const uploadRecipePhoto = multer({
 function setupRecipesAPI(app) {
   // POST /api/recipes/upload-photo - загрузить фото рецепта
   // ВАЖНО: этот route должен быть ПЕРЕД /api/recipes/:id
-  app.post('/api/recipes/upload-photo', requireAuth, uploadRecipePhoto.single('photo'), async (req, res) => {
+  app.post('/api/recipes/upload-photo', requireAuth, uploadRecipePhoto.single('photo'), compressUpload, async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ success: false, error: 'Файл не загружен' });
@@ -74,7 +75,7 @@ function setupRecipesAPI(app) {
         return res.status(400).json({ success: false, error: 'recipeId обязателен' });
       }
 
-      const photoUrl = `/api/recipes/photo/${recipeId}`;
+      const photoUrl = `/recipe-photos/${recipeId}.jpg`;
       console.log(`✅ Фото рецепта загружено: ${recipeId} (${req.file.size} bytes)`);
 
       res.json({ success: true, photoUrl });

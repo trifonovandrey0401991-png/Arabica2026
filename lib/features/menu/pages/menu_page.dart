@@ -179,11 +179,17 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
       );
     } else if (item.photoId.isNotEmpty) {
       final imagePath = 'assets/images/${item.photoId}.jpg';
+      // cacheWidth ограничивает декодирование — экономит RAM
+      // (без этого 853x1280 изображение занимает ~4MB в памяти для карточки 180px)
+      final int? cacheW = (width != null && width!.isFinite)
+          ? (width! * WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio).toInt()
+          : null;
       return Image.asset(
         imagePath,
         height: height,
         width: width,
         fit: fit,
+        cacheWidth: cacheW,
         errorBuilder: (_, __, ___) => _buildNoPhotoPlaceholder(height: height, width: width),
       );
     } else {
@@ -662,9 +668,15 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
           borderRadius: BorderRadius.circular(20.r),
           child: Stack(
             children: [
-              // Фото на всю карточку
+              // Фото на всю карточку (LayoutBuilder даёт реальный размер для оптимизации памяти)
               Positioned.fill(
-                child: _buildItemImage(item),
+                child: LayoutBuilder(
+                  builder: (context, constraints) => _buildItemImage(
+                    item,
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                  ),
+                ),
               ),
               // Градиент снизу
               Positioned(
