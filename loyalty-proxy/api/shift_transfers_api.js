@@ -194,6 +194,11 @@ function setupShiftTransfersAPI(app) {
         const alreadyAccepted = acceptedBy.some(a => a.employeeId === employeeId);
         if (alreadyAccepted) return false;
 
+        // Check if already rejected by this employee (broadcast requests)
+        const rejectedBy = r.rejectedBy || [];
+        const alreadyRejected = rejectedBy.some(a => a.employeeId === employeeId);
+        if (alreadyRejected) return false;
+
         return true;
       });
 
@@ -240,6 +245,10 @@ function setupShiftTransfersAPI(app) {
         // Check if already accepted
         const acceptedBy = r.acceptedBy || [];
         if (acceptedBy.some(a => a.employeeId === employeeId)) return false;
+
+        // Check if already rejected (broadcast requests)
+        const rejectedBy = r.rejectedBy || [];
+        if (rejectedBy.some(a => a.employeeId === employeeId)) return false;
 
         return true;
       }).length;
