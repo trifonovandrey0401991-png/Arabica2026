@@ -131,6 +131,8 @@ const { setupShiftQuestionsAPI } = require('./api/shift_questions_api');
 const { setupShiftHandoverQuestionsAPI } = require('./api/shift_handover_questions_api');
 const { setupBonusPenaltiesAPI } = require('./api/bonus_penalties_api');
 const { setupEmployeeRegistrationAPI } = require('./api/employee_registration_api');
+const { setupAiDashboardAPI } = require('./api/ai_dashboard_api');
+const { startYoloRetrainScheduler, triggerManualRetrain, getRetrainStatus } = require('./api/yolo_retrain_scheduler');
 const { getNextReferralCode } = require('./api/employees_api');
 const authApiRouter = require("./api/auth_api");
 const telegramBotService = require("./services/telegram_bot_service");
@@ -806,6 +808,7 @@ setupProductQuestionsAPI(app, uploadProductQuestionPhoto);
 setupZReportAPI(app);
 setupCigaretteVisionAPI(app);
 setupShiftAiVerificationAPI(app);
+setupAiDashboardAPI(app);
 setupDataCleanupAPI(app);
 setupShopProductsAPI(app);
 setupMasterCatalogAPI(app);
@@ -843,7 +846,7 @@ setupOrdersAPI(app);
 setupRecountQuestionsAPI(app, { upload });
 setupShiftQuestionsAPI(app, { upload });
 setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto });
-setupBonusPenaltiesAPI(app);
+setupBonusPenaltiesAPI(app, { sendPushToPhone });
 setupEmployeeRegistrationAPI(app, { sendPushToPhone });
 
 // Auth API (регистрация, вход, сброс PIN)
@@ -883,6 +886,9 @@ setupOrderTimeoutAPI(app);
 
 // Start auto-cleanup scheduler (daily at 3:00 AM — expired sessions, old logs, old data)
 startAutoCleanupScheduler();
+
+// Start YOLO auto-retrain scheduler (weekly, if YOLO_RETRAIN_ENABLED=true)
+setTimeout(() => startYoloRetrainScheduler(), 15000);
 
 // ============================================
 // HEALTH CHECK ENDPOINT

@@ -58,6 +58,7 @@ import '../../features/tasks/services/task_service.dart';
 import '../../features/tasks/models/task_model.dart';
 import '../../features/employees/services/employee_service.dart';
 import '../../features/ai_training/pages/ai_training_page.dart';
+import '../../features/ai_training/pages/ai_dashboard_page.dart';
 import '../../features/work_schedule/services/work_schedule_service.dart';
 import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../core/services/app_update_service.dart';
@@ -584,9 +585,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
         builder: (context, constraints) {
           final availableHeight = constraints.maxHeight;
 
-          // 7 кнопок + 6 отступов между ними
-          final buttonCount = 7;
-          final spacing = 12.0;
+          // 8 кнопок + 7 отступов между ними
+          final buttonCount = 8;
+          final spacing = 8.0;
           final totalSpacing = spacing * (buttonCount - 1);
           final buttonHeight = (availableHeight - totalSpacing) / buttonCount;
 
@@ -621,6 +622,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 badge: _totalReportsCount,
               ),
               SizedBox(height: spacing),
+              // Чат — золотая кнопка
+              _buildAdminRow(
+                Icons.chat_rounded,
+                'Чат',
+                'Сообщения и обсуждения',
+                buttonHeight,
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeeChatsListPage())),
+                isGold: true,
+              ),
+              SizedBox(height: spacing),
               _buildAdminRow(
                 Icons.manage_accounts_outlined,
                 'Управляющая(ий)',
@@ -644,6 +655,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 buttonHeight,
                 () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientFunctionsPage())),
               ),
+              SizedBox(height: spacing),
+              _buildAdminRow(
+                Icons.smart_toy_outlined,
+                'ДашБорд AI',
+                'Метрики AI-систем',
+                buttonHeight,
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AiDashboardPage())),
+              ),
             ],
           );
         },
@@ -658,6 +677,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     double height,
     VoidCallback onTap, {
     int? badge,
+    bool isGold = false,
   }) {
     return SizedBox(
       height: height,
@@ -667,38 +687,41 @@ class _MainMenuPageState extends State<MainMenuPage> {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(20.r),
-          splashColor: Colors.white.withOpacity(0.1),
-          highlightColor: Colors.white.withOpacity(0.05),
+          splashColor: isGold ? AppColors.gold.withOpacity(0.2) : Colors.white.withOpacity(0.1),
+          highlightColor: isGold ? AppColors.gold.withOpacity(0.1) : Colors.white.withOpacity(0.05),
           child: Container(
             padding: EdgeInsets.symmetric(horizontal: 24.w),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20.r),
-              border: Border.all(color: Colors.white.withOpacity(0.15)),
+              border: Border.all(color: isGold ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.15)),
               gradient: LinearGradient(
-                colors: [
-                  Colors.white.withOpacity(0.08),
-                  Colors.white.withOpacity(0.02),
-                ],
+                colors: isGold
+                    ? [AppColors.gold.withOpacity(0.2), AppColors.darkGold.withOpacity(0.08)]
+                    : [Colors.white.withOpacity(0.08), Colors.white.withOpacity(0.02)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
-            child: Row(
+            child: Builder(
+              builder: (context) {
+                final iconContainerSize = height < 64 ? (height * 0.7).clamp(28.0, 56.0) : 56.0;
+                final iconSize = iconContainerSize < 40 ? 20.0 : 28.0;
+                return Row(
               children: [
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: iconContainerSize,
+                  height: iconContainerSize,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16.r),
-                    color: Colors.white.withOpacity(0.1),
+                    color: isGold ? AppColors.gold.withOpacity(0.2) : Colors.white.withOpacity(0.1),
                   ),
                   child: Icon(
                     icon,
-                    color: Colors.white.withOpacity(0.9),
-                    size: 28,
+                    color: isGold ? AppColors.gold : Colors.white.withOpacity(0.9),
+                    size: iconSize,
                   ),
                 ),
-                SizedBox(width: 20),
+                SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -706,18 +729,22 @@ class _MainMenuPageState extends State<MainMenuPage> {
                     children: [
                       Text(
                         title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.95),
+                          color: isGold ? AppColors.gold : Colors.white.withOpacity(0.95),
                           fontSize: 18.sp,
                           fontWeight: FontWeight.w500,
                           letterSpacing: 0.5,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      SizedBox(height: 2),
                       Text(
                         subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
+                          color: isGold ? AppColors.gold.withOpacity(0.6) : Colors.white.withOpacity(0.5),
                           fontSize: 13.sp,
                           fontWeight: FontWeight.w400,
                         ),
@@ -744,10 +771,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 else
                   Icon(
                     Icons.chevron_right_rounded,
-                    color: Colors.white.withOpacity(0.4),
+                    color: isGold ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.4),
                     size: 28,
                   ),
               ],
+            );
+              },
             ),
           ),
         ),
@@ -1066,38 +1095,35 @@ class _MainMenuPageState extends State<MainMenuPage> {
       padding: EdgeInsets.fromLTRB(24, isEmployee ? 8 : 16, 24, isEmployee ? 8 : 20),
       child: Column(
         children: [
-          // Рейтинг, Логотип и выход - Row layout для правильного центрирования
+          // Рейтинг, Логотип и выход - Row layout без перекрытий
           SizedBox(
             height: isEmployee ? 36 : 44,
-            child: Stack(
+            child: Row(
               children: [
-                // Центр - логотип (истинный центр, не зависит от кнопок по бокам)
-                Center(
-                  child: Image.asset(
-                    'assets/images/arabica_logo.png',
-                    height: isEmployee ? 36 : 44,
-                    fit: BoxFit.contain,
+                // Левая часть - бейджи
+                if (showRating || showEfficiency)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (showRating) _buildRatingBadge(),
+                      if (showRating && showEfficiency) SizedBox(width: 4),
+                      if (showEfficiency) _buildEfficiencyBadge(),
+                    ],
+                  ),
+
+                // Центр - логотип (занимает всё доступное пространство, центрируется)
+                Expanded(
+                  child: Center(
+                    child: Image.asset(
+                      'assets/images/arabica_logo.png',
+                      height: isEmployee ? 36 : 44,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
 
-                // Левая часть - бейджи
-                if (showRating || showEfficiency)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (showRating) _buildRatingBadge(),
-                        if (showRating && showEfficiency) SizedBox(width: 4),
-                        if (showEfficiency) _buildEfficiencyBadge(),
-                      ],
-                    ),
-                  ),
-
                 // Правая часть - кнопки
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Row(
+                Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Кнопка обновления (для сотрудников, админов и разработчиков)
@@ -1239,7 +1265,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
                       ),
                     ],
                   ),
-                ),
               ],
             ),
           ),

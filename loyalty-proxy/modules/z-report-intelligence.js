@@ -15,7 +15,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { fileExists } = require('../utils/file_helpers');
 const db = require('../utils/db');
 
-const USE_DB = process.env.USE_DB_ENVELOPE === 'true';
+const USE_DB = process.env.USE_DB_Z_REPORT === 'true' || process.env.USE_DB_ENVELOPE === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const INTELLIGENCE_FILE = path.join(DATA_DIR, 'z-report-intelligence.json');
 
@@ -91,19 +91,30 @@ async function buildZReportIntelligence() {
 /**
  * Статистика по одному числовому полю (totalSum, cashSum, ofdNotSent)
  * Сбрасывается ежедневно → используем avg ± stddev
+ * Дополнительно: коэффициенты по дням недели (0=Вс..6=Сб)
  */
 function buildFieldStats(reports, fieldName) {
-  // Собираем значения из обеих юрлиц (ООО и ИП)
+  // Собираем значения из обеих юрлиц (ООО и ИП) с привязкой к дню недели
   const values = [];
+  const byDow = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] }; // 0=Sun..6=Sat
 
   for (const r of reports) {
+    const date = r.date || (r.createdAt ? r.createdAt.slice(0, 10) : null);
+    const dow = date ? new Date(date).getDay() : null; // 0=Sun..6=Sat
+
     // ООО
     const oooVal = extractFieldValue(r, 'ooo', fieldName);
-    if (oooVal !== null && oooVal > 0) values.push(oooVal);
+    if (oooVal !== null && oooVal > 0) {
+      values.push(oooVal);
+      if (dow !== null && !isNaN(dow)) byDow[dow].push(oooVal);
+    }
 
     // ИП
     const ipVal = extractFieldValue(r, 'ip', fieldName);
-    if (ipVal !== null && ipVal > 0) values.push(ipVal);
+    if (ipVal !== null && ipVal > 0) {
+      values.push(ipVal);
+      if (dow !== null && !isNaN(dow)) byDow[dow].push(ipVal);
+    }
   }
 
   if (values.length === 0) return null;
@@ -112,12 +123,25 @@ function buildFieldStats(reports, fieldName) {
   const variance = values.reduce((s, v) => s + (v - avg) ** 2, 0) / values.length;
   const stddev = Math.sqrt(variance);
 
+  // Коэффициенты по дням недели: avgDay / avgAll
+  // Если данных мало (<3 для дня) — коэффициент 1.0
+  const dowCoefficients = {};
+  for (let d = 0; d < 7; d++) {
+    if (byDow[d].length >= 3) {
+      const dayAvg = byDow[d].reduce((s, v) => s + v, 0) / byDow[d].length;
+      dowCoefficients[d] = Math.round((dayAvg / avg) * 1000) / 1000;
+    } else {
+      dowCoefficients[d] = 1.0;
+    }
+  }
+
   return {
     avg: Math.round(avg * 100) / 100,
     stddev: Math.round(stddev * 100) / 100,
     min: Math.min(...values),
     max: Math.max(...values),
     count: values.length,
+    dowCoefficients, // {0: 0.85, 1: 0.95, ..., 5: 1.25, 6: 1.10}
   };
 }
 
@@ -149,13 +173,24 @@ function buildResourceKeysStats(reports) {
   const lastKnown = values[values.length - 1];
   const lastDate = entries[entries.length - 1].date;
 
-  // Тренд (дневное убывание)
+  // Тренд (дневное убывание) — медиана попарных наклонов (устойчива к выбросам)
   let trend = 0;
   if (entries.length >= 2) {
-    const first = entries[0];
-    const last = entries[entries.length - 1];
-    const days = Math.max(1, (new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24));
-    trend = Math.round(((last.value - first.value) / days) * 100) / 100; // обычно отрицательный
+    const slopes = [];
+    for (let i = 1; i < entries.length; i++) {
+      const daysDiff = (new Date(entries[i].date) - new Date(entries[i - 1].date)) / (1000 * 60 * 60 * 24);
+      if (daysDiff > 0) {
+        slopes.push((entries[i].value - entries[i - 1].value) / daysDiff);
+      }
+    }
+    if (slopes.length > 0) {
+      slopes.sort((a, b) => a - b);
+      const mid = Math.floor(slopes.length / 2);
+      const medianSlope = slopes.length % 2 === 0
+        ? (slopes[mid - 1] + slopes[mid]) / 2
+        : slopes[mid];
+      trend = Math.round(medianSlope * 100) / 100; // обычно отрицательный
+    }
   }
 
   return {
@@ -253,30 +288,43 @@ async function buildAccuracyStats(shopAddress) {
 /**
  * Получить ожидаемые диапазоны для конкретного магазина
  * Возвращает { totalSum: {min, max}, cashSum: {min, max}, ofdNotSent: {min, max}, resourceKeys: {min, max} }
+ * @param {object} intelligence
+ * @param {string} shopAddress
+ * @param {Date} [forDate] - дата, для которой считаем (default: сегодня)
  */
-function getExpectedRanges(intelligence, shopAddress) {
+function getExpectedRanges(intelligence, shopAddress, forDate) {
   if (!intelligence?.shopProfiles?.[shopAddress]) return null;
 
   const profile = intelligence.shopProfiles[shopAddress];
   const ranges = {};
 
-  // totalSum: avg ± 2*stddev
+  // День недели для корректировки (0=Sun..6=Sat)
+  const targetDate = forDate || new Date();
+  const dow = targetDate.getDay();
+
+  // totalSum: avg * dowCoeff ± 2*stddev
   if (profile.totalSum && profile.totalSum.count >= MIN_REPORTS_FOR_RANGE) {
     const s = profile.totalSum;
+    const coeff = s.dowCoefficients?.[dow] ?? 1.0;
+    const adjustedAvg = Math.round(s.avg * coeff * 100) / 100;
     ranges.totalSum = {
-      min: Math.max(0, Math.round(s.avg - 2 * s.stddev)),
-      max: Math.round(s.avg + 2 * s.stddev),
-      avg: s.avg,
+      min: Math.max(0, Math.round(adjustedAvg - 2 * s.stddev)),
+      max: Math.round(adjustedAvg + 2 * s.stddev),
+      avg: adjustedAvg,
+      dowCoefficient: coeff,
     };
   }
 
-  // cashSum: avg ± 2*stddev, ограничен totalSum.max
+  // cashSum: avg * dowCoeff ± 2*stddev, ограничен totalSum.max
   if (profile.cashSum && profile.cashSum.count >= MIN_REPORTS_FOR_RANGE) {
     const s = profile.cashSum;
+    const coeff = s.dowCoefficients?.[dow] ?? 1.0;
+    const adjustedAvg = Math.round(s.avg * coeff * 100) / 100;
     ranges.cashSum = {
-      min: Math.max(0, Math.round(s.avg - 2 * s.stddev)),
-      max: Math.round(s.avg + 2 * s.stddev),
-      avg: s.avg,
+      min: Math.max(0, Math.round(adjustedAvg - 2 * s.stddev)),
+      max: Math.round(adjustedAvg + 2 * s.stddev),
+      avg: adjustedAvg,
+      dowCoefficient: coeff,
     };
     // cashSum не может быть больше totalSum
     if (ranges.totalSum) {
@@ -284,7 +332,7 @@ function getExpectedRanges(intelligence, shopAddress) {
     }
   }
 
-  // ofdNotSent: обычно 0-5, максимум из истории + запас
+  // ofdNotSent: обычно 0-5, максимум из истории + запас (без dowCoeff — нерелевантно)
   if (profile.ofdNotSent && profile.ofdNotSent.count >= MIN_REPORTS_FOR_RANGE) {
     ranges.ofdNotSent = {
       min: 0,

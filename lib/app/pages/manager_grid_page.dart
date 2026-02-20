@@ -20,6 +20,7 @@ import '../../features/product_questions/pages/product_questions_report_page.dar
 import '../../features/tests/pages/test_report_page.dart';
 import '../../features/main_cash/pages/main_cash_page.dart';
 import '../../features/efficiency/pages/employees_efficiency_page.dart';
+import '../../features/efficiency/pages/my_efficiency_page.dart';
 import '../../features/tasks/pages/task_reports_page.dart';
 import '../../features/tasks/pages/my_tasks_page.dart';
 import '../../features/job_application/pages/job_applications_list_page.dart';
@@ -1028,13 +1029,6 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
             'badge': null,
           },
           {
-            'icon': Icons.psychology_outlined,
-            'label': 'Обучение ИИ',
-            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => AITrainingPage())),
-            'color': null,
-            'badge': null,
-          },
-          {
             'icon': Icons.calendar_month_outlined,
             'label': 'График',
             'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => WorkSchedulePage())),
@@ -1055,18 +1049,25 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
             'color': null,
             'badge': null,
           },
+          {
+            'icon': Icons.trending_up_rounded,
+            'label': 'Эффективность',
+            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeesEfficiencyPage())),
+            'color': null,
+            'badge': null,
+          },
         ],
       },
       // ═══════════════════════════════════════
-      // 3. МОЯ ЭФФЕКТИВНОСТЬ (4 шт.)
+      // 3. МОЯ ЭФФЕКТИВНОСТЬ
       // ═══════════════════════════════════════
       {
         'title': 'Моя эффективность',
         'items': <Map<String, dynamic>>[
           {
-            'icon': Icons.trending_up_rounded,
-            'label': 'Эффективность',
-            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeesEfficiencyPage())),
+            'icon': Icons.person_outline_rounded,
+            'label': 'Моя эффект.',
+            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => MyEfficiencyPage())),
             'color': null,
             'badge': null,
           },
@@ -1090,6 +1091,14 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
             'color': null,
             'badge': _myTasksCount,
           },
+          {
+            'icon': Icons.psychology_outlined,
+            'label': 'Обучение ИИ',
+            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => AITrainingPage())),
+            'color': null,
+            'badge': null,
+          },
+
         ],
       },
       // ═══════════════════════════════════════
