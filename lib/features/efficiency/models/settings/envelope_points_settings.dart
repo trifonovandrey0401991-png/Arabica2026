@@ -28,6 +28,9 @@ class EnvelopePointsSettings extends PointsSettingsBase {
   /// Конец временного окна для сдачи конверта после вечерней смены
   final String eveningEndTime;
 
+  /// Таймаут проверки админом (часы, 0 = отключено)
+  final int adminReviewTimeout;
+
   @override
   final DateTime? createdAt;
 
@@ -43,6 +46,7 @@ class EnvelopePointsSettings extends PointsSettingsBase {
     this.morningEndTime = '12:00',
     this.eveningStartTime = '08:00',
     this.eveningEndTime = '12:00',
+    this.adminReviewTimeout = 0,
     this.createdAt,
     this.updatedAt,
   });
@@ -57,6 +61,9 @@ class EnvelopePointsSettings extends PointsSettingsBase {
       morningEndTime: json['morningEndTime'] ?? '12:00',
       eveningStartTime: json['eveningStartTime'] ?? '08:00',
       eveningEndTime: json['eveningEndTime'] ?? '12:00',
+      adminReviewTimeout: (json['adminReviewTimeout'] ?? 0) is int
+          ? json['adminReviewTimeout'] ?? 0
+          : (json['adminReviewTimeout'] ?? 0).toInt(),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -76,6 +83,7 @@ class EnvelopePointsSettings extends PointsSettingsBase {
     'morningEndTime': morningEndTime,
     'eveningStartTime': eveningStartTime,
     'eveningEndTime': eveningEndTime,
+    'adminReviewTimeout': adminReviewTimeout,
     if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
     if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
   };
@@ -100,6 +108,7 @@ class EnvelopePointsSettings extends PointsSettingsBase {
     String? morningEndTime,
     String? eveningStartTime,
     String? eveningEndTime,
+    int? adminReviewTimeout,
   }) {
     return EnvelopePointsSettings(
       id: id,
@@ -110,6 +119,7 @@ class EnvelopePointsSettings extends PointsSettingsBase {
       morningEndTime: morningEndTime ?? this.morningEndTime,
       eveningStartTime: eveningStartTime ?? this.eveningStartTime,
       eveningEndTime: eveningEndTime ?? this.eveningEndTime,
+      adminReviewTimeout: adminReviewTimeout ?? this.adminReviewTimeout,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

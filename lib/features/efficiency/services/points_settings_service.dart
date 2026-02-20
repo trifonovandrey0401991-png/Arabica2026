@@ -476,19 +476,24 @@ class PointsSettingsService {
     required String morningEndTime,
     required String eveningStartTime,
     required String eveningEndTime,
+    int? adminReviewTimeout,
   }) async {
-    Logger.debug('Saving envelope points settings: submitted=$submittedPoints, notSubmitted=$notSubmittedPoints, morning=$morningStartTime-$morningEndTime, evening=$eveningStartTime-$eveningEndTime');
+    Logger.debug('Saving envelope points settings: submitted=$submittedPoints, notSubmitted=$notSubmittedPoints, morning=$morningStartTime-$morningEndTime, evening=$eveningStartTime-$eveningEndTime, adminReviewTimeout=$adminReviewTimeout');
+
+    final body = <String, dynamic>{
+      'submittedPoints': submittedPoints,
+      'notSubmittedPoints': notSubmittedPoints,
+      'morningStartTime': morningStartTime,
+      'morningEndTime': morningEndTime,
+      'eveningStartTime': eveningStartTime,
+      'eveningEndTime': eveningEndTime,
+    };
+
+    if (adminReviewTimeout != null) body['adminReviewTimeout'] = adminReviewTimeout;
 
     return await BaseHttpService.post<EnvelopePointsSettings>(
       endpoint: '$baseEndpoint/envelope',
-      body: {
-        'submittedPoints': submittedPoints,
-        'notSubmittedPoints': notSubmittedPoints,
-        'morningStartTime': morningStartTime,
-        'morningEndTime': morningEndTime,
-        'eveningStartTime': eveningStartTime,
-        'eveningEndTime': eveningEndTime,
-      },
+      body: body,
       fromJson: (json) => EnvelopePointsSettings.fromJson(json),
       itemKey: 'settings',
     );

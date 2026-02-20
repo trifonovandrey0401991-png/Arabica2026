@@ -198,6 +198,7 @@ const DEFAULT_ENVELOPE_POINTS_SETTINGS = {
   category: 'envelope',
   submittedPoints: 1.0,     // Points for submitted envelope
   notSubmittedPoints: -3.0, // Points for not submitted envelope
+  adminReviewTimeout: 0,    // Hours for admin review (0 = disabled)
   createdAt: null,
   updatedAt: null
 };
@@ -1283,7 +1284,8 @@ function setupPointsSettingsAPI(app) {
       const {
         submittedPoints, notSubmittedPoints,
         morningStartTime, morningEndTime,
-        eveningStartTime, eveningEndTime
+        eveningStartTime, eveningEndTime,
+        adminReviewTimeout
       } = req.body;
 
       // Validation
@@ -1332,6 +1334,7 @@ function setupPointsSettingsAPI(app) {
         settings.eveningEndTime = eveningEndTime;
         settings.eveningDeadline = eveningEndTime; // scheduler uses eveningDeadline
       }
+      if (adminReviewTimeout !== undefined) settings.adminReviewTimeout = parseInt(adminReviewTimeout);
 
       settings.updatedAt = new Date().toISOString();
 
