@@ -41,12 +41,26 @@ class ZReportData {
 
   factory ZReportData.fromJson(Map<String, dynamic> json) {
     return ZReportData(
-      totalSum: json['totalSum']?.toDouble(),
-      cashSum: json['cashSum']?.toDouble(),
-      ofdNotSent: json['ofdNotSent']?.toInt(),
-      resourceKeys: json['resourceKeys']?.toInt(),
+      totalSum: _toDouble(json['totalSum']),
+      cashSum: _toDouble(json['cashSum']),
+      ofdNotSent: _toInt(json['ofdNotSent']),
+      resourceKeys: _toInt(json['resourceKeys']),
       confidence: Map<String, String>.from(json['confidence'] ?? {}),
     );
+  }
+
+  static double? _toDouble(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v);
+    return null;
+  }
+
+  static int? _toInt(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v);
+    return null;
   }
 }
 

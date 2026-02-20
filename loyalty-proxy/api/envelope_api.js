@@ -477,7 +477,16 @@ function setupEnvelopeAPI(app) {
     try {
       console.log('POST /api/envelope-reports:', JSON.stringify(req.body).substring(0, 300));
 
-      const reportId = req.body.id || `envelope_report_${Date.now()}`;
+      // Валидация обязательных полей
+      const { employeePhone, shopAddress, shiftType } = req.body;
+      if (!employeePhone || !shopAddress || !shiftType) {
+        return res.status(400).json({
+          success: false,
+          error: 'Обязательные поля: employeePhone, shopAddress, shiftType'
+        });
+      }
+
+      const reportId = req.body.id || `envelope_report_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const now = new Date().toISOString();
       const report = {
         ...req.body,
@@ -606,7 +615,9 @@ function setupEnvelopeAPI(app) {
       }
 
       const rawId = decodeURIComponent(req.params.id);
-      const { confirmedByAdmin, rating } = req.body;
+      const { rating } = req.body;
+      // Безопасность: берём имя админа из сессии, не из тела запроса
+      const confirmedByAdmin = req.user.phone || req.user.name || 'admin';
       console.log('PUT /api/envelope-reports/:id/confirm', rawId, confirmedByAdmin, rating);
 
       const now = new Date().toISOString();
@@ -624,11 +635,9 @@ function setupEnvelopeAPI(app) {
           rating: rating,
           updated_at: now
         });
-        report = dbEnvelopeReportToCamel(row);
-        report.status = 'confirmed';
-        report.confirmedAt = now;
-        report.confirmedByAdmin = confirmedByAdmin;
-        report.rating = rating;
+        // Перечитываем обновлённую строку из DB (не используем старый row)
+        const updatedRow = await db.findById('envelope_reports', rawId);
+        report = dbEnvelopeReportToCamel(updatedRow || row);
       } else {
         const filePath = await findEnvelopeReportFile(rawId);
         if (!filePath) {
@@ -645,7 +654,6 @@ function setupEnvelopeAPI(app) {
       // Dual-write: всегда обновляем файл
       const filePath = await findEnvelopeReportFile(rawId);
       if (filePath) {
-        // Boy Scout: fs.promises.writeFile → writeJsonFile
         await writeJsonFile(filePath, report);
       }
       console.log('Отчет конверта подтверждён:', rawId);

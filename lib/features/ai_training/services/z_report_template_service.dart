@@ -201,13 +201,9 @@ class ZReportTemplateService {
     }
   }
 
-  /// Результат сохранения образца для обучения
-  /// Содержит информацию о выученных паттернах
-  static Map<String, dynamic>? lastLearningResult;
-
   /// Сохранить образец для машинного обучения
-  /// Возвращает true при успехе и сохраняет результат обучения в lastLearningResult
-  static Future<bool> saveTrainingSample({
+  /// Возвращает learningResult при успехе, null при ошибке
+  static Future<Map<String, dynamic>?> saveTrainingSample({
     required String imageBase64,
     required String rawText,
     required Map<String, dynamic> correctData,
@@ -227,18 +223,16 @@ class ZReportTemplateService {
           'shopId': shopId,
           'templateId': templateId,
         }),
-      );
+      ).timeout(const Duration(seconds: 45));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // Сохраняем результат обучения
-        lastLearningResult = data['learningResult'];
-        return true;
+        return data['learningResult'] as Map<String, dynamic>?;
       }
-      return false;
+      return null;
     } catch (e) {
       Logger.warning('Ошибка сохранения образца: $e');
-      return false;
+      return null;
     }
   }
 

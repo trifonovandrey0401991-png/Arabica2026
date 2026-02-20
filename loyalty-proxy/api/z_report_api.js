@@ -216,6 +216,11 @@ async function setupZReportAPI(app) {
         return res.status(400).json({ success: false, error: 'Изображение не передано' });
       }
 
+      // Лимит размера: ~5MB base64 ≈ ~3.75MB изображение
+      if (imageBase64.length > 7 * 1024 * 1024) {
+        return res.status(413).json({ success: false, error: 'Изображение слишком большое (макс 5MB)' });
+      }
+
       // Загружаем intelligence для подсказки ожидаемых диапазонов
       let expectedRanges = null;
       let learnedRegions = null;
@@ -283,6 +288,11 @@ async function setupZReportAPI(app) {
   app.post('/api/z-report/training-samples', requireAuth, async (req, res) => {
     try {
       const { imageBase64, rawText, correctData, recognizedData, shopId, templateId, fieldRegions } = req.body;
+
+      // Лимит размера изображения
+      if (imageBase64 && imageBase64.length > 7 * 1024 * 1024) {
+        return res.status(413).json({ success: false, error: 'Изображение слишком большое (макс 5MB)' });
+      }
 
       const result = await templatesModule.addTrainingSample({
         imageBase64,

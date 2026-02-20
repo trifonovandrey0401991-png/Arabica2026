@@ -393,7 +393,8 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
 
     try {
       Logger.debug('Обучение AI: скачиваю фото $photoUrl');
-      final response = await http.get(Uri.parse(photoUrl));
+      final response = await http.get(Uri.parse(photoUrl))
+          .timeout(const Duration(seconds: 30));
       if (response.statusCode != 200) {
         throw Exception('Не удалось скачать фото (${response.statusCode})');
       }

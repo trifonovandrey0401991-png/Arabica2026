@@ -79,7 +79,7 @@ class ZReportService {
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/parse'),
         headers: ApiConstants.headersWithApiKey,
         body: jsonEncode(body),
-      );
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -112,8 +112,8 @@ class ZReportService {
           return data['expectedRanges'] as Map<String, dynamic>?;
         }
       }
-    } catch (_) {
-      // Intelligence не критична — молча пропускаем ошибки
+    } catch (e) {
+      debugPrint('[ZReportService] getIntelligence error: $e');
     }
     return null;
   }
@@ -158,7 +158,7 @@ class ZReportService {
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/training-samples'),
         headers: ApiConstants.headersWithApiKey,
         body: jsonEncode(body),
-      );
+      ).timeout(const Duration(seconds: 45));
 
       if (response.statusCode != 200) {
         debugPrint('[ZReportService] saveSample failed: ${response.statusCode} ${response.body}');

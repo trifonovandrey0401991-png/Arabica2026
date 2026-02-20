@@ -88,6 +88,9 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   bool _oooZReportEdited = false;
   bool _ipZReportEdited = false;
 
+  // Защита от параллельных вызовов OCR
+  bool _isOcrInProgress = false;
+
   @override
   void initState() {
     super.initState();
@@ -313,6 +316,9 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     required bool isOoo,
     required Function(File) onPhotoPicked,
   }) async {
+    // Защита от параллельных вызовов
+    if (_isOcrInProgress) return;
+    _isOcrInProgress = true;
     try {
       // ШАГ 1: Сделать фото
       final picked = await _imagePicker.pickImage(
@@ -426,6 +432,8 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           SnackBar(content: Text('Ошибка: $e')),
         );
       }
+    } finally {
+      _isOcrInProgress = false;
     }
   }
 

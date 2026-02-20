@@ -26,7 +26,16 @@ const MIN_REPORTS_FOR_RANGE = 5;
  * Построить intelligence по всем магазинам из истории envelope_reports
  * Вызывается фоново после сохранения отчёта или training sample
  */
+// Debounce: если rebuild вызван повторно в течение 10 секунд — пропускаем
+let _lastRebuildTime = 0;
+
 async function buildZReportIntelligence() {
+  const now = Date.now();
+  if (now - _lastRebuildTime < 10000) {
+    return null; // Пропускаем — недавно перестроили
+  }
+  _lastRebuildTime = now;
+
   try {
     const reports = await loadAllReports();
     if (!reports || reports.length === 0) {
@@ -130,7 +139,8 @@ function buildFieldStats(reports, fieldName) {
   for (let d = 0; d < 7; d++) {
     if (byDow[d].length >= 3) {
       const dayAvg = byDow[d].reduce((s, v) => s + v, 0) / byDow[d].length;
-      dowCoefficients[d] = Math.round((dayAvg / avg) * 1000) / 1000;
+      // Clamp to [0.3, 3.0] — extreme values indicate too little data, not real patterns
+      dowCoefficients[d] = Math.min(3.0, Math.max(0.3, Math.round((dayAvg / avg) * 1000) / 1000));
     } else {
       dowCoefficients[d] = 1.0;
     }

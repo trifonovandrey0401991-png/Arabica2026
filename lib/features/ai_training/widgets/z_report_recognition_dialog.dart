@@ -154,6 +154,14 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
     final ofdNotSent = int.tryParse(_ofdNotSentController.text) ?? 0;
     final resourceKeys = int.tryParse(_resourceKeysController.text) ?? 0;
 
+    // Валидация: отрицательные значения не допускаются
+    if (revenue < 0 || cash < 0 || ofdNotSent < 0 || resourceKeys < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Значения не могут быть отрицательными')),
+      );
+      return;
+    }
+
     Navigator.of(context).pop(ZReportRecognitionResult(
       revenue: revenue,
       cash: cash,
@@ -555,9 +563,9 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
     bool? isInRange;
     if (expectedRange != null && controller.text.isNotEmpty) {
       final value = double.tryParse(controller.text);
-      if (value != null) {
-        final min = (expectedRange['min'] as num).toDouble();
-        final max = (expectedRange['max'] as num).toDouble();
+      final min = (expectedRange['min'] is num) ? (expectedRange['min'] as num).toDouble() : null;
+      final max = (expectedRange['max'] is num) ? (expectedRange['max'] as num).toDouble() : null;
+      if (value != null && min != null && max != null) {
         isInRange = value >= min && value <= max;
       }
     }
@@ -715,7 +723,7 @@ class ZReportConfirmDialog {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Нет', style: TextStyle(color: Colors.red)),
+            child: Text('Нет', style: TextStyle(color: AppColors.error)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -739,8 +747,12 @@ class ZReportConfirmDialog {
     bool? inRange;
     if (value != null && expectedRanges != null) {
       final range = expectedRanges[fieldKey];
-      if (range is Map<String, dynamic> && range['min'] != null && range['max'] != null) {
-        inRange = value >= (range['min'] as num) && value <= (range['max'] as num);
+      if (range is Map<String, dynamic>) {
+        final min = (range['min'] is num) ? (range['min'] as num).toDouble() : null;
+        final max = (range['max'] is num) ? (range['max'] as num).toDouble() : null;
+        if (min != null && max != null) {
+          inRange = value >= min && value <= max;
+        }
       }
     }
 
@@ -754,7 +766,7 @@ class ZReportConfirmDialog {
           if (inRange != null) ...[
             Icon(
               inRange ? Icons.check_circle : Icons.warning_amber,
-              color: inRange ? Colors.green : Colors.orange,
+              color: inRange ? AppColors.success : AppColors.warning,
               size: 16,
             ),
             SizedBox(width: 4),
@@ -780,7 +792,7 @@ Future<void> showRecognitionErrorDialog(BuildContext context) {
     builder: (context) => AlertDialog(
       title: Row(
         children: [
-          Icon(Icons.error_outline, color: Colors.red),
+          Icon(Icons.error_outline, color: AppColors.error),
           SizedBox(width: 8),
           Text('Ошибка распознавания'),
         ],

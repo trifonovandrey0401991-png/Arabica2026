@@ -252,8 +252,8 @@ async function loadTrainingSamples() {
  */
 async function saveTrainingSamples(data, fullDbSync = true) {
   await ensureDataDir();
-  await writeJsonFile(SAMPLES_FILE, data);
 
+  // DB пишется ПЕРВЫМ (источник правды), JSON — бэкап
   if (USE_DB && fullDbSync) {
     try {
       for (const sample of (data.samples || [])) {
@@ -269,6 +269,8 @@ async function saveTrainingSamples(data, fullDbSync = true) {
       console.error('[Z-Report] DB saveTrainingSamples error:', e.message);
     }
   }
+
+  await writeJsonFile(SAMPLES_FILE, data);
 }
 
 /**
@@ -353,12 +355,14 @@ async function rotateSamples(samples) {
     toKeep.push(...additional);
   }
 
-  // Удаляем изображения и DB-записи удалённых образцов
-  for (const sample of toDelete) {
-    await deleteSampleImage(sample.id);
-    if (USE_DB) {
+  // Удаляем: сначала DB (источник правды), потом файлы изображений
+  if (USE_DB) {
+    for (const sample of toDelete) {
       try { await db.deleteById('z_report_training_samples', sample.id); } catch { /* ignore */ }
     }
+  }
+  for (const sample of toDelete) {
+    await deleteSampleImage(sample.id);
   }
 
   console.log(`[Training] Удалено ${toDelete.length} старых образцов, осталось ${toKeep.length}`);

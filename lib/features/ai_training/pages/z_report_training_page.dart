@@ -1052,8 +1052,8 @@ class _PhotosTabState extends State<_PhotosTab> {
         _loadIntelligenceStats(),
       ]);
 
-      final samples = futures[0] as List<Map<String, dynamic>>;
-      final shopStats = futures[1] as List<Map<String, dynamic>>;
+      final samples = futures[0];
+      final shopStats = futures[1];
 
       // Группируем семплы по магазинам
       final samplesByShop = <String, int>{};
@@ -1183,7 +1183,7 @@ class _PhotosTabState extends State<_PhotosTab> {
       final success = await ZReportTemplateService.deleteTrainingSample(sampleId);
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Фото удалено'), backgroundColor: Colors.green),
+          SnackBar(content: Text('Фото удалено'), backgroundColor: AppColors.success),
         );
         // Обновляем список фото магазина
         if (_selectedShopId != null) {
@@ -1421,9 +1421,11 @@ class _PhotosTabState extends State<_PhotosTab> {
         if (entry.value is Map) {
           final region = <String, double>{};
           for (final re in (entry.value as Map).entries) {
-            region[re.key.toString()] = (re.value as num).toDouble();
+            if (re.value is num) {
+              region[re.key.toString()] = (re.value as num).toDouble();
+            }
           }
-          fieldRegions[entry.key.toString()] = region;
+          if (region.isNotEmpty) fieldRegions[entry.key.toString()] = region;
         }
       }
       if (fieldRegions.isEmpty) fieldRegions = null;
@@ -1580,7 +1582,7 @@ class _TemplatesTabState extends State<_TemplatesTab> {
 
     if (confirm == true) {
       await ZReportTemplateService.deleteTemplate(template.id);
-      _loadTemplates();
+      if (mounted) _loadTemplates();
     }
   }
 
