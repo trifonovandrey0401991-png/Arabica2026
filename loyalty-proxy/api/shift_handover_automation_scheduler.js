@@ -20,6 +20,7 @@ const { fileExists, loadJsonFile } = require('../utils/file_helpers');
 const { getMoscowTime, getMoscowDateString, MOSCOW_OFFSET_HOURS } = require('../utils/moscow_time');
 const BaseReportScheduler = require('../utils/base_report_scheduler');
 const db = require('../utils/db');
+const { loadShopManagers } = require('./shop_managers_api');
 
 const USE_DB = process.env.USE_DB_SHIFT_HANDOVER === 'true';
 
@@ -340,6 +341,57 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
     return failedCount;
   }
 
+  // ==================== FIND MANAGER FOR SHOP ====================
+
+  async findManagerForShop(shopAddress) {
+    try {
+      // 1. Найти shop_id по адресу
+      let shopId = null;
+
+      if (USE_DB) {
+        try {
+          const result = await db.query(
+            'SELECT id FROM shops WHERE address = $1 LIMIT 1',
+            [shopAddress]
+          );
+          if (result.rows && result.rows.length > 0) {
+            shopId = result.rows[0].id;
+          }
+        } catch (e) {
+          console.error(`${this.tag} DB error finding shop by address:`, e.message);
+        }
+      }
+
+      // File fallback
+      if (!shopId) {
+        const shops = await this.getAllShops();
+        const shop = shops.find(s => s.address === shopAddress);
+        if (shop) shopId = shop.id;
+      }
+
+      if (!shopId) {
+        console.log(`${this.tag} Shop not found for address: ${shopAddress}`);
+        return null;
+      }
+
+      // 2. Найти управляющую
+      const managersData = await loadShopManagers();
+      const manager = (managersData.managers || []).find(m =>
+        m.managedShops && m.managedShops.includes(shopId)
+      );
+
+      if (!manager) {
+        console.log(`${this.tag} No manager found for shop ${shopId} (${shopAddress})`);
+        return null;
+      }
+
+      return { name: manager.name, phone: manager.phone };
+    } catch (e) {
+      console.error(`${this.tag} Error finding manager for shop:`, e.message);
+      return null;
+    }
+  }
+
   // ==================== CHECK ADMIN REVIEW TIMEOUT (override checkReviewTimeouts) ====================
 
   async checkReviewTimeouts() {
@@ -389,6 +441,21 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
           });
 
           console.log(`${this.tag} REJECTED (timeout): ${row.shop_address} by ${row.employee_name}`);
+
+          // Штраф управляющей
+          const manager = await this.findManagerForShop(row.shop_address);
+          if (manager) {
+            await this.createPenalty({
+              employeeId: manager.phone,
+              employeeName: manager.name,
+              employeePhone: manager.phone,
+              shopAddress: row.shop_address,
+              points: settings.missedPenalty,
+              reason: `Сдача смены не проверена вовремя. Сотрудник: ${row.employee_name || 'неизвестен'}`,
+              sourceId: `${row.id}_admin_penalty`
+            });
+            console.log(`${this.tag} Admin penalty assigned to manager ${manager.name} for ${row.shop_address}`);
+          }
         }
 
         if (rejectedCount > 0) {
@@ -432,6 +499,21 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
             });
 
             console.log(`${this.tag} REJECTED (timeout): ${report.shopAddress} by ${report.employeeName}`);
+
+            // Штраф управляющей
+            const manager = await this.findManagerForShop(report.shopAddress);
+            if (manager) {
+              await this.createPenalty({
+                employeeId: manager.phone,
+                employeeName: manager.name,
+                employeePhone: manager.phone,
+                shopAddress: report.shopAddress,
+                points: settings.missedPenalty,
+                reason: `Сдача смены не проверена вовремя. Сотрудник: ${report.employeeName || 'неизвестен'}`,
+                sourceId: `${report.id}_admin_penalty`
+              });
+              console.log(`${this.tag} Admin penalty assigned to manager ${manager.name} for ${report.shopAddress}`);
+            }
           }
         } catch (e) {
           // Пропускаем некорректные файлы

@@ -21,6 +21,7 @@ const { fileExists, loadJsonFile } = require('../utils/file_helpers');
 const { getMoscowTime, getMoscowDateString } = require('../utils/moscow_time');
 const BaseReportScheduler = require('../utils/base_report_scheduler');
 const db = require('../utils/db');
+const { loadShopManagers } = require('./shop_managers_api');
 
 const USE_DB = process.env.USE_DB_RECOUNT === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -321,6 +322,13 @@ class RecountScheduler extends BaseReportScheduler {
           });
           rejectedCount++;
           console.log(`${this.tag} DB: Recount REJECTED (stale review): ${row.shop_address}, employee: ${row.employee_name}`);
+
+          // Штраф управляющей
+          await this.assignPenaltyDirect({
+            id: row.id,
+            shopAddress: row.shop_address,
+            employeeName: row.employee_name
+          });
         }
 
         // Also reject reviews with NULL deadline (should not happen, but safety net)
@@ -336,6 +344,13 @@ class RecountScheduler extends BaseReportScheduler {
           });
           rejectedCount++;
           console.log(`${this.tag} DB: Recount REJECTED (null deadline): ${row.shop_address}, employee: ${row.employee_name}`);
+
+          // Штраф управляющей
+          await this.assignPenaltyDirect({
+            id: row.id,
+            shopAddress: row.shop_address,
+            employeeName: row.employee_name
+          });
         }
       } catch (dbErr) {
         console.error(`${this.tag} DB review timeout check error:`, dbErr.message);
@@ -345,24 +360,77 @@ class RecountScheduler extends BaseReportScheduler {
     return rejectedCount;
   }
 
-  // ==================== ASSIGN PENALTY DIRECT (for rejected) ====================
+  // ==================== FIND MANAGER FOR SHOP ====================
+
+  async findManagerForShop(shopAddress) {
+    try {
+      // 1. Найти shop_id по адресу
+      let shopId = null;
+
+      if (USE_DB) {
+        try {
+          const result = await db.query(
+            'SELECT id FROM shops WHERE address = $1 LIMIT 1',
+            [shopAddress]
+          );
+          if (result.rows && result.rows.length > 0) {
+            shopId = result.rows[0].id;
+          }
+        } catch (e) {
+          console.error(`${this.tag} DB error finding shop by address:`, e.message);
+        }
+      }
+
+      // File fallback
+      if (!shopId) {
+        const shops = await this.getAllShops();
+        const shop = shops.find(s => s.address === shopAddress);
+        if (shop) shopId = shop.id;
+      }
+
+      if (!shopId) {
+        console.log(`${this.tag} Shop not found for address: ${shopAddress}`);
+        return null;
+      }
+
+      // 2. Найти управляющую
+      const managersData = await loadShopManagers();
+      const manager = (managersData.managers || []).find(m =>
+        m.managedShops && m.managedShops.includes(shopId)
+      );
+
+      if (!manager) {
+        console.log(`${this.tag} No manager found for shop ${shopId} (${shopAddress})`);
+        return null;
+      }
+
+      return { name: manager.name, phone: manager.phone };
+    } catch (e) {
+      console.error(`${this.tag} Error finding manager for shop:`, e.message);
+      return null;
+    }
+  }
+
+  // ==================== ASSIGN PENALTY TO MANAGER (for admin review timeout) ====================
 
   async assignPenaltyDirect(report) {
     const settings = await this.getSettings();
+    const manager = await this.findManagerForShop(report.shopAddress);
 
-    if (!report.employeeName) {
-      console.log(`${this.tag} Cannot assign penalty - no employee info in report ${report.id}`);
-      return;
+    if (manager) {
+      await this.createPenalty({
+        employeeId: manager.phone,
+        employeeName: manager.name,
+        employeePhone: manager.phone,
+        shopAddress: report.shopAddress,
+        points: settings.missedPenalty,
+        reason: `Пересчёт не проверен вовремя. Сотрудник: ${report.employeeName || 'неизвестен'}`,
+        sourceId: `${report.id}_admin_penalty`
+      });
+      console.log(`${this.tag} Admin penalty assigned to manager ${manager.name} for shop ${report.shopAddress}`);
+    } else {
+      console.log(`${this.tag} Cannot assign admin penalty - no manager found for shop ${report.shopAddress} (report ${report.id})`);
     }
-
-    await this.createPenalty({
-      employeeId: report.employeePhone || report.id,
-      employeeName: report.employeeName,
-      shopAddress: report.shopAddress,
-      points: settings.missedPenalty,
-      reason: `Пересчёт отклонён (админ не проверил вовремя)`,
-      sourceId: report.id
-    });
   }
 
   // ==================== CLEANUP ====================
