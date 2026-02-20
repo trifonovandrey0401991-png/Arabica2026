@@ -14,6 +14,7 @@ const { fileExists } = require('../utils/file_helpers');
 const { getMoscowTime } = require('../utils/moscow_time');
 const BaseReportScheduler = require('../utils/base_report_scheduler');
 const db = require('../utils/db');
+const { loadShopManagers } = require('./shop_managers_api');
 
 const USE_DB = process.env.USE_DB_COFFEE_MACHINE === 'true';
 
@@ -61,6 +62,67 @@ class CoffeeMachineScheduler extends BaseReportScheduler {
       return JSON.parse(await fsp.readFile(this.POINTS_SETTINGS_FILE, 'utf8'));
     } catch (e) {
       console.error(`${this.tag} Error parsing points settings:`, e.message);
+      return null;
+    }
+  }
+
+  // ==================== FIND MANAGER FOR SHOP ====================
+
+  /**
+   * Найти управляющую по адресу магазина
+   * shop_address → shop_id → manager (from shop_managers)
+   * @returns {{ name: string, phone: string } | null}
+   */
+  async findManagerForShop(shopAddress) {
+    try {
+      // 1. Найти shop_id по адресу
+      let shopId = null;
+
+      if (USE_DB) {
+        try {
+          const result = await db.query(
+            'SELECT id FROM shops WHERE address = $1 LIMIT 1',
+            [shopAddress]
+          );
+          if (result.rows && result.rows.length > 0) {
+            shopId = result.rows[0].id;
+          }
+        } catch (e) {
+          console.error(`${this.tag} DB error finding shop by address:`, e.message);
+        }
+      }
+
+      // File fallback
+      if (!shopId && await fileExists(this.SHOPS_FILE)) {
+        try {
+          const shopsData = JSON.parse(await fsp.readFile(this.SHOPS_FILE, 'utf8'));
+          const shops = shopsData.shops || shopsData || [];
+          const shop = shops.find(s => s.address === shopAddress);
+          if (shop) shopId = shop.id;
+        } catch (e) { /* skip */ }
+      }
+
+      if (!shopId) {
+        console.log(`${this.tag} Shop not found for address: ${shopAddress}`);
+        return null;
+      }
+
+      // 2. Найти управляющую, у которой этот магазин в managedShops
+      const managersData = await loadShopManagers();
+      const managers = managersData.managers || [];
+
+      const manager = managers.find(m =>
+        m.managedShops && m.managedShops.includes(shopId)
+      );
+
+      if (!manager) {
+        console.log(`${this.tag} No manager found for shop ${shopId} (${shopAddress})`);
+        return null;
+      }
+
+      return { name: manager.name, phone: manager.phone };
+    } catch (e) {
+      console.error(`${this.tag} Error finding manager for shop:`, e.message);
       return null;
     }
   }
@@ -319,29 +381,36 @@ class CoffeeMachineScheduler extends BaseReportScheduler {
             } catch (e) { /* skip */ }
           }
 
-          // Assign penalty
-          const penalty = await this.createPenalty({
-            employeeId: row.employee_phone || row.id,
-            employeeName: row.employee_name,
-            shopAddress: row.shop_address,
-            points: settings.missedPenalty || settings.notSubmittedPoints,
-            reason: `Счётчик кофемашин не проверен админом за ${timeoutHours} ч (${row.shift_type === 'morning' ? 'утренняя' : 'вечерняя'} смена)`,
-            sourceId: row.id
-          });
+          // Assign penalty to MANAGER (управляющая), not employee
+          const manager = await this.findManagerForShop(row.shop_address);
+          const shiftName = row.shift_type === 'morning' ? 'утренняя' : 'вечерняя';
 
-          // Push notification to employee
-          if (penalty && row.employee_phone) {
-            const shiftName = row.shift_type === 'morning' ? 'утреннюю' : 'вечернюю';
-            await this.sendPushToEmployee(
-              row.employee_phone,
-              'Счётчик кофемашин отклонён',
-              `Отчёт автоотклонён (админ не проверил за ${timeoutHours} ч, ${shiftName} смена)`,
-              { type: 'coffee_machine_auto_rejected' }
-            );
+          if (manager) {
+            const penalty = await this.createPenalty({
+              employeeId: manager.phone,
+              employeeName: manager.name,
+              employeePhone: manager.phone,
+              shopAddress: row.shop_address,
+              points: settings.missedPenalty || settings.notSubmittedPoints,
+              reason: `Не проверен счётчик кофемашин за ${timeoutHours} ч — ${row.shop_address} (${shiftName} смена)`,
+              sourceId: row.id
+            });
+
+            // Push notification to manager
+            if (penalty) {
+              await this.sendPushToEmployee(
+                manager.phone,
+                'Штраф: не проверен счётчик',
+                `Вам начислен штраф ${penalty.points} баллов — отчёт ${row.employee_name} не проверен за ${timeoutHours} ч (${shiftName} смена, ${row.shop_address})`,
+                { type: 'coffee_machine_auto_rejected' }
+              );
+            }
+            console.log(`${this.tag} Auto-rejected (admin timeout ${timeoutHours}h): ${row.shop_address} (${row.shift_type}), penalty → manager: ${manager.name}`);
+          } else {
+            console.log(`${this.tag} Auto-rejected (admin timeout ${timeoutHours}h): ${row.shop_address} (${row.shift_type}) — no manager found, penalty skipped`);
           }
 
           rejectedCount++;
-          console.log(`${this.tag} Auto-rejected (admin timeout ${timeoutHours}h): ${row.shop_address} (${row.shift_type}), employee: ${row.employee_name}`);
         }
       } catch (dbErr) {
         console.error(`${this.tag} DB review timeout check error:`, dbErr.message);
@@ -382,15 +451,35 @@ class CoffeeMachineScheduler extends BaseReportScheduler {
                 } catch (e) { /* skip */ }
               }
 
-              // Assign penalty from schedule
-              const penalty = await this.assignPenaltyFromSchedule(
-                report,
-                settings.missedPenalty || settings.notSubmittedPoints,
-                (r) => `Счётчик кофемашин не проверен админом за ${timeoutHours} ч (${r.shiftType === 'morning' ? 'утренняя' : 'вечерняя'} смена)`
-              );
+              // Assign penalty to MANAGER (управляющая), not employee
+              const manager = await this.findManagerForShop(report.shopAddress);
+              const shiftName = report.shiftType === 'morning' ? 'утренняя' : 'вечерняя';
+
+              if (manager) {
+                const penalty = await this.createPenalty({
+                  employeeId: manager.phone,
+                  employeeName: manager.name,
+                  employeePhone: manager.phone,
+                  shopAddress: report.shopAddress,
+                  points: settings.missedPenalty || settings.notSubmittedPoints,
+                  reason: `Не проверен счётчик кофемашин за ${timeoutHours} ч — ${report.shopAddress} (${shiftName} смена)`,
+                  sourceId: report.id
+                });
+
+                if (penalty) {
+                  await this.sendPushToEmployee(
+                    manager.phone,
+                    'Штраф: не проверен счётчик',
+                    `Вам начислен штраф ${penalty.points} баллов — отчёт ${report.employeeName} не проверен за ${timeoutHours} ч (${shiftName} смена, ${report.shopAddress})`,
+                    { type: 'coffee_machine_auto_rejected' }
+                  );
+                }
+                console.log(`${this.tag} Auto-rejected (file, admin timeout ${timeoutHours}h): ${report.shopAddress} (${report.shiftType}), penalty → manager: ${manager.name}`);
+              } else {
+                console.log(`${this.tag} Auto-rejected (file, admin timeout ${timeoutHours}h): ${report.shopAddress} (${report.shiftType}) — no manager found, penalty skipped`);
+              }
 
               rejectedCount++;
-              console.log(`${this.tag} Auto-rejected (file, admin timeout ${timeoutHours}h): ${report.shopAddress} (${report.shiftType}), employee: ${report.employeeName}`);
             } catch (e) {
               // skip malformed files
             }
