@@ -239,11 +239,11 @@ async function buildAccuracyStats(shopAddress) {
   try {
     let samples = [];
     if (USE_DB) {
-      const rows = await db.query(
+      const result = await db.query(
         'SELECT data FROM z_report_training_samples WHERE shop_id = $1',
         [shopAddress]
       );
-      samples = (rows || []).map(r => r.data);
+      samples = (result?.rows || []).map(r => r.data);
     } else {
       const samplesFile = path.join(DATA_DIR, 'z-report-training-samples.json');
       if (await fileExists(samplesFile)) {
