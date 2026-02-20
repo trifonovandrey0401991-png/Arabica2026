@@ -13,6 +13,7 @@ const { fileExists } = require('../utils/file_helpers');
 const { getMoscowTime } = require('../utils/moscow_time');
 const BaseReportScheduler = require('../utils/base_report_scheduler');
 const db = require('../utils/db');
+const { loadShopManagers } = require('./shop_managers_api');
 
 const USE_DB = process.env.USE_DB_ENVELOPE === 'true';
 
@@ -308,6 +309,182 @@ class EnvelopeScheduler extends BaseReportScheduler {
     console.log(`${this.tag} Проверка дедлайнов: ${failedReports.length} failed, ${removedCount} удалено (сданы), время: ${elapsed}ms`);
 
     return failedReports.length;
+  }
+
+  // ==================== FIND MANAGER FOR SHOP ====================
+
+  async findManagerForShop(shopAddress) {
+    try {
+      let shopId = null;
+
+      if (USE_DB) {
+        try {
+          const result = await db.query(
+            'SELECT id FROM shops WHERE address = $1 LIMIT 1',
+            [shopAddress]
+          );
+          if (result.rows && result.rows.length > 0) {
+            shopId = result.rows[0].id;
+          }
+        } catch (e) {
+          console.error(`${this.tag} DB error finding shop by address:`, e.message);
+        }
+      }
+
+      if (!shopId && await fileExists(this.SHOPS_FILE)) {
+        try {
+          const shopsData = JSON.parse(await fsp.readFile(this.SHOPS_FILE, 'utf8'));
+          const shops = shopsData.shops || shopsData || [];
+          const shop = shops.find(s => s.address === shopAddress);
+          if (shop) shopId = shop.id;
+        } catch (e) { /* skip */ }
+      }
+
+      if (!shopId) {
+        console.log(`${this.tag} Shop not found for address: ${shopAddress}`);
+        return null;
+      }
+
+      const managersData = await loadShopManagers();
+      const manager = (managersData.managers || []).find(m =>
+        m.managedShops && m.managedShops.includes(shopId)
+      );
+
+      if (!manager) {
+        console.log(`${this.tag} No manager found for shop ${shopId} (${shopAddress})`);
+        return null;
+      }
+
+      return { name: manager.name, phone: manager.phone };
+    } catch (e) {
+      console.error(`${this.tag} Error finding manager for shop:`, e.message);
+      return null;
+    }
+  }
+
+  // ==================== CHECK ADMIN REVIEW TIMEOUT (override) ====================
+
+  async checkReviewTimeouts() {
+    const settings = await this.getSettings();
+    const timeoutHours = settings.adminReviewTimeout || 0;
+    if (timeoutHours <= 0) return 0; // Отключено
+
+    const now = new Date();
+    let rejectedCount = 0;
+
+    // DB: найти конверты со статусом 'pending' в envelope_reports старше таймаута
+    if (USE_DB) {
+      try {
+        const cutoff = new Date(now.getTime() - timeoutHours * 60 * 60 * 1000).toISOString();
+        const stuckRows = await db.query(
+          `SELECT id, shop_address, shift_type, employee_name, employee_phone, created_at
+           FROM envelope_reports WHERE status = 'pending'
+           AND created_at IS NOT NULL AND created_at < $1`,
+          [cutoff]
+        );
+
+        for (const row of stuckRows.rows || stuckRows) {
+          await db.query(
+            `UPDATE envelope_reports SET status = 'rejected', updated_at = $1 WHERE id = $2`,
+            [now.toISOString(), row.id]
+          );
+
+          // Dual-write: обновить файл
+          const filePath = path.join(this.REPORTS_DIR, `${row.id}.json`);
+          if (await fileExists(filePath)) {
+            try {
+              const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
+              report.status = 'rejected';
+              report.rejectedAt = now.toISOString();
+              report.rejectReason = `Автоотклонение: не проверен за ${timeoutHours} ч`;
+              await writeJsonFile(filePath, report);
+            } catch (e) { /* skip */ }
+          }
+
+          // Штраф управляющей
+          const manager = await this.findManagerForShop(row.shop_address);
+          if (manager) {
+            const shiftName = row.shift_type === 'morning' ? 'утренняя' : 'вечерняя';
+            await this.createPenalty({
+              employeeId: manager.phone,
+              employeeName: manager.name,
+              employeePhone: manager.phone,
+              shopAddress: row.shop_address,
+              points: settings.missedPenalty || settings.notSubmittedPoints,
+              reason: `Конверт не проверен за ${timeoutHours} ч — ${row.shop_address} (${shiftName} смена)`,
+              sourceId: `${row.id}_admin_penalty`
+            });
+            console.log(`${this.tag} Auto-rejected (admin timeout ${timeoutHours}h): ${row.shop_address}, penalty → manager: ${manager.name}`);
+          } else {
+            console.log(`${this.tag} Auto-rejected (admin timeout ${timeoutHours}h): ${row.shop_address} — no manager found`);
+          }
+
+          rejectedCount++;
+        }
+      } catch (dbErr) {
+        console.error(`${this.tag} DB review timeout check error:`, dbErr.message);
+      }
+    }
+
+    // File fallback
+    if (!USE_DB || rejectedCount === 0) {
+      try {
+        if (await fileExists(this.REPORTS_DIR)) {
+          const files = await fsp.readdir(this.REPORTS_DIR);
+          const cutoff = new Date(now.getTime() - timeoutHours * 60 * 60 * 1000);
+
+          for (const file of files) {
+            if (!file.endsWith('.json')) continue;
+            try {
+              const filePath = path.join(this.REPORTS_DIR, file);
+              const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
+
+              if (report.status !== 'pending') continue;
+              if (!report.createdAt) continue;
+
+              const createdAt = new Date(report.createdAt);
+              if (createdAt >= cutoff) continue;
+
+              report.status = 'rejected';
+              report.rejectedAt = now.toISOString();
+              report.rejectReason = `Автоотклонение: не проверен за ${timeoutHours} ч`;
+              await writeJsonFile(filePath, report);
+
+              if (USE_DB) {
+                try {
+                  await db.query(
+                    `UPDATE envelope_reports SET status = 'rejected', updated_at = $1 WHERE id = $2`,
+                    [now.toISOString(), report.id]
+                  );
+                } catch (e) { /* skip */ }
+              }
+
+              // Штраф управляющей
+              const manager = await this.findManagerForShop(report.shopAddress);
+              if (manager) {
+                const shiftName = report.shiftType === 'morning' ? 'утренняя' : 'вечерняя';
+                await this.createPenalty({
+                  employeeId: manager.phone,
+                  employeeName: manager.name,
+                  employeePhone: manager.phone,
+                  shopAddress: report.shopAddress,
+                  points: settings.missedPenalty || settings.notSubmittedPoints,
+                  reason: `Конверт не проверен за ${timeoutHours} ч — ${report.shopAddress} (${shiftName} смена)`,
+                  sourceId: `${report.id}_admin_penalty`
+                });
+                console.log(`${this.tag} Auto-rejected (file, admin timeout ${timeoutHours}h): ${report.shopAddress}, penalty → manager: ${manager.name}`);
+              }
+
+              rejectedCount++;
+            } catch (e) { /* skip malformed files */ }
+          }
+        }
+      } catch (e) {
+        console.error(`${this.tag} File review timeout check error:`, e.message);
+      }
+    }
+
+    return rejectedCount;
   }
 
   // ==================== CLEANUP ====================
