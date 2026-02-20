@@ -390,10 +390,10 @@ async function addTrainingSample({
     shopId,
     templateId,
     fieldRegions: fieldRegions || null,
-    // Вычисляем какие поля были исправлены
-    correctedFields: Object.keys(correctData).filter(
-      key => correctData[key] !== recognizedData?.[key]
-    )
+    // Вычисляем какие поля были исправлены (только если есть recognizedData для сравнения)
+    correctedFields: recognizedData
+      ? Object.keys(correctData).filter(key => correctData[key] !== recognizedData[key])
+      : []
   };
 
   samples.push(sample);

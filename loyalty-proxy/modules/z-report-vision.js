@@ -358,7 +358,8 @@ async function extractZReportData(originalText, learnedPatterns = null, expected
   }
 
   // Нормализуем текст для лучшего поиска (дополнительно к OCR нормализации)
-  const normalizedText = text
+  // Используем normalizedText вместо text для паттерн-матчинга
+  text = text
     .replace(/\s+/g, ' ')
     .replace(/[—–-]/g, '-');
 
@@ -752,8 +753,8 @@ async function extractZReportData(originalText, learnedPatterns = null, expected
       const match = text.match(pattern);
       if (match) {
         const value = parseInt(match[1], 10);
-        // Валидация: ресурс ключей обычно от 1 до 500
-        if (value > 0 && value <= 500) {
+        // Валидация: ресурс ключей от 1 до 2000 (разные модели ФН)
+        if (value > 0 && value <= 2000) {
           result.resourceKeys = value;
           result.confidence.resourceKeys = 'high';
           console.log('[Z-Report] Найден ресурс ключей:', result.resourceKeys);

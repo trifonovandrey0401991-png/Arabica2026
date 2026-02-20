@@ -280,11 +280,11 @@ class ShiftAiVerificationResult {
     );
   }
 
-  /// Создать результат с ошибкой
+  /// Создать результат с ошибкой (сеть, таймаут и т.д.)
   factory ShiftAiVerificationResult.error(String message) {
     return ShiftAiVerificationResult(
       success: false,
-      modelTrained: true,
+      modelTrained: false, // Неизвестно — ошибка связи, не факт что модель обучена
       missingProducts: [],
       detectedProducts: [],
       skippedProducts: [],
@@ -299,6 +299,7 @@ class BBoxVerificationResult {
   final bool detected;
   final double? confidence;
   final String? productId;
+  final String? annotationId; // ID аннотации для обучения (pending approval)
   final String? message;
   final String? error;
 
@@ -307,6 +308,7 @@ class BBoxVerificationResult {
     required this.detected,
     this.confidence,
     this.productId,
+    this.annotationId,
     this.message,
     this.error,
   });
@@ -319,6 +321,7 @@ class BBoxVerificationResult {
           ? (json['confidence'] as num).toDouble()
           : null,
       productId: json['productId'],
+      annotationId: json['annotationId'],
       message: json['message'],
       error: json['error'],
     );
@@ -338,12 +341,14 @@ class BBoxDialogResult {
   final Uint8List imageData;
   final Map<String, double> boundingBox;
   final double? confidence;
+  final String? annotationId; // ID аннотации для обучения (pending approval)
 
   BBoxDialogResult({
     required this.detected,
     required this.imageData,
     required this.boundingBox,
     this.confidence,
+    this.annotationId,
   });
 
   /// Процент уверенности

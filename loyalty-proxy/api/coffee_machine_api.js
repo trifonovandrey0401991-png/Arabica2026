@@ -429,7 +429,7 @@ function setupCoffeeMachineAPI(app) {
 
       // Генерация ID
       if (!report.id) {
-        report.id = `cm_report_${Date.now()}`;
+        report.id = `cm_report_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       }
       report.createdAt = new Date().toISOString();
       report.status = report.status || 'pending';
@@ -791,26 +791,38 @@ function setupCoffeeMachineAPI(app) {
 
   // Сохранить samples.json
   async function saveTrainingSamples(samples) {
-    await fsp.writeFile(TRAINING_SAMPLES_FILE, JSON.stringify(samples, null, 2), 'utf8');
+    await writeJsonFile(TRAINING_SAMPLES_FILE, samples);
   }
 
   // POST /api/coffee-machine/training — сохранить обучающее фото
   app.post('/api/coffee-machine/training', requireAuth, async (req, res) => {
     try {
-      const { photoUrl, correctNumber, selectedRegion, preset, machineName, shopAddress, trainedBy } = req.body;
+      const { photoUrl, correctNumber, selectedRegion, preset, templateId, machineName, shopAddress, trainedBy } = req.body;
 
       if (!photoUrl || correctNumber === undefined) {
         return res.status(400).json({ success: false, error: 'Нужно указать photoUrl и correctNumber' });
       }
 
+      // Определяем preset: из запроса, из шаблона по templateId, или дефолт
+      let resolvedPreset = preset || 'standard';
+      if ((!preset || preset === 'standard') && templateId) {
+        try {
+          const tmplFile = path.join(TEMPLATES_DIR, `${sanitizeId(templateId)}.json`);
+          if (await fileExists(tmplFile)) {
+            const tmpl = JSON.parse(await fsp.readFile(tmplFile, 'utf8'));
+            if (tmpl.preset) resolvedPreset = tmpl.preset;
+          }
+        } catch (e) { /* keep default */ }
+      }
+
       let samples = await loadTrainingSamples();
 
       const sample = {
-        id: `train_${Date.now()}`,
+        id: `train_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         photoUrl,
         correctNumber,
         selectedRegion: selectedRegion || null,
-        preset: preset || 'standard',
+        preset: resolvedPreset,
         machineName: machineName || '',
         shopAddress: shopAddress || '',
         trainedBy: trainedBy || '',
@@ -839,6 +851,11 @@ function setupCoffeeMachineAPI(app) {
             const proto = fullUrl.startsWith('https') ? https : http;
             await new Promise((resolve, reject) => {
               proto.get(fullUrl, (response) => {
+                if (response.statusCode !== 200) {
+                  response.resume(); // consume body
+                  reject(new Error(`HTTP ${response.statusCode}`));
+                  return;
+                }
                 const chunks = [];
                 response.on('data', chunk => chunks.push(chunk));
                 response.on('end', async () => {
@@ -1037,33 +1054,56 @@ async function buildMachineIntelligence() {
   try {
     const intelligence = {};
 
-    // Читаем все отчёты
-    if (!(await fileExists(REPORTS_DIR))) return intelligence;
-    const files = (await fsp.readdir(REPORTS_DIR)).filter(f => f.endsWith('.json'));
+    // Читаем все отчёты (DB primary → JSON fallback)
+    const allReports = [];
+
+    if (USE_DB) {
+      try {
+        const rows = await db.query(
+          'SELECT data FROM coffee_machine_reports ORDER BY created_at DESC LIMIT 500'
+        );
+        if (rows && rows.length > 0) {
+          for (const row of rows) {
+            if (row.data) allReports.push(row.data);
+          }
+        }
+      } catch (e) {
+        console.error('[CoffeeMachine] DB reports read error:', e.message);
+      }
+    }
+
+    // JSON fallback — если из DB ничего не получили
+    if (allReports.length === 0 && await fileExists(REPORTS_DIR)) {
+      const files = (await fsp.readdir(REPORTS_DIR)).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          allReports.push(JSON.parse(await fsp.readFile(path.join(REPORTS_DIR, file), 'utf8')));
+        } catch (e) { /* skip broken files */ }
+      }
+    }
+
+    if (allReports.length === 0) return intelligence;
 
     const reportsByMachine = {}; // machineName -> [{confirmedNumber, aiReadNumber, wasManuallyEdited, date}]
 
-    for (const file of files) {
-      try {
-        const report = JSON.parse(await fsp.readFile(path.join(REPORTS_DIR, file), 'utf8'));
-        if (!report.readings || !Array.isArray(report.readings)) continue;
+    for (const report of allReports) {
+      if (!report.readings || !Array.isArray(report.readings)) continue;
 
-        const reportDate = report.date || (report.createdAt ? report.createdAt.slice(0, 10) : null);
+      const reportDate = report.date || (report.createdAt ? report.createdAt.slice(0, 10) : null);
 
-        for (const reading of report.readings) {
-          const name = reading.machineName;
-          if (!name || !reading.confirmedNumber) continue;
+      for (const reading of report.readings) {
+        const name = (reading.machineName || '').trim();
+        if (!name || reading.confirmedNumber == null || reading.confirmedNumber === undefined) continue;
 
-          if (!reportsByMachine[name]) reportsByMachine[name] = [];
-          reportsByMachine[name].push({
-            confirmedNumber: reading.confirmedNumber,
-            aiReadNumber: reading.aiReadNumber || null,
-            wasManuallyEdited: reading.wasManuallyEdited || false,
-            templateId: reading.templateId || '',
-            date: reportDate,
-          });
-        }
-      } catch (e) { /* skip broken files */ }
+        if (!reportsByMachine[name]) reportsByMachine[name] = [];
+        reportsByMachine[name].push({
+          confirmedNumber: reading.confirmedNumber,
+          aiReadNumber: reading.aiReadNumber || null,
+          wasManuallyEdited: reading.wasManuallyEdited || false,
+          templateId: reading.templateId || '',
+          date: reportDate,
+        });
+      }
     }
 
     // Загружаем шаблоны для определения пресетов
@@ -1094,14 +1134,23 @@ async function buildMachineIntelligence() {
       const minValue = Math.min(...values);
       const maxValue = Math.max(...values);
 
-      // Средний дневной прирост
+      // Средний дневной прирост (линейная регрессия по всем точкам)
       let avgDailyGrowth = 0;
       const datedReadings = readings.filter(r => r.date && r.confirmedNumber > 0);
       if (datedReadings.length >= 2) {
-        const first = datedReadings[0];
-        const last = datedReadings[datedReadings.length - 1];
-        const daysDiff = Math.max(1, (new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24));
-        avgDailyGrowth = Math.round((last.confirmedNumber - first.confirmedNumber) / daysDiff);
+        const baseTime = new Date(datedReadings[0].date).getTime();
+        let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+        const n = datedReadings.length;
+        for (const r of datedReadings) {
+          const x = (new Date(r.date).getTime() - baseTime) / (1000 * 60 * 60 * 24); // дни
+          const y = r.confirmedNumber;
+          sumX += x; sumY += y; sumXY += x * y; sumX2 += x * x;
+        }
+        const denominator = n * sumX2 - sumX * sumX;
+        if (denominator > 0) {
+          const slope = (n * sumXY - sumX * sumY) / denominator;
+          avgDailyGrowth = Math.round(isFinite(slope) ? slope : 0);
+        }
       }
 
       // Ожидаемый диапазон следующего значения

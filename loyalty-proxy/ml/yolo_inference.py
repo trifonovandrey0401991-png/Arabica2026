@@ -43,17 +43,18 @@ DEFAULT_MODEL = MODELS_DIR / 'cigarette_detector.pt'
 CLASS_MAPPING_FILE = DATA_DIR / 'class-mapping.json'
 
 
-def load_class_mapping():
+def load_class_mapping(mapping_file=None):
     """Load product ID to class ID mapping"""
-    if CLASS_MAPPING_FILE.exists():
-        with open(CLASS_MAPPING_FILE, 'r') as f:
+    target = Path(mapping_file) if mapping_file else CLASS_MAPPING_FILE
+    if target.exists():
+        with open(target, 'r') as f:
             return json.load(f)
     return {}
 
 
-def get_reverse_mapping():
+def get_reverse_mapping(mapping_file=None):
     """Get class ID to product ID mapping"""
-    mapping = load_class_mapping()
+    mapping = load_class_mapping(mapping_file)
     return {v: k for k, v in mapping.items()}
 
 
@@ -305,43 +306,86 @@ def check_display(image_input, expected_products, model_path=None, confidence_th
 
 def export_training_data(output_dir):
     """
-    Export training data in YOLO format
+    Export training data in YOLO format with train/val split (80/20)
 
     Args:
         output_dir: Output directory for YOLO dataset
     """
+    import shutil
+    import random
+
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    images_dir = output_path / 'images'
-    labels_dir = output_path / 'labels'
-    images_dir.mkdir(exist_ok=True)
-    labels_dir.mkdir(exist_ok=True)
+    # Создаём train/val структуру
+    train_images_dir = output_path / 'train' / 'images'
+    train_labels_dir = output_path / 'train' / 'labels'
+    val_images_dir = output_path / 'val' / 'images'
+    val_labels_dir = output_path / 'val' / 'labels'
 
-    # Source directories
-    src_images = DATA_DIR / 'cigarette-training-images'
-    src_labels = DATA_DIR / 'cigarette-training-labels'
+    for d in [train_images_dir, train_labels_dir, val_images_dir, val_labels_dir]:
+        d.mkdir(parents=True, exist_ok=True)
 
-    if not src_images.exists():
-        return {'success': False, 'error': 'No training images found'}
+    # CIG-1: Читаем из ВСЕХ dataset-директорий (новые типизированные + legacy)
+    source_dirs = [
+        (DATA_DIR / 'display-training', 'images', 'labels'),
+        (DATA_DIR / 'counting-training', 'images', 'labels'),
+        (DATA_DIR / 'cigarette-training-images', None, None),  # legacy flat structure
+    ]
 
-    # Copy files
-    import shutil
-    copied_images = 0
-    copied_labels = 0
+    all_samples = []  # [(img_path, label_path_or_none)]
 
-    for img_file in src_images.glob('*.jpg'):
-        shutil.copy(img_file, images_dir / img_file.name)
-        copied_images += 1
+    for base_dir, img_subdir, lbl_subdir in source_dirs:
+        img_dir = base_dir / img_subdir if img_subdir else base_dir
+        lbl_dir = base_dir / lbl_subdir if lbl_subdir else DATA_DIR / 'cigarette-training-labels'
 
-        # Copy corresponding label file if exists
-        label_file = src_labels / f'{img_file.stem}.txt'
-        if label_file.exists():
-            shutil.copy(label_file, labels_dir / label_file.name)
-            copied_labels += 1
+        if not img_dir.exists():
+            continue
+
+        for img_file in img_dir.glob('*.jpg'):
+            label_file = lbl_dir / f'{img_file.stem}.txt'
+            all_samples.append((img_file, label_file if label_file.exists() else None))
+
+        # Также PNG файлы
+        for img_file in img_dir.glob('*.png'):
+            label_file = lbl_dir / f'{img_file.stem}.txt'
+            all_samples.append((img_file, label_file if label_file.exists() else None))
+
+    if not all_samples:
+        return {'success': False, 'error': 'No training images found in any dataset directory'}
+
+    # CIG-2: Разделяем 80% train / 20% val
+    random.shuffle(all_samples)
+    split_idx = int(len(all_samples) * 0.8)
+    train_samples = all_samples[:split_idx]
+    val_samples = all_samples[split_idx:]
+
+    copied_train = 0
+    copied_val = 0
+
+    for img_path, lbl_path in train_samples:
+        shutil.copy(img_path, train_images_dir / img_path.name)
+        if lbl_path:
+            shutil.copy(lbl_path, train_labels_dir / lbl_path.name)
+        copied_train += 1
+
+    for img_path, lbl_path in val_samples:
+        shutil.copy(img_path, val_images_dir / img_path.name)
+        if lbl_path:
+            shutil.copy(lbl_path, val_labels_dir / lbl_path.name)
+        copied_val += 1
 
     # Create data.yaml
-    class_mapping = load_class_mapping()
+    # Собираем объединённый class-mapping из всех typed директорий
+    class_mapping = {}
+    for base_dir, _, _ in source_dirs:
+        typed_mapping_file = base_dir / 'class-mapping.json'
+        if typed_mapping_file.exists():
+            typed_mapping = load_class_mapping(str(typed_mapping_file))
+            class_mapping.update(typed_mapping)
+    # Fallback на общий если typed пустой
+    if not class_mapping:
+        class_mapping = load_class_mapping()
     num_classes = len(class_mapping)
     class_names = [''] * num_classes
 
@@ -351,8 +395,8 @@ def export_training_data(output_dir):
 
     data_yaml = {
         'path': str(output_path.absolute()),
-        'train': 'images',
-        'val': 'images',  # Same for now, should be split
+        'train': 'train/images',
+        'val': 'val/images',
         'nc': num_classes,
         'names': class_names
     }
@@ -364,8 +408,9 @@ def export_training_data(output_dir):
     return {
         'success': True,
         'output_dir': str(output_path),
-        'images_copied': copied_images,
-        'labels_copied': copied_labels,
+        'train_images': copied_train,
+        'val_images': copied_val,
+        'total_images': len(all_samples),
         'num_classes': num_classes,
         'data_yaml': str(output_path / 'data.yaml')
     }
@@ -441,6 +486,7 @@ def main():
     parser.add_argument('--output', type=str, help='Output directory')
     parser.add_argument('--epochs', type=int, default=100, help='Training epochs')
     parser.add_argument('--confidence', type=float, default=0.5, help='Confidence threshold')
+    parser.add_argument('--class-mapping', type=str, help='Path to class-mapping.json (typed training)')
 
     args = parser.parse_args()
 

@@ -128,6 +128,8 @@ class ZReportService {
     String? shopAddress,
     String? employeeName,
     Map<String, Map<String, double>>? fieldRegions,
+    String? rawText,
+    Map<String, dynamic>? recognizedData,
   }) async {
     try {
       final body = <String, dynamic>{
@@ -144,6 +146,12 @@ class ZReportService {
       };
       if (fieldRegions != null) {
         body['fieldRegions'] = fieldRegions;
+      }
+      if (rawText != null) {
+        body['rawText'] = rawText;
+      }
+      if (recognizedData != null) {
+        body['recognizedData'] = recognizedData;
       }
 
       final response = await http.post(

@@ -83,7 +83,7 @@ async function setupCigaretteVisionAPI(app) {
       // Перезагружаем вопросы для актуальности
       await loadRecountQuestions();
 
-      const products = cigaretteVision.getProductsWithTrainingInfo(
+      const products = await cigaretteVision.getProductsWithTrainingInfo(
         recountQuestionsCache,
         productGroup || null
       );
@@ -113,7 +113,7 @@ async function setupCigaretteVisionAPI(app) {
   app.get('/api/cigarette-vision/stats', requireAuth, async (req, res) => {
     try {
       await loadRecountQuestions();
-      const stats = cigaretteVision.getTrainingStats(recountQuestionsCache);
+      const stats = await cigaretteVision.getTrainingStats(recountQuestionsCache);
       res.json(stats);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка получения статистики:', error);
@@ -252,7 +252,8 @@ async function setupCigaretteVisionAPI(app) {
         return res.status(400).json({ success: false, error: 'Изображение обязательно' });
       }
 
-      const result = await cigaretteVision.checkDisplay(imageBase64, shopAddress);
+      const expectedProducts = productId ? [productId] : [];
+      const result = await cigaretteVision.checkDisplay(imageBase64, expectedProducts);
 
       // Записываем статистику распознавания для display (если передан productId)
       if (productId) {
@@ -260,6 +261,10 @@ async function setupCigaretteVisionAPI(app) {
         await cigaretteVision.recordRecognitionAttempt(productId, 'display', isSuccessfulDetection, {
           shopAddress: shopAddress || '',
         });
+        // Сбрасываем счётчик consecutiveErrors при успехе
+        if (isSuccessfulDetection) {
+          await cigaretteVision.reportAiSuccess(productId);
+        }
       }
 
       res.json(result);

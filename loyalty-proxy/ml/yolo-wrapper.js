@@ -1,18 +1,84 @@
 /**
  * Node.js wrapper for YOLOv8 Python inference script
  *
- * Provides async interface to call Python YOLO detection
+ * Provides async interface to call Python YOLO detection.
+ * CIG-8: Tries persistent HTTP server (port 5002) first, falls back to spawn.
  */
 
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 
 // Paths
 const SCRIPT_DIR = __dirname;
 const PYTHON_SCRIPT = path.join(SCRIPT_DIR, 'yolo_inference.py');
 const MODELS_DIR = path.join(SCRIPT_DIR, 'models');
 const DEFAULT_MODEL = path.join(MODELS_DIR, 'cigarette_detector.pt');
+
+// YOLO Server (persistent HTTP server on port 5002)
+const YOLO_SERVER_PORT = 5002;
+const YOLO_SERVER_URL = `http://127.0.0.1:${YOLO_SERVER_PORT}`;
+let yoloServerAvailable = null; // null = unknown, true/false = cached
+
+/**
+ * Check if YOLO persistent server is running
+ */
+async function isYoloServerReady() {
+  return new Promise((resolve) => {
+    const req = http.get(`${YOLO_SERVER_URL}/health`, { timeout: 2000 }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const result = JSON.parse(data);
+          resolve(result.modelLoaded === true);
+        } catch (e) {
+          resolve(false);
+        }
+      });
+    });
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => { req.destroy(); resolve(false); });
+  });
+}
+
+/**
+ * Send request to YOLO persistent server
+ */
+async function callYoloServer(endpoint, payload) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(payload);
+    const options = {
+      hostname: '127.0.0.1',
+      port: YOLO_SERVER_PORT,
+      path: endpoint,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+      timeout: 30000,
+    };
+
+    const req = http.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          reject(new Error(`Invalid JSON from YOLO server: ${data.slice(0, 100)}`));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('YOLO server timeout')); });
+    req.write(body);
+    req.end();
+  });
+}
 
 // Python executable (try python3 first, then python)
 let pythonExecutable = null;
@@ -164,35 +230,47 @@ async function detectAndCount(imageBase64, productId = null, confidence = 0.5) {
     };
   }
 
-  // Save image temporarily (base64 is too long for command line)
+  // CIG-8: Попробовать persistent HTTP server
+  if (yoloServerAvailable === null) {
+    yoloServerAvailable = await isYoloServerReady();
+  }
+  if (yoloServerAvailable) {
+    try {
+      const result = await callYoloServer('/detect', {
+        imageBase64,
+        productId,
+        confidence,
+      });
+      return result;
+    } catch (e) {
+      console.warn('[YOLO Wrapper] HTTP server failed, falling back to spawn:', e.message);
+      yoloServerAvailable = false;
+      // Повторная проверка через 60 секунд (сервер мог перезагрузиться)
+      setTimeout(() => { yoloServerAvailable = null; }, 60000);
+    }
+  }
+
+  // Fallback: spawn Python process
   const tempDir = path.join(SCRIPT_DIR, 'temp');
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
   }
 
-  const tempFile = path.join(tempDir, `detect_${Date.now()}.jpg`);
+  const tempFile = path.join(tempDir, `detect_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.jpg`);
 
   try {
-    // Write base64 to temp file
     const imageBuffer = Buffer.from(imageBase64, 'base64');
     fs.writeFileSync(tempFile, imageBuffer);
 
-    // Run detection
     const args = ['--mode', 'detect', '--image', tempFile, '--confidence', confidence.toString()];
-
     if (productId) {
       args.push('--product-id', productId);
     }
 
-    const result = await runYoloScript(args);
-
-    return result;
+    return await runYoloScript(args);
   } finally {
-    // Cleanup temp file
     try {
-      if (fs.existsSync(tempFile)) {
-        fs.unlinkSync(tempFile);
-      }
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
     } catch (e) {
       console.error('[YOLO Wrapper] Failed to cleanup temp file:', e);
     }
@@ -219,39 +297,50 @@ async function checkDisplay(imageBase64, expectedProducts = [], confidence = 0.3
     };
   }
 
-  // Save image temporarily
+  // CIG-8: Попробовать persistent HTTP server
+  if (yoloServerAvailable === null) {
+    yoloServerAvailable = await isYoloServerReady();
+  }
+  if (yoloServerAvailable) {
+    try {
+      const result = await callYoloServer('/display', {
+        imageBase64,
+        expectedProducts,
+        confidence,
+      });
+      return result;
+    } catch (e) {
+      console.warn('[YOLO Wrapper] HTTP server failed, falling back to spawn:', e.message);
+      yoloServerAvailable = false;
+      setTimeout(() => { yoloServerAvailable = null; }, 60000);
+    }
+  }
+
+  // Fallback: spawn Python process
   const tempDir = path.join(SCRIPT_DIR, 'temp');
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
   }
 
-  const tempFile = path.join(tempDir, `display_${Date.now()}.jpg`);
+  const tempFile = path.join(tempDir, `display_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.jpg`);
 
   try {
-    // Write base64 to temp file
     const imageBuffer = Buffer.from(imageBase64, 'base64');
     fs.writeFileSync(tempFile, imageBuffer);
 
-    // Run display check
     const args = [
       '--mode', 'display',
       '--image', tempFile,
       '--confidence', confidence.toString()
     ];
-
     if (expectedProducts && expectedProducts.length > 0) {
       args.push('--expected', expectedProducts.join(','));
     }
 
-    const result = await runYoloScript(args);
-
-    return result;
+    return await runYoloScript(args);
   } finally {
-    // Cleanup temp file
     try {
-      if (fs.existsSync(tempFile)) {
-        fs.unlinkSync(tempFile);
-      }
+      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
     } catch (e) {
       console.error('[YOLO Wrapper] Failed to cleanup temp file:', e);
     }

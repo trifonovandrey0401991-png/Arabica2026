@@ -100,7 +100,8 @@ function buildFieldStats(reports, fieldName) {
 
   for (const r of reports) {
     const date = r.date || (r.createdAt ? r.createdAt.slice(0, 10) : null);
-    const dow = date ? new Date(date).getDay() : null; // 0=Sun..6=Sat
+    // Добавляем T12:00:00 чтобы избежать UTC-сдвига на предыдущий день
+    const dow = date ? new Date(date + 'T12:00:00').getDay() : null; // 0=Sun..6=Sat
 
     // ООО
     const oooVal = extractFieldValue(r, 'ooo', fieldName);
@@ -239,26 +240,24 @@ async function buildAccuracyStats(shopAddress) {
     let samples = [];
     if (USE_DB) {
       const rows = await db.query(
-        'SELECT correct_data, recognized_data, corrected_fields FROM z_report_training_samples WHERE shop_id = $1',
+        'SELECT data FROM z_report_training_samples WHERE shop_id = $1',
         [shopAddress]
       );
-      samples = rows || [];
+      samples = (rows || []).map(r => r.data);
     } else {
       const samplesFile = path.join(DATA_DIR, 'z-report-training-samples.json');
       if (await fileExists(samplesFile)) {
         const all = JSON.parse(await fsp.readFile(samplesFile, 'utf8'));
-        samples = (all || []).filter(s => s.shopId === shopAddress);
+        samples = Array.isArray(all) ? all.filter(s => s.shopId === shopAddress) : [];
       }
     }
 
     if (samples.length === 0) return defaults;
 
     for (const sample of samples) {
-      const correct = typeof sample.correct_data === 'string'
-        ? JSON.parse(sample.correct_data) : (sample.correctData || sample.correct_data || {});
-      const recognized = typeof sample.recognized_data === 'string'
-        ? JSON.parse(sample.recognized_data) : (sample.recognizedData || sample.recognized_data || {});
-      const correctedFields = sample.corrected_fields || sample.correctedFields || [];
+      const correct = sample.correctData || {};
+      const recognized = sample.recognizedData || {};
+      const correctedFields = sample.correctedFields || [];
 
       for (const field of ['totalSum', 'cashSum', 'ofdNotSent', 'resourceKeys']) {
         if (correct[field] !== undefined && correct[field] !== null) {
@@ -394,7 +393,8 @@ async function loadAllReports() {
   if (USE_DB) {
     try {
       return await db.findAll('envelope_reports', {
-        orderBy: 'created_at DESC',
+        orderBy: 'created_at',
+        orderDir: 'DESC',
         limit: 500, // последние 500 для анализа
       });
     } catch (e) {

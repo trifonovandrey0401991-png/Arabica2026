@@ -7,6 +7,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const sharp = require('sharp');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
@@ -602,16 +603,19 @@ function setupShiftAiVerificationAPI(app) {
         source: 'shift_verification',
       };
 
-      // Сохраняем изображение
+      // Атомарная запись: сначала изображение, потом JSON. Если JSON не записался — удаляем изображение
       const imageFileName = `${annotationId}.jpg`;
       const imagePath = path.join(SHIFT_AI_ANNOTATIONS_DIR, imageFileName);
       const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-      await fsp.writeFile(imagePath, Buffer.from(imageData, 'base64'));
-
-      annotation.imagePath = imagePath;
-
-      // Сохраняем аннотацию
-      await writeJsonFile(annotationFile, annotation);
+      try {
+        await fsp.writeFile(imagePath, Buffer.from(imageData, 'base64'));
+        annotation.imagePath = imagePath;
+        await writeJsonFile(annotationFile, annotation);
+      } catch (writeErr) {
+        // Cleanup: удалить изображение если JSON не записался
+        try { await fsp.unlink(imagePath); } catch (e) { /* ignore cleanup error */ }
+        throw writeErr;
+      }
 
       if (USE_DB) {
         try {
@@ -675,10 +679,31 @@ function setupShiftAiVerificationAPI(app) {
 
       const cigaretteVision = require('../modules/cigarette-vision');
 
-      // Запускаем YOLO детекцию на полном изображении с указанием BBox области интереса
-      // YOLO будет искать товар productId/barcode в указанной области
+      // CIG-3: Кропаем изображение по BBox перед отправкой в YOLO
+      let croppedBase64 = imageBase64;
+      try {
+        const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+        const imgBuffer = Buffer.from(cleanBase64, 'base64');
+        const metadata = await sharp(imgBuffer).metadata();
+        if (metadata.width && metadata.height) {
+          const left = Math.max(0, Math.round(boundingBox.x * metadata.width));
+          const top = Math.max(0, Math.round(boundingBox.y * metadata.height));
+          const cropW = Math.min(metadata.width - left, Math.round(boundingBox.width * metadata.width));
+          const cropH = Math.min(metadata.height - top, Math.round(boundingBox.height * metadata.height));
+          if (cropW > 10 && cropH > 10) {
+            const croppedBuffer = await sharp(imgBuffer)
+              .extract({ left, top, width: cropW, height: cropH })
+              .toBuffer();
+            croppedBase64 = croppedBuffer.toString('base64');
+          }
+        }
+      } catch (cropErr) {
+        console.warn('[ShiftAI] Crop error, using full image:', cropErr.message);
+      }
+
+      // Запускаем YOLO детекцию на кропнутом изображении
       const result = await cigaretteVision.checkDisplay(
-        imageBase64,
+        croppedBase64,
         [productId || barcode],  // Ищем только один товар
         0.25  // Пониженный порог уверенности для BBox области
       );
@@ -717,11 +742,10 @@ function setupShiftAiVerificationAPI(app) {
           annotationId = `ann_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
           const annotationFile = path.join(SHIFT_AI_ANNOTATIONS_DIR, `${annotationId}.json`);
 
-          // Сохраняем изображение
+          // Атомарная запись: изображение → JSON, с cleanup при ошибке
           const imageFileName = `${annotationId}.jpg`;
           const imagePath = path.join(SHIFT_AI_ANNOTATIONS_DIR, imageFileName);
           const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-          await fsp.writeFile(imagePath, Buffer.from(imageData, 'base64'));
 
           const annotation = {
             id: annotationId,
@@ -737,7 +761,13 @@ function setupShiftAiVerificationAPI(app) {
             createdAt: new Date().toISOString(),
           };
 
-          await writeJsonFile(annotationFile, annotation);
+          await fsp.writeFile(imagePath, Buffer.from(imageData, 'base64'));
+          try {
+            await writeJsonFile(annotationFile, annotation);
+          } catch (jsonErr) {
+            try { await fsp.unlink(imagePath); } catch (e) { /* ignore */ }
+            throw jsonErr;
+          }
 
           if (USE_DB) {
             try {
@@ -963,8 +993,12 @@ function setupShiftAiVerificationAPI(app) {
               productName: annotation.productName,
             }],
             shopAddress: annotation.shopAddress,
-            boxes: [annotation.boundingBox],
+            boxes: [{
+              productId: annotation.productId,
+              box: annotation.boundingBox,
+            }],
             source: 'admin_approved_bbox',
+            force: true, // Админ подтвердил — всегда сохраняем, не отбрасываем по sampleRate
           }
         );
       }

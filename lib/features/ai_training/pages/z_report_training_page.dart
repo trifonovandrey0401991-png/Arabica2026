@@ -1,13 +1,19 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/api_constants.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/z_report_service.dart';
 import '../../employees/services/user_role_service.dart';
+import '../../shops/services/shop_service.dart';
+import '../../shops/models/shop_model.dart';
 import '../services/z_report_template_service.dart';
 import '../models/z_report_sample_model.dart';
 import '../models/z_report_template_model.dart';
+import '../widgets/z_report_recognition_dialog.dart';
+import '../widgets/z_report_region_selector.dart';
 import 'template_editor_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -28,8 +34,8 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
   // Цвета для градиентов
   static final _purpleGradient = [AppColors.indigo, AppColors.purple];
 
-  /// Количество вкладок зависит от роли: админ видит 3 вкладки, остальные - 2
-  int get _tabCount => _isAdmin ? 3 : 2;
+  /// Количество вкладок зависит от роли: админ видит 4 вкладки, остальные - 2
+  int get _tabCount => _isAdmin ? 4 : 2;
 
   @override
   void initState() {
@@ -90,6 +96,7 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
                         controller: _tabController,
                         children: [
                           _TrainingSampleTab(),
+                          if (_isAdmin) _PhotosTab(),
                           if (_isAdmin) _TemplatesTab(),
                           _StatsTab(),
                         ],
@@ -190,6 +197,17 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Icon(Icons.photo_library, size: 18),
+                  SizedBox(width: 6),
+                  Text('Фото'),
+                ],
+              ),
+            ),
+          if (_isAdmin)
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                   Icon(Icons.grid_view, size: 18),
                   SizedBox(width: 6),
                   Text('Шаблоны'),
@@ -212,232 +230,265 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
   }
 }
 
-// ==================== Вкладка обучения ====================
+// ==================== Вкладка обучения (пошаговый flow) ====================
+
+/// Шаги обучения
+enum _TrainingStep {
+  selectShop,
+  photo,
+  recognizing,
+  confirm,
+  drawRegions,
+  reRecognizing,
+  confirm2,
+  manualInput,
+  saving,
+  done,
+}
 
 class _TrainingSampleTab extends StatefulWidget {
-  _TrainingSampleTab();
-
   @override
   State<_TrainingSampleTab> createState() => _TrainingSampleTabState();
 }
 
 class _TrainingSampleTabState extends State<_TrainingSampleTab> {
-  File? _selectedImage;
+  _TrainingStep _step = _TrainingStep.selectShop;
+  bool _dialogShown = false; // Защита от множественных диалогов при rebuild
+
+  // Данные по шагам
+  List<Shop> _shops = [];
+  bool _isLoadingShops = true;
+  Shop? _selectedShop;
   String? _imageBase64;
-  bool _isLoading = false;
-  bool _isParsing = false;
   ZReportParseResult? _parseResult;
+  Map<String, Map<String, double>>? _fieldRegions;
 
-  List<ZReportTemplate> _templates = [];
-  ZReportTemplate? _selectedTemplate;
-  bool _isLoadingTemplates = true;
-
-  final _totalSumController = TextEditingController();
-  final _cashSumController = TextEditingController();
-  final _ofdNotSentController = TextEditingController();
-  final _resourceKeysController = TextEditingController();
-
-  // Цвета
   static final _purpleGradient = [AppColors.indigo, AppColors.purple];
   static final _greenGradient = [AppColors.emeraldGreen, AppColors.emeraldGreenLight];
 
   @override
   void initState() {
     super.initState();
-    _loadTemplates();
+    _loadShops();
   }
 
-  Future<void> _loadTemplates() async {
+  Future<void> _loadShops() async {
     try {
-      final templates = await ZReportTemplateService.getTemplates();
+      final shops = await ShopService.getShops();
       if (mounted) {
         setState(() {
-          _templates = templates;
-          _isLoadingTemplates = false;
-          if (templates.isNotEmpty) {
-            _selectedTemplate = templates.first;
-          }
+          _shops = shops;
+          _isLoadingShops = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoadingTemplates = false);
+      if (mounted) setState(() => _isLoadingShops = false);
     }
   }
 
-  @override
-  void dispose() {
-    _totalSumController.dispose();
-    _cashSumController.dispose();
-    _ofdNotSentController.dispose();
-    _resourceKeysController.dispose();
-    super.dispose();
+  void _reset() {
+    if (mounted) {
+      setState(() {
+        _step = _TrainingStep.selectShop;
+        _selectedShop = null;
+        _imageBase64 = null;
+        _parseResult = null;
+        _fieldRegions = null;
+      });
+    }
   }
 
-  Future<void> _pickImage(ImageSource source) async {
+  Future<void> _pickPhoto() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: source,
+    final picked = await picker.pickImage(
+      source: ImageSource.camera,
       maxWidth: 1920,
       maxHeight: 1920,
       imageQuality: 85,
     );
+    if (picked == null || !mounted) return;
 
-    if (pickedFile != null) {
-      final file = File(pickedFile.path);
-      final bytes = await file.readAsBytes();
-      final base64 = base64Encode(bytes);
+    final bytes = await File(picked.path).readAsBytes();
+    final compressedBase64 = await ZReportService.compressImage(bytes);
 
-      if (mounted) {
-        setState(() {
-          _selectedImage = file;
-          _imageBase64 = base64;
-          _parseResult = null;
-        });
-      }
-
-      await _parseImage();
+    if (mounted) {
+      setState(() {
+        _imageBase64 = compressedBase64;
+        _step = _TrainingStep.recognizing;
+      });
     }
+
+    await _runOCR();
   }
 
-  Future<void> _parseImage() async {
+  Future<void> _pickFromGallery() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+
+    final bytes = await File(picked.path).readAsBytes();
+    final compressedBase64 = await ZReportService.compressImage(bytes);
+
+    if (mounted) {
+      setState(() {
+        _imageBase64 = compressedBase64;
+        _step = _TrainingStep.recognizing;
+      });
+    }
+
+    await _runOCR();
+  }
+
+  Future<void> _runOCR({Map<String, Map<String, double>>? explicitRegions}) async {
     if (_imageBase64 == null) return;
 
-    if (mounted) setState(() => _isParsing = true);
-
     try {
-      ZReportParseResult result;
+      final result = await ZReportService.parseZReport(
+        _imageBase64!,
+        shopAddress: _selectedShop?.address,
+        explicitRegions: explicitRegions,
+      );
 
-      if (_selectedTemplate != null && _selectedTemplate!.regions.isNotEmpty) {
-        final response = await ZReportTemplateService.parseWithTemplate(
-          imageBase64: _imageBase64!,
-          templateId: _selectedTemplate!.id,
-        );
+      if (!mounted) return;
 
-        if (response['success'] == true && response['data'] != null) {
-          final data = response['data'] as Map<String, dynamic>;
-          result = ZReportParseResult(
-            success: true,
-            rawText: response['rawText'] ?? '',
-            data: ZReportData(
-              totalSum: data['totalSum']?.toDouble(),
-              cashSum: data['cashSum']?.toDouble(),
-              ofdNotSent: data['ofdNotSent'],
-              resourceKeys: data['resourceKeys'],
-              confidence: Map<String, String>.from(data['confidence'] ?? {}),
-            ),
-          );
-        } else {
-          result = ZReportParseResult(
-            success: false,
-            error: response['error'] ?? 'Ошибка распознавания по шаблону',
-          );
-        }
-      } else {
-        result = await ZReportService.parseZReport(_imageBase64!);
-      }
+      final hasData = result.success &&
+          result.data != null &&
+          (result.data!.totalSum != null || result.data!.cashSum != null);
 
-      if (mounted) {
+      if (hasData) {
+        // OCR распознал — показываем подтверждение
         setState(() {
           _parseResult = result;
-          _isParsing = false;
+          _step = _fieldRegions == null
+              ? _TrainingStep.confirm
+              : _TrainingStep.confirm2;
         });
-      }
-
-      if (result.success && result.data != null) {
-        if (result.data!.totalSum != null) {
-          _totalSumController.text = result.data!.totalSum!.toStringAsFixed(2);
-        }
-        if (result.data!.cashSum != null) {
-          _cashSumController.text = result.data!.cashSum!.toStringAsFixed(2);
-        }
-        if (result.data!.ofdNotSent != null) {
-          _ofdNotSentController.text = result.data!.ofdNotSent.toString();
-        }
-        if (result.data!.resourceKeys != null) {
-          _resourceKeysController.text = result.data!.resourceKeys.toString();
-        }
+      } else {
+        // OCR не распознал — сразу ручной ввод
+        setState(() {
+          _parseResult = result;
+          _step = _TrainingStep.manualInput;
+        });
+        _showManualInput(result);
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isParsing = false;
-          _parseResult = ZReportParseResult(success: false, error: 'Ошибка: $e');
-        });
+        setState(() => _step = _TrainingStep.photo);
+        _showSnackBar('Ошибка распознавания: $e', AppColors.error);
       }
     }
   }
 
-  Future<void> _saveSample() async {
-    if (_imageBase64 == null) {
-      _showSnackBar('Сначала сфотографируйте Z-отчёт', AppColors.warning);
+  Future<void> _showConfirmDialog() async {
+    if (_parseResult?.data == null) return;
+
+    final confirmed = await ZReportConfirmDialog.show(
+      context,
+      data: _parseResult!.data!,
+      expectedRanges: _parseResult!.expectedRanges,
+    );
+    if (!mounted) return;
+
+    if (confirmed == true) {
+      // Пользователь подтвердил — сохраняем
+      await _saveSample(
+        totalSum: _parseResult!.data!.totalSum ?? 0,
+        cashSum: _parseResult!.data!.cashSum ?? 0,
+        ofdNotSent: _parseResult!.data!.ofdNotSent ?? 0,
+        resourceKeys: _parseResult!.data!.resourceKeys ?? 0,
+      );
+    } else if (confirmed == false) {
+      if (_fieldRegions == null) {
+        // Первый раз — рисуем регионы
+        if (mounted) setState(() => _step = _TrainingStep.drawRegions);
+        _showRegionSelector();
+      } else {
+        // Второй раз — ручной ввод
+        if (mounted) setState(() => _step = _TrainingStep.manualInput);
+        _showManualInput(_parseResult);
+      }
+    }
+  }
+
+  Future<void> _showRegionSelector() async {
+    if (_imageBase64 == null) return;
+
+    final regions = await ZReportRegionSelector.show(
+      context,
+      imageBase64: _imageBase64!,
+    );
+    if (regions == null || !mounted) {
+      if (mounted) setState(() => _step = _TrainingStep.photo);
       return;
     }
 
-    final totalSum = double.tryParse(_totalSumController.text);
-    final cashSum = double.tryParse(_cashSumController.text);
-    final ofdNotSent = int.tryParse(_ofdNotSentController.text);
-    final resourceKeys = int.tryParse(_resourceKeysController.text);
+    setState(() {
+      _fieldRegions = regions;
+      _step = _TrainingStep.reRecognizing;
+    });
 
-    if (totalSum == null) {
-      _showSnackBar('Введите корректную общую сумму', AppColors.warning);
-      return;
+    await _runOCR(explicitRegions: regions);
+  }
+
+  Future<void> _showManualInput(ZReportParseResult? result) async {
+    if (_imageBase64 == null) return;
+
+    final manualResult = await ZReportRecognitionDialog.show(
+      context,
+      imageBase64: _imageBase64!,
+      recognizedData: result?.data,
+      shopAddress: _selectedShop?.address,
+      expectedRanges: result?.expectedRanges,
+      startInEditMode: true,
+    );
+
+    if (manualResult != null && mounted) {
+      await _saveSample(
+        totalSum: manualResult.revenue,
+        cashSum: manualResult.cash,
+        ofdNotSent: manualResult.ofdNotSent,
+        resourceKeys: manualResult.resourceKeys,
+      );
+    } else if (mounted) {
+      setState(() => _step = _TrainingStep.photo);
     }
+  }
 
-    if (mounted) setState(() => _isLoading = true);
+  Future<void> _saveSample({
+    required double totalSum,
+    required double cashSum,
+    required int ofdNotSent,
+    required int resourceKeys,
+  }) async {
+    if (_imageBase64 == null) return;
+
+    if (mounted) setState(() => _step = _TrainingStep.saving);
 
     try {
-      final success = await ZReportTemplateService.saveTrainingSample(
+      await ZReportService.saveSample(
         imageBase64: _imageBase64!,
-        rawText: _parseResult?.rawText ?? '',
-        correctData: {
-          'totalSum': totalSum,
-          'cashSum': cashSum ?? 0,
-          'ofdNotSent': ofdNotSent ?? 0,
-          'resourceKeys': resourceKeys ?? 0,
-        },
-        recognizedData: {
-          'totalSum': _parseResult?.data?.totalSum,
-          'cashSum': _parseResult?.data?.cashSum,
-          'ofdNotSent': _parseResult?.data?.ofdNotSent,
-          'resourceKeys': _parseResult?.data?.resourceKeys,
-        },
+        totalSum: totalSum,
+        cashSum: cashSum,
+        ofdNotSent: ofdNotSent,
+        resourceKeys: resourceKeys,
+        shopAddress: _selectedShop?.address,
+        fieldRegions: _fieldRegions,
       );
 
-      if (success) {
-        final learningResult = ZReportTemplateService.lastLearningResult;
-        String message = 'Образец сохранён для обучения';
-
-        if (learningResult != null) {
-          final newPatterns = learningResult['newPatterns'] ?? 0;
-          final totalPatterns = learningResult['totalPatterns'];
-          if (newPatterns > 0) {
-            message = 'Выучено $newPatterns новых паттернов!';
-          } else if (totalPatterns != null) {
-            final total = (totalPatterns['totalSum'] ?? 0) +
-                (totalPatterns['cashSum'] ?? 0) +
-                (totalPatterns['ofdNotSent'] ?? 0) +
-                (totalPatterns['resourceKeys'] ?? 0);
-            message = 'Образец сохранён. Всего паттернов: $total';
-          }
-        }
-
-        _showSnackBar(message, _greenGradient[0]);
-        if (mounted) {
-          setState(() {
-            _selectedImage = null;
-            _imageBase64 = null;
-            _parseResult = null;
-          });
-        }
-        _totalSumController.clear();
-        _cashSumController.clear();
-        _ofdNotSentController.clear();
-        _resourceKeysController.clear();
-      } else {
-        _showSnackBar('Ошибка сохранения образца', AppColors.error);
+      if (mounted) {
+        setState(() => _step = _TrainingStep.done);
+        _showSnackBar('Образец сохранён для обучения', _greenGradient[0]);
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    } catch (e) {
+      if (mounted) {
+        _showSnackBar('Ошибка сохранения: $e', AppColors.error);
+        setState(() => _step = _TrainingStep.photo);
+      }
     }
   }
 
@@ -469,195 +520,423 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Инструкция
-          _buildInfoCard(
-            icon: Icons.school,
-            title: 'Как обучать ИИ',
-            description:
-                'Выберите шаблон, сфотографируйте Z-отчёт, проверьте данные. '
-                'Это поможет ИИ лучше распознавать такие чеки.',
-            gradient: _purpleGradient,
-          ),
-          SizedBox(height: 16),
+          // Прогресс-бар
+          _buildProgressBar(),
+          SizedBox(height: 20),
 
-          // Выбор шаблона
-          if (_isLoadingTemplates)
-            Center(
-              child: CircularProgressIndicator(
-                color: _purpleGradient[0],
-              ),
-            )
-          else if (_templates.isNotEmpty) ...[
-            Text(
-              'Выберите шаблон',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.white.withOpacity(0.9),
-                fontSize: 15.sp,
-              ),
-            ),
-            SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
-                  width: 1,
-                ),
-              ),
-              child: DropdownButtonFormField<ZReportTemplate>(
-                value: _selectedTemplate,
-                dropdownColor: AppColors.darkNavy,
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                  prefixIcon: Container(
-                    margin: EdgeInsets.all(8.w),
-                    padding: EdgeInsets.all(8.w),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: _purpleGradient),
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: Icon(Icons.grid_view, color: Colors.white, size: 18),
-                  ),
-                ),
-                style: TextStyle(color: Colors.white),
-                items: _templates.map((template) {
-                  return DropdownMenuItem(
-                    value: template,
-                    child: Text(
-                      '${template.name} (${template.regions.length} обл.)',
-                      style: TextStyle(color: Colors.white),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }).toList(),
-                onChanged: (template) {
-                  if (mounted) setState(() => _selectedTemplate = template);
-                  if (_imageBase64 != null) {
-                    _parseImage();
-                  }
-                },
-              ),
-            ),
-            SizedBox(height: 16),
-          ] else
-            _buildWarningCard(),
-          SizedBox(height: 16),
+          // Содержимое шага
+          _buildStepContent(),
+        ],
+      ),
+    );
+  }
 
-          // Кнопки
-          Row(
+  Widget _buildProgressBar() {
+    final steps = ['Магазин', 'Фото', 'ИИ', 'Готово'];
+    int activeIndex;
+    switch (_step) {
+      case _TrainingStep.selectShop:
+        activeIndex = 0;
+        break;
+      case _TrainingStep.photo:
+        activeIndex = 1;
+        break;
+      case _TrainingStep.recognizing:
+      case _TrainingStep.confirm:
+      case _TrainingStep.drawRegions:
+      case _TrainingStep.reRecognizing:
+      case _TrainingStep.confirm2:
+      case _TrainingStep.manualInput:
+      case _TrainingStep.saving:
+        activeIndex = 2;
+        break;
+      case _TrainingStep.done:
+        activeIndex = 3;
+        break;
+    }
+
+    return Row(
+      children: List.generate(steps.length, (i) {
+        final isActive = i <= activeIndex;
+        final isCurrent = i == activeIndex;
+
+        return Expanded(
+          child: Column(
             children: [
-              Expanded(
-                child: _buildGradientButton(
-                  icon: Icons.camera_alt,
-                  label: 'Камера',
-                  gradient: _purpleGradient,
-                  onTap: _isLoading || _isParsing
-                      ? null
-                      : () => _pickImage(ImageSource.camera),
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: _buildGradientButton(
-                  icon: Icons.photo_library,
-                  label: 'Галерея',
-                  gradient: [AppColors.info, AppColors.infoLight],
-                  onTap: _isLoading || _isParsing
-                      ? null
-                      : () => _pickImage(ImageSource.gallery),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-
-          // Превью
-          if (_selectedImage != null) ...[
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16.r),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
-                  width: 1,
-                ),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
+              Row(
                 children: [
-                  Image.file(
-                    _selectedImage!,
-                    height: 250,
-                    width: double.infinity,
-                    fit: BoxFit.contain,
-                  ),
-                  if (_isParsing)
-                    Container(
-                      height: 250,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
+                  if (i > 0)
+                    Expanded(
+                      child: Container(
+                        height: 3,
+                        color: isActive
+                            ? _purpleGradient[0]
+                            : Colors.white.withOpacity(0.1),
                       ),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(
-                              color: _purpleGradient[0],
+                    ),
+                  Container(
+                    width: isCurrent ? 32 : 24,
+                    height: isCurrent ? 32 : 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: isActive
+                          ? LinearGradient(colors: _purpleGradient)
+                          : null,
+                      color: isActive ? null : Colors.white.withOpacity(0.1),
+                      boxShadow: isCurrent
+                          ? [BoxShadow(color: _purpleGradient[0].withOpacity(0.4), blurRadius: 8)]
+                          : null,
+                    ),
+                    child: Center(
+                      child: i < activeIndex
+                          ? Icon(Icons.check, color: Colors.white, size: 14)
+                          : Text(
+                              '${i + 1}',
+                              style: TextStyle(
+                                color: isActive ? Colors.white : Colors.white38,
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                            SizedBox(height: 16),
-                            Text(
-                              'Распознавание...',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ],
-                        ),
+                    ),
+                  ),
+                  if (i < steps.length - 1)
+                    Expanded(
+                      child: Container(
+                        height: 3,
+                        color: i < activeIndex
+                            ? _purpleGradient[0]
+                            : Colors.white.withOpacity(0.1),
                       ),
                     ),
                 ],
               ),
+              SizedBox(height: 6),
+              Text(
+                steps[i],
+                style: TextStyle(
+                  color: isActive ? Colors.white : Colors.white38,
+                  fontSize: 11.sp,
+                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildStepContent() {
+    switch (_step) {
+      case _TrainingStep.selectShop:
+        return _buildSelectShopStep();
+      case _TrainingStep.photo:
+        return _buildPhotoStep();
+      case _TrainingStep.recognizing:
+      case _TrainingStep.reRecognizing:
+        return _buildRecognizingStep();
+      case _TrainingStep.confirm:
+      case _TrainingStep.confirm2:
+        return _buildConfirmStep();
+      case _TrainingStep.drawRegions:
+        return _buildDrawRegionsStep();
+      case _TrainingStep.manualInput:
+        return _buildManualInputStep();
+      case _TrainingStep.saving:
+        return _buildSavingStep();
+      case _TrainingStep.done:
+        return _buildDoneStep();
+    }
+  }
+
+  Widget _buildSelectShopStep() {
+    if (_isLoadingShops) {
+      return Center(child: CircularProgressIndicator(color: _purpleGradient[0]));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Инструкция
+        _buildInfoCard(
+          icon: Icons.store,
+          title: 'Выберите магазин',
+          description: 'ИИ будет использовать данные этого магазина для лучшего распознавания.',
+        ),
+        SizedBox(height: 16),
+
+        // Список магазинов
+        ..._shops.map((shop) => Padding(
+          padding: EdgeInsets.only(bottom: 8.h),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
-            SizedBox(height: 16),
-          ],
-
-          // Результат
-          if (_parseResult != null) ...[
-            _buildResultCard(_parseResult!),
-            SizedBox(height: 16),
-          ],
-
-          // Форма
-          Text(
-            'Проверьте и исправьте данные',
-            style: TextStyle(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withOpacity(0.9),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  if (mounted) {
+                    setState(() {
+                      _selectedShop = shop;
+                      _step = _TrainingStep.photo;
+                    });
+                  }
+                },
+                borderRadius: BorderRadius.circular(12.r),
+                child: Padding(
+                  padding: EdgeInsets.all(14.w),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: _purpleGradient),
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        child: Icon(Icons.store, color: Colors.white, size: 20),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              shop.name,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14.sp,
+                              ),
+                            ),
+                            Text(
+                              shop.address,
+                              style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: Colors.white38),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-          SizedBox(height: 12),
+        )),
+      ],
+    );
+  }
 
-          _buildDarkTextField(_totalSumController, 'Общая сумма *', Icons.currency_ruble, true),
-          SizedBox(height: 12),
-          _buildDarkTextField(_cashSumController, 'Сумма наличных', Icons.payments_outlined, true),
-          SizedBox(height: 12),
-          _buildDarkTextField(_ofdNotSentController, 'Не передано в ОФД', Icons.cloud_off, false),
-          SizedBox(height: 12),
-          _buildDarkTextField(_resourceKeysController, 'Ресурс ключей', Icons.key, false),
-          SizedBox(height: 24),
+  Widget _buildPhotoStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Выбранный магазин
+        _buildSelectedShopChip(),
+        SizedBox(height: 16),
 
-          // Кнопка сохранения
-          _buildGradientButton(
-            icon: _isLoading ? null : Icons.save_alt,
-            label: _isLoading ? 'Сохранение...' : 'Сохранить образец',
-            gradient: _imageBase64 == null || _isLoading || _isParsing
-                ? [const Color(0xFF757575), const Color(0xFF616161)]
-                : _greenGradient,
-            onTap: _isLoading || _isParsing || _imageBase64 == null ? null : _saveSample,
-            isLoading: _isLoading,
-            height: 56,
+        _buildInfoCard(
+          icon: Icons.camera_alt,
+          title: 'Сфотографируйте Z-отчёт',
+          description: 'Сделайте чёткое фото Z-отчёта кассового аппарата.',
+        ),
+        SizedBox(height: 24),
+
+        _buildGradientButton(
+          icon: Icons.camera_alt,
+          label: 'Камера',
+          gradient: _purpleGradient,
+          onTap: _pickPhoto,
+        ),
+        SizedBox(height: 12),
+        _buildGradientButton(
+          icon: Icons.photo_library,
+          label: 'Галерея',
+          gradient: [AppColors.info, AppColors.infoLight],
+          onTap: _pickFromGallery,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecognizingStep() {
+    return Column(
+      children: [
+        _buildSelectedShopChip(),
+        SizedBox(height: 40),
+        CircularProgressIndicator(color: _purpleGradient[0]),
+        SizedBox(height: 20),
+        Text(
+          _step == _TrainingStep.reRecognizing
+              ? 'Повторное распознавание...'
+              : 'Распознавание Z-отчёта...',
+          style: TextStyle(color: Colors.white, fontSize: 16.sp),
+        ),
+        SizedBox(height: 8),
+        Text(
+          'Подождите, ИИ анализирует фото',
+          style: TextStyle(color: Colors.white54, fontSize: 13.sp),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConfirmStep() {
+    // Автоматически показываем диалог (с защитой от повторного вызова при rebuild)
+    if (!_dialogShown) {
+      _dialogShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && (_step == _TrainingStep.confirm || _step == _TrainingStep.confirm2)) {
+          _showConfirmDialog();
+        }
+        _dialogShown = false;
+      });
+    }
+
+    return Column(
+      children: [
+        _buildSelectedShopChip(),
+        SizedBox(height: 40),
+        CircularProgressIndicator(color: _purpleGradient[0]),
+        SizedBox(height: 20),
+        Text('Проверка данных...', style: TextStyle(color: Colors.white, fontSize: 16.sp)),
+      ],
+    );
+  }
+
+  Widget _buildDrawRegionsStep() {
+    // Автоматически показываем region selector (с защитой от повторного вызова)
+    if (!_dialogShown) {
+      _dialogShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _step == _TrainingStep.drawRegions) {
+          _showRegionSelector();
+        }
+        _dialogShown = false;
+      });
+    }
+
+    return Column(
+      children: [
+        _buildSelectedShopChip(),
+        SizedBox(height: 40),
+        CircularProgressIndicator(color: _purpleGradient[0]),
+        SizedBox(height: 20),
+        Text('Выделение областей...', style: TextStyle(color: Colors.white, fontSize: 16.sp)),
+      ],
+    );
+  }
+
+  Widget _buildManualInputStep() {
+    return Column(
+      children: [
+        _buildSelectedShopChip(),
+        SizedBox(height: 40),
+        CircularProgressIndicator(color: _purpleGradient[0]),
+        SizedBox(height: 20),
+        Text('Ручной ввод...', style: TextStyle(color: Colors.white, fontSize: 16.sp)),
+      ],
+    );
+  }
+
+  Widget _buildSavingStep() {
+    return Column(
+      children: [
+        SizedBox(height: 40),
+        CircularProgressIndicator(color: _greenGradient[0]),
+        SizedBox(height: 20),
+        Text('Сохранение образца...', style: TextStyle(color: Colors.white, fontSize: 16.sp)),
+      ],
+    );
+  }
+
+  Widget _buildDoneStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(height: 20),
+        Container(
+          padding: EdgeInsets.all(32.w),
+          decoration: BoxDecoration(
+            color: _greenGradient[0].withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20.r),
+            border: Border.all(color: _greenGradient[0].withOpacity(0.3)),
           ),
+          child: Column(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: _greenGradient),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check, color: Colors.white, size: 36),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Образец сохранён!',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'ИИ стал умнее для магазина "${_selectedShop?.name ?? ""}"',
+                style: TextStyle(color: Colors.white60, fontSize: 14.sp),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 24),
+        _buildGradientButton(
+          icon: Icons.add_a_photo,
+          label: 'Обучить ещё',
+          gradient: _purpleGradient,
+          onTap: _reset,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelectedShopChip() {
+    if (_selectedShop == null) return SizedBox.shrink();
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: _purpleGradient[0].withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: _purpleGradient[0].withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.store, color: _purpleGradient[1], size: 18),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _selectedShop!.address,
+              style: TextStyle(color: Colors.white, fontSize: 13.sp),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (_step == _TrainingStep.photo)
+            GestureDetector(
+              onTap: () {
+                if (mounted) setState(() => _step = _TrainingStep.selectShop);
+              },
+              child: Icon(Icons.edit, color: Colors.white38, size: 16),
+            ),
         ],
       ),
     );
@@ -667,17 +946,13 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
     required IconData icon,
     required String title,
     required String description,
-    required List<Color> gradient,
   }) {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.03),
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(
-          color: gradient[0].withOpacity(0.3),
-          width: 1,
-        ),
+        border: Border.all(color: _purpleGradient[0].withOpacity(0.3)),
       ),
       child: Row(
         children: [
@@ -685,7 +960,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: gradient),
+              gradient: LinearGradient(colors: _purpleGradient),
               borderRadius: BorderRadius.circular(12.r),
             ),
             child: Icon(icon, color: Colors.white, size: 22),
@@ -697,58 +972,14 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.white),
                 ),
                 SizedBox(height: 2),
                 Text(
                   description,
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: Colors.white.withOpacity(0.5),
-                    height: 1.3,
-                  ),
+                  style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5), height: 1.3),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWarningCard() {
-    return Container(
-      padding: EdgeInsets.all(14.w),
-      decoration: BoxDecoration(
-        color: AppColors.warning.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(
-          color: AppColors.warning.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(8.w),
-            decoration: BoxDecoration(
-              color: AppColors.warning.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-            child: Icon(Icons.warning_amber, color: AppColors.warning, size: 20),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Нет шаблонов. Создайте шаблон во вкладке "Шаблоны".',
-              style: TextStyle(
-                fontSize: 12.sp,
-                color: Colors.white.withOpacity(0.7),
-              ),
             ),
           ),
         ],
@@ -761,22 +992,14 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
     required String label,
     required List<Color> gradient,
     VoidCallback? onTap,
-    bool isLoading = false,
-    double height = 50,
   }) {
     return Container(
-      height: height,
+      height: 50,
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: gradient),
         borderRadius: BorderRadius.circular(12.r),
         boxShadow: onTap != null
-            ? [
-                BoxShadow(
-                  color: gradient[0].withOpacity(0.4),
-                  blurRadius: 12,
-                  offset: Offset(0, 4),
-                ),
-              ]
+            ? [BoxShadow(color: gradient[0].withOpacity(0.4), blurRadius: 12, offset: Offset(0, 4))]
             : null,
       ),
       child: Material(
@@ -788,25 +1011,13 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (isLoading)
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                else if (icon != null)
+                if (icon != null) ...[
                   Icon(icon, color: Colors.white, size: 20),
-                if (icon != null || isLoading) SizedBox(width: 8),
+                  SizedBox(width: 8),
+                ],
                 Text(
                   label,
-                  style: TextStyle(
-                    color: onTap != null ? Colors.white : Colors.white70,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15.sp,
-                  ),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15.sp),
                 ),
               ],
             ),
@@ -815,197 +1026,472 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
       ),
     );
   }
+}
 
-  Widget _buildDarkTextField(
-      TextEditingController controller, String label, IconData icon, bool isMoney) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-          width: 1,
+// ==================== Вкладка Фото (training samples по магазинам) ====================
+
+class _PhotosTab extends StatefulWidget {
+  @override
+  State<_PhotosTab> createState() => _PhotosTabState();
+}
+
+class _PhotosTabState extends State<_PhotosTab> {
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _shops = [];
+
+  // Детальный просмотр магазина
+  String? _selectedShopId;
+  List<Map<String, dynamic>> _shopSamples = [];
+  bool _isLoadingShopSamples = false;
+
+  static final _purpleGradient = [AppColors.indigo, AppColors.purple];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    if (mounted) setState(() => _isLoading = true);
+    try {
+      // Загружаем статистику и все семплы параллельно
+      final futures = await Future.wait([
+        ZReportTemplateService.getTrainingSamples(),
+        _loadIntelligenceStats(),
+      ]);
+
+      final samples = futures[0] as List<Map<String, dynamic>>;
+      final shopStats = futures[1] as List<Map<String, dynamic>>;
+
+      // Группируем семплы по магазинам
+      final samplesByShop = <String, int>{};
+      for (final s in samples) {
+        final shopId = (s['shopId'] ?? 'Без магазина').toString();
+        samplesByShop[shopId] = (samplesByShop[shopId] ?? 0) + 1;
+      }
+
+      // Объединяем с accuracy из intelligence
+      final mergedShops = <Map<String, dynamic>>[];
+      final processedShops = <String>{};
+
+      for (final stat in shopStats) {
+        final addr = stat['shopAddress'] as String? ?? '';
+        if (addr.isEmpty) continue;
+        processedShops.add(addr);
+
+        final accuracy = stat['accuracy'] as Map<String, dynamic>? ?? {};
+        final totalReports = stat['totalReports'] ?? 0;
+
+        // Средняя точность по полям
+        int totalChecks = 0;
+        int correctChecks = 0;
+        for (final field in accuracy.values) {
+          if (field is Map) {
+            totalChecks += (field['total'] ?? 0) as int;
+            correctChecks += (field['correct'] ?? 0) as int;
+          }
+        }
+        final avgAccuracy = totalChecks > 0 ? correctChecks / totalChecks : 0.0;
+
+        mergedShops.add({
+          'shopAddress': addr,
+          'photoCount': samplesByShop[addr] ?? 0,
+          'totalReports': totalReports,
+          'accuracy': avgAccuracy,
+          'hasLearnedRegions': stat['hasLearnedRegions'] ?? false,
+        });
+      }
+
+      // Добавляем магазины из семплов, которых нет в intelligence
+      for (final entry in samplesByShop.entries) {
+        if (!processedShops.contains(entry.key)) {
+          mergedShops.add({
+            'shopAddress': entry.key,
+            'photoCount': entry.value,
+            'totalReports': 0,
+            'accuracy': 0.0,
+            'hasLearnedRegions': false,
+          });
+        }
+      }
+
+      // Сортируем: больше фото — выше
+      mergedShops.sort((a, b) => (b['photoCount'] as int).compareTo(a['photoCount'] as int));
+
+      if (mounted) {
+        setState(() {
+          _shops = mergedShops;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _loadIntelligenceStats() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}/api/z-report/intelligence/stats'),
+        headers: ApiConstants.headersWithApiKey,
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return List<Map<String, dynamic>>.from(data['shops'] ?? []);
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<void> _openShop(String shopAddress) async {
+    if (mounted) {
+      setState(() {
+        _selectedShopId = shopAddress;
+        _isLoadingShopSamples = true;
+      });
+    }
+    try {
+      final samples = await ZReportTemplateService.getTrainingSamples(shopId: shopAddress);
+      if (mounted) {
+        setState(() {
+          _shopSamples = samples;
+          _isLoadingShopSamples = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingShopSamples = false);
+    }
+  }
+
+  Future<void> _deleteSample(String sampleId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.darkNavy,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text('Удалить фото?', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Фото будет удалено из обучающих данных.',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Отмена', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Удалить', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
       ),
-      child: TextField(
-        controller: controller,
-        keyboardType: isMoney
-            ? TextInputType.numberWithOptions(decimal: true)
-            : TextInputType.number,
-        style: TextStyle(
-          fontSize: 16.sp,
-          fontWeight: FontWeight.w500,
-          color: Colors.white,
-        ),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-          prefixIcon: Container(
-            margin: EdgeInsets.all(8.w),
-            padding: EdgeInsets.all(8.w),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isMoney ? _purpleGradient : [Colors.blueGrey, Colors.blueGrey.shade700],
-              ),
-              borderRadius: BorderRadius.circular(8.r),
+    );
+
+    if (confirm == true) {
+      final success = await ZReportTemplateService.deleteTrainingSample(sampleId);
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Фото удалено'), backgroundColor: Colors.green),
+        );
+        // Обновляем список фото магазина
+        if (_selectedShopId != null) {
+          _openShop(_selectedShopId!);
+        }
+        // Обновляем общие данные
+        _loadData();
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator(color: _purpleGradient[0]));
+    }
+
+    // Если выбран магазин — показываем его фото
+    if (_selectedShopId != null) {
+      return _buildShopDetail();
+    }
+
+    // Список магазинов
+    return _buildShopList();
+  }
+
+  Widget _buildShopList() {
+    if (_shops.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.photo_library_outlined, size: 64, color: Colors.white24),
+            SizedBox(height: 16),
+            Text(
+              'Нет обучающих фото',
+              style: TextStyle(color: Colors.white54, fontSize: 16.sp),
             ),
-            child: Icon(icon, color: Colors.white, size: 18),
-          ),
-          suffixText: isMoney ? 'руб' : null,
-          suffixStyle: TextStyle(
-            color: _purpleGradient[1],
-            fontWeight: FontWeight.bold,
-            fontSize: 16.sp,
-          ),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+            SizedBox(height: 8),
+            Text(
+              'Сфотографируйте Z-отчёт во вкладке "Обучить"',
+              style: TextStyle(color: Colors.white38, fontSize: 13.sp),
+            ),
+          ],
         ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: _purpleGradient[0],
+      child: ListView.builder(
+        padding: EdgeInsets.all(16.w),
+        itemCount: _shops.length,
+        itemBuilder: (context, index) {
+          final shop = _shops[index];
+          final accuracy = (shop['accuracy'] as double) * 100;
+          final photoCount = shop['photoCount'] as int;
+          final totalReports = shop['totalReports'] as int;
+
+          Color accuracyColor;
+          if (accuracy >= 80) {
+            accuracyColor = AppColors.emeraldGreen;
+          } else if (accuracy >= 50) {
+            accuracyColor = AppColors.warning;
+          } else {
+            accuracyColor = AppColors.error;
+          }
+
+          return Container(
+            margin: EdgeInsets.only(bottom: 12.h),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: photoCount > 0 ? () => _openShop(shop['shopAddress']) : null,
+                borderRadius: BorderRadius.circular(16.r),
+                child: Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: Row(
+                    children: [
+                      // Accuracy circle
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: accuracyColor, width: 3),
+                          color: accuracyColor.withOpacity(0.1),
+                        ),
+                        child: Center(
+                          child: Text(
+                            totalReports > 0
+                                ? '${accuracy.toStringAsFixed(0)}%'
+                                : '—',
+                            style: TextStyle(
+                              color: accuracyColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: totalReports > 0 ? 14.sp : 18.sp,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              shop['shopAddress'],
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 6),
+                            Row(
+                              children: [
+                                _buildChip(Icons.photo, '$photoCount фото', AppColors.info),
+                                SizedBox(width: 8),
+                                if (totalReports > 0)
+                                  _buildChip(Icons.receipt, '$totalReports отчётов', Colors.white38),
+                                if (shop['hasLearnedRegions'] == true) ...[
+                                  SizedBox(width: 8),
+                                  _buildChip(Icons.crop, 'Регионы', AppColors.emeraldGreen),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (photoCount > 0)
+                        Icon(Icons.chevron_right, color: Colors.white38),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildResultCard(ZReportParseResult result) {
-    final isSuccess = result.success;
-    final gradient = isSuccess ? _greenGradient : [AppColors.error, AppColors.errorLight];
-
+  Widget _buildChip(IconData icon, String text, Color color) {
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(
-          color: gradient[0].withOpacity(0.3),
-          width: 1,
-        ),
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8.r),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
+          Icon(icon, size: 12, color: color),
+          SizedBox(width: 4),
+          Text(text, style: TextStyle(fontSize: 11.sp, color: color, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShopDetail() {
+    return Column(
+      children: [
+        // Шапка с кнопкой назад
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+          child: Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(8.w),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: gradient),
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Icon(
-                  isSuccess ? Icons.check_circle : Icons.error_outline,
-                  color: Colors.white,
-                  size: 20,
+              IconButton(
+                onPressed: () {
+                  if (mounted) setState(() => _selectedShopId = null);
+                },
+                icon: Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+              ),
+              Expanded(
+                child: Text(
+                  _selectedShopId ?? '',
+                  style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isSuccess ? 'Текст распознан' : 'Ошибка распознавания',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15.sp,
-                        color: Colors.white,
-                      ),
-                    ),
-                    if (isSuccess && _selectedTemplate != null)
-                      Text(
-                        'Шаблон: ${_selectedTemplate!.name}',
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          color: Colors.white.withOpacity(0.5),
-                        ),
-                      ),
-                  ],
-                ),
+              Text(
+                '${_shopSamples.length} фото',
+                style: TextStyle(color: Colors.white54, fontSize: 13.sp),
               ),
             ],
           ),
-          if (result.error != null) ...[
-            SizedBox(height: 10),
-            Text(
-              result.error!,
-              style: TextStyle(color: AppColors.errorLight),
-            ),
-          ],
-          if (result.data != null) ...[
-            SizedBox(height: 12),
-            _buildConfidenceInfo(result.data!),
-          ],
-        ],
-      ),
+        ),
+
+        // Фото
+        Expanded(
+          child: _isLoadingShopSamples
+              ? Center(child: CircularProgressIndicator(color: _purpleGradient[0]))
+              : _shopSamples.isEmpty
+                  ? Center(
+                      child: Text('Нет фото', style: TextStyle(color: Colors.white54)),
+                    )
+                  : ListView.builder(
+                      padding: EdgeInsets.all(12.w),
+                      itemCount: _shopSamples.length,
+                      itemBuilder: (context, index) {
+                        final sample = _shopSamples[index];
+                        return _buildSampleCard(sample);
+                      },
+                    ),
+        ),
+      ],
     );
   }
 
-  Widget _buildConfidenceInfo(ZReportData data) {
+  Widget _buildSampleCard(Map<String, dynamic> sample) {
+    final id = sample['id'] ?? '';
+    final createdAt = sample['createdAt'] != null
+        ? DateTime.tryParse(sample['createdAt'].toString())
+        : null;
+    final correctedFields = List<String>.from(sample['correctedFields'] ?? []);
+    final correctData = sample['correctData'] as Map<String, dynamic>? ?? {};
+    final imageUrl = ZReportTemplateService.getTrainingSampleImageUrl(id);
+
     return Container(
-      padding: EdgeInsets.all(12.w),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(8.r),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Распознанные значения:',
-            style: TextStyle(
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withOpacity(0.7),
-            ),
-          ),
-          SizedBox(height: 8),
-          _buildConfidenceRow('Общая сумма', data.totalSum, data.confidence['totalSum'], true),
-          _buildConfidenceRow('Наличные', data.cashSum, data.confidence['cashSum'], true),
-          _buildConfidenceRow(
-              'Не передано в ОФД', data.ofdNotSent?.toDouble(), data.confidence['ofdNotSent'], false),
-          _buildConfidenceRow(
-              'Ресурс ключей', data.resourceKeys?.toDouble(), data.confidence['resourceKeys'], false),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConfidenceRow(String label, double? value, String? confidence, bool isMoney) {
-    final isFound = confidence == 'high' || confidence == 'medium';
-    final isHigh = confidence == 'high';
-    final color = isFound ? (isHigh ? _greenGradient[0] : AppColors.warning) : AppColors.neutral;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 3.h),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(4.w),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(4.r),
-            ),
-            child: Icon(
-              isFound ? (isHigh ? Icons.check : Icons.help_outline) : Icons.close,
-              size: 14,
-              color: color,
-            ),
-          ),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 13.sp,
-                color: Colors.white.withOpacity(0.6),
+          // Фото
+          ClipRRect(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+            child: Image.network(
+              imageUrl,
+              height: 180,
+              width: double.infinity,
+              fit: BoxFit.contain,
+              headers: ApiConstants.headersWithApiKey,
+              errorBuilder: (_, __, ___) => Container(
+                height: 180,
+                color: Colors.white.withOpacity(0.05),
+                child: Center(child: Icon(Icons.broken_image, color: Colors.white24, size: 48)),
               ),
             ),
           ),
-          Text(
-            value != null
-                ? (isMoney ? '${value.toStringAsFixed(2)} руб' : value.toStringAsFixed(0))
-                : '—',
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.bold,
-              color: isFound ? color : Colors.white.withOpacity(0.4),
+
+          Padding(
+            padding: EdgeInsets.all(12.w),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (createdAt != null)
+                        Text(
+                          '${createdAt.day.toString().padLeft(2, '0')}.${createdAt.month.toString().padLeft(2, '0')}.${createdAt.year} ${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}',
+                          style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+                        ),
+                      SizedBox(height: 4),
+                      // Данные
+                      if (correctData['totalSum'] != null)
+                        Text(
+                          'Выручка: ${correctData['totalSum']}  Наличные: ${correctData['cashSum'] ?? 0}',
+                          style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+                        ),
+                      if (correctedFields.isNotEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(top: 4.h),
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, size: 12, color: AppColors.warning),
+                              SizedBox(width: 4),
+                              Text(
+                                'Исправлено: ${correctedFields.join(", ")}',
+                                style: TextStyle(color: AppColors.warning, fontSize: 11.sp),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                // Кнопка удаления
+                IconButton(
+                  onPressed: () => _deleteSample(id),
+                  icon: Icon(Icons.delete_outline, color: AppColors.error.withOpacity(0.7)),
+                ),
+              ],
             ),
           ),
         ],
