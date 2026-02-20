@@ -11,6 +11,12 @@ let learnedPatternsCache = null;
 let learnedPatternsCacheTime = 0;
 const CACHE_TTL = 60000; // 1 минута
 
+/** Инвалидировать кэш выученных паттернов (вызывается после обучения) */
+function invalidateLearnedPatternsCache() {
+  learnedPatternsCache = null;
+  learnedPatternsCacheTime = 0;
+}
+
 /**
  * Улучшенная нормализация OCR текста
  * Исправляет типичные ошибки распознавания перед парсингом
@@ -1207,7 +1213,7 @@ function extractValueFromText(text, fieldName) {
         }
       }
     }
-    return fieldName === 'ofdNotSent' ? 0 : null; // Для ОФД возвращаем 0, для ключей null
+    return null; // Не угадываем значение — пусть пользователь введёт
   } else {
     // Для сумм - ищем число с копейками
     const match = cleanText.match(/([\d\s]+[.,]\d{2})/);
@@ -1320,5 +1326,6 @@ module.exports = {
   parseZReportWithTemplate,
   parseRegion,
   extractValueFromText,
-  tryRegionSet
+  tryRegionSet,
+  invalidateLearnedPatternsCache
 };

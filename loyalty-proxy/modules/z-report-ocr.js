@@ -14,68 +14,15 @@ const { exec } = require('child_process');
 const util = require('util');
 const fsp = require('fs').promises;
 const path = require('path');
-const http = require('http');
 
 const execPromise = util.promisify(exec);
-const { fileExists } = require('../utils/file_helpers');
-
-const TEMP_DIR = '/tmp/counter-ocr';
-const EASYOCR_TEXT_URL = 'http://127.0.0.1:5001/ocr-text';
-
-(async () => {
-  if (!(await fileExists(TEMP_DIR))) {
-    await fsp.mkdir(TEMP_DIR, { recursive: true });
-  }
-})();
+const { checkEasyOCR, callEasyOCREndpoint, cleanupTempFiles, TEMP_DIR } = require('./ocr-engine');
 
 /**
  * Вызов EasyOCR /ocr-text эндпоинта (полный текст)
  */
 function callEasyOCRText(imagePath) {
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify({ imagePath });
-    const url = new URL(EASYOCR_TEXT_URL);
-    const options = {
-      hostname: url.hostname,
-      port: url.port,
-      path: url.pathname,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
-      },
-      timeout: 90000, // 90 сек — Z-отчёты больше чем счётчики
-    };
-
-    const req = http.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          reject(new Error('Invalid JSON from OCR text server'));
-        }
-      });
-    });
-    req.on('error', (e) => reject(e));
-    req.on('timeout', () => { req.destroy(); reject(new Error('OCR text server timeout')); });
-    req.write(body);
-    req.end();
-  });
-}
-
-/**
- * Проверка доступности EasyOCR сервиса
- */
-function checkEasyOCR() {
-  return new Promise((resolve) => {
-    const req = http.get('http://127.0.0.1:5001/health', { timeout: 3000 }, (res) => {
-      resolve(res.statusCode === 200);
-    });
-    req.on('error', () => resolve(false));
-    req.on('timeout', () => { req.destroy(); resolve(false); });
-  });
+  return callEasyOCREndpoint('/ocr-text', { imagePath }, 90000);
 }
 
 /**
@@ -196,14 +143,6 @@ async function extractZReportText(imageBase64) {
       success: false,
       error: `Ошибка OCR: ${error.message}`,
     };
-  }
-}
-
-async function cleanupTempFiles(files) {
-  for (const file of files) {
-    try {
-      if (await fileExists(file)) await fsp.unlink(file);
-    } catch { /* ignore */ }
   }
 }
 

@@ -710,26 +710,53 @@ function setupShiftAiVerificationAPI(app) {
         }
       );
 
-      // Если ИИ нашёл товар - сохраняем для обучения
+      // Если ИИ нашёл товар - сохраняем аннотацию как pending (ожидает одобрения админа)
+      let annotationId = null;
       if (detected) {
         try {
-          await cigaretteVision.saveTypedPositiveSample(
-            cigaretteVision.TRAINING_TYPES.DISPLAY,
-            {
-              imageBase64: imageBase64,
-              detectedProducts: [{
-                productId: productId || barcode,
-                barcode: barcode || productId,
-                productName: productName || '',
-              }],
-              shopAddress: shopAddress || '',
-              boxes: [boundingBox],
-              source: 'employee_bbox_verification',
+          annotationId = `ann_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+          const annotationFile = path.join(SHIFT_AI_ANNOTATIONS_DIR, `${annotationId}.json`);
+
+          // Сохраняем изображение
+          const imageFileName = `${annotationId}.jpg`;
+          const imagePath = path.join(SHIFT_AI_ANNOTATIONS_DIR, imageFileName);
+          const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+          await fsp.writeFile(imagePath, Buffer.from(imageData, 'base64'));
+
+          const annotation = {
+            id: annotationId,
+            productId: productId || barcode,
+            barcode: barcode || productId,
+            productName: productName || '',
+            boundingBox: boundingBox,
+            shopAddress: shopAddress || '',
+            employeeName: employeeName || '',
+            imagePath: imagePath,
+            status: 'pending', // Ожидает одобрения админа
+            source: 'employee_bbox_verification',
+            createdAt: new Date().toISOString(),
+          };
+
+          await writeJsonFile(annotationFile, annotation);
+
+          if (USE_DB) {
+            try {
+              await db.upsert('shift_ai_annotations', {
+                id: annotationId,
+                product_id: annotation.productId,
+                barcode: annotation.barcode,
+                shop_address: annotation.shopAddress,
+                data: annotation,
+                created_at: annotation.createdAt,
+              });
+            } catch (dbErr) {
+              console.error('[ShiftAI] DB save pending annotation error:', dbErr.message);
             }
-          );
-          console.log(`[ShiftAI] BBox verification успешно, фото сохранено для обучения: ${productName || barcode}`);
+          }
+
+          console.log(`[ShiftAI] BBox verification успешно, аннотация сохранена как pending: ${annotationId}`);
         } catch (saveErr) {
-          console.warn('[ShiftAI] Ошибка сохранения positive sample после BBox:', saveErr.message);
+          console.warn('[ShiftAI] Ошибка сохранения pending annotation:', saveErr.message);
         }
       }
 
@@ -740,6 +767,7 @@ function setupShiftAiVerificationAPI(app) {
         detected: detected,
         confidence: confidence,
         productId: productId || barcode,
+        annotationId: annotationId,
         message: detected
           ? `Товар распознан с уверенностью ${Math.round((confidence || 0) * 100)}%`
           : 'Товар не найден на фото. Попробуйте другое фото или другую область.',
@@ -897,6 +925,113 @@ function setupShiftAiVerificationAPI(app) {
       });
     } catch (error) {
       console.error('[ShiftAI] Ошибка получения статистики:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ АННОТАЦИИ: APPROVE / REJECT ============
+
+  // Одобрить аннотацию — загрузить фото для обучения YOLO
+  app.put('/api/shift-ai/annotations/:id/approve', requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const annotationFile = path.join(SHIFT_AI_ANNOTATIONS_DIR, `${id}.json`);
+
+      if (!(await fileExists(annotationFile))) {
+        return res.status(404).json({ success: false, error: 'Аннотация не найдена' });
+      }
+
+      const annotation = JSON.parse(await fsp.readFile(annotationFile, 'utf8'));
+
+      if (annotation.status === 'approved') {
+        return res.json({ success: true, message: 'Уже одобрена' });
+      }
+
+      // Загружаем фото для обучения YOLO
+      if (annotation.imagePath && await fileExists(annotation.imagePath)) {
+        const imageBuffer = await fsp.readFile(annotation.imagePath);
+        const imageBase64 = imageBuffer.toString('base64');
+
+        const cigaretteVision = require('../modules/cigarette-vision');
+        await cigaretteVision.saveTypedPositiveSample(
+          cigaretteVision.TRAINING_TYPES.DISPLAY,
+          {
+            imageBase64: imageBase64,
+            detectedProducts: [{
+              productId: annotation.productId,
+              barcode: annotation.barcode,
+              productName: annotation.productName,
+            }],
+            shopAddress: annotation.shopAddress,
+            boxes: [annotation.boundingBox],
+            source: 'admin_approved_bbox',
+          }
+        );
+      }
+
+      // Обновляем статус
+      annotation.status = 'approved';
+      annotation.approvedAt = new Date().toISOString();
+      await writeJsonFile(annotationFile, annotation);
+
+      if (USE_DB) {
+        try {
+          await db.upsert('shift_ai_annotations', {
+            id: id,
+            product_id: annotation.productId,
+            barcode: annotation.barcode,
+            shop_address: annotation.shopAddress,
+            data: annotation,
+            created_at: annotation.createdAt,
+          });
+        } catch (dbErr) {
+          console.error('[ShiftAI] DB approve annotation error:', dbErr.message);
+        }
+      }
+
+      console.log(`[ShiftAI] Аннотация одобрена: ${id}`);
+      res.json({ success: true, message: 'Аннотация одобрена и фото загружено для обучения' });
+    } catch (error) {
+      console.error('[ShiftAI] Ошибка одобрения аннотации:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Отклонить аннотацию — НЕ использовать для обучения
+  app.put('/api/shift-ai/annotations/:id/reject', requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const annotationFile = path.join(SHIFT_AI_ANNOTATIONS_DIR, `${id}.json`);
+
+      if (!(await fileExists(annotationFile))) {
+        return res.status(404).json({ success: false, error: 'Аннотация не найдена' });
+      }
+
+      const annotation = JSON.parse(await fsp.readFile(annotationFile, 'utf8'));
+
+      annotation.status = 'rejected';
+      annotation.rejectedAt = new Date().toISOString();
+      await writeJsonFile(annotationFile, annotation);
+
+      if (USE_DB) {
+        try {
+          await db.upsert('shift_ai_annotations', {
+            id: id,
+            product_id: annotation.productId,
+            barcode: annotation.barcode,
+            shop_address: annotation.shopAddress,
+            data: annotation,
+            created_at: annotation.createdAt,
+          });
+        } catch (dbErr) {
+          console.error('[ShiftAI] DB reject annotation error:', dbErr.message);
+        }
+      }
+
+      console.log(`[ShiftAI] Аннотация отклонена: ${id}`);
+      res.json({ success: true, message: 'Аннотация отклонена' });
+    } catch (error) {
+      console.error('[ShiftAI] Ошибка отклонения аннотации:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

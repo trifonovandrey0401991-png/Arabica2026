@@ -19,13 +19,9 @@ const util = require('util');
 const fsp = require('fs').promises;
 const path = require('path');
 const sharp = require('sharp');
-const http = require('http');
 
 const execPromise = util.promisify(exec);
-const { fileExists } = require('../utils/file_helpers');
-
-const TEMP_DIR = '/tmp/counter-ocr';
-const EASYOCR_URL = 'http://127.0.0.1:5001/ocr';
+const { checkEasyOCR, callEasyOCREndpoint, cleanupTempFiles, TEMP_DIR } = require('./ocr-engine');
 
 // Пресеты предобработки (для Tesseract fallback)
 const PRESETS = {
@@ -43,62 +39,13 @@ const PRESETS = {
   },
 };
 
-(async () => {
-  if (!(await fileExists(TEMP_DIR))) {
-    await fsp.mkdir(TEMP_DIR, { recursive: true });
-  }
-})();
-
 /**
- * Вызов EasyOCR микросервиса
+ * Вызов EasyOCR /ocr эндпоинта (числа со счётчиков)
  */
 function callEasyOCR(imagePath, preset, expectedRange) {
-  return new Promise((resolve, reject) => {
-    const payload = { imagePath, preset: preset || 'standard' };
-    if (expectedRange) payload.expectedRange = expectedRange;
-    const body = JSON.stringify(payload);
-    const url = new URL(EASYOCR_URL);
-    const options = {
-      hostname: url.hostname,
-      port: url.port,
-      path: url.pathname,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
-      },
-      timeout: 60000,
-    };
-
-    const req = http.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          reject(new Error('Invalid JSON from OCR server'));
-        }
-      });
-    });
-    req.on('error', (e) => reject(e));
-    req.on('timeout', () => { req.destroy(); reject(new Error('OCR server timeout')); });
-    req.write(body);
-    req.end();
-  });
-}
-
-/**
- * Проверка доступности EasyOCR сервиса
- */
-function checkEasyOCR() {
-  return new Promise((resolve) => {
-    const req = http.get('http://127.0.0.1:5001/health', { timeout: 3000 }, (res) => {
-      resolve(res.statusCode === 200);
-    });
-    req.on('error', () => resolve(false));
-    req.on('timeout', () => { req.destroy(); resolve(false); });
-  });
+  const payload = { imagePath, preset: preset || 'standard' };
+  if (expectedRange) payload.expectedRange = expectedRange;
+  return callEasyOCREndpoint('/ocr', payload, 60000);
 }
 
 /**
@@ -302,14 +249,6 @@ async function readCounterNumber(imageBase64, region, preset, expectedRange) {
       error: `Ошибка OCR: ${error.message}`,
       method: 'error',
     };
-  }
-}
-
-async function cleanupTempFiles(files) {
-  for (const file of files) {
-    try {
-      if (await fileExists(file)) await fsp.unlink(file);
-    } catch { /* ignore */ }
   }
 }
 

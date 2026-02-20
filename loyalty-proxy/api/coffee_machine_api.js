@@ -1157,8 +1157,21 @@ async function buildMachineIntelligence() {
       };
     }
 
-    // Сохраняем
-    await fsp.writeFile(INTELLIGENCE_FILE, JSON.stringify(intelligence, null, 2), 'utf8');
+    // Dual-write: JSON + DB
+    await writeJsonFile(INTELLIGENCE_FILE, intelligence);
+
+    if (USE_DB) {
+      try {
+        await db.upsert('app_settings', {
+          key: 'coffee_machine_intelligence',
+          data: intelligence,
+          updated_at: new Date().toISOString(),
+        }, 'key');
+      } catch (e) {
+        console.error('[CoffeeMachine] DB intelligence save error:', e.message);
+      }
+    }
+
     console.log(`[CoffeeMachine] 🧠 Intelligence обновлён: ${Object.keys(intelligence).length} машин`);
     return intelligence;
   } catch (error) {
@@ -1172,9 +1185,21 @@ async function buildMachineIntelligence() {
  */
 async function loadMachineIntelligence(machineName) {
   try {
-    if (!(await fileExists(INTELLIGENCE_FILE))) return null;
-    const data = JSON.parse(await fsp.readFile(INTELLIGENCE_FILE, 'utf8'));
-    return machineName ? (data[machineName] || null) : data;
+    // JSON primary
+    if (await fileExists(INTELLIGENCE_FILE)) {
+      const data = JSON.parse(await fsp.readFile(INTELLIGENCE_FILE, 'utf8'));
+      return machineName ? (data[machineName] || null) : data;
+    }
+
+    // DB fallback
+    if (USE_DB) {
+      const row = await db.findById('app_settings', 'coffee_machine_intelligence', 'key');
+      if (row?.data) {
+        return machineName ? (row.data[machineName] || null) : row.data;
+      }
+    }
+
+    return null;
   } catch (e) {
     return null;
   }

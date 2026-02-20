@@ -72,7 +72,7 @@ async function buildZReportIntelligence() {
       try {
         await db.upsert('app_settings', {
           key: 'z_report_intelligence',
-          value: JSON.stringify(data),
+          data: data,
           updated_at: new Date().toISOString(),
         }, 'key');
       } catch (e) {
@@ -329,7 +329,7 @@ async function loadZReportIntelligence() {
     // Fallback: DB
     if (USE_DB) {
       const row = await db.findById('app_settings', 'z_report_intelligence', 'key');
-      if (row?.value) return JSON.parse(row.value);
+      if (row?.data) return row.data;
     }
 
     return null;

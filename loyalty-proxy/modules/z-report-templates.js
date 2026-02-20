@@ -212,10 +212,11 @@ async function updateTemplateStats(templateId, wasSuccessful) {
 
   if (template) {
     template.usageCount = (template.usageCount || 0) + 1;
-    // Скользящее среднее для successRate
+    // EMA (Exponential Moving Average) для successRate
+    // alpha уменьшается с ростом usageCount: 1/1, 1/2, ... 1/50 (минимум 0.02)
     const oldRate = template.successRate || 0;
-    const weight = Math.min(template.usageCount, 100); // Макс вес 100
-    template.successRate = (oldRate * (weight - 1) + (wasSuccessful ? 1 : 0)) / weight;
+    const alpha = Math.max(0.02, 1 / Math.min(template.usageCount, 50));
+    template.successRate = oldRate * (1 - alpha) + (wasSuccessful ? 1 : 0) * alpha;
 
     await saveTemplates(data);
   }
@@ -245,13 +246,15 @@ async function loadTrainingSamples() {
 }
 
 /**
- * Сохранить образцы
+ * Сохранить образцы (JSON + полный DB sync при ротации)
+ * @param {Object} data - { samples: [...] }
+ * @param {boolean} fullDbSync - true при ротации (удалены старые), false при обычном добавлении
  */
-async function saveTrainingSamples(data) {
+async function saveTrainingSamples(data, fullDbSync = true) {
   await ensureDataDir();
   await writeJsonFile(SAMPLES_FILE, data);
 
-  if (USE_DB) {
+  if (USE_DB && fullDbSync) {
     try {
       for (const sample of (data.samples || [])) {
         await db.upsert('z_report_training_samples', {
@@ -265,6 +268,24 @@ async function saveTrainingSamples(data) {
     } catch (e) {
       console.error('[Z-Report] DB saveTrainingSamples error:', e.message);
     }
+  }
+}
+
+/**
+ * Upsert одного образца в DB (вместо полного sync)
+ */
+async function upsertSingleSampleToDB(sample) {
+  if (!USE_DB) return;
+  try {
+    await db.upsert('z_report_training_samples', {
+      id: sample.id,
+      shop_id: sample.shopId || null,
+      template_id: sample.templateId || null,
+      data: sample,
+      created_at: sample.createdAt || new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('[Z-Report] DB upsertSingleSample error:', e.message);
   }
 }
 
@@ -332,9 +353,12 @@ async function rotateSamples(samples) {
     toKeep.push(...additional);
   }
 
-  // Удаляем изображения удалённых образцов
+  // Удаляем изображения и DB-записи удалённых образцов
   for (const sample of toDelete) {
     await deleteSampleImage(sample.id);
+    if (USE_DB) {
+      try { await db.deleteById('z_report_training_samples', sample.id); } catch { /* ignore */ }
+    }
   }
 
   console.log(`[Training] Удалено ${toDelete.length} старых образцов, осталось ${toKeep.length}`);
@@ -377,6 +401,7 @@ async function addTrainingSample({
   // Автоматическая ротация при превышении лимита
   const rotationResult = await rotateSamples(samples);
   samples = rotationResult.samples;
+  const hadRotation = rotationResult.deleted > 0;
 
   // Сохраняем изображение
   if (imageBase64) {
@@ -392,7 +417,12 @@ async function addTrainingSample({
     }
   }
 
-  await saveTrainingSamples({ samples });
+  // JSON всегда пишем полностью, DB — оптимизированно
+  await saveTrainingSamples({ samples }, hadRotation);
+  if (!hadRotation) {
+    // Без ротации — upsert только новый sample (O(1) вместо O(n))
+    await upsertSingleSampleToDB(sample);
+  }
 
   // Анализируем образцы для улучшения паттернов
   const learningResult = await analyzeAndImprovePatterns(samples);
@@ -840,6 +870,12 @@ async function analyzeAndImprovePatterns(samples) {
 
   await saveLearnedPatterns(learnedData);
 
+  // Инвалидируем кэш в vision-модуле чтобы новые паттерны применились сразу
+  try {
+    const { invalidateLearnedPatternsCache } = require('./z-report-vision');
+    invalidateLearnedPatternsCache();
+  } catch { /* vision module may not be loaded */ }
+
   console.log('[Training] Анализ завершён. Новых паттернов:', newPatternsCount);
   console.log('[Training] Всего паттернов:', {
     totalSum: patterns.totalSum.length,
@@ -1046,6 +1082,72 @@ async function updateLearnedRegions(shopId) {
   await saveLearnedRegions(cached);
 }
 
+/**
+ * Получить список образцов (без изображений), опционально по магазину
+ */
+async function getTrainingSamplesList(shopId = null) {
+  const data = await loadTrainingSamples();
+  let samples = data.samples || [];
+
+  if (shopId) {
+    samples = samples.filter(s => s.shopId === shopId);
+  }
+
+  // Возвращаем без rawText (экономим трафик)
+  return samples.map(s => ({
+    id: s.id,
+    shopId: s.shopId || null,
+    templateId: s.templateId || null,
+    correctData: s.correctData,
+    recognizedData: s.recognizedData,
+    correctedFields: s.correctedFields || [],
+    fieldRegions: s.fieldRegions || null,
+    createdAt: s.createdAt,
+  }));
+}
+
+/**
+ * Удалить конкретный образец по ID
+ */
+async function deleteTrainingSample(sampleId) {
+  const data = await loadTrainingSamples();
+  const samples = data.samples || [];
+  const index = samples.findIndex(s => s.id === sampleId);
+
+  if (index === -1) return false;
+
+  const deleted = samples.splice(index, 1)[0];
+
+  // Удаляем изображение
+  await deleteSampleImage(sampleId);
+
+  // Сохраняем JSON
+  await saveTrainingSamples({ samples });
+
+  // Удаляем из DB
+  if (USE_DB) {
+    try { await db.deleteById('z_report_training_samples', sampleId); }
+    catch (e) { console.error('[Z-Report] DB deleteTrainingSample error:', e.message); }
+  }
+
+  // Обновляем регионы если был привязан к магазину
+  if (deleted.shopId) {
+    updateLearnedRegions(deleted.shopId).catch(e =>
+      console.error('[Training] Ошибка обновления регионов после удаления:', e.message)
+    );
+  }
+
+  console.log(`[Training] Удалён образец ${sampleId} (магазин: ${deleted.shopId || 'не указан'})`);
+  return true;
+}
+
+/**
+ * Получить путь к файлу изображения образца
+ */
+function getTrainingSampleImagePath(sampleId) {
+  return path.join(__dirname, '../data/training-images', `${sampleId}.jpg`);
+}
+
 module.exports = {
   getTemplates,
   getTemplate,
@@ -1059,4 +1161,7 @@ module.exports = {
   analyzeAndImprovePatterns,
   getLearnedRegions,
   updateLearnedRegions,
+  getTrainingSamplesList,
+  deleteTrainingSample,
+  getTrainingSampleImagePath,
 };
