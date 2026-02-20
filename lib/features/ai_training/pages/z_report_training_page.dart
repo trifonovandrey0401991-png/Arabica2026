@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/z_report_service.dart';
+import '../../employees/models/user_role_model.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../shops/services/shop_service.dart';
 import '../../shops/models/shop_model.dart';
@@ -34,8 +35,8 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
   // Цвета для градиентов
   static final _purpleGradient = [AppColors.indigo, AppColors.purple];
 
-  /// Количество вкладок зависит от роли: админ видит 4 вкладки, остальные - 2
-  int get _tabCount => _isAdmin ? 4 : 2;
+  /// Количество вкладок: админ видит 3 (Обучить, Фото, Стат), остальные - 2
+  int get _tabCount => _isAdmin ? 3 : 2;
 
   @override
   void initState() {
@@ -45,11 +46,11 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
 
   Future<void> _initTabController() async {
     final roleData = await UserRoleService.loadUserRole();
-    final role = roleData?.role ?? '';
+    final role = roleData?.role;
 
     if (mounted) {
       setState(() {
-        _isAdmin = role == 'admin' || role == 'developer';
+        _isAdmin = role == UserRole.admin || role == UserRole.developer;
         _tabController = TabController(length: _tabCount, vsync: this);
         _isInitialized = true;
       });
@@ -97,7 +98,6 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
                         children: [
                           _TrainingSampleTab(),
                           if (_isAdmin) _PhotosTab(),
-                          if (_isAdmin) _TemplatesTab(),
                           _StatsTab(),
                         ],
                       ),
@@ -184,10 +184,10 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
         tabs: [
           Tab(
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.add_a_photo, size: 18),
-                SizedBox(width: 6),
+                Icon(Icons.add_a_photo, size: 16),
+                SizedBox(width: 4),
                 Text('Обучить'),
               ],
             ),
@@ -195,31 +195,20 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
           if (_isAdmin)
             Tab(
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.photo_library, size: 18),
-                  SizedBox(width: 6),
+                  Icon(Icons.photo_library, size: 16),
+                  SizedBox(width: 4),
                   Text('Фото'),
-                ],
-              ),
-            ),
-          if (_isAdmin)
-            Tab(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.grid_view, size: 18),
-                  SizedBox(width: 6),
-                  Text('Шаблоны'),
                 ],
               ),
             ),
           Tab(
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.analytics, size: 18),
-                SizedBox(width: 6),
+                Icon(Icons.analytics, size: 16),
+                SizedBox(width: 4),
                 Text('Статистика'),
               ],
             ),
@@ -1316,16 +1305,15 @@ class _PhotosTabState extends State<_PhotosTab> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             SizedBox(height: 6),
-                            Row(
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
                               children: [
                                 _buildChip(Icons.photo, '$photoCount фото', AppColors.info),
-                                SizedBox(width: 8),
                                 if (totalReports > 0)
                                   _buildChip(Icons.receipt, '$totalReports отчётов', Colors.white38),
-                                if (shop['hasLearnedRegions'] == true) ...[
-                                  SizedBox(width: 8),
+                                if (shop['hasLearnedRegions'] == true)
                                   _buildChip(Icons.crop, 'Регионы', AppColors.emeraldGreen),
-                                ],
                               ],
                             ),
                           ],

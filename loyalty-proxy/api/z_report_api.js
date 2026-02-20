@@ -322,6 +322,55 @@ async function setupZReportAPI(app) {
     }
   });
 
+  // Получить список образцов (без изображений)
+  app.get('/api/z-report/training-samples', requireAuth, async (req, res) => {
+    try {
+      const { shopId } = req.query;
+      const samples = await templatesModule.getTrainingSamplesList(shopId || null);
+      res.json({ success: true, samples, total: samples.length });
+    } catch (error) {
+      console.error('[Z-Report API] Ошибка получения списка образцов:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Получить изображение образца
+  app.get('/api/z-report/training-samples/:id/image', requireAuth, async (req, res) => {
+    try {
+      const imagePath = templatesModule.getTrainingSampleImagePath(sanitizeId(req.params.id));
+      try {
+        await fs.access(imagePath);
+        res.sendFile(imagePath);
+      } catch {
+        res.status(404).json({ success: false, error: 'Изображение не найдено' });
+      }
+    } catch (error) {
+      console.error('[Z-Report API] Ошибка получения изображения образца:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Удалить образец
+  app.delete('/api/z-report/training-samples/:id', requireAuth, async (req, res) => {
+    try {
+      const deleted = await templatesModule.deleteTrainingSample(sanitizeId(req.params.id));
+
+      if (!deleted) {
+        return res.status(404).json({ success: false, error: 'Образец не найден' });
+      }
+
+      // Фоновое обновление intelligence
+      intelligenceModule.buildZReportIntelligence().catch(e =>
+        console.error('[Z-Report API] Intelligence rebuild error:', e.message)
+      );
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Z-Report API] Ошибка удаления образца:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ============ INTELLIGENCE ============
 
   // Получить ожидаемые диапазоны для магазина
