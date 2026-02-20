@@ -9,6 +9,7 @@ class OcrResult {
   final String rawText;
   final bool success;
   final String? error;
+  final Map<String, dynamic>? intelligence;
 
   OcrResult({
     this.number,
@@ -16,7 +17,18 @@ class OcrResult {
     this.rawText = '',
     this.success = false,
     this.error,
+    this.intelligence,
   });
+
+  /// Ожидаемый диапазон из intelligence
+  String? get expectedRangeText {
+    if (intelligence == null) return null;
+    final next = intelligence!['expectedNext'];
+    if (next is Map && next['min'] != null && next['max'] != null) {
+      return '${next['min']} — ${next['max']}';
+    }
+    return null;
+  }
 
   factory OcrResult.fromJson(Map<String, dynamic> json) {
     return OcrResult(
@@ -25,6 +37,7 @@ class OcrResult {
       rawText: json['rawText'] ?? '',
       success: json['success'] ?? false,
       error: json['error'],
+      intelligence: json['intelligence'] as Map<String, dynamic>?,
     );
   }
 }

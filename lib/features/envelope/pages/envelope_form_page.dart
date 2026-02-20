@@ -80,6 +80,14 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   // ИП - ресурс ключей
   final _ipResourceKeysController = TextEditingController();
 
+  // Регионы полей Z-отчёта (из ZReportRegionSelector)
+  Map<String, Map<String, double>>? _oooFieldRegions;
+  Map<String, Map<String, double>>? _ipFieldRegions;
+
+  // Флаги ручного исправления Z-отчёта
+  bool _oooZReportEdited = false;
+  bool _ipZReportEdited = false;
+
   @override
   void initState() {
     super.initState();
@@ -263,9 +271,19 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       builder: (ctx) => AlertDialog(
         content: Row(
           children: [
-            CircularProgressIndicator(),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
             SizedBox(width: 16),
-            Text(text),
+            Expanded(
+              child: Text(
+                text,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
+            ),
           ],
         ),
       ),
@@ -322,54 +340,33 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       if (mounted) Navigator.of(context).pop(); // закрыть загрузку
       if (!mounted) return;
 
-      final hasData = result.success &&
-          result.data != null &&
-          (result.data!.totalSum != null || result.data!.cashSum != null);
-
-      // ШАГ 3: Если OCR не распознал → сразу ручной ввод
-      if (!hasData) {
-        final manualResult = await ZReportRecognitionDialog.show(
-          context,
-          imageBase64: compressedBase64,
-          recognizedData: null,
-          shopAddress: widget.shopAddress,
-          employeeName: widget.employeeName,
-          expectedRanges: result.expectedRanges,
-        );
-        if (manualResult != null && mounted) {
-          _fillFormFields(isOoo, manualResult);
-        }
-        return;
-      }
-
-      // ШАГ 4: "ИИ определил верно?" — первое подтверждение
-      final confirmed = await ZReportConfirmDialog.show(
+      // ШАГ 3: Показать единый диалог (1-я попытка)
+      var dialogResult = await ZReportRecognitionDialog.show(
         context,
-        data: result.data!,
+        imageBase64: compressedBase64,
+        recognizedData: result.data,
+        shopAddress: widget.shopAddress,
+        employeeName: widget.employeeName,
         expectedRanges: result.expectedRanges,
       );
-      if (!mounted) return;
+      if (dialogResult == null || !mounted) return;
 
-      // ШАГ 5: Да → заполнить форму
-      if (confirmed == true) {
-        _fillFormFields(isOoo, ZReportRecognitionResult(
-          revenue: result.data!.totalSum ?? 0,
-          cash: result.data!.cashSum ?? 0,
-          ofdNotSent: result.data!.ofdNotSent ?? 0,
-          resourceKeys: result.data!.resourceKeys ?? 0,
-        ));
-        return;
-      }
-
-      // ШАГ 6: Нет → открыть выделение областей на фото
-      if (confirmed == false) {
+      // ШАГ 4: Если сотрудник нажал "Выделить области"
+      if (dialogResult.needsRegionSelection) {
         final regions = await ZReportRegionSelector.show(
           context,
           imageBase64: compressedBase64,
         );
         if (regions == null || !mounted) return;
 
-        // ШАГ 7: Повторный OCR с указанными областями
+        // Сохраняем регионы для отчёта
+        if (isOoo) {
+          _oooFieldRegions = regions;
+        } else {
+          _ipFieldRegions = regions;
+        }
+
+        // ШАГ 5: Повторный OCR с указанными областями
         _showLoadingDialog('Повторное распознавание...');
 
         final result2 = await ZReportService.parseZReport(
@@ -385,91 +382,43 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             result2.data != null &&
             (result2.data!.totalSum != null || result2.data!.cashSum != null);
 
-        // Если повторный OCR не распознал → ручной ввод
-        if (!hasData2) {
-          final manualResult = await ZReportRecognitionDialog.show(
-            context,
-            imageBase64: compressedBase64,
-            recognizedData: null,
-            shopAddress: widget.shopAddress,
-            employeeName: widget.employeeName,
-            expectedRanges: result2.expectedRanges,
-            startInEditMode: true,
-          );
-          if (manualResult != null && mounted) {
-            // Сохраняем как образец для обучения
-            ZReportService.saveSample(
-              imageBase64: compressedBase64,
-              totalSum: manualResult.revenue,
-              cashSum: manualResult.cash,
-              ofdNotSent: manualResult.ofdNotSent,
-              resourceKeys: manualResult.resourceKeys,
-              shopAddress: widget.shopAddress,
-              employeeName: widget.employeeName,
-              fieldRegions: regions,
-            );
-            _fillFormFields(isOoo, manualResult);
-          }
-          return;
-        }
-
-        // ШАГ 8: "ИИ определил верно?" — второе подтверждение
-        final confirmed2 = await ZReportConfirmDialog.show(
+        // ШАГ 6: Показать единый диалог (2-я попытка)
+        dialogResult = await ZReportRecognitionDialog.show(
           context,
-          data: result2.data!,
+          imageBase64: compressedBase64,
+          recognizedData: hasData2 ? result2.data : null,
+          shopAddress: widget.shopAddress,
+          employeeName: widget.employeeName,
           expectedRanges: result2.expectedRanges,
+          isSecondAttempt: true,
+          secondAttemptFailed: !hasData2,
         );
-        if (!mounted) return;
+        if (dialogResult == null || !mounted) return;
+      }
 
-        // ШАГ 9: Да → заполнить форму + сохранить training sample
-        if (confirmed2 == true) {
-          ZReportService.saveSample(
-            imageBase64: compressedBase64,
-            totalSum: result2.data!.totalSum ?? 0,
-            cashSum: result2.data!.cashSum ?? 0,
-            ofdNotSent: result2.data!.ofdNotSent ?? 0,
-            resourceKeys: result2.data!.resourceKeys ?? 0,
-            shopAddress: widget.shopAddress,
-            employeeName: widget.employeeName,
-            fieldRegions: regions,
-          );
-          _fillFormFields(isOoo, ZReportRecognitionResult(
-            revenue: result2.data!.totalSum ?? 0,
-            cash: result2.data!.cashSum ?? 0,
-            ofdNotSent: result2.data!.ofdNotSent ?? 0,
-            resourceKeys: result2.data!.resourceKeys ?? 0,
-            wasEdited: true,
-          ));
-          return;
-        }
+      // ШАГ 7: Заполнить форму результатами
+      _fillFormFields(isOoo, dialogResult);
 
-        // ШАГ 10: Нет → ручной ввод с предзаполненными значениями
-        if (confirmed2 == false) {
-          final manualResult = await ZReportRecognitionDialog.show(
-            context,
-            imageBase64: compressedBase64,
-            recognizedData: result2.data,
-            shopAddress: widget.shopAddress,
-            employeeName: widget.employeeName,
-            expectedRanges: result2.expectedRanges,
-            startInEditMode: true,
-          );
-          if (manualResult != null && mounted) {
-            ZReportService.saveSample(
-              imageBase64: compressedBase64,
-              totalSum: manualResult.revenue,
-              cashSum: manualResult.cash,
-              ofdNotSent: manualResult.ofdNotSent,
-              resourceKeys: manualResult.resourceKeys,
-              shopAddress: widget.shopAddress,
-              employeeName: widget.employeeName,
-              fieldRegions: regions,
-            );
-            _fillFormFields(isOoo, manualResult);
-          }
-          return;
+      // Сохраняем флаг ручного исправления
+      if (dialogResult.wasEdited) {
+        if (isOoo) {
+          _oooZReportEdited = true;
+        } else {
+          _ipZReportEdited = true;
         }
       }
+
+      // Сохраняем training sample
+      ZReportService.saveSample(
+        imageBase64: compressedBase64,
+        totalSum: dialogResult.revenue,
+        cashSum: dialogResult.cash,
+        ofdNotSent: dialogResult.ofdNotSent,
+        resourceKeys: dialogResult.resourceKeys,
+        shopAddress: widget.shopAddress,
+        employeeName: widget.employeeName,
+        fieldRegions: isOoo ? _oooFieldRegions : _ipFieldRegions,
+      );
     } catch (e) {
       Logger.error('Ошибка распознавания Z-отчёта', e);
       if (mounted) {
@@ -647,12 +596,16 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         oooExpenses: _oooExpenses,
         oooEnvelopePhotoUrl: _oooEnvelopePhotoUrl,
         oooOfdNotSent: int.tryParse(_oooOfdNotSentController.text) ?? 0,
+        oooFieldRegions: _oooFieldRegions,
         ipZReportPhotoUrl: _ipZReportPhotoUrl,
         ipRevenue: _ipRevenue,
         ipCash: _ipCash,
         expenses: _expenses,
         ipEnvelopePhotoUrl: _ipEnvelopePhotoUrl,
         ipOfdNotSent: int.tryParse(_ipOfdNotSentController.text) ?? 0,
+        ipFieldRegions: _ipFieldRegions,
+        oooZReportEdited: _oooZReportEdited,
+        ipZReportEdited: _ipZReportEdited,
       );
 
       final created = await EnvelopeReportService.createReport(report);

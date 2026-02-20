@@ -4,9 +4,11 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/shift_handover_report_model.dart';
 import '../services/shift_handover_report_service.dart';
+import '../../ai_training/services/shift_ai_verification_service.dart';
 import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница просмотра отчета сдачи смены
 class ShiftHandoverReportViewPage extends StatefulWidget {
@@ -217,6 +219,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
     final aiPassed = _currentReport.aiVerificationPassed;
     final aiSkipped = _currentReport.aiVerificationSkipped ?? false;
     final aiShortages = _currentReport.aiShortages ?? [];
+    final bboxAnnotations = _currentReport.aiBboxAnnotations ?? {};
 
     Color cardColor;
     IconData cardIcon;
@@ -316,31 +319,130 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                   borderRadius: BorderRadius.circular(8.r),
                   border: Border.all(color: Colors.red.withOpacity(0.3)),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.cancel, color: Colors.red, size: 20),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
+                    Row(
+                      children: [
+                        Icon(Icons.cancel, color: Colors.red, size: 20),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                productName,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                'Код: $barcode',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: Colors.white.withOpacity(0.6),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Строка расхождения остатков
+                    if (stockQty > 0) ...[
+                      SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(10.w),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6.r),
+                          border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Сотрудник указал: 0 шт. | Остаток в магазине: $stockQty шт.',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+          ],
+
+          // Секция BBox аннотаций для обучения (товары, найденные сотрудником через BBox)
+          if (bboxAnnotations.isNotEmpty) ...[
+            SizedBox(height: 16),
+            Divider(color: Colors.white.withOpacity(0.1)),
+            SizedBox(height: 8),
+            Text(
+              'Аннотации для обучения (${bboxAnnotations.length}):',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14.sp,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Товары, найденные сотрудником с помощью BBox',
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+            SizedBox(height: 8),
+            ...bboxAnnotations.entries.map((entry) {
+              final productId = entry.key;
+              final annotationId = entry.value;
+              // Ищем имя товара в aiShortages
+              final shortageInfo = aiShortages.firstWhere(
+                (s) => s['productId'] == productId || s['barcode'] == productId,
+                orElse: () => <String, dynamic>{},
+              );
+              final productName = shortageInfo['productName'] as String? ?? productId;
+              return Container(
+                margin: EdgeInsets.only(bottom: 8.h),
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.photo_camera, color: Colors.blue, size: 20),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
                             productName,
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
                           ),
-                          Text(
-                            'Код: $barcode • На остатках: $stockQty шт.',
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: Colors.white.withOpacity(0.6),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                    SizedBox(height: 10),
+                    _buildAnnotationActions(annotationId, productId),
                   ],
                 ),
               );
@@ -349,6 +451,128 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
         ],
       ),
     );
+  }
+
+  /// Кнопки "Обучить" / "Отклонить" для аннотации с bbox
+  Widget _buildAnnotationActions(String annotationId, String productName) {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _handleAnnotationAction(annotationId, productName, approve: true),
+            child: Container(
+              padding: EdgeInsets.symmetric(vertical: 10.h),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(color: Colors.green.withOpacity(0.4)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.school, color: Colors.green, size: 18),
+                  SizedBox(width: 6),
+                  Text(
+                    'Обучить',
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 8),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _handleAnnotationAction(annotationId, productName, approve: false),
+            child: Container(
+              padding: EdgeInsets.symmetric(vertical: 10.h),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.block, color: Colors.red.withOpacity(0.8), size: 18),
+                  SizedBox(width: 6),
+                  Text(
+                    'Отклонить',
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red.withOpacity(0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleAnnotationAction(String annotationId, String productName, {required bool approve}) async {
+    final action = approve ? 'обучить' : 'отклонить';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.emeraldDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text(
+          approve ? 'Обучить ИИ?' : 'Отклонить фото?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          approve
+              ? 'Загрузить фото "$productName" для обучения ИИ?'
+              : 'Не использовать фото "$productName" для обучения?',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: approve ? Colors.green : Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(approve ? 'Обучить' : 'Отклонить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    bool success;
+    if (approve) {
+      success = await ShiftAiVerificationService.approveAnnotation(annotationId);
+    } else {
+      success = await ShiftAiVerificationService.rejectAnnotation(annotationId);
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? (approve ? 'Фото загружено для обучения' : 'Фото отклонено')
+              : 'Ошибка: не удалось $action'),
+          backgroundColor: success ? Colors.green : Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        ),
+      );
+    }
   }
 
   @override

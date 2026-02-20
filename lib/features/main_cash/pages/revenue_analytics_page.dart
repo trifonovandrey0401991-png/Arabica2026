@@ -92,7 +92,9 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
           children: [
             Icon(Icons.bar_chart, color: AppColors.gold),
             SizedBox(width: 12),
-            Text('Аналитика выручки', style: TextStyle(color: Colors.white)),
+            Expanded(
+              child: Text('Аналитика выручки', style: TextStyle(color: Colors.white)),
+            ),
           ],
         ),
         content: Column(
@@ -617,14 +619,17 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 8),
-          Text(
-            _formatRevenue(value),
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.bold,
-              color: Colors.white.withOpacity(0.9),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              _formatRevenue(value),
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.white.withOpacity(0.9),
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -747,35 +752,39 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
             ],
           ),
         ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(trendIcon, color: indicatorColor, size: 20),
-                SizedBox(width: 4),
-                Text(
-                  changePercent != null
-                      ? '${changePercent >= 0 ? '+' : ''}${changePercent.toStringAsFixed(1)}%'
-                      : 'Н/Д',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16.sp,
-                    color: indicatorColor,
+        Flexible(
+          flex: 0,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(trendIcon, color: indicatorColor, size: 20),
+                  SizedBox(width: 4),
+                  Text(
+                    changePercent != null
+                        ? '${changePercent >= 0 ? '+' : ''}${changePercent.toStringAsFixed(1)}%'
+                        : 'Н/Д',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16.sp,
+                      color: indicatorColor,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            if (changeAmount != null)
-              Text(
-                '${changeAmount >= 0 ? '+' : ''}${_formatRevenue(changeAmount)}',
-                style: TextStyle(
-                  fontSize: 10.sp,
-                  color: Colors.white.withOpacity(0.5),
-                ),
+                ],
               ),
-          ],
+              if (changeAmount != null)
+                Text(
+                  '${changeAmount >= 0 ? '+' : ''}${_formatRevenue(changeAmount)}',
+                  style: TextStyle(
+                    fontSize: 10.sp,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+            ],
+          ),
         ),
       ],
     );
@@ -1383,12 +1392,16 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
               ],
             ),
           ),
-          Text(
-            shop.formattedChange,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18.sp,
-              color: color,
+          Flexible(
+            flex: 0,
+            child: Text(
+              shop.formattedChange,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18.sp,
+                color: color,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

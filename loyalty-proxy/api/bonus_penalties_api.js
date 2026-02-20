@@ -63,7 +63,7 @@ function getPreviousMonth() {
   return `${year}-${month}`;
 }
 
-function setupBonusPenaltiesAPI(app) {
+function setupBonusPenaltiesAPI(app, { sendPushToPhone } = {}) {
   // GET /api/bonus-penalties - получить премии/штрафы за месяц
   app.get('/api/bonus-penalties', requireAuth, async (req, res) => {
     try {
@@ -221,6 +221,33 @@ function setupBonusPenaltiesAPI(app) {
       }
 
       console.log(`✅ Создана запись ${type}: ${amount} для ${employeeName}`);
+
+      // Отправляем push-уведомление сотруднику
+      if (sendPushToPhone) {
+        try {
+          // Получаем телефон сотрудника по employeeId
+          const empResult = await db.query('SELECT phone FROM employees WHERE id = $1', [employeeId]);
+          const empPhone = empResult.rows.length > 0 ? empResult.rows[0].phone : null;
+
+          if (empPhone && empPhone.length >= 10) {
+            const isBonus = type === 'bonus';
+            const pushTitle = isBonus ? 'Премия' : 'Штраф';
+            const pushBody = isBonus
+              ? `Вам начислена премия ${amount} руб.${comment ? ' — ' + comment : ''}`
+              : `Вам начислен штраф ${amount} руб.${comment ? ' — ' + comment : ''}`;
+
+            await sendPushToPhone(empPhone, pushTitle, pushBody, {
+              type: 'bonus_penalty',
+              bonusType: type,
+              amount: amount
+            });
+            console.log(`📱 Push отправлен: ${pushTitle} → ${empPhone.slice(0, 4)}***`);
+          }
+        } catch (pushErr) {
+          console.error('Push bonus/penalty error (не критично):', pushErr.message);
+        }
+      }
+
       res.json({ success: true, record: newRecord });
     } catch (error) {
       console.error('❌ Ошибка создания премии/штрафа:', error);

@@ -373,7 +373,8 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
         'photoUrl': reading.photoUrl,
         'correctNumber': reading.confirmedNumber,
         'selectedRegion': reading.selectedRegion,
-        'preset': '', // будет определён по шаблону на сервере
+        'preset': 'standard', // дефолтный пресет, сервер уточнит по templateId
+        'templateId': reading.templateId,
         'machineName': reading.machineName,
         'shopAddress': widget.report.shopAddress,
         'trainedBy': adminName,

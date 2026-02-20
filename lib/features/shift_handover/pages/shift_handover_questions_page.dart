@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
@@ -15,6 +16,8 @@ import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 import '../../envelope/pages/envelope_form_page.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
+import '../../ai_training/pages/shift_ai_verification_page.dart';
+import '../../shifts/models/shift_shortage_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -466,6 +469,81 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
         throw Exception('Не все вопросы отвечены');
       }
 
+      // ============ AI VERIFICATION ============
+      // Собираем байты из всех фото-ответов для ИИ проверки
+      bool? aiVerificationPassed;
+      bool aiVerificationSkipped = false;
+      List<Map<String, dynamic>>? aiShortages;
+      Map<String, String>? aiBboxAnnotations;
+
+      final photoBytes = <Uint8List>[];
+      for (int i = 0; i < _answers.length; i++) {
+        // Фильтруем: берём фото только от вопросов с флагом isAiCheck
+        if (_questions != null && i < _questions!.length && !_questions![i].isAiCheck) {
+          continue;
+        }
+
+        final answer = _answers[i];
+        if (answer.photoPath != null) {
+          try {
+            if (answer.photoPath!.startsWith('data:image/')) {
+              // Web: decode base64 data URL
+              final base64Index = answer.photoPath!.indexOf(',');
+              if (base64Index != -1) {
+                photoBytes.add(Uint8List.fromList(
+                  base64Decode(answer.photoPath!.substring(base64Index + 1)),
+                ));
+              }
+            } else {
+              // Mobile: read file bytes
+              final file = File(answer.photoPath!);
+              if (await file.exists()) {
+                photoBytes.add(await file.readAsBytes());
+              }
+            }
+          } catch (e) {
+            Logger.warning('Не удалось прочитать фото для AI: $e');
+          }
+        }
+      }
+
+      // Если есть фото — запускаем AI проверку товаров
+      if (photoBytes.isNotEmpty && mounted) {
+        Logger.debug('Запуск AI проверки: ${photoBytes.length} фото');
+        final aiResult = await Navigator.push<Map<String, dynamic>?>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ShiftAiVerificationPage(
+              photos: photoBytes,
+              shopAddress: widget.shopAddress,
+              employeeName: widget.employeeName,
+            ),
+          ),
+        );
+
+        if (!mounted) return;
+
+        if (aiResult != null) {
+          aiVerificationPassed = aiResult['aiVerificationPassed'] as bool?;
+          final shortages = aiResult['shortages'];
+          if (shortages != null && shortages is List && shortages.isNotEmpty) {
+            aiShortages = shortages
+                .map((s) => s is ShiftShortage ? s.toJson() : s as Map<String, dynamic>)
+                .toList();
+          }
+          // Аннотации BBox для обучения (productId -> annotationId)
+          final bboxAnnotationsRaw = aiResult['bboxAnnotations'];
+          if (bboxAnnotationsRaw != null && bboxAnnotationsRaw is Map && bboxAnnotationsRaw.isNotEmpty) {
+            aiBboxAnnotations = Map<String, String>.from(bboxAnnotationsRaw);
+          }
+          Logger.debug('AI проверка завершена: passed=$aiVerificationPassed, shortages=${aiShortages?.length ?? 0}, annotations=${aiBboxAnnotations?.length ?? 0}');
+        } else {
+          aiVerificationSkipped = true;
+          Logger.debug('AI проверка пропущена сотрудником');
+        }
+      }
+      // ============ END AI VERIFICATION ============
+
       final now = DateTime.now();
       final reportId = ShiftHandoverReport.generateId(
         widget.employeeName,
@@ -533,6 +611,10 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
         createdAt: now,
         answers: syncedAnswers,
         isSynced: true,
+        aiVerificationPassed: aiVerificationPassed,
+        aiVerificationSkipped: aiVerificationSkipped,
+        aiShortages: aiShortages,
+        aiBboxAnnotations: aiBboxAnnotations,
       );
 
       // Сохраняем на сервере

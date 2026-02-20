@@ -304,13 +304,16 @@ class ShiftScheduler extends BaseReportScheduler {
     if (USE_DB) {
       try {
         const stuckRows = await db.query(
-          `SELECT id, shop_address, shift_type, employee_name
+          `SELECT id, shop_address, shift_type, employee_name, date
            FROM shift_reports
            WHERE status = 'review'
              AND review_deadline IS NOT NULL
              AND review_deadline < $1`,
           [now.toISOString()]
         );
+
+        // Группируем по дате для batch-обновления JSON-файлов
+        const byDate = {};
         for (const row of (stuckRows.rows || stuckRows)) {
           try {
             await db.updateById('shift_reports', row.id, {
@@ -320,8 +323,39 @@ class ShiftScheduler extends BaseReportScheduler {
             });
             rejectedCount++;
             console.log(`${this.tag} DB stale REJECTED: ${row.shop_address} (${row.shift_type}), employee: ${row.employee_name}`);
+
+            // Запоминаем для обновления JSON
+            if (row.date) {
+              const dateStr = typeof row.date === 'string' ? row.date.split('T')[0] : row.date.toISOString().split('T')[0];
+              if (!byDate[dateStr]) byDate[dateStr] = [];
+              byDate[dateStr].push(row.id);
+            }
           } catch (dbErr) {
             console.error(`${this.tag} DB stale reject error:`, dbErr.message);
+          }
+        }
+
+        // Обновляем JSON-файлы за соответствующие даты (синхронизация с БД)
+        for (const [dateStr, ids] of Object.entries(byDate)) {
+          try {
+            const jsonFile = path.join(this.SHIFT_REPORTS_DIR, `${dateStr}.json`);
+            if (await fileExists(jsonFile)) {
+              const fileReports = await loadJsonFile(jsonFile, []);
+              let changed = false;
+              for (const r of fileReports) {
+                if (ids.includes(r.id) && r.status === 'review') {
+                  r.status = 'rejected';
+                  r.rejectedAt = now.toISOString();
+                  changed = true;
+                }
+              }
+              if (changed) {
+                await writeJsonFile(jsonFile, fileReports);
+                console.log(`${this.tag} JSON synced: ${dateStr}.json — ${ids.length} report(s) → rejected`);
+              }
+            }
+          } catch (jsonErr) {
+            console.error(`${this.tag} JSON sync error for ${dateStr}:`, jsonErr.message);
           }
         }
       } catch (err) {

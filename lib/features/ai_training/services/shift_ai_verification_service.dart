@@ -260,6 +260,36 @@ class ShiftAiVerificationService {
     }
   }
 
+  /// Одобрить аннотацию — загрузить фото для обучения YOLO
+  static Future<bool> approveAnnotation(String annotationId) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConstants.serverUrl}/api/shift-ai/annotations/${Uri.encodeComponent(annotationId)}/approve'),
+        headers: ApiConstants.headersWithApiKey,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      return response.statusCode == 200;
+    } catch (e) {
+      Logger.error('Ошибка одобрения аннотации', e);
+      return false;
+    }
+  }
+
+  /// Отклонить аннотацию — НЕ использовать для обучения
+  static Future<bool> rejectAnnotation(String annotationId) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConstants.serverUrl}/api/shift-ai/annotations/${Uri.encodeComponent(annotationId)}/reject'),
+        headers: ApiConstants.headersWithApiKey,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      return response.statusCode == 200;
+    } catch (e) {
+      Logger.error('Ошибка отклонения аннотации', e);
+      return false;
+    }
+  }
+
   /// Получить статистику обучения
   static Future<Map<String, dynamic>> getTrainingStats() async {
     try {

@@ -14,6 +14,7 @@ import '../services/z_report_template_service.dart';
 import '../models/z_report_sample_model.dart';
 import '../models/z_report_template_model.dart';
 import '../widgets/z_report_recognition_dialog.dart';
+import '../widgets/z_report_region_overlay.dart';
 import '../widgets/z_report_region_selector.dart';
 import 'template_editor_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -433,7 +434,8 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
       recognizedData: result?.data,
       shopAddress: _selectedShop?.address,
       expectedRanges: result?.expectedRanges,
-      startInEditMode: true,
+      isSecondAttempt: true,
+      secondAttemptFailed: true,
     );
 
     if (manualResult != null && mounted) {
@@ -1404,11 +1406,28 @@ class _PhotosTabState extends State<_PhotosTab> {
   Widget _buildSampleCard(Map<String, dynamic> sample) {
     final id = sample['id'] ?? '';
     final createdAt = sample['createdAt'] != null
-        ? DateTime.tryParse(sample['createdAt'].toString())
+        ? DateTime.tryParse(sample['createdAt'].toString())?.toLocal()
         : null;
     final correctedFields = List<String>.from(sample['correctedFields'] ?? []);
     final correctData = sample['correctData'] as Map<String, dynamic>? ?? {};
     final imageUrl = ZReportTemplateService.getTrainingSampleImageUrl(id);
+
+    // Парсим fieldRegions для overlay
+    final rawRegions = sample['fieldRegions'];
+    Map<String, Map<String, double>>? fieldRegions;
+    if (rawRegions is Map) {
+      fieldRegions = {};
+      for (final entry in rawRegions.entries) {
+        if (entry.value is Map) {
+          final region = <String, double>{};
+          for (final re in (entry.value as Map).entries) {
+            region[re.key.toString()] = (re.value as num).toDouble();
+          }
+          fieldRegions[entry.key.toString()] = region;
+        }
+      }
+      if (fieldRegions.isEmpty) fieldRegions = null;
+    }
 
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
@@ -1420,19 +1439,27 @@ class _PhotosTabState extends State<_PhotosTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Фото
+          // Фото с областями (fill — чтобы overlay совпадал с картинкой)
           ClipRRect(
             borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
-            child: Image.network(
-              imageUrl,
-              height: 180,
+            child: SizedBox(
+              height: 220,
               width: double.infinity,
-              fit: BoxFit.contain,
-              headers: ApiConstants.headersWithApiKey,
-              errorBuilder: (_, __, ___) => Container(
-                height: 180,
-                color: Colors.white.withOpacity(0.05),
-                child: Center(child: Icon(Icons.broken_image, color: Colors.white24, size: 48)),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    imageUrl,
+                    fit: BoxFit.fill,
+                    headers: ApiConstants.headersWithApiKey,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: Colors.white.withOpacity(0.05),
+                      child: Center(child: Icon(Icons.broken_image, color: Colors.white24, size: 48)),
+                    ),
+                  ),
+                  if (fieldRegions != null)
+                    ZReportRegionOverlay(fieldRegions: fieldRegions),
+                ],
               ),
             ),
           ),
@@ -1464,9 +1491,12 @@ class _PhotosTabState extends State<_PhotosTab> {
                             children: [
                               Icon(Icons.edit, size: 12, color: AppColors.warning),
                               SizedBox(width: 4),
-                              Text(
-                                'Исправлено: ${correctedFields.join(", ")}',
-                                style: TextStyle(color: AppColors.warning, fontSize: 11.sp),
+                              Expanded(
+                                child: Text(
+                                  'Исправлено: ${correctedFields.join(", ")}',
+                                  style: TextStyle(color: AppColors.warning, fontSize: 11.sp),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
@@ -1845,6 +1875,7 @@ class _StatsTab extends StatefulWidget {
 class _StatsTabState extends State<_StatsTab> {
   Map<String, dynamic> _stats = {};
   bool _isLoading = true;
+  bool _dataLoaded = false;
 
   static final _purpleGradient = [AppColors.indigo, AppColors.purple];
   static final _greenGradient = [AppColors.emeraldGreen, AppColors.emeraldGreenLight];
@@ -1853,7 +1884,14 @@ class _StatsTabState extends State<_StatsTab> {
   @override
   void initState() {
     super.initState();
-    _loadStats();
+    // Ленивая загрузка — данные грузятся при первом build
+  }
+
+  void _ensureDataLoaded() {
+    if (!_dataLoaded) {
+      _dataLoaded = true;
+      _loadStats();
+    }
   }
 
   Future<void> _loadStats() async {
@@ -1873,6 +1911,8 @@ class _StatsTabState extends State<_StatsTab> {
 
   @override
   Widget build(BuildContext context) {
+    _ensureDataLoaded();
+
     if (_isLoading) {
       return Center(
         child: CircularProgressIndicator(color: _purpleGradient[0]),
@@ -1938,25 +1978,29 @@ class _StatsTabState extends State<_StatsTab> {
                   child: Icon(Icons.edit_note, color: Colors.white, size: 20),
                 ),
                 SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Исправления по полям',
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Исправления по полям',
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    Text(
-                      'Поля, требующие корректировки',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        color: Colors.white.withOpacity(0.5),
+                      Text(
+                        'Поля, требующие корректировки',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -2087,32 +2131,37 @@ class _StatsTabState extends State<_StatsTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(5.r),
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withOpacity(0.5),
-                          blurRadius: 4,
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(5.r),
+                        boxShadow: [
+                          BoxShadow(
+                            color: color.withOpacity(0.5),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
                         ),
-                      ],
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 10),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),

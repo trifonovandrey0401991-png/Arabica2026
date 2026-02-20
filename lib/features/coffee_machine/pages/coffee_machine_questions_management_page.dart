@@ -9,6 +9,7 @@ import '../services/coffee_machine_template_service.dart';
 import '../models/coffee_machine_template_model.dart';
 import '../../shops/services/shop_service.dart';
 import 'coffee_machine_training_photos_page.dart';
+import 'coffee_machine_shop_photos_page.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -20,7 +21,8 @@ class CoffeeMachineQuestionsManagementPage extends StatefulWidget {
   State<CoffeeMachineQuestionsManagementPage> createState() => _CoffeeMachineQuestionsManagementPageState();
 }
 
-class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQuestionsManagementPage> {
+class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQuestionsManagementPage>
+    with SingleTickerProviderStateMixin {
   final _imagePicker = ImagePicker();
 
   bool _isLoading = true;
@@ -28,11 +30,20 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
   List<CoffeeMachineShopConfig> _shopConfigs = [];
   List<String> _shopAddresses = [];
   Map<String, int> _trainingCounts = {}; // machineName → count
+  Map<String, dynamic> _intelligenceData = {};
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -43,6 +54,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
         CoffeeMachineTemplateService.getAllShopConfigs(),
         ShopService.getShops().then((shops) => shops.map((s) => s.address).toList()),
         _loadTrainingStats(),
+        _loadIntelligence(),
       ]);
       if (!mounted) return;
       setState(() {
@@ -50,6 +62,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
         _shopConfigs = results[1] as List<CoffeeMachineShopConfig>;
         _shopAddresses = results[2] as List<String>;
         _trainingCounts = results[3] as Map<String, int>;
+        _intelligenceData = results[4] as Map<String, dynamic>;
         _isLoading = false;
       });
     } catch (e) {
@@ -71,10 +84,20 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
     return {};
   }
 
+  Future<Map<String, dynamic>> _loadIntelligence() async {
+    try {
+      final uri = Uri.parse('${ApiConstants.serverUrl}/api/coffee-machine/intelligence');
+      final response = await http.get(uri, headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.defaultTimeout);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return (data['intelligence'] as Map<String, dynamic>?) ?? {};
+      }
+    } catch (_) {}
+    return {};
+  }
+
   @override
   Widget build(BuildContext context) {
-    final configuredShops = _shopConfigs.where((c) => c.machineTemplateIds.isNotEmpty).length;
-
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -111,65 +134,31 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                   ],
                 ),
               ),
+              // TabBar
+              TabBar(
+                controller: _tabController,
+                indicatorColor: AppColors.gold,
+                labelColor: AppColors.gold,
+                unselectedLabelColor: Colors.white.withOpacity(0.5),
+                labelStyle: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600),
+                unselectedLabelStyle: TextStyle(fontSize: 13.sp),
+                tabs: [
+                  Tab(text: 'Шаблоны'),
+                  Tab(text: 'Магазины'),
+                  Tab(text: 'Фото'),
+                ],
+              ),
               // Content
               Expanded(
                 child: _isLoading
                     ? Center(child: CircularProgressIndicator(color: AppColors.gold))
-                    : SingleChildScrollView(
-                        padding: EdgeInsets.all(16.w),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Статистика
-                            _buildStatsCard(configuredShops),
-                            SizedBox(height: 20),
-                            // Шаблоны
-                            Row(
-                              children: [
-                                Text(
-                                  'Шаблоны машин',
-                                  style: TextStyle(color: AppColors.gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
-                                ),
-                                Spacer(),
-                                GestureDetector(
-                                  onTap: _addTemplate,
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.gold.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(6.r),
-                                      border: Border.all(color: AppColors.gold.withOpacity(0.3)),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.add, color: AppColors.gold, size: 16),
-                                        SizedBox(width: 4),
-                                        Text('Создать', style: TextStyle(color: AppColors.gold, fontSize: 12.sp)),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 10),
-                            if (_templates.isEmpty)
-                              _buildEmptyCard('Нет шаблонов. Нажмите "Создать"')
-                            else
-                              ..._templates.map(_buildTemplateCard),
-                            SizedBox(height: 20),
-                            // Привязки к магазинам
-                            Text(
-                              'Привязки к магазинам',
-                              style: TextStyle(color: AppColors.gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
-                            ),
-                            SizedBox(height: 10),
-                            if (_shopAddresses.isEmpty)
-                              _buildEmptyCard('Нет магазинов')
-                            else
-                              ..._shopAddresses.map(_buildShopCard),
-                          ],
-                        ),
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildTemplatesTab(),
+                          _buildShopsTab(),
+                          _buildPhotosTab(),
+                        ],
                       ),
               ),
             ],
@@ -219,6 +208,234 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
         borderRadius: BorderRadius.circular(12.r),
       ),
       child: Text(message, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13.sp)),
+    );
+  }
+
+  // ============ Tab: Шаблоны ============
+
+  Widget _buildTemplatesTab() {
+    final configuredShops = _shopConfigs.where((c) => c.machineTemplateIds.isNotEmpty).length;
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStatsCard(configuredShops),
+          SizedBox(height: 20),
+          Row(
+            children: [
+              Text(
+                'Шаблоны машин',
+                style: TextStyle(color: AppColors.gold, fontSize: 16.sp, fontWeight: FontWeight.bold),
+              ),
+              Spacer(),
+              GestureDetector(
+                onTap: _addTemplate,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(6.r),
+                    border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add, color: AppColors.gold, size: 16),
+                      SizedBox(width: 4),
+                      Text('Создать', style: TextStyle(color: AppColors.gold, fontSize: 12.sp)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 10),
+          if (_templates.isEmpty)
+            _buildEmptyCard('Нет шаблонов. Нажмите "Создать"')
+          else
+            ..._templates.map(_buildTemplateCard),
+        ],
+      ),
+    );
+  }
+
+  // ============ Tab: Магазины ============
+
+  Widget _buildShopsTab() {
+    return _shopAddresses.isEmpty
+        ? Center(child: _buildEmptyCard('Нет магазинов'))
+        : ListView.builder(
+            padding: EdgeInsets.all(16.w),
+            itemCount: _shopAddresses.length,
+            itemBuilder: (_, i) => _buildShopCard(_shopAddresses[i]),
+          );
+  }
+
+  // ============ Tab: Фото ============
+
+  Widget _buildPhotosTab() {
+    final configuredShops = _shopConfigs
+        .where((c) => c.machineTemplateIds.isNotEmpty)
+        .toList();
+
+    if (configuredShops.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.photo_camera, size: 48, color: Colors.white.withOpacity(0.2)),
+            SizedBox(height: 12),
+            Text('Нет настроенных магазинов', style: TextStyle(color: Colors.white.withOpacity(0.4))),
+            SizedBox(height: 4),
+            Text(
+              'Привяжите шаблоны к магазинам\nна вкладке "Магазины"',
+              style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12.sp),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Собираем статистику по магазинам
+    final shopStats = <_ShopPhotoStats>[];
+    for (final config in configuredShops) {
+      final machineNames = config.machineTemplateIds
+          .map((id) => _templates.where((t) => t.id == id).firstOrNull?.name)
+          .where((n) => n != null)
+          .cast<String>()
+          .toList();
+
+      int totalReadings = 0;
+      int totalAiCorrect = 0;
+      int totalTrainingPhotos = 0;
+
+      for (final name in machineNames) {
+        final intel = _intelligenceData[name] as Map<String, dynamic>?;
+        if (intel != null) {
+          totalReadings += (intel['totalReadings'] as num?)?.toInt() ?? 0;
+          totalAiCorrect += (intel['aiCorrect'] as num?)?.toInt() ?? 0;
+        }
+        totalTrainingPhotos += _trainingCounts[name] ?? 0;
+      }
+
+      final successRate = totalReadings > 0 ? totalAiCorrect / totalReadings : -1.0;
+      shopStats.add(_ShopPhotoStats(
+        address: config.shopAddress,
+        machineNames: machineNames,
+        totalReadings: totalReadings,
+        totalAiCorrect: totalAiCorrect,
+        totalTrainingPhotos: totalTrainingPhotos,
+        successRate: successRate,
+      ));
+    }
+
+    // Сортировка: худший процент первым, без данных — последние
+    shopStats.sort((a, b) {
+      if (a.successRate < 0 && b.successRate < 0) return 0;
+      if (a.successRate < 0) return 1;
+      if (b.successRate < 0) return -1;
+      return a.successRate.compareTo(b.successRate);
+    });
+
+    return ListView.builder(
+      padding: EdgeInsets.all(16.w),
+      itemCount: shopStats.length,
+      itemBuilder: (_, i) => _buildShopPhotosCard(shopStats[i]),
+    );
+  }
+
+  Widget _buildShopPhotosCard(_ShopPhotoStats stats) {
+    final successPercent = stats.totalReadings > 0
+        ? (stats.successRate * 100).round()
+        : -1;
+
+    Color rateColor;
+    if (stats.totalReadings == 0) {
+      rateColor = Colors.white.withOpacity(0.3);
+    } else if (stats.successRate >= 0.8) {
+      rateColor = Colors.green;
+    } else if (stats.successRate >= 0.5) {
+      rateColor = Colors.orange;
+    } else {
+      rateColor = Colors.red;
+    }
+
+    return GestureDetector(
+      onTap: () {
+        if (stats.machineNames.isEmpty) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CoffeeMachineShopPhotosPage(
+              shopAddress: stats.address,
+              machineNames: stats.machineNames,
+            ),
+          ),
+        ).then((_) => _loadData());
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 8.h),
+        padding: EdgeInsets.all(12.w),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(color: rateColor.withOpacity(0.2)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.store, color: rateColor, size: 20),
+            SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    stats.address,
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13.sp),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Text(
+                        '${stats.machineNames.length} маш.',
+                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11.sp),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        '${stats.totalTrainingPhotos} фото',
+                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11.sp),
+                      ),
+                      if (stats.totalReadings > 0) ...[
+                        SizedBox(width: 8),
+                        Text(
+                          '${stats.totalReadings} отчётов',
+                          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11.sp),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+              decoration: BoxDecoration(
+                color: rateColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Text(
+                successPercent >= 0 ? '$successPercent%' : '—',
+                style: TextStyle(color: rateColor, fontSize: 14.sp, fontWeight: FontWeight.bold),
+              ),
+            ),
+            SizedBox(width: 4),
+            Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 20),
+          ],
+        ),
+      ),
     );
   }
 
@@ -694,4 +911,23 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
       _loadData();
     }
   }
+}
+
+/// Вспомогательный класс для статистики магазина во вкладке "Фото"
+class _ShopPhotoStats {
+  final String address;
+  final List<String> machineNames;
+  final int totalReadings;
+  final int totalAiCorrect;
+  final int totalTrainingPhotos;
+  final double successRate;
+
+  _ShopPhotoStats({
+    required this.address,
+    required this.machineNames,
+    required this.totalReadings,
+    required this.totalAiCorrect,
+    required this.totalTrainingPhotos,
+    required this.successRate,
+  });
 }

@@ -626,31 +626,40 @@ class _RecurringTaskCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                TextButton.icon(
-                  onPressed: onEdit,
-                  icon: Icon(Icons.edit, size: 18),
-                  label: Text('Изменить'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.blue[300],
+                Flexible(
+                  child: TextButton.icon(
+                    onPressed: onEdit,
+                    icon: Icon(Icons.edit, size: 16),
+                    label: Text('Изменить', style: TextStyle(fontSize: 12.sp), overflow: TextOverflow.ellipsis),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.blue[300],
+                      padding: EdgeInsets.symmetric(horizontal: 8.w),
+                    ),
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: onTogglePause,
-                  icon: Icon(
-                    task.isPaused ? Icons.play_arrow : Icons.pause,
-                    size: 18,
-                  ),
-                  label: Text(task.isPaused ? 'Возобновить' : 'Пауза'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.orange[300],
+                Flexible(
+                  child: TextButton.icon(
+                    onPressed: onTogglePause,
+                    icon: Icon(
+                      task.isPaused ? Icons.play_arrow : Icons.pause,
+                      size: 16,
+                    ),
+                    label: Text(task.isPaused ? 'Возобновить' : 'Пауза', style: TextStyle(fontSize: 12.sp), overflow: TextOverflow.ellipsis),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.orange[300],
+                      padding: EdgeInsets.symmetric(horizontal: 8.w),
+                    ),
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: onDelete,
-                  icon: Icon(Icons.delete, size: 18),
-                  label: Text('Удалить'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.red[300],
+                Flexible(
+                  child: TextButton.icon(
+                    onPressed: onDelete,
+                    icon: Icon(Icons.delete, size: 16),
+                    label: Text('Удалить', style: TextStyle(fontSize: 12.sp), overflow: TextOverflow.ellipsis),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red[300],
+                      padding: EdgeInsets.symmetric(horizontal: 8.w),
+                    ),
                   ),
                 ),
               ],

@@ -19,11 +19,138 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
   String? _selectedGroup;
   Map<String, dynamic> _stats = {};
   Map<String, dynamic> _modelStatus = {};
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Получить отфильтрованный список товаров по поисковому запросу
+  List<ShiftTrainingProduct> get _filteredProducts {
+    if (_searchQuery.isEmpty) return _products;
+
+    final query = _searchQuery.toLowerCase().trim();
+    final queryWords = query.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (queryWords.isEmpty) return _products;
+
+    final scored = <_ScoredProduct>[];
+
+    for (final product in _products) {
+      final name = product.productName.toLowerCase();
+      final barcode = product.barcode.toLowerCase();
+
+      // Точное совпадение по штрихкоду
+      if (barcode.contains(query)) {
+        scored.add(_ScoredProduct(product, 1000));
+        continue;
+      }
+
+      // Проверяем каждое слово запроса
+      int totalScore = 0;
+      bool allWordsMatch = true;
+
+      for (final qWord in queryWords) {
+        final wordScore = _bestWordScore(qWord, name);
+        if (wordScore == 0) {
+          allWordsMatch = false;
+          break;
+        }
+        totalScore += wordScore;
+      }
+
+      if (allWordsMatch && totalScore > 0) {
+        scored.add(_ScoredProduct(product, totalScore));
+      }
+    }
+
+    // Сортируем по релевантности (высший балл = лучше)
+    scored.sort((a, b) => b.score.compareTo(a.score));
+    return scored.map((s) => s.product).toList();
+  }
+
+  /// Лучший балл совпадения слова запроса с любым словом в названии товара
+  int _bestWordScore(String queryWord, String productName) {
+    // Ищем как подстроку целого названия (для поиска со 2-го слова)
+    if (productName.contains(queryWord)) {
+      // Бонус за совпадение с началом слова
+      final words = productName.split(RegExp(r'[\s\(\)"]+'));
+      for (final w in words) {
+        if (w.startsWith(queryWord)) return 100; // Начало слова
+      }
+      return 80; // Подстрока
+    }
+
+    // Нечёткий поиск (допускаем опечатки)
+    if (queryWord.length < 3) return 0; // Слишком короткое для fuzzy
+
+    final words = productName.split(RegExp(r'[\s\(\)"]+'));
+    int best = 0;
+
+    for (final w in words) {
+      if (w.isEmpty) continue;
+
+      // Проверяем нечёткое начало слова
+      final prefixLen = queryWord.length.clamp(0, w.length);
+      final dist = _levenshtein(
+        queryWord,
+        w.substring(0, prefixLen.clamp(0, w.length)),
+      );
+
+      // Допускаем 1 ошибку на 3 символа
+      final maxErrors = (queryWord.length / 3).ceil();
+      if (dist <= maxErrors) {
+        final score = 60 - dist * 10;
+        if (score > best) best = score;
+      }
+
+      // Также проверяем полное слово
+      if (w.length >= queryWord.length - 1) {
+        final fullDist = _levenshtein(queryWord, w);
+        if (fullDist <= maxErrors) {
+          final score = 70 - fullDist * 10;
+          if (score > best) best = score;
+        }
+      }
+    }
+
+    return best;
+  }
+
+  /// Расстояние Левенштейна (количество правок для превращения a в b)
+  int _levenshtein(String a, String b) {
+    if (a == b) return 0;
+    if (a.isEmpty) return b.length;
+    if (b.isEmpty) return a.length;
+
+    // Оптимизация: используем одну строку матрицы
+    var prev = List.generate(b.length + 1, (i) => i);
+    var curr = List.filled(b.length + 1, 0);
+
+    for (int i = 1; i <= a.length; i++) {
+      curr[0] = i;
+      for (int j = 1; j <= b.length; j++) {
+        final cost = a[i - 1] == b[j - 1] ? 0 : 1;
+        curr[j] = [
+          prev[j] + 1,      // удаление
+          curr[j - 1] + 1,   // вставка
+          prev[j - 1] + cost, // замена
+        ].reduce((a, b) => a < b ? a : b);
+      }
+      final tmp = prev;
+      prev = curr;
+      curr = tmp;
+    }
+
+    return prev[b.length];
   }
 
   Future<void> _loadData() async {
@@ -121,6 +248,7 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
             children: [
               _buildAppBar(),
               _buildStatsHeader(),
+              _buildSearchBar(),
               _buildGroupFilter(),
               Expanded(
                 child: _isLoading
@@ -311,6 +439,58 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
     );
   }
 
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.15),
+          ),
+        ),
+        child: TextField(
+          controller: _searchController,
+          style: TextStyle(color: Colors.white, fontSize: 15.sp),
+          decoration: InputDecoration(
+            hintText: 'Поиск по названию или штрихкоду...',
+            hintStyle: TextStyle(
+              color: Colors.white.withOpacity(0.35),
+              fontSize: 14.sp,
+            ),
+            prefixIcon: Icon(
+              Icons.search,
+              color: Colors.white.withOpacity(0.5),
+              size: 22,
+            ),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: Icon(
+                      Icons.close,
+                      color: Colors.white.withOpacity(0.5),
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      _searchController.clear();
+                      if (mounted) setState(() => _searchQuery = '');
+                    },
+                  )
+                : null,
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16.w,
+              vertical: 12.h,
+            ),
+          ),
+          onChanged: (value) {
+            if (mounted) setState(() => _searchQuery = value);
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildGroupFilter() {
     return Container(
       height: 50,
@@ -374,6 +554,8 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
   }
 
   Widget _buildProductsList() {
+    final products = _filteredProducts;
+
     if (_products.isEmpty) {
       return Center(
         child: Column(
@@ -405,13 +587,64 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
       );
     }
 
-    return ListView.builder(
-      padding: EdgeInsets.all(16.w),
-      itemCount: _products.length,
-      itemBuilder: (context, index) {
-        final product = _products[index];
-        return _buildProductCard(product);
-      },
+    if (products.isEmpty && _searchQuery.isNotEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 64,
+              color: Colors.white.withOpacity(0.3),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Ничего не найдено',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.6),
+                fontSize: 16.sp,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Попробуйте изменить запрос',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.4),
+                fontSize: 14.sp,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        if (_searchQuery.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Найдено: ${products.length}',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.5),
+                  fontSize: 12.sp,
+                ),
+              ),
+            ),
+          ),
+        Expanded(
+          child: ListView.builder(
+            padding: EdgeInsets.all(16.w),
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final product = products[index];
+              return _buildProductCard(product);
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -549,4 +782,11 @@ class _ShiftTrainingPageState extends State<ShiftTrainingPage> {
       ),
     );
   }
+}
+
+/// Вспомогательный класс для сортировки по релевантности
+class _ScoredProduct {
+  final ShiftTrainingProduct product;
+  final int score;
+  _ScoredProduct(this.product, this.score);
 }

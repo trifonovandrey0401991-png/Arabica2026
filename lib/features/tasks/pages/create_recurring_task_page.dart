@@ -274,7 +274,9 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
       backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
@@ -426,6 +428,7 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
           ),
         ),
       ),
+    ),
     );
   }
 

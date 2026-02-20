@@ -64,9 +64,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   static final _redGradient = [AppColors.error, AppColors.errorLight];
 
   /// Количество вкладок зависит от роли
-  /// Для админа: Фото, Товары, Новые коды, Статистика, Настройки = 5
+  /// Для админа: Фото, Товары, Новые, Обученные, Статистика, Настройки = 6
   /// Для сотрудника: Фото, Статистика = 2
-  int get _tabCount => _isAdmin ? 5 : 2;
+  int get _tabCount => _isAdmin ? 6 : 2;
 
   @override
   void initState() {
@@ -92,7 +92,6 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   Future<void> _initTabController() async {
     final roleData = await UserRoleService.loadUserRole();
-    final role = roleData?.role ?? '';
     final prefs = await SharedPreferences.getInstance();
     final shopAddress = prefs.getString('selectedShopAddress');
 
@@ -101,7 +100,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
     if (mounted) {
       setState(() {
-        _isAdmin = role == 'admin' || role == 'developer';
+        _isAdmin = roleData?.isAdmin == true || roleData?.isDeveloper == true;
         _selectedShopAddress = shopAddress;
         _shops = shops;
         _tabController = TabController(length: _tabCount, vsync: this);
@@ -196,6 +195,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                               // Вкладка "Товары" только для админа
                               if (_isAdmin) _buildProductsTab(),
                               if (_isAdmin) PendingCodesPage(onCodeApproved: _loadData),
+                              if (_isAdmin) _buildTrainedProductsTab(),
                               _buildStatsTab(),
                               if (_isAdmin) _buildSettingsTab(),
                             ],
@@ -353,6 +353,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             Tab(
               icon: Icon(Icons.new_releases, size: 20),
               text: 'Новые',
+            ),
+          if (_isAdmin)
+            Tab(
+              icon: Icon(Icons.model_training, size: 20),
+              text: 'Обученные',
             ),
           Tab(
             icon: Icon(Icons.bar_chart, size: 20),
@@ -1923,6 +1928,358 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ==================== Вкладка "Обученные" ====================
+
+  /// Вкладка со списком товаров, у которых собраны все фото для обучения
+  Widget _buildTrainedProductsTab() {
+    final trainedProducts = _products
+        .where((p) => p.isCountingComplete)
+        .toList()
+      ..sort((a, b) {
+        // Сначала товары с низкой точностью (требуют внимания)
+        final aAcc = a.countingAccuracy ?? 101;
+        final bAcc = b.countingAccuracy ?? 101;
+        return aAcc.compareTo(bAcc);
+      });
+
+    if (trainedProducts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.model_training, size: 64, color: Colors.white.withOpacity(0.3)),
+            SizedBox(height: 16),
+            Text(
+              'Нет обученных товаров',
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Здесь появятся товары, у которых\nсобраны все фото для обучения',
+              style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13.sp),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Заголовок с количеством
+        Padding(
+          padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 8.h),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: _greenGradient),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: Text(
+                  '${trainedProducts.length}',
+                  style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Обученные товары',
+                style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.7)),
+              ),
+            ],
+          ),
+        ),
+
+        // Список товаров
+        Expanded(
+          child: ListView.builder(
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            itemCount: trainedProducts.length,
+            itemBuilder: (context, index) {
+              final product = trainedProducts[index];
+              return _buildTrainedProductRow(product);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Строка товара во вкладке "Обученные"
+  Widget _buildTrainedProductRow(CigaretteProduct product) {
+    final accuracy = product.countingAccuracy;
+    final hasAccuracy = accuracy != null;
+
+    // Цвет зависит от точности
+    Color accuracyColor;
+    String accuracyText;
+    if (!hasAccuracy) {
+      accuracyColor = Colors.white.withOpacity(0.4);
+      accuracyText = '—';
+    } else if (accuracy >= 70) {
+      accuracyColor = AppColors.success;
+      accuracyText = '$accuracy%';
+    } else if (accuracy >= 40) {
+      accuracyColor = AppColors.warning;
+      accuracyText = '$accuracy%';
+    } else {
+      accuracyColor = AppColors.error;
+      accuracyText = '$accuracy%';
+    }
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 8.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(
+          color: hasAccuracy && accuracy < 40
+              ? AppColors.error.withOpacity(0.4)
+              : Colors.white.withOpacity(0.1),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showTrainingSamplesReview(product),
+          borderRadius: BorderRadius.circular(12.r),
+          child: Padding(
+            padding: EdgeInsets.all(12.w),
+            child: Row(
+              children: [
+                // Иконка товара
+                Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: _blueGradient),
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  child: Icon(Icons.inventory_2, color: Colors.white, size: 20),
+                ),
+                SizedBox(width: 12),
+
+                // Название + кол-во фото
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.productName,
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '${product.countingPhotosCount} фото  •  ${product.countingAttempts} попыток',
+                        style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5)),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 12),
+
+                // Процент точности
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: accuracyColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(color: accuracyColor.withOpacity(0.4)),
+                  ),
+                  child: Text(
+                    accuracyText,
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.bold,
+                      color: accuracyColor,
+                    ),
+                  ),
+                ),
+
+                SizedBox(width: 8),
+                Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Просмотр обучающих фото товара с возможностью удаления неэффективных
+  void _showTrainingSamplesReview(CigaretteProduct product) async {
+    // Показать индикатор загрузки
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+    );
+
+    final samples = await CigaretteVisionService.getCountingSamplesForProduct(product.barcode);
+
+    if (!mounted) return;
+    Navigator.pop(context); // Закрыть индикатор
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) => Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [AppColors.darkNavy, AppColors.navy],
+              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+            ),
+            child: Column(
+              children: [
+                // Заголовок
+                Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(2.r),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(10.w),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: _greenGradient),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            child: Icon(Icons.model_training, color: Colors.white, size: 24),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Обучающие фото',
+                                  style: TextStyle(
+                                    fontSize: 18.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  product.productName,
+                                  style: TextStyle(
+                                    fontSize: 13.sp,
+                                    color: Colors.white.withOpacity(0.6),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Бейдж точности
+                          if (product.countingAccuracy != null)
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                              decoration: BoxDecoration(
+                                color: (product.countingAccuracy! >= 70
+                                        ? AppColors.success
+                                        : product.countingAccuracy! >= 40
+                                            ? AppColors.warning
+                                            : AppColors.error)
+                                    .withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                              child: Text(
+                                '${product.countingAccuracy}%',
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: product.countingAccuracy! >= 70
+                                      ? AppColors.success
+                                      : product.countingAccuracy! >= 40
+                                          ? AppColors.warning
+                                          : AppColors.error,
+                                ),
+                              ),
+                            ),
+                          SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: Icon(Icons.close, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Контент — сетка фото
+                Expanded(
+                  child: samples.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.photo_library_outlined,
+                                  size: 64, color: Colors.white.withOpacity(0.3)),
+                              SizedBox(height: 16),
+                              Text(
+                                'Нет обучающих фото',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontSize: 16.sp,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : GridView.builder(
+                          controller: scrollController,
+                          padding: EdgeInsets.symmetric(horizontal: 16.w),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.85,
+                          ),
+                          itemCount: samples.length,
+                          itemBuilder: (context, index) {
+                            final sample = samples[index];
+                            return _buildCountingPhotoCard(sample, product, setDialogState);
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

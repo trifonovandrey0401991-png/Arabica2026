@@ -51,6 +51,8 @@ function dbEnvelopeReportToCamel(row) {
     failedAt: row.failed_at,
     oooZReportEdited: row.ooo_z_report_edited || false,
     ipZReportEdited: row.ip_z_report_edited || false,
+    oooFieldRegions: typeof row.ooo_field_regions === 'string' ? JSON.parse(row.ooo_field_regions) : (row.ooo_field_regions || null),
+    ipFieldRegions: typeof row.ip_field_regions === 'string' ? JSON.parse(row.ip_field_regions) : (row.ip_field_regions || null),
   };
 }
 
@@ -84,6 +86,8 @@ function camelToDbEnvelope(body) {
   if (body.confirmedByAdmin !== undefined) data.confirmed_by_admin = body.confirmedByAdmin;
   if (body.oooZReportEdited !== undefined) data.ooo_z_report_edited = body.oooZReportEdited;
   if (body.ipZReportEdited !== undefined) data.ip_z_report_edited = body.ipZReportEdited;
+  if (body.oooFieldRegions !== undefined) data.ooo_field_regions = JSON.stringify(body.oooFieldRegions);
+  if (body.ipFieldRegions !== undefined) data.ip_field_regions = JSON.stringify(body.ipFieldRegions);
   return data;
 }
 
@@ -503,6 +507,24 @@ function setupEnvelopeAPI(app) {
       zReportIntelligence.buildZReportIntelligence().catch(e =>
         console.error('[Envelope] Z-Report Intelligence rebuild error:', e.message)
       );
+
+      // Push-уведомление администраторам о новом конверте
+      try {
+        const empName = report.employeeName || 'Сотрудник';
+        const shop = report.shopAddress || '';
+        const shiftText = report.shiftType === 'morning' ? 'утренняя' : 'вечерняя';
+        const totalOoo = report.oooRevenue ? Number(report.oooRevenue) : 0;
+        const totalIp = report.ipRevenue ? Number(report.ipRevenue) : 0;
+        const editedFlag = (report.oooZReportEdited || report.ipZReportEdited) ? ' (исправлен вручную)' : '';
+        await pushService.sendPushToAllAdmins(
+          'Конверт сдан',
+          `${empName} — ${shiftText} смена\n${shop}\nООО: ${totalOoo} руб, ИП: ${totalIp} руб${editedFlag}`,
+          { type: 'envelope_submitted', reportId },
+          'envelope'
+        );
+      } catch (pushErr) {
+        console.error('[Envelope] Push notification error:', pushErr.message);
+      }
 
       res.json({ success: true, report });
     } catch (error) {

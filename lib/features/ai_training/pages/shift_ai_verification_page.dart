@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:image_picker/image_picker.dart';
@@ -28,6 +29,8 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
   bool _isLoading = true;
   ShiftAiVerificationResult? _result;
   final List<ShiftShortage> _confirmedShortages = [];
+  // annotationId для продуктов, верифицированных через BBox (для обучения админом)
+  final Map<String, String> _bboxAnnotations = {}; // productId -> annotationId
 
   @override
   void initState() {
@@ -79,6 +82,10 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
       if (mounted) {
         setState(() {
           product.status = ConfirmationStatus.confirmedPresent;
+          // Сохраняем annotationId для обучения админом
+          if (result.annotationId != null) {
+            _bboxAnnotations[product.productId] = result.annotationId!;
+          }
         });
       }
       if (mounted) {
@@ -245,6 +252,7 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
     Navigator.pop(context, {
       'aiVerificationPassed': passed,
       'shortages': _confirmedShortages,
+      'bboxAnnotations': _bboxAnnotations, // productId -> annotationId для обучения
     });
   }
 
@@ -1229,22 +1237,37 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
 
     if (mounted) setState(() => _isVerifying = true);
 
-    // Получаем размеры контейнера для нормализации
+    // Получаем размеры виджета для пересчёта координат рисования → реальных
     final imageContext = _imageKey.currentContext;
-    Size imageDisplaySize;
+    Size displaySize;
     if (imageContext != null) {
       final RenderBox box = imageContext.findRenderObject() as RenderBox;
-      imageDisplaySize = box.size;
+      displaySize = box.size;
     } else {
-      imageDisplaySize = _imageSize ?? Size(300, 300);
+      displaySize = _imageSize ?? const Size(300, 300);
     }
 
-    // Нормализуем координаты BBox (0-1)
+    // Нормализуем координаты BBox к размерам ИЗОБРАЖЕНИЯ (не виджета)
+    // Декодируем реальные размеры изображения
+    final codec = await ui.instantiateImageCodec(_currentImage);
+    final frame = await codec.getNextFrame();
+    final realWidth = frame.image.width.toDouble();
+    final realHeight = frame.image.height.toDouble();
+    frame.image.dispose();
+
+    // Пересчитываем: координаты рисования (в пространстве виджета) → нормализованные (0-1 от изображения)
+    // Учитываем соотношение сторон виджета и изображения (BoxFit.contain)
+    final scaleX = realWidth / displaySize.width;
+    final scaleY = realHeight / displaySize.height;
+    final scale = scaleX > scaleY ? scaleX : scaleY;
+    final offsetX = (displaySize.width - realWidth / scale) / 2;
+    final offsetY = (displaySize.height - realHeight / scale) / 2;
+
     final normalizedBox = {
-      'x': (_boundingBox!.left / imageDisplaySize.width).clamp(0.0, 1.0),
-      'y': (_boundingBox!.top / imageDisplaySize.height).clamp(0.0, 1.0),
-      'width': (_boundingBox!.width / imageDisplaySize.width).clamp(0.0, 1.0),
-      'height': (_boundingBox!.height / imageDisplaySize.height).clamp(0.0, 1.0),
+      'x': ((_boundingBox!.left - offsetX) / (displaySize.width - 2 * offsetX)).clamp(0.0, 1.0),
+      'y': ((_boundingBox!.top - offsetY) / (displaySize.height - 2 * offsetY)).clamp(0.0, 1.0),
+      'width': (_boundingBox!.width / (displaySize.width - 2 * offsetX)).clamp(0.0, 1.0),
+      'height': (_boundingBox!.height / (displaySize.height - 2 * offsetY)).clamp(0.0, 1.0),
     };
 
     final result = await ShiftAiVerificationService.verifyBoundingBox(
@@ -1260,12 +1283,13 @@ class _BoundingBoxDialogState extends State<_BoundingBoxDialog> {
     if (mounted) setState(() => _isVerifying = false);
 
     if (mounted) {
-      // Возвращаем результат проверки
+      // Возвращаем результат проверки с annotationId для обучения
       Navigator.pop(context, BBoxDialogResult(
         detected: result.detected,
         imageData: _currentImage,
         boundingBox: normalizedBox,
         confidence: result.confidence,
+        annotationId: result.annotationId,
       ));
     }
   }

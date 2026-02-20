@@ -242,6 +242,46 @@ class ZReportTemplateService {
     }
   }
 
+  /// Получить список training samples (без base64 изображений)
+  static Future<List<Map<String, dynamic>>> getTrainingSamples({String? shopId}) async {
+    try {
+      var url = '${ApiConstants.serverUrl}/api/z-report/training-samples';
+      if (shopId != null) {
+        url += '?shopId=${Uri.encodeComponent(shopId)}';
+      }
+
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.headersWithApiKey);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return List<Map<String, dynamic>>.from(data['samples'] ?? []);
+      }
+      return [];
+    } catch (e) {
+      Logger.warning('Ошибка получения training samples: $e');
+      return [];
+    }
+  }
+
+  /// Получить URL изображения training sample
+  static String getTrainingSampleImageUrl(String sampleId) {
+    return '${ApiConstants.serverUrl}/api/z-report/training-samples/$sampleId/image';
+  }
+
+  /// Удалить training sample
+  static Future<bool> deleteTrainingSample(String sampleId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiConstants.serverUrl}/api/z-report/training-samples/$sampleId'),
+        headers: ApiConstants.headersWithApiKey,
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      Logger.warning('Ошибка удаления training sample: $e');
+      return false;
+    }
+  }
+
   /// Получить статистику обучения
   static Future<Map<String, dynamic>> getTrainingStats() async {
     try {

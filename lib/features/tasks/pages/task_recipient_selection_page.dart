@@ -43,12 +43,20 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
   List<Employee> _allEmployees = [];
   Set<String> _selectedIds = {};
   bool _isLoading = true;
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _selectedIds = widget.initialSelected.map((r) => r.id).toSet();
     _loadEmployees();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadEmployees() async {
@@ -71,16 +79,25 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
   }
 
   List<Employee> get _filteredEmployees {
+    List<Employee> result;
     switch (_selectedGroup) {
       case RecipientGroup.managers:
-        // Заведующие - это те, у кого isAdmin == true
-        return _allEmployees.where((e) => e.isAdmin == true).toList();
+        result = _allEmployees.where((e) => e.isAdmin == true).toList();
+        break;
       case RecipientGroup.employees:
-        // Сотрудники - те, у кого isAdmin != true
-        return _allEmployees.where((e) => e.isAdmin != true).toList();
+        result = _allEmployees.where((e) => e.isAdmin != true).toList();
+        break;
       case RecipientGroup.all:
-        return _allEmployees;
+        result = _allEmployees;
+        break;
     }
+
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      result = result.where((e) => e.name.toLowerCase().contains(query)).toList();
+    }
+
+    return result;
   }
 
   String _getRole(Employee employee) {
@@ -131,7 +148,9 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
     final filteredCount = _filteredEmployees.where((e) => _selectedIds.contains(e.id)).length;
     final totalSelected = _selectedIds.length;
 
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
       backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
@@ -208,33 +227,79 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
                       padding: EdgeInsets.only(
                         right: group != RecipientGroup.values.last ? 8 : 0,
                       ),
-                      child: ChoiceChip(
-                        label: Text(
-                          group.displayName,
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            color: Colors.white,
-                          ),
-                        ),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (selected) {
-                            if (mounted) setState(() => _selectedGroup = group);
-                          }
+                      child: GestureDetector(
+                        onTap: () {
+                          if (mounted) setState(() => _selectedGroup = group);
                         },
-                        selectedColor: AppColors.gold,
-                        backgroundColor: Colors.white.withOpacity(0.06),
-                        side: isSelected
-                            ? BorderSide.none
-                            : BorderSide(color: Colors.white.withOpacity(0.1)),
-                        labelStyle: TextStyle(
-                          fontSize: 13.sp,
-                          color: isSelected ? AppColors.night : Colors.white,
+                        child: AnimatedContainer(
+                          duration: Duration(milliseconds: 200),
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.gold
+                                : Colors.white.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(10.r),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppColors.gold
+                                  : Colors.white.withOpacity(0.1),
+                            ),
+                          ),
+                          child: Text(
+                            group.displayName,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              color: isSelected ? AppColors.night : Colors.white,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   );
                 }).toList(),
+              ),
+            ),
+
+            // Поиск по сотрудникам
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+              child: TextField(
+                controller: _searchController,
+                style: TextStyle(color: Colors.white, fontSize: 14.sp),
+                decoration: InputDecoration(
+                  hintText: 'Поиск по имени...',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                  prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.5)),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.close, color: Colors.white.withOpacity(0.5), size: 20),
+                          onPressed: () {
+                            _searchController.clear();
+                            if (mounted) setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.06),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(color: AppColors.gold, width: 1.5),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(vertical: 12.h),
+                ),
+                onChanged: (value) {
+                  if (mounted) setState(() => _searchQuery = value);
+                },
               ),
             ),
 
@@ -337,6 +402,7 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
           ],
         ),
       ),
+    ),
     );
   }
 }

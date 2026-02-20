@@ -10,6 +10,7 @@ class ShiftHandoverQuestion {
   final List<String>? shops; // Список адресов магазинов, для которых задан вопрос. null означает "для всех магазинов"
   final Map<String, String>? referencePhotos; // Объект с ключами-адресами магазинов и значениями-URL эталонных фото
   final String? targetRole; // Кому задавать вопрос: "manager" (Заведующая) или "employee" (Сотрудник)
+  final bool isAiCheck; // Проверять ли ИИ фото этого вопроса
 
   ShiftHandoverQuestion({
     required this.id,
@@ -19,6 +20,7 @@ class ShiftHandoverQuestion {
     this.shops,
     this.referencePhotos,
     this.targetRole,
+    this.isAiCheck = false,
   });
 
   /// Создать ShiftHandoverQuestion из JSON
@@ -47,6 +49,7 @@ class ShiftHandoverQuestion {
       shops: shops,
       referencePhotos: referencePhotos,
       targetRole: json['targetRole'],
+      isAiCheck: json['isAiCheck'] ?? false,
     );
   }
 
@@ -60,6 +63,7 @@ class ShiftHandoverQuestion {
       if (shops != null) 'shops': shops,
       if (referencePhotos != null) 'referencePhotos': referencePhotos,
       if (targetRole != null) 'targetRole': targetRole,
+      'isAiCheck': isAiCheck,
     };
   }
 

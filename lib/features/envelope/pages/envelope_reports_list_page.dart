@@ -694,6 +694,25 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                             ),
                         ],
                       ),
+                      if (report.hasEditedZReport)
+                        Padding(
+                          padding: EdgeInsets.only(top: 4.h),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.edit_note, color: Colors.orange, size: 14),
+                              SizedBox(width: 4),
+                              Text(
+                                'Исправлен вручную',
+                                style: TextStyle(
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11.sp,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                 ),

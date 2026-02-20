@@ -498,10 +498,9 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       if (r.isConfirmed) return false;
       // Исключаем отчёты с пустым именем сотрудника (созданные scheduler'ом)
       if (r.employeeName.isEmpty) return false;
-      // Исключаем pending/failed отчёты (созданные scheduler'ом для ожидания)
-      if (r.status == 'pending' || r.status == 'failed') return false;
+      // Исключаем pending/failed/rejected/expired отчёты
+      if (r.status == 'pending' || r.status == 'failed' || r.status == 'rejected' || r.status == 'expired') return false;
       // Показываем отчёты со статусом "review" или null (старые отчёты без статуса)
-      // status == null или status == 'review' - это реальные отчёты на проверке
       // Показываем только отчёты, которые ожидают менее 5 часов (с момента submittedAt)
       final submissionTime = r.submittedAt ?? r.createdAt;
       final hours = now.difference(submissionTime).inHours;
@@ -515,8 +514,8 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     final now = DateTime.now();
     return _allReports.where((r) {
       if (r.isConfirmed) return false;
-      // Исключаем pending/failed отчёты (созданные scheduler'ом)
-      if (r.status == 'pending' || r.status == 'failed') return false;
+      // Исключаем pending/failed/rejected/expired отчёты
+      if (r.status == 'pending' || r.status == 'failed' || r.status == 'rejected' || r.status == 'expired') return false;
       // Исключаем отчёты с пустым именем сотрудника
       if (r.employeeName.isEmpty) return false;
       // Используем submittedAt для подсчёта времени ожидания

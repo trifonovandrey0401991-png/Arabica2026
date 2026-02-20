@@ -822,7 +822,7 @@ class AdminAiDecisionResult {
     this.consecutiveErrors = 0,
     this.totalErrors = 0,
     this.isDisabled = false,
-    this.threshold = 5,
+    this.threshold = 20,
   });
 
   factory AdminAiDecisionResult.fromJson(Map<String, dynamic> json) {
@@ -835,7 +835,7 @@ class AdminAiDecisionResult {
       consecutiveErrors: json['consecutiveErrors'] ?? 0,
       totalErrors: json['totalErrors'] ?? 0,
       isDisabled: json['isDisabled'] == true,
-      threshold: json['threshold'] ?? 5,
+      threshold: json['threshold'] ?? 20,
     );
   }
 
@@ -862,7 +862,7 @@ class AiErrorReport {
     this.consecutiveErrors = 0,
     this.totalErrors = 0,
     this.isDisabled = false,
-    this.threshold = 5,
+    this.threshold = 20,
   });
 
   factory AiErrorReport.fromJson(Map<String, dynamic> json) {
@@ -873,7 +873,7 @@ class AiErrorReport {
       consecutiveErrors: json['consecutiveErrors'] ?? 0,
       totalErrors: json['totalErrors'] ?? 0,
       isDisabled: json['isDisabled'] == true,
-      threshold: json['threshold'] ?? 5,
+      threshold: json['threshold'] ?? 20,
     );
   }
 
@@ -905,7 +905,7 @@ class ProductAiStatus {
     this.totalErrors = 0,
     this.lastErrorAt,
     this.disabledAt,
-    this.threshold = 5,
+    this.threshold = 20,
     this.resetDays = 7,
   });
 
@@ -919,7 +919,7 @@ class ProductAiStatus {
       totalErrors: json['totalErrors'] ?? 0,
       lastErrorAt: json['lastErrorAt'] != null ? DateTime.tryParse(json['lastErrorAt']) : null,
       disabledAt: json['disabledAt'] != null ? DateTime.tryParse(json['disabledAt']) : null,
-      threshold: json['threshold'] ?? 5,
+      threshold: json['threshold'] ?? 20,
       resetDays: json['resetDays'] ?? 7,
     );
   }

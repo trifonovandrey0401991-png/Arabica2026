@@ -11,6 +11,23 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    if (project.name != 'app') {
+        project.afterEvaluate {
+            if (project.hasProperty('android')) {
+                project.android {
+                    compileOptions {
+                        sourceCompatibility JavaVersion.VERSION_17
+                        targetCompatibility JavaVersion.VERSION_17
+                    }
+                }
+                if (project.plugins.hasPlugin('kotlin-android')) {
+                    project.android.kotlinOptions {
+                        jvmTarget = '17'
+                    }
+                }
+            }
+        }
+    }
     project.ext {
         compileSdkVersion = 35
         minSdkVersion = 21

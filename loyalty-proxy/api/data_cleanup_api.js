@@ -101,6 +101,62 @@ const CLEANUP_CATEGORIES = [
     isDirectory: true,
     isPhotos: true
   },
+  {
+    id: 'training-articles-media',
+    name: 'Медиа обучающих статей',
+    directory: `${DATA_DIR}/training-articles-media`,
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
+  {
+    id: 'task-media',
+    name: 'Медиа задач',
+    directory: `${DATA_DIR}/task-media`,
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
+  {
+    id: 'coffee-machine-photos',
+    name: 'Фото кофемашин',
+    directory: `${DATA_DIR}/coffee-machine-photos`,
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
+  {
+    id: 'shift-question-photos',
+    name: 'Фото вопросов смен',
+    directory: `${DATA_DIR}/shift-question-photos`,
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
+  {
+    id: 'z-report-samples',
+    name: 'Образцы Z-отчётов',
+    directory: `${DATA_DIR}/z-report-samples`,
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
+  {
+    id: 'shop-settings-photos',
+    name: 'Фото настроек магазинов',
+    directory: `${DATA_DIR}/shop-settings-photos`,
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
+  {
+    id: 'shift-reference-photos',
+    name: 'Эталонные фото смен',
+    directory: `${DATA_DIR}/shift-reference-photos`,
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
 
   // === ИСТОРИЯ ОПЕРАЦИЙ ===
   {
@@ -158,6 +214,71 @@ const CLEANUP_CATEGORIES = [
     directory: `${DATA_DIR}/employee-registrations`,
     dateField: 'createdAt',
     isDirectory: true
+  },
+  {
+    id: 'coffee-machine-reports',
+    name: 'Отчёты кофемашин',
+    directory: `${DATA_DIR}/coffee-machine-reports`,
+    dateField: 'createdAt',
+    isDirectory: true
+  },
+  {
+    id: 'job-applications',
+    name: 'Заявки на работу',
+    directory: `${DATA_DIR}/job-applications`,
+    dateField: 'createdAt',
+    isDirectory: true
+  },
+  {
+    id: 'employee-ratings',
+    name: 'Рейтинги сотрудников',
+    directory: `${DATA_DIR}/employee-ratings`,
+    dateField: 'date',
+    isDirectory: true
+  },
+  {
+    id: 'recurring-task-instances',
+    name: 'Экземпляры повторяющихся задач',
+    directory: `${DATA_DIR}/recurring-task-instances`,
+    dateField: 'createdAt',
+    isDirectory: true
+  },
+  {
+    id: 'product-questions',
+    name: 'Вопросы по товарам',
+    directory: `${DATA_DIR}/product-questions`,
+    dateField: 'createdAt',
+    isDirectory: true
+  },
+  {
+    id: 'client-dialogs',
+    name: 'Диалоги клиентов',
+    directory: `${DATA_DIR}/client-dialogs`,
+    dateField: 'createdAt',
+    isDirectory: true
+  },
+  {
+    id: 'employee-chats',
+    name: 'Чаты сотрудников',
+    directory: `${DATA_DIR}/employee-chats`,
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
+  {
+    id: 'report-notifications',
+    name: 'Уведомления об отчётах',
+    directory: `${DATA_DIR}/report-notifications`,
+    dateField: 'createdAt',
+    isDirectory: true
+  },
+  {
+    id: 'geofence-notifications',
+    name: 'Геозона уведомления',
+    directory: `${DATA_DIR}/geofence-notifications`,
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
   },
 
   // === ЛОГИ ===

@@ -62,6 +62,7 @@ class ShiftHandoverReport {
   final bool? aiVerificationPassed; // Прошла ли проверка ИИ (все товары найдены)
   final bool? aiVerificationSkipped; // Была ли пропущена проверка ИИ
   final List<Map<String, dynamic>>? aiShortages; // Недостачи выявленные ИИ
+  final Map<String, String>? aiBboxAnnotations; // productId -> annotationId (ожидают одобрения)
 
   ShiftHandoverReport({
     required this.id,
@@ -79,6 +80,7 @@ class ShiftHandoverReport {
     this.aiVerificationPassed,
     this.aiVerificationSkipped,
     this.aiShortages,
+    this.aiBboxAnnotations,
   });
 
   /// Генерировать уникальный ID
@@ -104,6 +106,7 @@ class ShiftHandoverReport {
     if (aiVerificationPassed != null) 'aiVerificationPassed': aiVerificationPassed,
     if (aiVerificationSkipped != null) 'aiVerificationSkipped': aiVerificationSkipped,
     if (aiShortages != null) 'aiShortages': aiShortages,
+    if (aiBboxAnnotations != null && aiBboxAnnotations!.isNotEmpty) 'aiBboxAnnotations': aiBboxAnnotations,
   };
 
   /// Парсит дату из JSON, обрабатывая UTC и локальное время
@@ -138,6 +141,9 @@ class ShiftHandoverReport {
     aiVerificationSkipped: json['aiVerificationSkipped'],
     aiShortages: json['aiShortages'] != null
         ? List<Map<String, dynamic>>.from(json['aiShortages'])
+        : null,
+    aiBboxAnnotations: json['aiBboxAnnotations'] != null
+        ? Map<String, String>.from(json['aiBboxAnnotations'])
         : null,
   );
 
@@ -180,6 +186,7 @@ class ShiftHandoverReport {
     bool? aiVerificationPassed,
     bool? aiVerificationSkipped,
     List<Map<String, dynamic>>? aiShortages,
+    Map<String, String>? aiBboxAnnotations,
   }) {
     return ShiftHandoverReport(
       id: id,
@@ -197,6 +204,7 @@ class ShiftHandoverReport {
       aiVerificationPassed: aiVerificationPassed ?? this.aiVerificationPassed,
       aiVerificationSkipped: aiVerificationSkipped ?? this.aiVerificationSkipped,
       aiShortages: aiShortages ?? this.aiShortages,
+      aiBboxAnnotations: aiBboxAnnotations ?? this.aiBboxAnnotations,
     );
   }
 

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/z_report_sample_model.dart';
-import '../services/z_report_service.dart';
-import 'z_report_region_selector.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Результат диалога распознавания Z-отчёта
@@ -12,6 +10,7 @@ class ZReportRecognitionResult {
   final int ofdNotSent;
   final int resourceKeys;
   final bool wasEdited;
+  final bool needsRegionSelection;
 
   ZReportRecognitionResult({
     required this.revenue,
@@ -19,18 +18,28 @@ class ZReportRecognitionResult {
     required this.ofdNotSent,
     required this.resourceKeys,
     this.wasEdited = false,
+    this.needsRegionSelection = false,
   });
 }
 
-/// Диалог распознавания Z-отчёта
-/// Показывает распознанные данные и позволяет их редактировать
+/// Состояния единого диалога распознавания
+enum _DialogState {
+  initialSuccess,
+  initialFail,
+  afterRegionsSuccess,
+  afterRegionsFail,
+  editing,
+}
+
+/// Единый диалог распознавания Z-отчёта (Dark Emerald Bottom Sheet)
 class ZReportRecognitionDialog extends StatefulWidget {
   final String imageBase64;
   final ZReportData? recognizedData;
   final String? shopAddress;
   final String? employeeName;
-  final Map<String, dynamic>? expectedRanges; // Intelligence: ожидаемые диапазоны
-  final bool startInEditMode; // Сразу открыть в режиме редактирования
+  final Map<String, dynamic>? expectedRanges;
+  final bool isSecondAttempt;
+  final bool secondAttemptFailed;
 
   const ZReportRecognitionDialog({
     super.key,
@@ -39,7 +48,8 @@ class ZReportRecognitionDialog extends StatefulWidget {
     this.shopAddress,
     this.employeeName,
     this.expectedRanges,
-    this.startInEditMode = false,
+    this.isSecondAttempt = false,
+    this.secondAttemptFailed = false,
   });
 
   /// Показать диалог и вернуть результат
@@ -50,18 +60,23 @@ class ZReportRecognitionDialog extends StatefulWidget {
     String? shopAddress,
     String? employeeName,
     Map<String, dynamic>? expectedRanges,
-    bool startInEditMode = false,
+    bool isSecondAttempt = false,
+    bool secondAttemptFailed = false,
   }) {
-    return showDialog<ZReportRecognitionResult>(
+    return showModalBottomSheet<ZReportRecognitionResult>(
       context: context,
-      barrierDismissible: false,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
       builder: (context) => ZReportRecognitionDialog(
         imageBase64: imageBase64,
         recognizedData: recognizedData,
         shopAddress: shopAddress,
         employeeName: employeeName,
         expectedRanges: expectedRanges,
-        startInEditMode: startInEditMode,
+        isSecondAttempt: isSecondAttempt,
+        secondAttemptFailed: secondAttemptFailed,
       ),
     );
   }
@@ -77,14 +92,29 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
   final _ofdNotSentController = TextEditingController();
   final _resourceKeysController = TextEditingController();
 
-  bool _isEditing = false;
-  bool _isSaving = false;
-  Map<String, Map<String, double>>? _fieldRegions;
+  late _DialogState _state;
 
   @override
   void initState() {
     super.initState();
+    _initializeState();
     _initializeFields();
+  }
+
+  void _initializeState() {
+    final data = widget.recognizedData;
+    final hasData = data != null &&
+        (data.totalSum != null || data.cashSum != null || data.ofdNotSent != null);
+
+    if (widget.isSecondAttempt) {
+      if (widget.secondAttemptFailed || !hasData) {
+        _state = _DialogState.afterRegionsFail;
+      } else {
+        _state = _DialogState.afterRegionsSuccess;
+      }
+    } else {
+      _state = hasData ? _DialogState.initialSuccess : _DialogState.initialFail;
+    }
   }
 
   void _initializeFields() {
@@ -103,9 +133,6 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
         _resourceKeysController.text = data.resourceKeys.toString();
       }
     }
-    if (widget.startInEditMode) {
-      _isEditing = true;
-    }
   }
 
   @override
@@ -117,219 +144,374 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
     super.dispose();
   }
 
-  Future<void> _confirm() async {
+  bool get _fieldsEnabled =>
+      _state == _DialogState.afterRegionsFail ||
+      _state == _DialogState.editing;
+
+  void _confirm() {
     final revenue = double.tryParse(_revenueController.text) ?? 0;
     final cash = double.tryParse(_cashController.text) ?? 0;
     final ofdNotSent = int.tryParse(_ofdNotSentController.text) ?? 0;
     final resourceKeys = int.tryParse(_resourceKeysController.text) ?? 0;
 
-    // Если данные были отредактированы - сохраняем как образец для обучения
-    if (_isEditing) {
-      if (mounted) setState(() => _isSaving = true);
+    Navigator.of(context).pop(ZReportRecognitionResult(
+      revenue: revenue,
+      cash: cash,
+      ofdNotSent: ofdNotSent,
+      resourceKeys: resourceKeys,
+      wasEdited: _state == _DialogState.editing ||
+                 _state == _DialogState.afterRegionsFail,
+    ));
+  }
 
-      await ZReportService.saveSample(
-        imageBase64: widget.imageBase64,
-        totalSum: revenue,
-        cashSum: cash,
-        ofdNotSent: ofdNotSent,
-        resourceKeys: resourceKeys,
-        shopAddress: widget.shopAddress,
-        employeeName: widget.employeeName,
-        fieldRegions: _fieldRegions,
-      );
-
-      if (mounted) setState(() => _isSaving = false);
-    }
-
-    if (mounted) {
-      Navigator.of(context).pop(ZReportRecognitionResult(
-        revenue: revenue,
-        cash: cash,
-        ofdNotSent: ofdNotSent,
-        resourceKeys: resourceKeys,
-        wasEdited: _isEditing,
-      ));
-    }
+  void _requestRegionSelection() {
+    Navigator.of(context).pop(ZReportRecognitionResult(
+      revenue: 0,
+      cash: 0,
+      ofdNotSent: 0,
+      resourceKeys: 0,
+      needsRegionSelection: true,
+    ));
   }
 
   void _startEditing() {
-    if (mounted) setState(() => _isEditing = true);
+    if (mounted) setState(() => _state = _DialogState.editing);
   }
 
   void _cancel() {
     Navigator.of(context).pop(null);
   }
 
-  Future<void> _openRegionSelector() async {
-    final regions = await ZReportRegionSelector.show(
-      context,
-      imageBase64: widget.imageBase64,
-      initialRegions: _fieldRegions,
-    );
-    if (regions != null && mounted) {
-      setState(() {
-        _fieldRegions = regions;
-        _isEditing = true;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final data = widget.recognizedData;
-    final hasData = data != null &&
-        (data.totalSum != null || data.cashSum != null || data.ofdNotSent != null);
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(
-            hasData ? Icons.check_circle : Icons.warning_amber,
-            color: hasData ? Colors.green : Colors.orange,
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
+            stops: [0.0, 0.5, 1.0],
           ),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              hasData ? 'Распознано с Z-отчёта' : 'Не удалось распознать',
-              style: TextStyle(fontSize: 18.sp),
-            ),
-          ),
-        ],
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!hasData) ...[
-              Text(
-                'Введите данные вручную. Это поможет обучить ИИ.',
-                style: TextStyle(color: Colors.grey),
-              ),
-              SizedBox(height: 16),
-            ],
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 16.h),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
 
-            // Выручка
-            _buildField(
-              controller: _revenueController,
-              label: 'Выручка (общая сумма)',
-              icon: Icons.currency_ruble,
-              confidence: data?.confidence['totalSum'],
-              enabled: _isEditing || !hasData,
-              isMoney: true,
-              expectedRange: _getRangeForField('totalSum'),
-            ),
-            SizedBox(height: 12),
+                  // Title
+                  _buildTitle(),
+                  SizedBox(height: 8.h),
 
-            // Наличные
-            _buildField(
-              controller: _cashController,
-              label: 'Наличные',
-              icon: Icons.payments_outlined,
-              confidence: data?.confidence['cashSum'],
-              enabled: _isEditing || !hasData,
-              isMoney: true,
-              expectedRange: _getRangeForField('cashSum'),
-            ),
-            SizedBox(height: 12),
+                  // Status message
+                  _buildStatusMessage(),
+                  SizedBox(height: 16.h),
 
-            // Не переданы в ОФД
-            _buildField(
-              controller: _ofdNotSentController,
-              label: 'Не переданы в ОФД',
-              icon: Icons.cloud_off,
-              confidence: data?.confidence['ofdNotSent'],
-              enabled: _isEditing || !hasData,
-              isInteger: true,
-              expectedRange: _getRangeForField('ofdNotSent'),
-            ),
-            SizedBox(height: 12),
+                  // Fields
+                  _buildField(
+                    controller: _revenueController,
+                    label: 'Выручка (общая сумма)',
+                    icon: Icons.currency_ruble,
+                    confidence: widget.recognizedData?.confidence['totalSum'],
+                    enabled: _fieldsEnabled,
+                    isMoney: true,
+                    expectedRange: _getRangeForField('totalSum'),
+                  ),
+                  SizedBox(height: 10.h),
 
-            // Ресурс ключей
-            _buildField(
-              controller: _resourceKeysController,
-              label: 'Ресурс ключей',
-              icon: Icons.key,
-              confidence: data?.confidence['resourceKeys'],
-              enabled: _isEditing || !hasData,
-              isInteger: true,
-              expectedRange: _getRangeForField('resourceKeys'),
-            ),
+                  _buildField(
+                    controller: _cashController,
+                    label: 'Наличные',
+                    icon: Icons.payments_outlined,
+                    confidence: widget.recognizedData?.confidence['cashSum'],
+                    enabled: _fieldsEnabled,
+                    isMoney: true,
+                    expectedRange: _getRangeForField('cashSum'),
+                  ),
+                  SizedBox(height: 10.h),
 
-            if (_isEditing) ...[
-              SizedBox(height: 16),
-              Container(
-                padding: EdgeInsets.all(8.w),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.school, color: Colors.blue, size: 20),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Исправленные данные будут использованы для обучения ИИ',
-                        style: TextStyle(fontSize: 12.sp, color: Colors.blue),
+                  _buildField(
+                    controller: _ofdNotSentController,
+                    label: 'Не переданы в ОФД',
+                    icon: Icons.cloud_off,
+                    confidence: widget.recognizedData?.confidence['ofdNotSent'],
+                    enabled: _fieldsEnabled,
+                    isInteger: true,
+                    expectedRange: _getRangeForField('ofdNotSent'),
+                  ),
+                  SizedBox(height: 10.h),
+
+                  _buildField(
+                    controller: _resourceKeysController,
+                    label: 'Ресурс ключей',
+                    icon: Icons.key,
+                    confidence: widget.recognizedData?.confidence['resourceKeys'],
+                    enabled: _fieldsEnabled,
+                    isInteger: true,
+                    expectedRange: _getRangeForField('resourceKeys'),
+                  ),
+
+                  // Training hint
+                  if (_fieldsEnabled) ...[
+                    SizedBox(height: 12.h),
+                    Container(
+                      padding: EdgeInsets.all(10.w),
+                      decoration: BoxDecoration(
+                        color: AppColors.gold.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10.r),
+                        border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.school, color: AppColors.gold, size: 18),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Исправленные данные помогут обучить ИИ',
+                              style: TextStyle(fontSize: 12.sp, color: AppColors.gold),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
+
+                  SizedBox(height: 20.h),
+
+                  // Action buttons
+                  _buildActionButtons(),
+                ],
               ),
-            ],
-          ],
+            ),
+          ),
         ),
       ),
-      actions: [
-        if (!_isEditing && hasData) ...[
-          TextButton(
-            onPressed: _cancel,
-            child: Text('Отмена'),
+    );
+  }
+
+  Widget _buildTitle() {
+    IconData icon;
+    Color iconColor;
+    String title;
+
+    switch (_state) {
+      case _DialogState.initialSuccess:
+      case _DialogState.afterRegionsSuccess:
+        icon = Icons.smart_toy;
+        iconColor = AppColors.turquoise;
+        title = 'ИИ определил:';
+      case _DialogState.initialFail:
+        icon = Icons.warning_amber;
+        iconColor = AppColors.warning;
+        title = 'Не удалось распознать';
+      case _DialogState.afterRegionsFail:
+        icon = Icons.edit_note;
+        iconColor = AppColors.warning;
+        title = 'Введите вручную';
+      case _DialogState.editing:
+        icon = Icons.edit;
+        iconColor = AppColors.gold;
+        title = 'Исправление данных';
+    }
+
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(8.w),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(10.r),
           ),
-          TextButton(
-            onPressed: _startEditing,
-            child: Text('Исправить'),
-          ),
-          ElevatedButton(
-            onPressed: _confirm,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
+          child: Icon(icon, color: iconColor, size: 22),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
-            child: Text('Подтвердить'),
           ),
-        ] else ...[
-          TextButton(
-            onPressed: _cancel,
-            child: Text('Отмена'),
-          ),
-          IconButton(
-            onPressed: _openRegionSelector,
-            icon: Icon(Icons.crop_free, color: AppColors.primaryGreen),
-            tooltip: 'Указать области',
-          ),
-          ElevatedButton(
-            onPressed: _isSaving ? null : _confirm,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
-            ),
-            child: _isSaving
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Text(_isEditing ? 'Сохранить' : 'Подтвердить'),
-          ),
-        ],
+        ),
       ],
     );
   }
 
-  /// Извлечь диапазон для поля из expectedRanges
+  Widget _buildStatusMessage() {
+    String message;
+
+    switch (_state) {
+      case _DialogState.initialSuccess:
+        message = 'Проверьте данные. Если верно — подтвердите.';
+      case _DialogState.initialFail:
+        message = 'Выделите области на фото для повторного распознавания.';
+      case _DialogState.afterRegionsSuccess:
+        message = 'ИИ распознал данные. Подтвердите или исправьте.';
+      case _DialogState.afterRegionsFail:
+        message = 'ИИ не смог распознать. Введите данные вручную.';
+      case _DialogState.editing:
+        message = 'Исправьте данные и нажмите Подтвердить.';
+    }
+
+    return Text(
+      message,
+      style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.6)),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    switch (_state) {
+      case _DialogState.initialSuccess:
+        return Row(
+          children: [
+            Expanded(
+              child: _outlineButton(
+                label: 'Области',
+                icon: Icons.crop_free,
+                onPressed: _requestRegionSelection,
+              ),
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: _primaryButton(label: 'Подтвердить', onPressed: _confirm),
+            ),
+          ],
+        );
+
+      case _DialogState.initialFail:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _primaryButton(
+              label: 'Выделить области',
+              icon: Icons.crop_free,
+              onPressed: _requestRegionSelection,
+            ),
+            SizedBox(height: 8.h),
+            _textButton(label: 'Отмена', onPressed: _cancel),
+          ],
+        );
+
+      case _DialogState.afterRegionsSuccess:
+        return Row(
+          children: [
+            Expanded(
+              child: _outlineButton(
+                label: 'Исправить',
+                onPressed: _startEditing,
+                color: AppColors.warning,
+              ),
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: _primaryButton(label: 'Подтвердить', onPressed: _confirm),
+            ),
+          ],
+        );
+
+      case _DialogState.afterRegionsFail:
+      case _DialogState.editing:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _primaryButton(label: 'Подтвердить', onPressed: _confirm),
+            SizedBox(height: 8.h),
+            _textButton(label: 'Отмена', onPressed: _cancel),
+          ],
+        );
+    }
+  }
+
+  Widget _primaryButton({
+    required String label,
+    required VoidCallback onPressed,
+    IconData? icon,
+  }) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.gold,
+        foregroundColor: AppColors.night,
+        padding: EdgeInsets.symmetric(vertical: 14.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+      ),
+      child: icon != null
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18),
+                SizedBox(width: 8),
+                Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.sp)),
+              ],
+            )
+          : Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.sp)),
+    );
+  }
+
+  Widget _outlineButton({
+    required String label,
+    required VoidCallback onPressed,
+    IconData? icon,
+    Color? color,
+  }) {
+    final c = color ?? AppColors.turquoise;
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: c,
+        side: BorderSide(color: c.withOpacity(0.5)),
+        padding: EdgeInsets.symmetric(vertical: 14.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+      ),
+      child: icon != null
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18),
+                SizedBox(width: 8),
+                Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
+              ],
+            )
+          : Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
+    );
+  }
+
+  Widget _textButton({required String label, required VoidCallback onPressed}) {
+    return TextButton(
+      onPressed: onPressed,
+      child: Text(
+        label,
+        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14.sp),
+      ),
+    );
+  }
+
   Map<String, dynamic>? _getRangeForField(String fieldName) {
     final ranges = widget.expectedRanges;
     if (ranges == null) return null;
@@ -342,11 +524,9 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
     return null;
   }
 
-  /// Форматирование числа для подсказки (12 345 вместо 12345.00)
   String _formatHint(num value, bool isMoney) {
     if (isMoney) {
       final intVal = value.round();
-      // Разделитель тысяч пробелом
       final str = intVal.toString();
       final buf = StringBuffer();
       for (int i = 0; i < str.length; i++) {
@@ -372,7 +552,6 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
         confidence == 'intelligence_confirmed' ||
         confidence == 'learned';
 
-    // Проверяем попадание значения в ожидаемый диапазон
     bool? isInRange;
     if (expectedRange != null && controller.text.isNotEmpty) {
       final value = double.tryParse(controller.text);
@@ -387,79 +566,65 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12.r),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 4,
-                offset: Offset(0, 2),
-              ),
-            ],
+        TextField(
+          controller: controller,
+          enabled: enabled,
+          keyboardType: isInteger
+              ? TextInputType.number
+              : TextInputType.numberWithOptions(decimal: true),
+          style: TextStyle(
+            fontSize: 15.sp,
+            fontWeight: FontWeight.w600,
+            color: enabled ? Colors.white : Colors.white.withOpacity(0.7),
           ),
-          child: TextField(
-            controller: controller,
-            enabled: enabled,
-            keyboardType: isInteger
-                ? TextInputType.number
-                : TextInputType.numberWithOptions(decimal: true),
-            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              labelText: label,
-              labelStyle: TextStyle(color: Colors.grey.shade600),
-              prefixIcon: Container(
-                margin: EdgeInsets.all(8.w),
-                padding: EdgeInsets.all(8.w),
-                decoration: BoxDecoration(
-                  color: isMoney ? Colors.teal.shade50 : Colors.blueGrey.shade50,
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Icon(
-                  icon,
-                  color: isMoney ? Colors.teal.shade700 : Colors.blueGrey.shade700,
-                  size: 20,
-                ),
-              ),
-              suffixText: isMoney ? 'руб' : null,
-              suffixStyle: TextStyle(
-                color: Colors.teal.shade700,
-                fontWeight: FontWeight.bold,
-                fontSize: 16.sp,
-              ),
-              suffixIcon: confidence != null
-                  ? Icon(
-                      isConfirmed ? Icons.check_circle : Icons.help_outline,
-                      color: isConfirmed ? Colors.green : Colors.orange,
-                      size: 20,
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: Colors.teal.shade400, width: 2),
-              ),
-              disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: Colors.grey.shade200),
-              ),
-              filled: true,
-              fillColor: enabled ? Colors.white : Colors.grey.shade50,
-              contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
+            prefixIcon: Icon(
+              icon,
+              color: isMoney ? AppColors.gold : AppColors.turquoise,
+              size: 20,
             ),
+            suffixText: isMoney ? 'руб' : null,
+            suffixStyle: TextStyle(
+              color: AppColors.gold.withOpacity(0.7),
+              fontWeight: FontWeight.bold,
+              fontSize: 13.sp,
+            ),
+            suffixIcon: confidence != null
+                ? Icon(
+                    isConfirmed ? Icons.check_circle : Icons.help_outline,
+                    color: isConfirmed ? AppColors.success : AppColors.warning,
+                    size: 18,
+                  )
+                : null,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: AppColors.gold, width: 2),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+            ),
+            filled: true,
+            fillColor: enabled
+                ? Colors.white.withOpacity(0.08)
+                : Colors.white.withOpacity(0.04),
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 14.h),
           ),
         ),
-        // Подсказка ожидаемого диапазона от Intelligence
-        if (expectedRange != null) ...[
+        if (expectedRange != null)
           Padding(
-            padding: EdgeInsets.only(left: 12.w, top: 4.h),
+            padding: EdgeInsets.only(left: 12.w, top: 3.h),
             child: Row(
               children: [
                 Icon(
@@ -468,41 +633,42 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
                       : isInRange == false
                           ? Icons.warning_amber_rounded
                           : Icons.insights,
-                  size: 14,
+                  size: 12,
                   color: isInRange == true
-                      ? Colors.green.shade600
+                      ? AppColors.success
                       : isInRange == false
-                          ? Colors.orange.shade700
-                          : Colors.grey.shade500,
+                          ? AppColors.warning
+                          : Colors.white.withOpacity(0.4),
                 ),
                 SizedBox(width: 4),
-                Text(
-                  'Обычно: ${_formatHint(expectedRange['min'] as num, isMoney)}'
-                  ' – ${_formatHint(expectedRange['max'] as num, isMoney)}'
-                  '${isMoney ? ' руб' : ''}',
-                  style: TextStyle(
-                    fontSize: 11.sp,
-                    color: isInRange == true
-                        ? Colors.green.shade600
-                        : isInRange == false
-                            ? Colors.orange.shade700
-                            : Colors.grey.shade500,
-                    fontWeight: isInRange != null ? FontWeight.w500 : FontWeight.normal,
+                Flexible(
+                  child: Text(
+                    'Обычно: ${_formatHint(expectedRange['min'] as num, isMoney)}'
+                    ' – ${_formatHint(expectedRange['max'] as num, isMoney)}'
+                    '${isMoney ? ' руб' : ''}',
+                    style: TextStyle(
+                      fontSize: 10.sp,
+                      color: isInRange == true
+                          ? AppColors.success
+                          : isInRange == false
+                              ? AppColors.warning
+                              : Colors.white.withOpacity(0.4),
+                      fontWeight: isInRange != null ? FontWeight.w500 : FontWeight.normal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
-        ],
       ],
     );
   }
 }
 
 /// Простой диалог подтверждения: "ИИ определил верно?"
-/// Показывает 4 значения read-only и возвращает true (Да) или false (Нет)
+/// Используется на странице обучения Z-Report Training
 class ZReportConfirmDialog {
-  /// Форматирование числа с разделителем тысяч
   static String _formatNumber(num value, bool isMoney) {
     if (isMoney) {
       final intVal = value.round();
@@ -538,40 +704,12 @@ class ZReportConfirmDialog {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildRow(
-              'Выручка',
-              data.totalSum,
-              'totalSum',
-              expectedRanges,
-              isMoney: true,
-            ),
-            _buildRow(
-              'Наличные',
-              data.cashSum,
-              'cashSum',
-              expectedRanges,
-              isMoney: true,
-            ),
-            _buildRow(
-              'Не передано в ОФД',
-              data.ofdNotSent?.toDouble(),
-              'ofdNotSent',
-              expectedRanges,
-            ),
-            _buildRow(
-              'Ресурс ключей',
-              data.resourceKeys?.toDouble(),
-              'resourceKeys',
-              expectedRanges,
-            ),
+            _buildRow('Выручка', data.totalSum, 'totalSum', expectedRanges, isMoney: true),
+            _buildRow('Наличные', data.cashSum, 'cashSum', expectedRanges, isMoney: true),
+            _buildRow('Не передано в ОФД', data.ofdNotSent?.toDouble(), 'ofdNotSent', expectedRanges),
+            _buildRow('Ресурс ключей', data.resourceKeys?.toDouble(), 'resourceKeys', expectedRanges),
             SizedBox(height: 16.h),
-            Text(
-              'Данные верны?',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16.sp,
-              ),
-            ),
+            Text('Данные верны?', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16.sp)),
           ],
         ),
         actions: [
@@ -581,9 +719,7 @@ class ZReportConfirmDialog {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen),
             child: Text('Да'),
           ),
         ],
@@ -598,18 +734,13 @@ class ZReportConfirmDialog {
     Map<String, dynamic>? expectedRanges, {
     bool isMoney = false,
   }) {
-    final displayValue =
-        value != null ? _formatNumber(value, isMoney) : '—';
+    final displayValue = value != null ? _formatNumber(value, isMoney) : '—';
 
-    // Проверка попадания в ожидаемый диапазон
     bool? inRange;
     if (value != null && expectedRanges != null) {
       final range = expectedRanges[fieldKey];
-      if (range is Map<String, dynamic> &&
-          range['min'] != null &&
-          range['max'] != null) {
-        inRange = value >= (range['min'] as num) &&
-            value <= (range['max'] as num);
+      if (range is Map<String, dynamic> && range['min'] != null && range['max'] != null) {
+        inRange = value >= (range['min'] as num) && value <= (range['max'] as num);
       }
     }
 
@@ -618,10 +749,7 @@ class ZReportConfirmDialog {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              label,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-            ),
+            child: Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp)),
           ),
           if (inRange != null) ...[
             Icon(

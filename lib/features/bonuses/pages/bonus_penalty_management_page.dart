@@ -351,8 +351,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
   Future<void> _createRecord(Employee employee, double amount, String comment) async {
     if (mounted) setState(() => _isLoading = true);
 
-    // Используем телефон как ID для совместимости с "Моя эффективность"
-    final employeeId = employee.phone?.isNotEmpty == true ? employee.phone! : employee.id;
+    final employeeId = employee.id;
 
     final result = await BonusPenaltyService.create(
       employeeId: employeeId,

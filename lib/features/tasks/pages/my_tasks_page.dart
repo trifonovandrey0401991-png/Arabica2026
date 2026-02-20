@@ -21,6 +21,9 @@ import '../../envelope/pages/envelope_report_view_page.dart';
 import '../../coffee_machine/models/coffee_machine_report_model.dart';
 import '../../coffee_machine/services/coffee_machine_report_service.dart';
 import '../../coffee_machine/pages/coffee_machine_report_view_page.dart';
+import '../../shift_handover/models/shift_handover_report_model.dart';
+import '../../shift_handover/services/shift_handover_report_service.dart';
+import '../../shift_handover/pages/shift_handover_report_view_page.dart';
 import '../../employees/services/user_role_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
@@ -53,6 +56,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
   List<RecountReport> _recountReviewReports = [];
   List<EnvelopeReport> _envelopePendingReports = [];
   List<CoffeeMachineReport> _coffeeMachinePendingReports = [];
+  List<ShiftHandoverReport> _shiftHandoverPendingReports = [];
   List<RecurringTaskInstance> _recurringInstances = [];
   bool _isLoading = true;
   String? _userPhone;
@@ -111,10 +115,11 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
       List<RecountReport> recountReviews = [];
       List<EnvelopeReport> envelopePending = [];
       List<CoffeeMachineReport> coffeeMachinePending = [];
+      List<ShiftHandoverReport> shiftHandoverPending = [];
 
       // Роль загружаем один раз, а не 4 раза
       final role = await UserRoleService.loadUserRole();
-      final isAdmin = role != null && role.isAdminOrAbove;
+      final isAdmin = role != null && (role.isAdminOrAbove || role.isManager);
 
       await Future.wait([
         // Обычные задачи (уже имеют кеш в TaskService)
@@ -221,6 +226,23 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
             Logger.warning('Ошибка загрузки счётчиков кофемашин: $e');
           }
         }(),
+        // Отчёты "Сдать смену" на проверке (только для управляющей/developer)
+        () async {
+          if (!isAdmin) return;
+          try {
+            final allReports = await CacheManager.getOrFetch<List<ShiftHandoverReport>>(
+              'my_tasks_shift_handover_pending',
+              () => ShiftHandoverReportService.getReportsForCurrentUser(),
+              duration: _reportCacheDuration,
+            );
+            shiftHandoverPending = allReports
+                .where((r) => !r.isConfirmed && !r.isExpired && r.status != 'rejected')
+                .toList();
+            shiftHandoverPending.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          } catch (e) {
+            Logger.warning('Ошибка загрузки отчётов сдачи смены: $e');
+          }
+        }(),
       ]);
 
       if (!mounted) return;
@@ -231,6 +253,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         _recountReviewReports = recountReviews;
         _envelopePendingReports = envelopePending;
         _coffeeMachinePendingReports = coffeeMachinePending;
+        _shiftHandoverPendingReports = shiftHandoverPending;
         _isLoading = false;
       });
     } catch (e) {
@@ -301,7 +324,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final activeCount = _activeAssignments.length + _activeRecurring.length + _shiftReviewReports.length + _recountReviewReports.length + _envelopePendingReports.length + _coffeeMachinePendingReports.length;
+    final activeCount = _activeAssignments.length + _activeRecurring.length + _shiftReviewReports.length + _recountReviewReports.length + _envelopePendingReports.length + _coffeeMachinePendingReports.length + _shiftHandoverPendingReports.length;
     final completedCount = _completedAssignments.length + _completedRecurring.length;
     final expiredCount = _expiredAssignments.length + _expiredRecurring.length;
 
@@ -327,7 +350,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
                     : TabBarView(
                         controller: _tabController,
                         children: [
-                          _buildTaskList(_activeAssignments, _activeRecurring, 'Нет активных задач', isActive: true, shiftReviews: _shiftReviewReports, recountReviews: _recountReviewReports, envelopePending: _envelopePendingReports, coffeeMachinePending: _coffeeMachinePendingReports),
+                          _buildTaskList(_activeAssignments, _activeRecurring, 'Нет активных задач', isActive: true, shiftReviews: _shiftReviewReports, recountReviews: _recountReviewReports, envelopePending: _envelopePendingReports, coffeeMachinePending: _coffeeMachinePendingReports, shiftHandoverPending: _shiftHandoverPendingReports),
                           _buildTaskList(_completedAssignments, _completedRecurring, 'Нет выполненных задач', isCompleted: true),
                           _buildTaskList(_expiredAssignments, _expiredRecurring, 'Нет просроченных задач', isExpired: true),
                         ],
@@ -550,8 +573,9 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
     List<RecountReport> recountReviews = const [],
     List<EnvelopeReport> envelopePending = const [],
     List<CoffeeMachineReport> coffeeMachinePending = const [],
+    List<ShiftHandoverReport> shiftHandoverPending = const [],
   }) {
-    if (assignments.isEmpty && recurring.isEmpty && shiftReviews.isEmpty && recountReviews.isEmpty && envelopePending.isEmpty && coffeeMachinePending.isEmpty) {
+    if (assignments.isEmpty && recurring.isEmpty && shiftReviews.isEmpty && recountReviews.isEmpty && envelopePending.isEmpty && coffeeMachinePending.isEmpty && shiftHandoverPending.isEmpty) {
       return _buildEmptyState(emptyMessage, isActive: isActive, isCompleted: isCompleted, isExpired: isExpired);
     }
 
@@ -566,6 +590,12 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
           if (shiftReviews.isNotEmpty) ...[
             _buildModernSectionHeader('Пересменка на проверке', Icons.rate_review, shiftReviews.length),
             ...shiftReviews.map((report) => _buildShiftReviewCard(report)),
+            SizedBox(height: 16),
+          ],
+          // Сдать смену на проверке
+          if (shiftHandoverPending.isNotEmpty) ...[
+            _buildModernSectionHeader('Сдать смену на проверке', Icons.check_circle_outline, shiftHandoverPending.length),
+            ...shiftHandoverPending.map((report) => _buildShiftHandoverCard(report)),
             SizedBox(height: 16),
           ],
           // Конверты на проверке
@@ -594,7 +624,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
           ],
           // Обычные задачи
           if (assignments.isNotEmpty) ...[
-            if (recurring.isNotEmpty || shiftReviews.isNotEmpty || recountReviews.isNotEmpty || envelopePending.isNotEmpty || coffeeMachinePending.isNotEmpty)
+            if (recurring.isNotEmpty || shiftReviews.isNotEmpty || recountReviews.isNotEmpty || envelopePending.isNotEmpty || coffeeMachinePending.isNotEmpty || shiftHandoverPending.isNotEmpty)
               _buildModernSectionHeader('Разовые задачи', Icons.assignment, assignments.length),
             ...assignments.map((assignment) => _buildModernAssignmentCard(assignment)),
           ],
@@ -1424,6 +1454,117 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
       context,
       MaterialPageRoute(
         builder: (context) => CoffeeMachineReportViewPage(report: report),
+      ),
+    );
+    if (mounted) {
+      CacheManager.clearByPattern('my_tasks_');
+      _loadAssignments();
+    }
+  }
+
+  Widget _buildShiftHandoverCard(ShiftHandoverReport report) {
+    final dateFormat = DateFormat('dd.MM HH:mm');
+    final blueGradient = [Color(0xFF1565C0), Color(0xFF42A5F5)];
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 10.h),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openShiftHandoverDetail(report),
+          borderRadius: BorderRadius.circular(14.r),
+          child: Container(
+            padding: EdgeInsets.all(14.w),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(14.r),
+              border: Border.all(color: blueGradient[0].withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10.w),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: blueGradient),
+                    borderRadius: BorderRadius.circular(12.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: blueGradient[0].withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                ),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        report.shopAddress,
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline, size: 14, color: Colors.white.withOpacity(0.4)),
+                          SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '${report.employeeName} · ${dateFormat.format(report.createdAt)}',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.white.withOpacity(0.5),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: blueGradient.map((c) => c.withOpacity(0.2)).toList()),
+                              borderRadius: BorderRadius.circular(8.r),
+                              border: Border.all(color: blueGradient[0].withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              'Ожидает',
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: blueGradient[1],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 22),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openShiftHandoverDetail(ShiftHandoverReport report) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ShiftHandoverReportViewPage(report: report),
       ),
     );
     if (mounted) {

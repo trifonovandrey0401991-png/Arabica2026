@@ -413,11 +413,17 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
     }
   }
 
-  /// Собрать фото из ответов для AI верификации
+  /// Собрать фото из ответов для AI верификации (только от вопросов с isAiCheck)
   Future<List<Uint8List>> _collectPhotosForAiVerification() async {
     final List<Uint8List> photos = [];
 
-    for (var answer in _answers) {
+    for (int i = 0; i < _answers.length; i++) {
+      // Фильтруем: берём фото только от вопросов с флагом isAiCheck
+      if (_questions != null && i < _questions!.length && !_questions![i].isAiCheck) {
+        continue;
+      }
+
+      final answer = _answers[i];
       if (answer.photoPath != null) {
         try {
           if (answer.photoPath!.startsWith('data:image')) {
@@ -439,7 +445,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       }
     }
 
-    Logger.debug('Собрано ${photos.length} фото для AI верификации');
+    Logger.debug('Собрано ${photos.length} фото для AI верификации (из ${_answers.length} ответов)');
     return photos;
   }
 

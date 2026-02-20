@@ -43,6 +43,27 @@ class ExpenseItem {
   }
 }
 
+/// Парсинг регионов полей из JSON
+Map<String, Map<String, double>>? _parseFieldRegions(dynamic json) {
+  if (json == null || json is! Map) return null;
+  final result = <String, Map<String, double>>{};
+  for (final entry in (json as Map).entries) {
+    if (entry.value is Map) {
+      final region = <String, double>{};
+      for (final coord in (entry.value as Map).entries) {
+        region[coord.key.toString()] = (coord.value ?? 0).toDouble();
+      }
+      result[entry.key.toString()] = region;
+    }
+  }
+  return result.isEmpty ? null : result;
+}
+
+/// Конвертация регионов полей в JSON
+Map<String, dynamic> _fieldRegionsToJson(Map<String, Map<String, double>> regions) {
+  return regions.map((key, value) => MapEntry(key, Map<String, dynamic>.from(value)));
+}
+
 /// Модель отчета конверта
 class EnvelopeReport {
   final String id;
@@ -71,6 +92,14 @@ class EnvelopeReport {
   // ИП - чеки не переданные в ОФД
   final int ipOfdNotSent;
 
+  // Регионы полей Z-отчёта (для overlay и обучения AI)
+  final Map<String, Map<String, double>>? oooFieldRegions;
+  final Map<String, Map<String, double>>? ipFieldRegions;
+
+  // Флаги ручного исправления Z-отчёта
+  final bool oooZReportEdited;
+  final bool ipZReportEdited;
+
   // Статус
   final String status; // 'pending' | 'confirmed'
   final DateTime? confirmedAt;
@@ -89,12 +118,16 @@ class EnvelopeReport {
     this.oooExpenses = const [],
     this.oooEnvelopePhotoUrl,
     this.oooOfdNotSent = 0,
+    this.oooFieldRegions,
     this.ipZReportPhotoUrl,
     this.ipRevenue = 0,
     this.ipCash = 0,
     this.expenses = const [],
     this.ipEnvelopePhotoUrl,
     this.ipOfdNotSent = 0,
+    this.ipFieldRegions,
+    this.oooZReportEdited = false,
+    this.ipZReportEdited = false,
     this.status = 'pending',
     this.confirmedAt,
     this.confirmedByAdmin,
@@ -139,12 +172,16 @@ class EnvelopeReport {
       oooExpenses: oooExpenses,
       oooEnvelopePhotoUrl: json['oooEnvelopePhotoUrl'],
       oooOfdNotSent: json['oooOfdNotSent'] ?? 0,
+      oooFieldRegions: _parseFieldRegions(json['oooFieldRegions']),
       ipZReportPhotoUrl: json['ipZReportPhotoUrl'],
       ipRevenue: (json['ipRevenue'] ?? 0).toDouble(),
       ipCash: (json['ipCash'] ?? 0).toDouble(),
       expenses: expenses,
       ipEnvelopePhotoUrl: json['ipEnvelopePhotoUrl'],
       ipOfdNotSent: json['ipOfdNotSent'] ?? 0,
+      ipFieldRegions: _parseFieldRegions(json['ipFieldRegions']),
+      oooZReportEdited: json['oooZReportEdited'] ?? false,
+      ipZReportEdited: json['ipZReportEdited'] ?? false,
       status: json['status'] ?? 'pending',
       confirmedAt: json['confirmedAt'] != null
           ? _parseDateTime(json['confirmedAt'])
@@ -166,12 +203,16 @@ class EnvelopeReport {
     'oooExpenses': oooExpenses.map((e) => e.toJson()).toList(),
     'oooEnvelopePhotoUrl': oooEnvelopePhotoUrl,
     'oooOfdNotSent': oooOfdNotSent,
+    if (oooFieldRegions != null) 'oooFieldRegions': _fieldRegionsToJson(oooFieldRegions!),
     'ipZReportPhotoUrl': ipZReportPhotoUrl,
     'ipRevenue': ipRevenue,
     'ipCash': ipCash,
     'expenses': expenses.map((e) => e.toJson()).toList(),
     'ipEnvelopePhotoUrl': ipEnvelopePhotoUrl,
     'ipOfdNotSent': ipOfdNotSent,
+    if (ipFieldRegions != null) 'ipFieldRegions': _fieldRegionsToJson(ipFieldRegions!),
+    'oooZReportEdited': oooZReportEdited,
+    'ipZReportEdited': ipZReportEdited,
     'status': status,
     'confirmedAt': confirmedAt?.toUtc().toIso8601String(),
     'confirmedByAdmin': confirmedByAdmin,
@@ -190,12 +231,16 @@ class EnvelopeReport {
     List<ExpenseItem>? oooExpenses,
     String? oooEnvelopePhotoUrl,
     int? oooOfdNotSent,
+    Map<String, Map<String, double>>? oooFieldRegions,
     String? ipZReportPhotoUrl,
     double? ipRevenue,
     double? ipCash,
     List<ExpenseItem>? expenses,
     String? ipEnvelopePhotoUrl,
     int? ipOfdNotSent,
+    Map<String, Map<String, double>>? ipFieldRegions,
+    bool? oooZReportEdited,
+    bool? ipZReportEdited,
     String? status,
     DateTime? confirmedAt,
     String? confirmedByAdmin,
@@ -213,12 +258,16 @@ class EnvelopeReport {
       oooExpenses: oooExpenses ?? this.oooExpenses,
       oooEnvelopePhotoUrl: oooEnvelopePhotoUrl ?? this.oooEnvelopePhotoUrl,
       oooOfdNotSent: oooOfdNotSent ?? this.oooOfdNotSent,
+      oooFieldRegions: oooFieldRegions ?? this.oooFieldRegions,
       ipZReportPhotoUrl: ipZReportPhotoUrl ?? this.ipZReportPhotoUrl,
       ipRevenue: ipRevenue ?? this.ipRevenue,
       ipCash: ipCash ?? this.ipCash,
       expenses: expenses ?? this.expenses,
       ipEnvelopePhotoUrl: ipEnvelopePhotoUrl ?? this.ipEnvelopePhotoUrl,
       ipOfdNotSent: ipOfdNotSent ?? this.ipOfdNotSent,
+      ipFieldRegions: ipFieldRegions ?? this.ipFieldRegions,
+      oooZReportEdited: oooZReportEdited ?? this.oooZReportEdited,
+      ipZReportEdited: ipZReportEdited ?? this.ipZReportEdited,
       status: status ?? this.status,
       confirmedAt: confirmedAt ?? this.confirmedAt,
       confirmedByAdmin: confirmedByAdmin ?? this.confirmedByAdmin,
@@ -268,6 +317,9 @@ class EnvelopeReport {
         return status;
     }
   }
+
+  /// Есть ли ручные исправления Z-отчёта
+  bool get hasEditedZReport => oooZReportEdited || ipZReportEdited;
 
   /// Просрочен ли отчет (более 24 часов без подтверждения)
   bool get isExpired {

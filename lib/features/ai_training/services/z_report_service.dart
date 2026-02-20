@@ -160,8 +160,12 @@ class ZReportService {
         body: jsonEncode(body),
       );
 
+      if (response.statusCode != 200) {
+        debugPrint('[ZReportService] saveSample failed: ${response.statusCode} ${response.body}');
+      }
       return response.statusCode == 200;
     } catch (e) {
+      debugPrint('[ZReportService] saveSample error: $e');
       return false;
     }
   }
