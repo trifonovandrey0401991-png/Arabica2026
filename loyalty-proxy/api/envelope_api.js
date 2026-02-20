@@ -49,6 +49,8 @@ function dbEnvelopeReportToCamel(row) {
     confirmedAt: row.confirmed_at,
     confirmedByAdmin: row.confirmed_by_admin,
     failedAt: row.failed_at,
+    oooZReportEdited: row.ooo_z_report_edited || false,
+    ipZReportEdited: row.ip_z_report_edited || false,
   };
 }
 
@@ -80,6 +82,8 @@ function camelToDbEnvelope(body) {
   if (body.rating !== undefined) data.rating = body.rating;
   if (body.confirmedAt !== undefined) data.confirmed_at = body.confirmedAt;
   if (body.confirmedByAdmin !== undefined) data.confirmed_by_admin = body.confirmedByAdmin;
+  if (body.oooZReportEdited !== undefined) data.ooo_z_report_edited = body.oooZReportEdited;
+  if (body.ipZReportEdited !== undefined) data.ip_z_report_edited = body.ipZReportEdited;
   return data;
 }
 
