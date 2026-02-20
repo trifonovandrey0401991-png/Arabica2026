@@ -13,6 +13,7 @@ dependencies:
 
   cupertino_icons: ^1.0.6
   http: ^1.2.0
+  http_parser: ^4.0.2
   flutter_local_notifications: ^17.2.3
   shared_preferences: ^2.2.2
   qr_flutter: ^4.1.0
@@ -52,6 +53,11 @@ dependencies:
   image_cropper: ^5.0.1           # Кадрирование изображений
   cached_network_image: ^3.4.0
   flutter_screenutil: ^5.9.0
+  # Мессенджер
+  record: ^5.0.5                    # Запись голосовых сообщений
+  audioplayers: ^5.2.1              # Воспроизведение голосовых
+  emoji_picker_flutter: ^1.6.4      # Выбор смайликов
+  flutter_contacts: ^1.1.7+1        # Доступ к телефонной книге
 
 dev_dependencies:
   flutter_test:

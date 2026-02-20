@@ -125,6 +125,9 @@ class ApiConstants {
   // Endpoints - Execution Chain
   static const String executionChainEndpoint = '/api/execution-chain';
 
+  // Endpoints - Messenger
+  static const String messengerEndpoint = '/api/messenger';
+
   // Endpoints - Cigarette Vision (AI Training)
   // Теперь товары берутся из мастер-каталога
   static const String cigaretteProductsEndpoint = '/api/master-catalog/for-training';

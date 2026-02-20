@@ -1,0 +1,319 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
+import '../models/message_model.dart';
+
+// ==================== WebSocket Event Models ====================
+
+class MsgrNewMessage {
+  final String conversationId;
+  final MessengerMessage message;
+  MsgrNewMessage({required this.conversationId, required this.message});
+}
+
+class MsgrTyping {
+  final String conversationId;
+  final String phone;
+  final bool isTyping;
+  MsgrTyping({required this.conversationId, required this.phone, required this.isTyping});
+}
+
+class MsgrOnlineStatus {
+  final String phone;
+  final bool isOnline;
+  MsgrOnlineStatus({required this.phone, required this.isOnline});
+}
+
+class MsgrMessageDeleted {
+  final String conversationId;
+  final String messageId;
+  MsgrMessageDeleted({required this.conversationId, required this.messageId});
+}
+
+class MsgrReadReceipt {
+  final String conversationId;
+  final String phone;
+  final String readAt;
+  MsgrReadReceipt({required this.conversationId, required this.phone, required this.readAt});
+}
+
+class MsgrReaction {
+  final String conversationId;
+  final String messageId;
+  final String reaction;
+  final String phone;
+  MsgrReaction({required this.conversationId, required this.messageId, required this.reaction, required this.phone});
+}
+
+// ==================== WebSocket Service ====================
+
+class MessengerWsService {
+  static MessengerWsService? _instance;
+  static MessengerWsService get instance {
+    _instance ??= MessengerWsService._();
+    return _instance!;
+  }
+
+  MessengerWsService._();
+
+  WebSocketChannel? _channel;
+  String? _userPhone;
+  bool _isConnected = false;
+  bool _isDisposed = false;
+  Timer? _pingTimer;
+
+  // Reconnection
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectAttempts = 10;
+  static const Duration _baseReconnectDelay = Duration(seconds: 2);
+
+  // Stream controllers (broadcast)
+  final _newMessageController = StreamController<MsgrNewMessage>.broadcast();
+  final _typingController = StreamController<MsgrTyping>.broadcast();
+  final _onlineStatusController = StreamController<MsgrOnlineStatus>.broadcast();
+  final _messageDeletedController = StreamController<MsgrMessageDeleted>.broadcast();
+  final _readReceiptController = StreamController<MsgrReadReceipt>.broadcast();
+  final _reactionAddedController = StreamController<MsgrReaction>.broadcast();
+  final _reactionRemovedController = StreamController<MsgrReaction>.broadcast();
+  final _connectionStatusController = StreamController<bool>.broadcast();
+
+  // Public streams
+  Stream<MsgrNewMessage> get onNewMessage => _newMessageController.stream;
+  Stream<MsgrTyping> get onTyping => _typingController.stream;
+  Stream<MsgrOnlineStatus> get onOnlineStatus => _onlineStatusController.stream;
+  Stream<MsgrMessageDeleted> get onMessageDeleted => _messageDeletedController.stream;
+  Stream<MsgrReadReceipt> get onReadReceipt => _readReceiptController.stream;
+  Stream<MsgrReaction> get onReactionAdded => _reactionAddedController.stream;
+  Stream<MsgrReaction> get onReactionRemoved => _reactionRemovedController.stream;
+  Stream<bool> get onConnectionStatus => _connectionStatusController.stream;
+
+  bool get isConnected => _isConnected;
+
+  Future<void> connect(String userPhone) async {
+    if (_isConnected && _userPhone == userPhone) return;
+
+    _userPhone = userPhone;
+    _isDisposed = false;
+    await _doConnect();
+  }
+
+  Future<void> _doConnect() async {
+    try {
+      final wsUrl = _buildWebSocketUrl();
+      Logger.debug('💬 Messenger WS: connecting to $wsUrl');
+
+      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+
+      _channel!.stream.listen(
+        _handleMessage,
+        onError: _handleError,
+        onDone: _handleDone,
+      );
+
+      _isConnected = true;
+      _reconnectAttempts = 0;
+      _connectionStatusController.add(true);
+      _startPing();
+
+      Logger.debug('💬 Messenger WS: connected');
+    } catch (e) {
+      Logger.error('💬 Messenger WS: connection error: $e');
+      _isConnected = false;
+      _connectionStatusController.add(false);
+      _scheduleReconnect();
+    }
+  }
+
+  String _buildWebSocketUrl() {
+    var baseUrl = ApiConstants.serverUrl;
+    if (baseUrl.startsWith('https://')) {
+      baseUrl = baseUrl.replaceFirst('https://', 'wss://');
+    } else if (baseUrl.startsWith('http://')) {
+      baseUrl = baseUrl.replaceFirst('http://', 'ws://');
+    }
+
+    final token = ApiConstants.sessionToken;
+    final tokenParam = (token != null && token.isNotEmpty) ? '&token=$token' : '';
+    return '$baseUrl/ws/messenger?phone=$_userPhone$tokenParam';
+  }
+
+  void _startPing() {
+    _pingTimer?.cancel();
+    _pingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _send({'type': 'ping'});
+    });
+  }
+
+  void _handleMessage(dynamic data) {
+    try {
+      final message = jsonDecode(data.toString()) as Map<String, dynamic>;
+      final type = message['type'] as String?;
+
+      switch (type) {
+        case 'new_message':
+          final convId = message['conversationId'] as String? ?? '';
+          final msgData = message['message'] as Map<String, dynamic>?;
+          if (msgData != null) {
+            _newMessageController.add(MsgrNewMessage(
+              conversationId: convId,
+              message: MessengerMessage.fromJson(msgData),
+            ));
+          }
+          break;
+
+        case 'typing':
+          _typingController.add(MsgrTyping(
+            conversationId: message['conversationId'] as String? ?? '',
+            phone: message['phone'] as String? ?? '',
+            isTyping: message['isTyping'] == true,
+          ));
+          break;
+
+        case 'online_status':
+          _onlineStatusController.add(MsgrOnlineStatus(
+            phone: message['phone'] as String? ?? '',
+            isOnline: message['isOnline'] == true,
+          ));
+          break;
+
+        case 'message_deleted':
+          _messageDeletedController.add(MsgrMessageDeleted(
+            conversationId: message['conversationId'] as String? ?? '',
+            messageId: message['messageId'] as String? ?? '',
+          ));
+          break;
+
+        case 'read_receipt':
+          _readReceiptController.add(MsgrReadReceipt(
+            conversationId: message['conversationId'] as String? ?? '',
+            phone: message['phone'] as String? ?? '',
+            readAt: message['readAt'] as String? ?? '',
+          ));
+          break;
+
+        case 'reaction_added':
+          _reactionAddedController.add(MsgrReaction(
+            conversationId: message['conversationId'] as String? ?? '',
+            messageId: message['messageId'] as String? ?? '',
+            reaction: message['reaction'] as String? ?? '',
+            phone: message['phone'] as String? ?? '',
+          ));
+          break;
+
+        case 'reaction_removed':
+          _reactionRemovedController.add(MsgrReaction(
+            conversationId: message['conversationId'] as String? ?? '',
+            messageId: message['messageId'] as String? ?? '',
+            reaction: message['reaction'] as String? ?? '',
+            phone: message['phone'] as String? ?? '',
+          ));
+          break;
+
+        case 'connected':
+          Logger.debug('💬 Messenger WS: server confirmed connection');
+          break;
+
+        case 'pong':
+          break;
+      }
+    } catch (e) {
+      Logger.error('💬 Messenger WS: parse error: $e');
+    }
+  }
+
+  void _handleError(dynamic error) {
+    Logger.error('💬 Messenger WS: error: $error');
+    _isConnected = false;
+    _connectionStatusController.add(false);
+    _scheduleReconnect();
+  }
+
+  void _handleDone() {
+    Logger.debug('💬 Messenger WS: disconnected');
+    _isConnected = false;
+    _pingTimer?.cancel();
+    _connectionStatusController.add(false);
+
+    if (!_isDisposed) {
+      _scheduleReconnect();
+    }
+  }
+
+  void _scheduleReconnect() {
+    if (_isDisposed || _userPhone == null) return;
+
+    _reconnectAttempts++;
+
+    if (_reconnectAttempts > _maxReconnectAttempts) {
+      Logger.debug('💬 Messenger WS: max reconnect attempts, waiting 5 min');
+      Future.delayed(const Duration(minutes: 5), () {
+        if (!_isDisposed) {
+          _reconnectAttempts = 0;
+          _doConnect();
+        }
+      });
+      return;
+    }
+
+    // Exponential backoff: 2s, 4s, 8s, 16s, 32s, max 60s
+    final delay = Duration(
+      seconds: (_baseReconnectDelay.inSeconds * (1 << (_reconnectAttempts - 1)))
+          .clamp(2, 60),
+    );
+
+    Logger.debug('💬 Messenger WS: reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts)');
+    Future.delayed(delay, () {
+      if (!_isDisposed) _doConnect();
+    });
+  }
+
+  // ==================== ACTIONS ====================
+
+  void sendTypingStart(String conversationId) {
+    _send({'type': 'typing_start', 'conversationId': conversationId});
+  }
+
+  void sendTypingStop(String conversationId) {
+    _send({'type': 'typing_stop', 'conversationId': conversationId});
+  }
+
+  void requestOnlineUsers() {
+    _send({'type': 'get_online_users'});
+  }
+
+  void _send(Map<String, dynamic> data) {
+    if (_channel != null && _isConnected) {
+      try {
+        _channel!.sink.add(jsonEncode(data));
+      } catch (e) {
+        Logger.error('💬 Messenger WS: send error: $e');
+      }
+    }
+  }
+
+  // ==================== LIFECYCLE ====================
+
+  void disconnect() {
+    _isDisposed = true;
+    _isConnected = false;
+    _pingTimer?.cancel();
+    _channel?.sink.close();
+    _channel = null;
+    _connectionStatusController.add(false);
+  }
+
+  void dispose() {
+    disconnect();
+    _newMessageController.close();
+    _typingController.close();
+    _onlineStatusController.close();
+    _messageDeletedController.close();
+    _readReceiptController.close();
+    _reactionAddedController.close();
+    _reactionRemovedController.close();
+    _connectionStatusController.close();
+    _instance = null;
+  }
+}

@@ -42,7 +42,7 @@ import '../../features/rko/pages/rko_type_selection_page.dart';
 import '../../features/employees/services/employee_registration_service.dart';
 import '../../features/orders/pages/employee_orders_page.dart';
 import '../../features/orders/services/order_service.dart';
-import '../../features/employee_chat/pages/employee_chats_list_page.dart';
+import '../../features/messenger/pages/messenger_shell_page.dart';
 import '../../features/work_schedule/services/shift_transfer_service.dart';
 import '../../features/loyalty/pages/loyalty_scanner_page.dart';
 import '../../features/loyalty/pages/prize_scanner_page.dart';
@@ -628,7 +628,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 'Чат',
                 'Сообщения и обсуждения',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeeChatsListPage())),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage())),
                 isGold: true,
               ),
               SizedBox(height: spacing),
@@ -1428,6 +1428,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
       _buildCompactTile(Icons.work_outline_rounded, 'Работа', () {
         Navigator.push(context, MaterialPageRoute(builder: (_) => JobApplicationWelcomePage()));
       }),
+      _buildCompactTile(Icons.chat_outlined, 'Мессенджер', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage()));
+      }),
     ];
   }
 
@@ -1567,7 +1570,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }, badge: _availableSpins),
       // 6. Чат
       _buildCompactTile(Icons.chat_outlined, 'Чат', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeeChatsListPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage()));
       }),
     ];
   }

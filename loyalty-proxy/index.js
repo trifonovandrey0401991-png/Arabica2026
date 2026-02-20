@@ -98,6 +98,8 @@ const { setupMasterCatalogAPI } = require("./api/master_catalog_api");
 const { setupGeofenceAPI } = require("./api/geofence_api");
 const { setupEmployeeChatAPI } = require("./api/employee_chat_api");
 const { setupChatWebSocket } = require("./api/employee_chat_websocket");
+const { setupMessengerWebSocket } = require("./api/messenger_websocket");
+const { setupMessengerAPI } = require("./api/messenger_api");
 const { setupMediaAPI } = require("./api/media_api");
 const { setupShopManagersAPI } = require("./api/shop_managers_api");
 const { setupLoyaltyGamificationAPI } = require("./api/loyalty_gamification_api");
@@ -520,6 +522,27 @@ const uploadChatMedia = multer({
   fileFilter: mediaFileFilter
 });
 
+// Messenger media storage (изолированный от chat-media)
+const messengerMediaStorage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = `${DATA_DIR}/messenger-media`;
+    if (!await fileExists(uploadDir)) {
+      await fsp.mkdir(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const safeBasename = path.basename(file.originalname);
+    const ext = (safeBasename.split('.').pop() || 'dat').replace(/[^a-zA-Z0-9]/g, '');
+    cb(null, `msgr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${ext}`);
+  }
+});
+const uploadMessengerMedia = multer({
+  storage: messengerMediaStorage,
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB (voice+video)
+  fileFilter: mediaFileFilter
+});
+
 // Настройка multer для загрузки документов (РКО)
 const allowedDocTypes = ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'application/pdf', 'application/octet-stream'];
 const docFileFilter = (req, file, cb) => {
@@ -643,6 +666,7 @@ app.post('/upload-photo', requireAuth, upload.single('file'), compressUpload, (r
 app.use('/shift-photos', express.static(`${DATA_DIR}/shift-photos`));
 app.use('/product-question-photos', express.static(`${DATA_DIR}/product-question-photos`));
 app.use('/coffee-machine-photos', express.static(`${DATA_DIR}/coffee-machine-photos`));
+app.use('/messenger-media', express.static(`${DATA_DIR}/messenger-media`));
 
 // Настройка multer для загрузки фото сотрудников
 const employeePhotoStorage = multer.diskStorage({
@@ -779,6 +803,9 @@ const server = http.createServer(app);
 // Инициализируем WebSocket для чата
 const wss = setupChatWebSocket(server);
 
+// Инициализируем WebSocket для мессенджера (отдельный путь /ws/messenger)
+const messengerWss = setupMessengerWebSocket(server);
+
 // SCALABILITY: Async предзагрузка кэша админов + периодическое обновление
 preloadAdminCache().catch(e => console.error('AdminCache preload error:', e.message));
 startPeriodicRebuild();
@@ -814,6 +841,7 @@ setupShopProductsAPI(app);
 setupMasterCatalogAPI(app);
 setupGeofenceAPI(app, sendPushToPhone);
 setupEmployeeChatAPI(app);
+setupMessengerAPI(app, uploadMessengerMedia);
 setupMediaAPI(app, uploadChatMedia);
 setupShopManagersAPI(app);
 setupLoyaltyGamificationAPI(app);

@@ -706,5 +706,51 @@ CREATE TABLE IF NOT EXISTS employee_ratings (
 );
 
 -- ============================================
--- Готово. Таблицы: ~45
+-- МЕССЕНДЖЕР (messenger_*)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS messenger_conversations (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL DEFAULT 'private',
+  name TEXT,
+  avatar_url TEXT,
+  creator_phone TEXT,
+  creator_name TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS messenger_participants (
+  id SERIAL PRIMARY KEY,
+  conversation_id TEXT NOT NULL REFERENCES messenger_conversations(id) ON DELETE CASCADE,
+  phone TEXT NOT NULL,
+  name TEXT,
+  role TEXT DEFAULT 'member',
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  last_read_at TIMESTAMPTZ,
+  UNIQUE(conversation_id, phone)
+);
+CREATE INDEX IF NOT EXISTS idx_msgr_part_phone ON messenger_participants(phone);
+CREATE INDEX IF NOT EXISTS idx_msgr_part_conv ON messenger_participants(conversation_id);
+
+CREATE TABLE IF NOT EXISTS messenger_messages (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL REFERENCES messenger_conversations(id) ON DELETE CASCADE,
+  sender_phone TEXT NOT NULL,
+  sender_name TEXT,
+  type TEXT NOT NULL DEFAULT 'text',
+  content TEXT,
+  media_url TEXT,
+  voice_duration INTEGER,
+  reply_to_id TEXT,
+  reactions JSONB DEFAULT '{}',
+  is_deleted BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_msgr_msg_conv ON messenger_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_msgr_msg_time ON messenger_messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_msgr_msg_sender ON messenger_messages(sender_phone);
+
+-- ============================================
+-- Готово. Таблицы: ~48
 -- ============================================
