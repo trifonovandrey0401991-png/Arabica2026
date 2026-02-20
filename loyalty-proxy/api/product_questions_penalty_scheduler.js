@@ -22,25 +22,35 @@ const STATE_FILE = path.join(PENALTY_STATE_DIR, 'processed.json');
 const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
 
 // Settings
-const PENALTY_POINTS = -1;
 const CATEGORY_CODE = 'product_question_penalty';
 const CATEGORY_NAME = 'Неотвеченный вопрос о товаре';
+const DEFAULT_PENALTY_POINTS = -3;
+const DEFAULT_TIMEOUT_MINUTES = 30;
 
 // ============================================
-// Dynamic Timeout from Settings
+// Dynamic Settings from File
 // ============================================
-async function getTimeoutMinutes() {
+async function getProductSearchSettings() {
   const settingsFile = path.join(POINTS_SETTINGS_DIR, 'product_search_points_settings.json');
   if (await fileExists(settingsFile)) {
     try {
       const data = await fsp.readFile(settingsFile, 'utf8');
-      const settings = JSON.parse(data);
-      return settings.answerTimeoutMinutes || 30;
+      return JSON.parse(data);
     } catch (e) {
-      console.error('Error loading timeout settings:', e.message);
+      console.error('Error loading product search settings:', e.message);
     }
   }
-  return 30; // Default timeout
+  return { answerTimeoutMinutes: DEFAULT_TIMEOUT_MINUTES, notAnsweredPoints: DEFAULT_PENALTY_POINTS };
+}
+
+async function getTimeoutMinutes() {
+  const settings = await getProductSearchSettings();
+  return settings.answerTimeoutMinutes || DEFAULT_TIMEOUT_MINUTES;
+}
+
+async function getPenaltyPoints() {
+  const settings = await getProductSearchSettings();
+  return settings.notAnsweredPoints ?? DEFAULT_PENALTY_POINTS;
 }
 
 // ============================================
@@ -231,6 +241,7 @@ async function createPenaltiesForShop(shopAddress, questionTimestamp, sourceType
   const penalties = [];
   const now = new Date();
   const timeoutMinutes = await getTimeoutMinutes();
+  const penaltyPoints = await getPenaltyPoints();
 
   if (employees.length === 0) {
     console.log(`  No employees found on schedule for ${shopAddress} at ${questionTimestamp}`);
@@ -248,7 +259,7 @@ async function createPenaltiesForShop(shopAddress, questionTimestamp, sourceType
       category: CATEGORY_CODE,
       categoryName: CATEGORY_NAME,
       date: now.toISOString().split('T')[0],
-      points: PENALTY_POINTS,
+      points: penaltyPoints,
       reason: `Вопрос не отвечен за ${timeoutMinutes} минут (${sourceType}: ${sourceId})`,
       sourceId: sourceId,
       sourceType: sourceType, // 'question' or 'dialog'
@@ -256,7 +267,7 @@ async function createPenaltiesForShop(shopAddress, questionTimestamp, sourceType
     };
 
     penalties.push(penalty);
-    console.log(`    - Penalty for ${employee.name} at ${shopAddress}: ${PENALTY_POINTS} point`);
+    console.log(`    - Penalty for ${employee.name} at ${shopAddress}: ${penaltyPoints} point`);
   }
 
   return penalties;
@@ -371,7 +382,8 @@ async function startScheduler() {
   console.log('Product Questions Penalty Scheduler started');
   console.log(`  - Checking every 5 minutes`);
   console.log(`  - Timeout: ${timeoutMinutes} minutes (dynamic)`);
-  console.log(`  - Penalty: ${PENALTY_POINTS} points per employee`);
+  const penaltyPoints = await getPenaltyPoints();
+  console.log(`  - Penalty: ${penaltyPoints} points per employee (dynamic)`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Check every 5 minutes

@@ -12,6 +12,11 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { invalidatePointsSettings } = require('../utils/data_cache');
 const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 
+// Round to 1 decimal place to avoid float errors (e.g. -4.3999999999999995 → -4.4)
+function parsePoints(value) {
+  return Math.round(parseFloat(value) * 10) / 10;
+}
+
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
@@ -374,9 +379,9 @@ function setupPointsSettingsAPI(app) {
       }
 
       // Update settings
-      settings.minPoints = parseFloat(minPoints);
+      settings.minPoints = parsePoints(minPoints);
       settings.zeroThreshold = parseInt(zeroThreshold);
-      settings.maxPoints = parseFloat(maxPoints);
+      settings.maxPoints = parsePoints(maxPoints);
       settings.updatedAt = new Date().toISOString();
 
       await saveSettings(TEST_POINTS_FILE, settings);
@@ -489,15 +494,15 @@ function setupPointsSettingsAPI(app) {
       }
 
       // Update settings
-      settings.onTimePoints = parseFloat(onTimePoints);
-      settings.latePoints = parseFloat(latePoints);
+      settings.onTimePoints = parsePoints(onTimePoints);
+      settings.latePoints = parsePoints(latePoints);
 
       // Update time windows if provided
       if (morningStartTime !== undefined) settings.morningStartTime = morningStartTime;
       if (morningEndTime !== undefined) settings.morningEndTime = morningEndTime;
       if (eveningStartTime !== undefined) settings.eveningStartTime = eveningStartTime;
       if (eveningEndTime !== undefined) settings.eveningEndTime = eveningEndTime;
-      if (missedPenalty !== undefined) settings.missedPenalty = parseFloat(missedPenalty);
+      if (missedPenalty !== undefined) settings.missedPenalty = parsePoints(missedPenalty);
 
       settings.updatedAt = new Date().toISOString();
 
@@ -587,16 +592,16 @@ function setupPointsSettingsAPI(app) {
       }
 
       // Update settings
-      settings.minPoints = parseFloat(minPoints);
+      settings.minPoints = parsePoints(minPoints);
       settings.zeroThreshold = parseInt(zeroThreshold);
-      settings.maxPoints = parseFloat(maxPoints);
+      settings.maxPoints = parsePoints(maxPoints);
 
       // Update time windows if provided
       if (morningStartTime !== undefined) settings.morningStartTime = morningStartTime;
       if (morningEndTime !== undefined) settings.morningEndTime = morningEndTime;
       if (eveningStartTime !== undefined) settings.eveningStartTime = eveningStartTime;
       if (eveningEndTime !== undefined) settings.eveningEndTime = eveningEndTime;
-      if (missedPenalty !== undefined) settings.missedPenalty = parseFloat(missedPenalty);
+      if (missedPenalty !== undefined) settings.missedPenalty = parsePoints(missedPenalty);
       if (adminReviewTimeout !== undefined) settings.adminReviewTimeout = parseInt(adminReviewTimeout);
 
       settings.updatedAt = new Date().toISOString();
@@ -718,16 +723,16 @@ function setupPointsSettingsAPI(app) {
       }
 
       // Update settings
-      settings.minPoints = parseFloat(minPoints);
+      settings.minPoints = parsePoints(minPoints);
       settings.zeroThreshold = parseInt(zeroThreshold);
-      settings.maxPoints = parseFloat(maxPoints);
+      settings.maxPoints = parsePoints(maxPoints);
 
       // Update time windows if provided
       if (morningStartTime !== undefined) settings.morningStartTime = morningStartTime;
       if (morningEndTime !== undefined) settings.morningEndTime = morningEndTime;
       if (eveningStartTime !== undefined) settings.eveningStartTime = eveningStartTime;
       if (eveningEndTime !== undefined) settings.eveningEndTime = eveningEndTime;
-      if (missedPenalty !== undefined) settings.missedPenalty = parseFloat(missedPenalty);
+      if (missedPenalty !== undefined) settings.missedPenalty = parsePoints(missedPenalty);
       if (adminReviewTimeout !== undefined) settings.adminReviewTimeout = parseInt(adminReviewTimeout);
 
       settings.updatedAt = new Date().toISOString();
@@ -846,15 +851,15 @@ function setupPointsSettingsAPI(app) {
       }
 
       // Update settings
-      settings.hasRkoPoints = parseFloat(hasRkoPoints);
-      settings.noRkoPoints = parseFloat(noRkoPoints);
+      settings.hasRkoPoints = parsePoints(hasRkoPoints);
+      settings.noRkoPoints = parsePoints(noRkoPoints);
 
       // Update time window settings if provided
       if (morningStartTime !== undefined) settings.morningStartTime = morningStartTime;
       if (morningEndTime !== undefined) settings.morningEndTime = morningEndTime;
       if (eveningStartTime !== undefined) settings.eveningStartTime = eveningStartTime;
       if (eveningEndTime !== undefined) settings.eveningEndTime = eveningEndTime;
-      if (missedPenalty !== undefined) settings.missedPenalty = parseFloat(missedPenalty);
+      if (missedPenalty !== undefined) settings.missedPenalty = parsePoints(missedPenalty);
 
       settings.updatedAt = new Date().toISOString();
 
@@ -944,16 +949,16 @@ function setupPointsSettingsAPI(app) {
       }
 
       // Update settings
-      settings.minPoints = parseFloat(minPoints);
+      settings.minPoints = parsePoints(minPoints);
       settings.zeroThreshold = parseInt(zeroThreshold);
-      settings.maxPoints = parseFloat(maxPoints);
+      settings.maxPoints = parsePoints(maxPoints);
 
       // Update time windows if provided
       if (morningStartTime !== undefined) settings.morningStartTime = morningStartTime;
       if (morningEndTime !== undefined) settings.morningEndTime = morningEndTime;
       if (eveningStartTime !== undefined) settings.eveningStartTime = eveningStartTime;
       if (eveningEndTime !== undefined) settings.eveningEndTime = eveningEndTime;
-      if (missedPenalty !== undefined) settings.missedPenalty = parseFloat(missedPenalty);
+      if (missedPenalty !== undefined) settings.missedPenalty = parsePoints(missedPenalty);
       if (adminReviewTimeout !== undefined) settings.adminReviewTimeout = parseInt(adminReviewTimeout);
 
       settings.updatedAt = new Date().toISOString();
@@ -1064,8 +1069,8 @@ function setupPointsSettingsAPI(app) {
       }
 
       // Update settings
-      settings.positivePoints = parseFloat(positivePoints);
-      settings.negativePoints = parseFloat(negativePoints);
+      settings.positivePoints = parsePoints(positivePoints);
+      settings.negativePoints = parsePoints(negativePoints);
       settings.updatedAt = new Date().toISOString();
 
       await saveSettings(REVIEWS_POINTS_FILE, settings);
@@ -1150,8 +1155,8 @@ function setupPointsSettingsAPI(app) {
       }
 
       // Update settings
-      settings.answeredPoints = parseFloat(answeredPoints);
-      settings.notAnsweredPoints = parseFloat(notAnsweredPoints);
+      settings.answeredPoints = parsePoints(answeredPoints);
+      settings.notAnsweredPoints = parsePoints(notAnsweredPoints);
       settings.answerTimeoutMinutes = answerTimeoutMinutes !== undefined ? parseInt(answerTimeoutMinutes) : (settings.answerTimeoutMinutes || 30);
       settings.updatedAt = new Date().toISOString();
 
@@ -1230,8 +1235,8 @@ function setupPointsSettingsAPI(app) {
       }
 
       // Update settings
-      settings.acceptedPoints = parseFloat(acceptedPoints);
-      settings.rejectedPoints = parseFloat(rejectedPoints);
+      settings.acceptedPoints = parsePoints(acceptedPoints);
+      settings.rejectedPoints = parsePoints(rejectedPoints);
       settings.updatedAt = new Date().toISOString();
 
       await saveSettings(ORDERS_POINTS_FILE, settings);
@@ -1313,8 +1318,8 @@ function setupPointsSettingsAPI(app) {
       }
 
       // Update points
-      settings.submittedPoints = parseFloat(submittedPoints);
-      settings.notSubmittedPoints = parseFloat(notSubmittedPoints);
+      settings.submittedPoints = parsePoints(submittedPoints);
+      settings.notSubmittedPoints = parsePoints(notSubmittedPoints);
 
       // Update time windows (if provided)
       if (morningStartTime) settings.morningStartTime = morningStartTime;
@@ -1392,8 +1397,8 @@ function setupPointsSettingsAPI(app) {
       }
 
       // Update settings
-      settings.submittedPoints = parseFloat(submittedPoints);
-      settings.notSubmittedPoints = parseFloat(notSubmittedPoints);
+      settings.submittedPoints = parsePoints(submittedPoints);
+      settings.notSubmittedPoints = parsePoints(notSubmittedPoints);
       if (morningStartTime) settings.morningStartTime = morningStartTime;
       if (morningEndTime) settings.morningEndTime = morningEndTime;
       if (morningDeadline) settings.morningDeadline = morningDeadline;
@@ -1520,16 +1525,16 @@ function setupPointsSettingsAPI(app) {
 
       // Update settings (simplified structure)
       settings.shiftSettings = {
-        confirmedPoints: parseFloat(shiftSettings.confirmedPoints),
-        rejectedPenalty: parseFloat(shiftSettings.rejectedPenalty)
+        confirmedPoints: parsePoints(shiftSettings.confirmedPoints),
+        rejectedPenalty: parsePoints(shiftSettings.rejectedPenalty)
       };
       settings.recountSettings = {
-        confirmedPoints: parseFloat(recountSettings.confirmedPoints),
-        rejectedPenalty: parseFloat(recountSettings.rejectedPenalty)
+        confirmedPoints: parsePoints(recountSettings.confirmedPoints),
+        rejectedPenalty: parsePoints(recountSettings.rejectedPenalty)
       };
       settings.shiftHandoverSettings = {
-        confirmedPoints: parseFloat(shiftHandoverSettings.confirmedPoints),
-        rejectedPenalty: parseFloat(shiftHandoverSettings.rejectedPenalty)
+        confirmedPoints: parsePoints(shiftHandoverSettings.confirmedPoints),
+        rejectedPenalty: parsePoints(shiftHandoverSettings.rejectedPenalty)
       };
       settings.updatedAt = new Date().toISOString();
 

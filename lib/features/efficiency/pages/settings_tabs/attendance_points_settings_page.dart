@@ -23,6 +23,7 @@ class _AttendancePointsSettingsPageState
   String _morningEndTime = '09:00';
   String _eveningStartTime = '19:00';
   String _eveningEndTime = '21:00';
+  double _missedPenalty = -2.0;
 
   // Gradient colors for this page
   static final _gradientColors = [Color(0xFF11998e), Color(0xFF38ef7d)];
@@ -44,6 +45,7 @@ class _AttendancePointsSettingsPageState
         _morningEndTime = settings.morningEndTime;
         _eveningStartTime = settings.eveningStartTime;
         _eveningEndTime = settings.eveningEndTime;
+        _missedPenalty = settings.missedPenalty;
       },
       onSave: () async {
         final result =
@@ -54,6 +56,7 @@ class _AttendancePointsSettingsPageState
           morningEndTime: _morningEndTime,
           eveningStartTime: _eveningStartTime,
           eveningEndTime: _eveningEndTime,
+          missedPenalty: _missedPenalty,
         );
         return result != null;
       },
@@ -119,6 +122,21 @@ class _AttendancePointsSettingsPageState
               primaryColor: _gradientColors[0],
             ),
           ],
+        ),
+        SizedBox(height: 24),
+
+        // Missed penalty slider
+        SettingsSliderWidget(
+          title: 'Штраф за пропуск',
+          subtitle: 'Баллы за пропуск отметки посещаемости',
+          value: _missedPenalty,
+          min: -10,
+          max: 0,
+          divisions: 100,
+          onChanged: (value) => setState(() => _missedPenalty = value),
+          valueLabel: _missedPenalty.toStringAsFixed(1),
+          accentColor: Colors.deepOrange,
+          icon: Icons.warning_amber_outlined,
         ),
         SizedBox(height: 24),
 

@@ -26,6 +26,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('./utils/file_helpers');
+const { getTaskPointsConfig } = require('./api/task_points_settings_api');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -294,10 +295,13 @@ async function getCoffeeMachineSettings() {
   });
 }
 
-// Для reviews, productSearch, orders используем binary логику (нет отдельных файлов)
-const DEFAULT_REVIEWS_POINTS = { positivePoints: 1.5, negativePoints: -1.5 };
-const DEFAULT_PRODUCT_SEARCH_POINTS = { answeredPoints: 1.0, missedPoints: 0 };
-const DEFAULT_ORDERS_POINTS = { acceptedPoints: 1.0, rejectedPoints: 0 };
+// Настройки для reviews и orders загружаются динамически из файлов
+async function getReviewsSettings() {
+  return await loadSettings('reviews_points_settings.json', {
+    positivePoints: 3,
+    negativePoints: -5,
+  });
+}
 
 // =====================================================
 // CALCULATE POINTS FOR EACH CATEGORY
@@ -528,6 +532,7 @@ async function calculateReviewsPoints(shopAddress, month) {
   try {
     if (!(await fileExists(REVIEWS_DIR))) return 0;
 
+    const reviewsSettings = await getReviewsSettings();
     const files = await fsp.readdir(REVIEWS_DIR);
     let totalPoints = 0;
 
@@ -544,8 +549,8 @@ async function calculateReviewsPoints(shopAddress, month) {
           // Положительный отзыв = +баллы, отрицательный = -баллы
           const isPositive = review.reviewType === 'positive';
           const points = isPositive
-            ? DEFAULT_REVIEWS_POINTS.positivePoints
-            : DEFAULT_REVIEWS_POINTS.negativePoints;
+            ? reviewsSettings.positivePoints
+            : reviewsSettings.negativePoints;
           totalPoints += points;
         }
       } catch (e) {
@@ -614,6 +619,9 @@ async function calculateRkoPoints(shopAddress, month) {
 async function calculateTasksPoints(employeeId, month) {
   try {
     let totalPoints = 0;
+    const taskConfig = await getTaskPointsConfig();
+    const regularBonus = taskConfig.regularTasks?.completionPoints ?? 1;
+    const recurringBonus = taskConfig.recurringTasks?.completionPoints ?? 2;
 
     // Разовые задачи — читаем назначения из task-assignments/YYYY-MM.json
     const assignmentsFile = path.join(TASK_ASSIGNMENTS_DIR, `${month}.json`);
@@ -625,7 +633,7 @@ async function calculateTasksPoints(employeeId, month) {
 
         for (const assignment of assignments) {
           if (assignment.assigneeId === employeeId && assignment.status === 'approved') {
-            totalPoints += 1.0;
+            totalPoints += regularBonus;
           }
         }
       } catch (e) {
@@ -643,7 +651,7 @@ async function calculateTasksPoints(employeeId, month) {
 
         for (const instance of instancesArr) {
           if (instance.assigneeId === employeeId && instance.status === 'completed') {
-            totalPoints += 1.0;
+            totalPoints += recurringBonus;
           }
         }
       } catch (e) {
