@@ -480,10 +480,10 @@ class BaseReportScheduler {
       console.log(`${this.tag} ${rejected} reports auto-rejected (admin timeout)`);
     }
 
-    // Cleanup at 23:59 Moscow time
+    // Cleanup at ~23:55-23:59 Moscow time (wider window to not miss with 5-min interval)
     const moscowHours = moscow.getUTCHours();
     const moscowMinutes = moscow.getUTCMinutes();
-    if (moscowHours === 23 && moscowMinutes >= 59) {
+    if (moscowHours === 23 && moscowMinutes >= 55) {
       const lastCleanup = state.lastCleanup;
       if (!lastCleanup || !this.isSameDay(new Date(lastCleanup), now)) {
         await this.cleanupFailedReports();

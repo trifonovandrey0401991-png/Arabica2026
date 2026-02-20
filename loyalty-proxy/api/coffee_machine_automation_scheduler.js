@@ -282,6 +282,128 @@ class CoffeeMachineScheduler extends BaseReportScheduler {
     return failedReports.length;
   }
 
+  // ==================== CHECK ADMIN REVIEW TIMEOUT (override) ====================
+
+  async checkReviewTimeouts() {
+    const now = new Date();
+    const settings = await this.getSettings();
+    const timeoutHours = settings.adminReviewTimeoutHours || 4;
+    let rejectedCount = 0;
+
+    // DB check: find reports with status 'pending' older than timeout
+    if (USE_DB) {
+      try {
+        const cutoff = new Date(now.getTime() - timeoutHours * 60 * 60 * 1000);
+        const stuckRows = await db.query(
+          `SELECT id, shop_address, shift_type, employee_name, employee_phone, created_at
+           FROM coffee_machine_reports WHERE status = 'pending'
+           AND created_at IS NOT NULL AND created_at < $1`,
+          [cutoff.toISOString()]
+        );
+
+        for (const row of stuckRows.rows || stuckRows) {
+          await db.query(
+            `UPDATE coffee_machine_reports SET status = 'rejected', rejected_at = $1, reject_reason = $2, updated_at = $1 WHERE id = $3`,
+            [now.toISOString(), `Автоотклонение: админ не проверил за ${timeoutHours} ч`, row.id]
+          );
+
+          // Also update JSON file if exists
+          const filePath = path.join(this.REPORTS_DIR, `${row.id.replace(/[^a-zA-Z0-9_-]/g, '_')}.json`);
+          if (await fileExists(filePath)) {
+            try {
+              const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
+              report.status = 'rejected';
+              report.rejectedAt = now.toISOString();
+              report.rejectReason = `Автоотклонение: админ не проверил за ${timeoutHours} ч`;
+              await writeJsonFile(filePath, report);
+            } catch (e) { /* skip */ }
+          }
+
+          // Assign penalty
+          const penalty = await this.createPenalty({
+            employeeId: row.employee_phone || row.id,
+            employeeName: row.employee_name,
+            shopAddress: row.shop_address,
+            points: settings.missedPenalty || settings.notSubmittedPoints,
+            reason: `Счётчик кофемашин не проверен админом за ${timeoutHours} ч (${row.shift_type === 'morning' ? 'утренняя' : 'вечерняя'} смена)`,
+            sourceId: row.id
+          });
+
+          // Push notification to employee
+          if (penalty && row.employee_phone) {
+            const shiftName = row.shift_type === 'morning' ? 'утреннюю' : 'вечернюю';
+            await this.sendPushToEmployee(
+              row.employee_phone,
+              'Счётчик кофемашин отклонён',
+              `Отчёт автоотклонён (админ не проверил за ${timeoutHours} ч, ${shiftName} смена)`,
+              { type: 'coffee_machine_auto_rejected' }
+            );
+          }
+
+          rejectedCount++;
+          console.log(`${this.tag} Auto-rejected (admin timeout ${timeoutHours}h): ${row.shop_address} (${row.shift_type}), employee: ${row.employee_name}`);
+        }
+      } catch (dbErr) {
+        console.error(`${this.tag} DB review timeout check error:`, dbErr.message);
+      }
+    }
+
+    // File fallback: check JSON report files
+    if (!USE_DB || rejectedCount === 0) {
+      try {
+        if (await fileExists(this.REPORTS_DIR)) {
+          const files = await fsp.readdir(this.REPORTS_DIR);
+          const cutoff = new Date(now.getTime() - timeoutHours * 60 * 60 * 1000);
+
+          for (const file of files) {
+            if (!file.endsWith('.json')) continue;
+            try {
+              const filePath = path.join(this.REPORTS_DIR, file);
+              const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
+
+              if (report.status !== 'pending') continue;
+              if (!report.createdAt) continue;
+
+              const createdAt = new Date(report.createdAt);
+              if (createdAt >= cutoff) continue;
+
+              report.status = 'rejected';
+              report.rejectedAt = now.toISOString();
+              report.rejectReason = `Автоотклонение: админ не проверил за ${timeoutHours} ч`;
+              await writeJsonFile(filePath, report);
+
+              // DB update if available
+              if (USE_DB) {
+                try {
+                  await db.query(
+                    `UPDATE coffee_machine_reports SET status = 'rejected', rejected_at = $1, reject_reason = $2, updated_at = $1 WHERE id = $3`,
+                    [now.toISOString(), report.rejectReason, report.id]
+                  );
+                } catch (e) { /* skip */ }
+              }
+
+              // Assign penalty from schedule
+              const penalty = await this.assignPenaltyFromSchedule(
+                report,
+                settings.missedPenalty || settings.notSubmittedPoints,
+                (r) => `Счётчик кофемашин не проверен админом за ${timeoutHours} ч (${r.shiftType === 'morning' ? 'утренняя' : 'вечерняя'} смена)`
+              );
+
+              rejectedCount++;
+              console.log(`${this.tag} Auto-rejected (file, admin timeout ${timeoutHours}h): ${report.shopAddress} (${report.shiftType}), employee: ${report.employeeName}`);
+            } catch (e) {
+              // skip malformed files
+            }
+          }
+        }
+      } catch (e) {
+        console.error(`${this.tag} File review timeout check error:`, e.message);
+      }
+    }
+
+    return rejectedCount;
+  }
+
   // ==================== CLEANUP ====================
 
   async cleanupFailedReports() {
