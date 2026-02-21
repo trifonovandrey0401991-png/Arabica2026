@@ -11,11 +11,13 @@
  */
 
 const https = require('https');
+const http  = require('http');
 const { execSync } = require('child_process');
 
 // ── Конфигурация ─────────────────────────────────────────────────────────────
 const CONFIG = {
-  healthUrl: 'https://arabica26.ru/health',
+  // localhost:3000 — прямо в приложение, без nginx (скрипт запускается на сервере)
+  healthUrl: 'http://localhost:3000/health',
   healthTimeoutMs: 10_000,
   ramThresholdPercent: 85,    // алерт если RAM > 85%
   diskThresholdPercent: 90,   // алерт если диск > 90%
@@ -37,7 +39,8 @@ function log(msg) {
 
 async function httpGet(url, timeoutMs) {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { timeout: timeoutMs }, (res) => {
+    const client = url.startsWith('https') ? https : http;
+    const req = client.get(url, { timeout: timeoutMs }, (res) => {
       let body = '';
       res.on('data', (chunk) => { body += chunk; });
       res.on('end', () => resolve({ status: res.statusCode, body }));
