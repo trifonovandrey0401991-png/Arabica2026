@@ -478,11 +478,11 @@ function setupEnvelopeAPI(app) {
       console.log('POST /api/envelope-reports:', JSON.stringify(req.body).substring(0, 300));
 
       // Валидация обязательных полей
-      const { employeePhone, shopAddress, shiftType } = req.body;
-      if (!employeePhone || !shopAddress || !shiftType) {
+      const { shopAddress, shiftType } = req.body;
+      if (!shopAddress || !shiftType) {
         return res.status(400).json({
           success: false,
-          error: 'Обязательные поля: employeePhone, shopAddress, shiftType'
+          error: 'Обязательные поля: shopAddress, shiftType'
         });
       }
 

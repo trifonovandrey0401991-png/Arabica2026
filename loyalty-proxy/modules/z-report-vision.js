@@ -338,7 +338,12 @@ async function getLearnedPatternsWithCache() {
 async function extractZReportData(originalText, learnedPatterns = null, expectedRanges = null) {
   // ============ УЛУЧШЕННАЯ НОРМАЛИЗАЦИЯ OCR ============
   // Применяем нормализацию для исправления типичных ошибок OCR
-  const text = enhancedOcrNormalize(originalText);
+  const rawText = enhancedOcrNormalize(originalText);
+
+  // Нормализуем текст для лучшего поиска (дополнительно к OCR нормализации)
+  const text = rawText
+    .replace(/\s+/g, ' ')
+    .replace(/[—–-]/g, '-');
 
   const lines = text.split('\n').map(l => l.trim());
 
@@ -356,12 +361,6 @@ async function extractZReportData(originalText, learnedPatterns = null, expected
   if (!learnedPatterns) {
     learnedPatterns = await getLearnedPatternsWithCache();
   }
-
-  // Нормализуем текст для лучшего поиска (дополнительно к OCR нормализации)
-  // Используем normalizedText вместо text для паттерн-матчинга
-  text = text
-    .replace(/\s+/g, ' ')
-    .replace(/[—–-]/g, '-');
 
   // ============ ОБЩАЯ СУММА / ВЫРУЧКА ============
 
