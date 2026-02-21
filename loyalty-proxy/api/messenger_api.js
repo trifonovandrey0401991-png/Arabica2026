@@ -742,28 +742,44 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/contacts/search', requireAuth, async (req, res) => {
     try {
-      const { query: searchQuery, limit = 20 } = req.query;
+      const { query: searchQuery, limit = 50 } = req.query;
+      const parsedLimit = parseInt(limit);
+
+      let employeesResult, clientsResult;
+
       if (!searchQuery || searchQuery.length < 2) {
-        return res.json({ success: true, contacts: [] });
+        // Без запроса — возвращаем всех (сотрудники первые, потом клиенты)
+        employeesResult = await db.query(
+          `SELECT phone, name, 'employee' as user_type FROM employees
+           WHERE phone IS NOT NULL
+           ORDER BY name ASC NULLS LAST
+           LIMIT $1`,
+          [parsedLimit]
+        );
+        clientsResult = await db.query(
+          `SELECT phone, name, 'client' as user_type FROM clients
+           WHERE phone IS NOT NULL
+           ORDER BY name ASC NULLS LAST
+           LIMIT $1`,
+          [parsedLimit]
+        );
+      } else {
+        // С запросом — фильтруем по phone/name
+        employeesResult = await db.query(
+          `SELECT phone, name, 'employee' as user_type FROM employees
+           WHERE (phone ILIKE $1 OR name ILIKE $1)
+             AND phone IS NOT NULL
+           LIMIT $2`,
+          [`%${searchQuery}%`, parsedLimit]
+        );
+        clientsResult = await db.query(
+          `SELECT phone, name, 'client' as user_type FROM clients
+           WHERE (phone ILIKE $1 OR name ILIKE $1)
+             AND phone IS NOT NULL
+           LIMIT $2`,
+          [`%${searchQuery}%`, parsedLimit]
+        );
       }
-
-      // Ищем среди employees
-      const employeesResult = await db.query(
-        `SELECT phone, name, 'employee' as user_type FROM employees
-         WHERE (phone ILIKE $1 OR name ILIKE $1)
-           AND phone IS NOT NULL
-         LIMIT $2`,
-        [`%${searchQuery}%`, parseInt(limit)]
-      );
-
-      // Ищем среди clients
-      const clientsResult = await db.query(
-        `SELECT phone, name, 'client' as user_type FROM clients
-         WHERE (phone ILIKE $1 OR name ILIKE $1)
-           AND phone IS NOT NULL
-         LIMIT $2`,
-        [`%${searchQuery}%`, parseInt(limit)]
-      );
 
       // Объединяем, убираем дубликаты по phone
       const contactsMap = new Map();
@@ -777,7 +793,7 @@ function setupMessengerAPI(app, uploadMedia) {
         }
       }
 
-      const contacts = Array.from(contactsMap.values()).slice(0, parseInt(limit));
+      const contacts = Array.from(contactsMap.values()).slice(0, parsedLimit);
       res.json({ success: true, contacts });
     } catch (error) {
       console.error('[Messenger] Contact search error:', error.message);

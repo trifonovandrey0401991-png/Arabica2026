@@ -22,13 +22,19 @@ class ContactSearchPage extends StatefulWidget {
 
 class _ContactSearchPageState extends State<ContactSearchPage> {
   final _searchController = TextEditingController();
+  List<MessengerContact> _allContacts = [];
   List<MessengerContact> _contacts = [];
   bool _isSearching = false;
   Timer? _debounce;
 
-  // Мультивыбор для создания группы
   bool _isMultiSelect = false;
   final Set<String> _selectedPhones = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllContacts();
+  }
 
   @override
   void dispose() {
@@ -37,13 +43,33 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
     super.dispose();
   }
 
+  Future<void> _loadAllContacts() async {
+    if (mounted) setState(() => _isSearching = true);
+    try {
+      final contacts = await MessengerService.searchContacts('');
+      if (mounted) {
+        setState(() {
+          _allContacts = contacts.where((c) => c.phone != widget.userPhone).toList();
+          _contacts = _allContacts;
+          _isSearching = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isSearching = false);
+    }
+  }
+
   void _onSearchChanged(String query) {
     _debounce?.cancel();
+    if (query.isEmpty) {
+      setState(() => _contacts = _allContacts);
+      return;
+    }
     _debounce = Timer(const Duration(milliseconds: 400), () {
       if (query.length >= 2) {
         _search(query);
       } else if (mounted) {
-        setState(() => _contacts = []);
+        setState(() => _contacts = _allContacts);
       }
     });
   }
@@ -55,7 +81,6 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
       final contacts = await MessengerService.searchContacts(query);
       if (mounted) {
         setState(() {
-          // Фильтруем себя
           _contacts = contacts.where((c) => c.phone != widget.userPhone).toList();
           _isSearching = false;
         });
@@ -88,13 +113,15 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
   }
 
   void _toggleSelection(String phone) {
-    setState(() {
-      if (_selectedPhones.contains(phone)) {
-        _selectedPhones.remove(phone);
-      } else {
-        _selectedPhones.add(phone);
-      }
-    });
+    if (mounted) {
+      setState(() {
+        if (_selectedPhones.contains(phone)) {
+          _selectedPhones.remove(phone);
+        } else {
+          _selectedPhones.add(phone);
+        }
+      });
+    }
   }
 
   void _createGroup() {
@@ -117,47 +144,73 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.night,
       appBar: AppBar(
-        backgroundColor: AppColors.emerald,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         foregroundColor: Colors.white,
-        title: Text(_isMultiSelect ? 'Создать группу' : 'Новый чат'),
+        title: Text(
+          _isMultiSelect ? 'Создать группу' : 'Новый чат',
+          style: TextStyle(color: Colors.white.withOpacity(0.95)),
+        ),
         actions: [
           IconButton(
-            icon: Icon(_isMultiSelect ? Icons.person : Icons.group_add),
+            icon: Icon(
+              _isMultiSelect ? Icons.person : Icons.group_add,
+              color: Colors.white.withOpacity(0.6),
+            ),
             tooltip: _isMultiSelect ? 'Личный чат' : 'Создать группу',
             onPressed: () {
-              setState(() {
-                _isMultiSelect = !_isMultiSelect;
-                _selectedPhones.clear();
-              });
+              if (mounted) {
+                setState(() {
+                  _isMultiSelect = !_isMultiSelect;
+                  _selectedPhones.clear();
+                });
+              }
             },
           ),
           if (_isMultiSelect && _selectedPhones.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.check),
+              icon: const Icon(Icons.check, color: AppColors.turquoise),
               onPressed: _createGroup,
             ),
         ],
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.emerald.withOpacity(0.3),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
       ),
       body: Column(
         children: [
           // Search field
           Padding(
             padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Поиск по имени или телефону...',
-                prefixIcon: const Icon(Icons.search, color: AppColors.emerald),
-                filled: true,
-                fillColor: Colors.grey[100],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _onSearchChanged,
+                autofocus: true,
+                style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                decoration: InputDecoration(
+                  hintText: 'Поиск по имени или телефону...',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                  prefixIcon: Icon(Icons.search, color: AppColors.turquoise.withOpacity(0.7)),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
@@ -176,10 +229,14 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: Chip(
-                      label: Text(contact.displayName, style: const TextStyle(fontSize: 12)),
-                      deleteIcon: const Icon(Icons.close, size: 16),
+                      label: Text(
+                        contact.displayName,
+                        style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9)),
+                      ),
+                      deleteIcon: Icon(Icons.close, size: 16, color: Colors.white.withOpacity(0.5)),
                       onDeleted: () => _toggleSelection(phone),
-                      backgroundColor: AppColors.teal50,
+                      backgroundColor: AppColors.emerald.withOpacity(0.3),
+                      side: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
                     ),
                   );
                 }).toList(),
@@ -189,14 +246,14 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
           // Results
           Expanded(
             child: _isSearching
-                ? const Center(child: CircularProgressIndicator(color: AppColors.emerald))
+                ? const Center(child: CircularProgressIndicator(color: AppColors.turquoise, strokeWidth: 2.5))
                 : _contacts.isEmpty
                     ? Center(
                         child: Text(
-                          _searchController.text.length < 2
-                              ? 'Введите имя или телефон'
+                          _searchController.text.isEmpty
+                              ? 'Нет контактов'
                               : 'Ничего не найдено',
-                          style: TextStyle(color: Colors.grey[500]),
+                          style: TextStyle(color: Colors.white.withOpacity(0.35)),
                         ),
                       )
                     : ListView.builder(
@@ -205,31 +262,95 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
                           final contact = _contacts[index];
                           final isSelected = _selectedPhones.contains(contact.phone);
 
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: contact.userType == 'employee'
-                                  ? AppColors.emeraldLight
-                                  : AppColors.turquoise,
-                              child: Text(
-                                contact.displayName[0].toUpperCase(),
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              splashColor: Colors.white.withOpacity(0.05),
+                              highlightColor: Colors.white.withOpacity(0.03),
+                              onTap: _isMultiSelect
+                                  ? () => _toggleSelection(contact.phone)
+                                  : () => _startPrivateChat(contact),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: LinearGradient(
+                                          colors: contact.userType == 'employee'
+                                              ? [AppColors.emeraldLight, AppColors.emerald]
+                                              : [AppColors.turquoise, AppColors.emerald],
+                                        ),
+                                        border: Border.all(color: Colors.white.withOpacity(0.15)),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          contact.displayName[0].toUpperCase(),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            contact.displayName,
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.9),
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 15,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '${contact.phone} \u2022 ${contact.userType == 'employee' ? 'Сотрудник' : 'Клиент'}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.white.withOpacity(0.35),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (_isMultiSelect)
+                                      Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isSelected
+                                              ? AppColors.turquoise
+                                              : Colors.white.withOpacity(0.08),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? AppColors.turquoise
+                                                : Colors.white.withOpacity(0.2),
+                                          ),
+                                        ),
+                                        child: isSelected
+                                            ? const Icon(Icons.check, size: 16, color: Colors.white)
+                                            : null,
+                                      )
+                                    else
+                                      Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.2)),
+                                  ],
+                                ),
                               ),
                             ),
-                            title: Text(contact.displayName),
-                            subtitle: Text(
-                              '${contact.phone} • ${contact.userType == 'employee' ? 'Сотрудник' : 'Клиент'}',
-                              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                            ),
-                            trailing: _isMultiSelect
-                                ? Checkbox(
-                                    value: isSelected,
-                                    activeColor: AppColors.emerald,
-                                    onChanged: (_) => _toggleSelection(contact.phone),
-                                  )
-                                : const Icon(Icons.chevron_right, color: Colors.grey),
-                            onTap: _isMultiSelect
-                                ? () => _toggleSelection(contact.phone)
-                                : () => _startPrivateChat(contact),
                           );
                         },
                       ),
