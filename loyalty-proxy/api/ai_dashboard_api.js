@@ -190,11 +190,11 @@ async function getCoffeeMachineMetrics() {
     if (USE_DB_CM) {
       try {
         const rows = await db.query(
-          'SELECT data FROM coffee_machine_reports ORDER BY created_at DESC LIMIT 200'
+          'SELECT readings FROM coffee_machine_reports ORDER BY created_at DESC LIMIT 200'
         );
         if (rows) {
           for (const row of rows) {
-            if (row.data) reports.push(row.data);
+            if (row.readings) reports.push({ readings: row.readings });
           }
         }
       } catch (e) { /* ignore */ }

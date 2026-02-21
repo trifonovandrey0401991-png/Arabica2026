@@ -1098,11 +1098,15 @@ async function buildMachineIntelligence() {
     if (USE_DB) {
       try {
         const rows = await db.query(
-          'SELECT data FROM coffee_machine_reports ORDER BY created_at DESC LIMIT 500'
+          'SELECT readings, date, created_at FROM coffee_machine_reports ORDER BY created_at DESC LIMIT 500'
         );
         if (rows && rows.length > 0) {
           for (const row of rows) {
-            if (row.data) allReports.push(row.data);
+            allReports.push({
+              readings: row.readings || [],
+              date: row.date,
+              createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+            });
           }
         }
       } catch (e) {
