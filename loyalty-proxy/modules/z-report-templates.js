@@ -6,7 +6,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
-const { writeJsonFile } = require('../utils/async_fs');
+const { writeJsonFile, withLock } = require('../utils/async_fs');
 const db = require('../utils/db');
 
 const USE_DB = process.env.USE_DB_Z_REPORT === 'true';
@@ -155,7 +155,7 @@ async function saveTemplate(template, sampleImage = null) {
       await fs.mkdir(imagesDir, { recursive: true });
       await fs.writeFile(
         path.join(imagesDir, `${template.id}.jpg`),
-        Buffer.from(sampleImage, 'base64')
+        Buffer.from(sampleImage.replace(/^data:image\/\w+;base64,/, ''), 'base64')
       );
     } catch (e) {
       console.error('Ошибка сохранения образца:', e);
@@ -382,67 +382,75 @@ async function addTrainingSample({
   templateId,
   fieldRegions, // { totalSum: {x,y,width,height}, cashSum: {...}, ... }
 }) {
-  const data = await loadTrainingSamples();
-  let samples = data.samples || [];
+  // withLock предотвращает потерю данных при параллельных запросах (read-modify-write)
+  return await withLock(SAMPLES_FILE, async () => {
+    const data = await loadTrainingSamples();
+    let samples = data.samples || [];
 
-  const sample = {
-    id: uuidv4(),
-    createdAt: new Date().toISOString(),
-    rawText,
-    correctData,
-    recognizedData,
-    shopId,
-    templateId,
-    fieldRegions: fieldRegions || null,
-    // Вычисляем какие поля были исправлены (только если есть recognizedData для сравнения)
-    correctedFields: recognizedData
-      ? Object.keys(correctData).filter(key => correctData[key] !== recognizedData[key])
-      : []
-  };
+    const sample = {
+      id: uuidv4(),
+      createdAt: new Date().toISOString(),
+      rawText,
+      correctData,
+      recognizedData,
+      shopId,
+      templateId,
+      fieldRegions: fieldRegions || null,
+      // Вычисляем какие поля были исправлены (только если есть recognizedData для сравнения)
+      correctedFields: recognizedData
+        ? Object.keys(correctData).filter(key => correctData[key] !== recognizedData[key])
+        : []
+    };
 
-  samples.push(sample);
+    samples.push(sample);
 
-  // Автоматическая ротация при превышении лимита
-  const rotationResult = await rotateSamples(samples);
-  samples = rotationResult.samples;
-  const hadRotation = rotationResult.deleted > 0;
+    // Автоматическая ротация при превышении лимита
+    const rotationResult = await rotateSamples(samples);
+    samples = rotationResult.samples;
+    const hadRotation = rotationResult.deleted > 0;
 
-  // Сохраняем изображение
-  if (imageBase64) {
-    const imagesDir = path.join(__dirname, '../data/training-images');
-    try {
-      await fs.mkdir(imagesDir, { recursive: true });
-      await fs.writeFile(
-        path.join(imagesDir, `${sample.id}.jpg`),
-        Buffer.from(imageBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64')
-      );
-    } catch (e) {
-      console.error('Ошибка сохранения образца:', e);
+    // Сохраняем изображение
+    if (imageBase64) {
+      const imagesDir = path.join(__dirname, '../data/training-images');
+      try {
+        await fs.mkdir(imagesDir, { recursive: true });
+        await fs.writeFile(
+          path.join(imagesDir, `${sample.id}.jpg`),
+          Buffer.from(imageBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64')
+        );
+      } catch (e) {
+        console.error('Ошибка сохранения образца:', e);
+      }
     }
-  }
 
-  // JSON всегда пишем полностью, DB — оптимизированно
-  await saveTrainingSamples({ samples }, hadRotation);
-  if (!hadRotation) {
-    // Без ротации — upsert только новый sample (O(1) вместо O(n))
-    await upsertSingleSampleToDB(sample);
-  }
+    // JSON: внутри withLock, без двойной блокировки
+    await writeJsonFile(SAMPLES_FILE, { samples }, { useLock: false });
+    if (!hadRotation) {
+      await upsertSingleSampleToDB(sample);
+    } else if (USE_DB) {
+      // При ротации — полная синхронизация с DB
+      try {
+        for (const s of samples) {
+          await db.upsert('z_report_training_samples', {
+            id: s.id, shop_id: s.shopId, template_id: s.templateId,
+            data: s, created_at: s.createdAt || new Date().toISOString(),
+          }, 'id');
+        }
+      } catch (e) { console.error('[Training] DB full sync error:', e.message); }
+    }
 
-  // Анализируем образцы для улучшения паттернов
-  const learningResult = await analyzeAndImprovePatterns(samples);
+    // Анализируем образцы для улучшения паттернов
+    const learningResult = await analyzeAndImprovePatterns(samples);
 
-  // Обновляем выученные регионы если указаны
-  if (fieldRegions && shopId) {
-    updateLearnedRegions(shopId).catch(e =>
-      console.error('[Training] Ошибка обновления регионов:', e.message)
-    );
-  }
+    // Обновляем выученные регионы если указаны
+    if (fieldRegions && shopId) {
+      updateLearnedRegions(shopId).catch(e =>
+        console.error('[Training] Ошибка обновления регионов:', e.message)
+      );
+    }
 
-  // Возвращаем образец вместе с результатом обучения
-  return {
-    sample,
-    learningResult
-  };
+    return { sample, learningResult };
+  });
 }
 
 /**

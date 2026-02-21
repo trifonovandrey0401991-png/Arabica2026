@@ -32,7 +32,8 @@ let _lastRebuildTime = 0;
 async function buildZReportIntelligence() {
   const now = Date.now();
   if (now - _lastRebuildTime < 10000) {
-    return null; // Пропускаем — недавно перестроили
+    // Debounce: вернуть последние данные вместо null
+    return await loadZReportIntelligence() || {};
   }
   _lastRebuildTime = now;
 
@@ -112,16 +113,20 @@ function buildFieldStats(reports, fieldName) {
     // Добавляем T12:00:00 чтобы избежать UTC-сдвига на предыдущий день
     const dow = date ? new Date(date + 'T12:00:00').getDay() : null; // 0=Sun..6=Sat
 
+    // Для ofdNotSent значение 0 — нормальное (0 непереданных ФД)
+    // Для totalSum/cashSum значение 0 — аномалия (магазин не работал)
+    const minVal = (fieldName === 'ofdNotSent') ? 0 : 0.01;
+
     // ООО
     const oooVal = extractFieldValue(r, 'ooo', fieldName);
-    if (oooVal !== null && oooVal > 0) {
+    if (oooVal !== null && oooVal >= minVal) {
       values.push(oooVal);
       if (dow !== null && !isNaN(dow)) byDow[dow].push(oooVal);
     }
 
     // ИП
     const ipVal = extractFieldValue(r, 'ip', fieldName);
-    if (ipVal !== null && ipVal > 0) {
+    if (ipVal !== null && ipVal >= minVal) {
       values.push(ipVal);
       if (dow !== null && !isNaN(dow)) byDow[dow].push(ipVal);
     }
@@ -255,10 +260,11 @@ async function buildAccuracyStats(shopAddress) {
       );
       samples = (result?.rows || []).map(r => r.data);
     } else {
-      const samplesFile = path.join(DATA_DIR, 'z-report-training-samples.json');
+      const samplesFile = path.join(__dirname, '../data/z-report-training-samples.json');
       if (await fileExists(samplesFile)) {
         const all = JSON.parse(await fsp.readFile(samplesFile, 'utf8'));
-        samples = Array.isArray(all) ? all.filter(s => s.shopId === shopAddress) : [];
+        const allSamples = all.samples || (Array.isArray(all) ? all : []);
+        samples = allSamples.filter(s => s.shopId === shopAddress);
       }
     }
 
