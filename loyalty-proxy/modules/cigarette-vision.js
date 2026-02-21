@@ -302,15 +302,35 @@ async function saveSamples(samples) {
 
     if (USE_DB) {
       try {
-        for (const sample of samples) {
-          await db.upsert('cigarette_samples', {
-            id: sample.id,
-            product_id: sample.productId || null,
-            type: sample.type || null,
-            shop_address: sample.shopAddress || null,
-            data: sample,
-            created_at: sample.createdAt || new Date().toISOString(),
-          });
+        // Batch upsert чанками по 100 (избегаем N+1 запросов)
+        const CHUNK = 100;
+        for (let start = 0; start < samples.length; start += CHUNK) {
+          const chunk = samples.slice(start, start + CHUNK);
+          const placeholders = chunk.map((_, i) => {
+            const o = i * 6;
+            return `($${o+1}, $${o+2}, $${o+3}, $${o+4}, $${o+5}::jsonb, $${o+6})`;
+          }).join(', ');
+          const values = [];
+          for (const s of chunk) {
+            values.push(
+              s.id,
+              s.productId || null,
+              s.type || null,
+              s.shopAddress || null,
+              JSON.stringify(s),
+              s.createdAt || new Date().toISOString(),
+            );
+          }
+          await db.query(
+            `INSERT INTO cigarette_samples (id, product_id, type, shop_address, data, created_at)
+             VALUES ${placeholders}
+             ON CONFLICT (id) DO UPDATE SET
+               product_id = EXCLUDED.product_id,
+               type = EXCLUDED.type,
+               shop_address = EXCLUDED.shop_address,
+               data = EXCLUDED.data`,
+            values
+          );
         }
       } catch (dbErr) {
         console.error('[Cigarette Vision] DB saveSamples error:', dbErr.message);
@@ -1005,21 +1025,28 @@ async function detectAndCount(imageBase64, productId = null, confidence = 0.5) {
   }
 
   if (!yoloWrapper.isModelReady()) {
-    const samples = await loadSamples();
-    const totalSamples = samples.length;
-    const samplesWithAnnotations = samples.filter(s => s.annotationCount > 0).length;
+    // Показываем статистику counting датасета (pending + approved)
+    let pendingCount = 0;
+    let approvedCount = 0;
+    try {
+      const pendingSamples = await loadPendingCountingSamples();
+      pendingCount = Array.isArray(pendingSamples) ? pendingSamples.length : 0;
+      const cStats = await getTypedTrainingStats(TRAINING_TYPES.COUNTING);
+      approvedCount = cStats.totalSamples || 0;
+    } catch (e) { /* ignore */ }
 
     return {
       success: false,
-      error: `Модель ещё не обучена. Загружено ${totalSamples} образцов (${samplesWithAnnotations} с аннотациями). Требуется минимум 50 аннотированных образцов для обучения.`,
+      error: `Модель ещё не обучена. Собрано: ${pendingCount} фото ожидают проверки, ${approvedCount} одобрено. Требуется минимум 50 одобренных для обучения.`,
       count: 0,
       confidence: 0,
       boxes: [],
+      modelMissing: true,
       trainingStatus: {
-        totalSamples,
-        annotatedSamples: samplesWithAnnotations,
+        pendingSamples: pendingCount,
+        approvedSamples: approvedCount,
         requiredSamples: 50,
-        isReady: samplesWithAnnotations >= 50
+        isReady: approvedCount >= 50
       }
     };
   }

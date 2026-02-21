@@ -9,6 +9,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const cigaretteVision = require('../modules/cigarette-vision');
 
@@ -88,6 +89,10 @@ async function setupCigaretteVisionAPI(app) {
         productGroup || null
       );
 
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(products, req.query, 'products'));
+      }
+
       res.json({ success: true, products });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка получения товаров:', error);
@@ -140,6 +145,11 @@ async function setupCigaretteVisionAPI(app) {
 
       if (!imageBase64) {
         return res.status(400).json({ success: false, error: 'Изображение обязательно' });
+      }
+
+      // #3: Лимит размера base64-изображения — 5MB (≈3.7MB реального файла)
+      if (imageBase64.length > 5 * 1024 * 1024) {
+        return res.status(413).json({ success: false, error: 'Изображение слишком большое. Максимум 5MB.' });
       }
 
       if (!productId && !barcode) {
@@ -503,6 +513,10 @@ async function setupCigaretteVisionAPI(app) {
 
       if (!imageBase64) {
         return res.status(400).json({ success: false, error: 'Изображение обязательно' });
+      }
+
+      if (imageBase64.length > 5 * 1024 * 1024) {
+        return res.status(413).json({ success: false, error: 'Изображение слишком большое. Максимум 5MB.' });
       }
 
       if (!productId) {

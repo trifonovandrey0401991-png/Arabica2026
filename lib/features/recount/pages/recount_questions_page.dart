@@ -48,6 +48,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   List<RecountQuestion>? _selectedQuestions; // 30 выбранных вопросов
   Set<int> _photoRequiredIndices = {}; // Индексы вопросов, для которых требуется фото
   bool _isLoading = true;
+  String? _loadError;
   List<RecountAnswer> _answers = [];
   int _currentQuestionIndex = 0;
   // Контроллеры для полей "Больше на" и "Меньше на"
@@ -56,6 +57,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   String? _selectedAnswer; // "сходится" или "не сходится"
   String? _photoPath;
   bool _isSubmitting = false;
+  bool _submitFailed = false; // Флаг: последняя отправка провалилась
   bool _isVerifyingAI = false; // Флаг проверки ИИ
   DateTime? _startedAt;
   DateTime? _completedAt;
@@ -224,14 +226,8 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
+        _loadError = e.toString();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ошибка загрузки вопросов: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      Navigator.pop(context);
     }
   }
 
@@ -660,27 +656,8 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         employeeConfirmedQuantity: aiCount,
         aiMismatch: false,
       );
-      // Сохраняем позитивный образец для дообучения (fire-and-forget)
-      final confirmedAnswer = _answers[questionIndex];
-      if (confirmedAnswer.photoPath != null) {
-        () async {
-          try {
-            final bytes = kIsWeb
-                ? base64Decode(confirmedAnswer.photoPath!.split(',').last)
-                : await File(confirmedAnswer.photoPath!).readAsBytes();
-            await CigaretteVisionService.detectAndCountWithTraining(
-              imageBytes: bytes,
-              productId: question.barcode,
-              productName: question.productName,
-              shopAddress: widget.shopAddress,
-              isAiActive: question.isAiActive,
-              employeeAnswer: aiCount,
-            );
-          } catch (e) {
-            debugPrint('[Recount] Ошибка отправки фото в ИИ: $e');
-          }
-        }();
-      }
+      // Фото уже сохранено в pending при первом вызове detectAndCountWithTraining —
+      // повторная отправка не нужна (избегаем дублей в counting-pending)
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1289,6 +1266,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           if (mounted) setState(() {
             _isSubmitting = false;
             _uploadProgress = 0.0;
+            _submitFailed = true;
           });
         }
       }
@@ -1304,6 +1282,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         if (mounted) setState(() {
           _isSubmitting = false;
           _uploadProgress = 0.0;
+          _submitFailed = true;
         });
       }
     }
@@ -1343,6 +1322,54 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loadError != null) {
+      return Scaffold(
+        backgroundColor: AppColors.night,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(context, 'Пересчет товаров'),
+              Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24.w),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red, size: 48.sp),
+                        SizedBox(height: 16.h),
+                        Text(
+                          'Не удалось загрузить вопросы',
+                          style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          _loadError!,
+                          style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 24.h),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() { _isLoading = true; _loadError = null; });
+                            _loadQuestions();
+                          },
+                          icon: Icon(Icons.refresh),
+                          label: Text('Повторить'),
+                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.emerald),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_isLoading) {
       return Scaffold(
         backgroundColor: AppColors.night,
@@ -1463,6 +1490,29 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.greenAccent.withOpacity(0.8)),
                       minHeight: 4,
                     ),
+                  ),
+                ),
+              // Баннер: отчёт не отправлен (#7)
+              if (_submitFailed)
+                Container(
+                  margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(color: Colors.red.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.red, size: 18.sp),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text(
+                          'Отчёт не отправлен — попробуйте снова',
+                          style: TextStyle(color: Colors.red.shade300, fontSize: 12.sp),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               SizedBox(height: 4),

@@ -446,6 +446,9 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         });
 
         console.log(`Найдено просроченных отчетов: ${reports.length}`);
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(reports, req.query, 'reports'));
+        }
         return res.json({ success: true, reports });
       }
 
@@ -549,6 +552,9 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         });
 
         console.log(`Найдено pending пересчётов: ${reports.length}`);
+        if (isPaginationRequested(req.query)) {
+          return res.json(createPaginatedResponse(reports, req.query, 'reports'));
+        }
         return res.json({ success: true, reports });
       }
 

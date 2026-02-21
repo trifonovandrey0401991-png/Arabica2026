@@ -76,7 +76,15 @@ async function loadProducts() {
 
     if (USE_DB) {
       const row = await db.findById('app_settings', 'master_catalog_products', 'key');
-      productsCache = (row && row.data) || [];
+      const rawData = row && row.data;
+      if (Array.isArray(rawData)) {
+        productsCache = rawData;
+      } else if (typeof rawData === 'string') {
+        try { productsCache = JSON.parse(rawData); } catch { productsCache = []; }
+        if (!Array.isArray(productsCache)) productsCache = [];
+      } else {
+        productsCache = [];
+      }
       return productsCache;
     }
 
@@ -85,7 +93,8 @@ async function loadProducts() {
     }
 
     const data = await fsp.readFile(PRODUCTS_FILE, 'utf8');
-    productsCache = JSON.parse(data);
+    const parsed = JSON.parse(data);
+    productsCache = Array.isArray(parsed) ? parsed : [];
     return productsCache;
   } catch (error) {
     console.error('[Master Catalog API] Ошибка загрузки продуктов:', error);
@@ -181,7 +190,16 @@ async function loadPendingCodes() {
 
     if (USE_DB) {
       const row = await db.findById('app_settings', 'master_catalog_pending_codes', 'key');
-      pendingCodesCache = (row && row.data) || [];
+      const rawData = row && row.data;
+      // Защита: data может прийти как строка или объект вместо массива
+      if (Array.isArray(rawData)) {
+        pendingCodesCache = rawData;
+      } else if (typeof rawData === 'string') {
+        try { pendingCodesCache = JSON.parse(rawData); } catch { pendingCodesCache = []; }
+        if (!Array.isArray(pendingCodesCache)) pendingCodesCache = [];
+      } else {
+        pendingCodesCache = [];
+      }
       return pendingCodesCache;
     }
 
@@ -190,7 +208,8 @@ async function loadPendingCodes() {
     }
 
     const data = await fsp.readFile(PENDING_CODES_FILE, 'utf8');
-    pendingCodesCache = JSON.parse(data);
+    const parsed = JSON.parse(data);
+    pendingCodesCache = Array.isArray(parsed) ? parsed : [];
     return pendingCodesCache;
   } catch (error) {
     console.error('[Master Catalog API] Ошибка загрузки pending-codes:', error);

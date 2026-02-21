@@ -139,19 +139,25 @@ class RecountService {
 
           if (status != null && status >= 200 && status < 300) {
             if (responseBody != null && responseBody.isNotEmpty) {
-              final result = jsonDecode(responseBody);
-              if (result['success'] == true) {
-                Logger.debug('✅ Отчет успешно создан');
-                // Отправляем push-уведомление
-                await _sendPushNotification(report);
-                return true;
+              try {
+                final result = jsonDecode(responseBody);
+                if (result['success'] == true) {
+                  Logger.debug('✅ Отчет успешно создан');
+                  // Отправляем push-уведомление
+                  await _sendPushNotification(report);
+                  return true;
+                }
+              } catch (parseError) {
+                // Сервер ответил, но JSON невалидный — не отправляем повторно
+                Logger.error('⚠️ Неверный JSON от сервера (веб)', parseError);
+                return false;
               }
             }
           }
           return false;
         } catch (e) {
-          Logger.error('⚠️ Ошибка веб-запроса', e);
-          // Пробуем обычный способ как fallback
+          Logger.error('⚠️ Ошибка веб-запроса (сетевая)', e);
+          // Пробуем обычный способ как fallback — сетевая ошибка до сервера
         }
       }
 
@@ -175,6 +181,24 @@ class RecountService {
             // Отправляем push-уведомление
             await _sendPushNotification(report);
             return true;
+          }
+        }
+
+        // Обработка специфических ошибок сервера
+        if (response.statusCode == 400) {
+          try {
+            final errBody = jsonDecode(response.body);
+            final errorType = errBody['error']?.toString() ?? '';
+            final message = errBody['message']?.toString() ?? '';
+            if (errorType == 'PRODUCT_NOT_FOUND') {
+              throw Exception('Товар не найден в каталоге: $message\nОбратитесь к администратору.');
+            }
+            if (errorType == 'TIME_EXPIRED') {
+              throw Exception('Время пересчёта истекло. Отчёт не принят.');
+            }
+            if (message.isNotEmpty) throw Exception(message);
+          } catch (parseErr) {
+            if (parseErr is Exception) rethrow;
           }
         }
 
