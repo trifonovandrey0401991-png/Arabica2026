@@ -939,62 +939,66 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     required RecountQuestion question,
   }) async {
     final controller = TextEditingController();
-    final result = await showDialog<int?>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.emeraldDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-        title: Text('Введите количество', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              question.productName,
-              style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.7)),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              style: TextStyle(color: Colors.white, fontSize: 24.sp),
-              textAlign: TextAlign.center,
-              decoration: InputDecoration(
-                hintText: '0',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.08),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide(color: AppColors.gold.withOpacity(0.3)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide(color: AppColors.gold),
+    int? result;
+    try {
+      result = await showDialog<int?>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.emeraldDark,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          title: Text('Введите количество', style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                question.productName,
+                style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.7)),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                style: TextStyle(color: Colors.white, fontSize: 24.sp),
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  hintText: '0',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.08),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(color: AppColors.gold.withOpacity(0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(color: AppColors.gold),
+                  ),
                 ),
               ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, null),
+              child: Text('Пропустить', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final value = int.tryParse(controller.text.trim());
+                Navigator.pop(ctx, value);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
+              child: Text('Подтвердить'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, null),
-            child: Text('Пропустить', style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final value = int.tryParse(controller.text.trim());
-              Navigator.pop(ctx, value);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
-            child: Text('Подтвердить'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
+      );
+    } finally {
+      controller.dispose();
+    }
 
     if (!mounted) return;
 

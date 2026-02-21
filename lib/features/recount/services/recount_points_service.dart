@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/recount_points_model.dart';
 import '../models/recount_settings_model.dart';
@@ -130,7 +131,9 @@ class RecountPointsService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_settingsCacheKey, jsonEncode(settings.toJson()));
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[RecountPoints] Ошибка кэширования настроек: $e');
+    }
   }
 
   /// Получить настройки из локального кэша
@@ -142,7 +145,9 @@ class RecountPointsService {
         Logger.debug('Используем кэшированные настройки пересчёта');
         return RecountSettings.fromJson(jsonDecode(cached));
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[RecountPoints] Ошибка чтения кэша настроек: $e');
+    }
     return null;
   }
 
