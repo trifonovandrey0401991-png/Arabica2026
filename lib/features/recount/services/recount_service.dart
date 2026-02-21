@@ -276,9 +276,19 @@ class RecountService {
           )
           .timeout(ApiConstants.longTimeout);
 
-      final result = jsonDecode(response.body);
-
+      // Проверяем statusCode ДО jsonDecode: если сервер вернул HTML (502/nginx) — не упадём с FormatException
       if (response.statusCode == 200 || response.statusCode == 201) {
+        Map<String, dynamic> result;
+        try {
+          result = jsonDecode(response.body) as Map<String, dynamic>;
+        } catch (_) {
+          Logger.error('❌ Сервер вернул не-JSON при успешном статусе: ${response.body.substring(0, 200)}');
+          return RecountSubmitResult(
+            success: false,
+            errorType: 'PARSE_ERROR',
+            message: 'Некорректный ответ сервера',
+          );
+        }
         if (result['success'] == true) {
           Logger.debug('✅ Отчёт пересчёта успешно отправлен');
           // Отправляем push-уведомление
@@ -292,15 +302,20 @@ class RecountService {
         }
       }
 
-      // Обработка ошибок
-      final errorType = result['error']?.toString();
-      final message = result['message']?.toString();
+      // Обработка ошибок — пытаемся распарсить тело, но не падаем если не JSON
+      Map<String, dynamic>? errorResult;
+      try {
+        errorResult = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {}
 
-      Logger.warning('⚠️ Ошибка отправки: $errorType - $message');
+      final errorType = errorResult?['error']?.toString();
+      final message = errorResult?['message']?.toString();
+
+      Logger.warning('⚠️ Ошибка отправки [${response.statusCode}]: $errorType - $message');
       return RecountSubmitResult(
         success: false,
-        errorType: errorType,
-        message: message ?? 'Ошибка сохранения отчёта',
+        errorType: errorType ?? 'HTTP_${response.statusCode}',
+        message: message ?? 'Ошибка сохранения отчёта (статус ${response.statusCode})',
       );
     } catch (e) {
       Logger.error('❌ Ошибка сети при отправке отчёта', e);

@@ -486,7 +486,7 @@ async function setupCigaretteVisionAPI(app) {
 
       // Пагинация
       const offsetNum = parseInt(offset) || 0;
-      const limitNum = parseInt(limit) || 50;
+      const limitNum = Math.min(parseInt(limit) || 50, 500); // max 500 — защита от DoS
       samples = samples.slice(offsetNum, offsetNum + limitNum);
 
       res.json({

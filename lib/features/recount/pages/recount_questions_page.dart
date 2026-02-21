@@ -694,11 +694,14 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     final isModelNotTrained = aiError != null &&
         (aiError.contains('не обучена') || aiError.contains('MODEL_NOT_TRAINED') || aiError.contains('modelMissing'));
     final isLowConfidence = aiError == 'LOW_CONFIDENCE';
+    final isNothingDetected = aiError == 'NOTHING_DETECTED';
     final dialogMessage = isModelNotTrained
         ? 'ИИ ещё обучается — образцов пока недостаточно.\nВведите количество вручную.'
-        : isLowConfidence
-            ? 'Фото нечёткое или товар плохо виден.\nСделайте более чёткое фото или введите вручную.'
-            : 'Попробуйте обвести товар на фото или сделать новое фото.';
+        : isNothingDetected
+            ? 'ИИ не нашёл товар на фото.\nУбедитесь что упаковка хорошо видна и заполняет кадр.'
+            : isLowConfidence
+                ? 'Фото нечёткое или товар плохо виден.\nСделайте более чёткое фото или введите вручную.'
+                : 'Попробуйте обвести товар на фото или сделать новое фото.';
 
     final result = await showDialog<String>(
       context: context,
@@ -719,7 +722,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         ),
         actionsAlignment: MainAxisAlignment.spaceEvenly,
         actions: [
-          if (!isModelNotTrained && !isLowConfidence) ...[
+          if (!isModelNotTrained && !isLowConfidence && !isNothingDetected) ...[
             TextButton.icon(
               onPressed: () => Navigator.pop(ctx, 'retake'),
               icon: Icon(Icons.camera_alt, color: Colors.white70, size: 18),
@@ -732,7 +735,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
             ),
           ],
-          if (isLowConfidence)
+          if (isLowConfidence || isNothingDetected)
             TextButton.icon(
               onPressed: () => Navigator.pop(ctx, 'retake'),
               icon: Icon(Icons.camera_alt, color: Colors.white70, size: 18),
@@ -1014,7 +1017,9 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           employeeAnswer: result,
           selectedRegion: _selectedRegion,
         );
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[Recount AI] Ошибка отправки ответа сотрудника в ИИ: $e');
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
