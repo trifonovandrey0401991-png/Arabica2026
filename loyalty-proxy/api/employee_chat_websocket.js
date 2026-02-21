@@ -38,12 +38,9 @@ const MAX_CONNECTIONS_PER_PHONE = 3; // Максимум соединений о
  * @param {http.Server} server - HTTP сервер Express
  */
 function setupChatWebSocket(server) {
-  const wss = new WebSocket.Server({
-    server,
-    path: '/ws/employee-chat'
-  });
+  const wss = new WebSocket.Server({ noServer: true });
 
-  console.log('✅ Employee Chat WebSocket initialized on /ws/employee-chat');
+  console.log('✅ Employee Chat WebSocket initialized (noServer mode, path: /ws/employee-chat)');
 
   wss.on('connection', (ws, req) => {
     let userPhone = null;

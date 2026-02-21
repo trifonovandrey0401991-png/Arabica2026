@@ -76,12 +76,9 @@ function invalidateParticipantsCache(conversationId) {
  * Инициализация WebSocket сервера для мессенджера
  */
 function setupMessengerWebSocket(server) {
-  const wss = new WebSocket.Server({
-    server,
-    path: '/ws/messenger'
-  });
+  const wss = new WebSocket.Server({ noServer: true });
 
-  console.log('✅ Messenger WebSocket initialized on /ws/messenger');
+  console.log('✅ Messenger WebSocket initialized (noServer mode, path: /ws/messenger)');
 
   wss.on('connection', (ws, req) => {
     let userPhone = null;

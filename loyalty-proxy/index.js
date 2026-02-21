@@ -800,11 +800,26 @@ setupJobApplicationsAPI(app);
 // Создаём HTTP сервер для поддержки WebSocket
 const server = http.createServer(app);
 
-// Инициализируем WebSocket для чата
+// Инициализируем WebSocket серверы (noServer mode — ручная маршрутизация upgrade)
 const wss = setupChatWebSocket(server);
-
-// Инициализируем WebSocket для мессенджера (отдельный путь /ws/messenger)
 const messengerWss = setupMessengerWebSocket(server);
+
+// Маршрутизация WebSocket upgrade запросов по path
+server.on('upgrade', (request, socket, head) => {
+  const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
+
+  if (pathname === '/ws/employee-chat') {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  } else if (pathname === '/ws/messenger') {
+    messengerWss.handleUpgrade(request, socket, head, (ws) => {
+      messengerWss.emit('connection', ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
+});
 
 // SCALABILITY: Async предзагрузка кэша админов + периодическое обновление
 preloadAdminCache().catch(e => console.error('AdminCache preload error:', e.message));
