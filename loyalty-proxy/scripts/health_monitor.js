@@ -6,8 +6,8 @@
  * При проблеме отправляет алерт в Telegram.
  *
  * Запуск: node scripts/health_monitor.js
- * Cron (каждые 5 минут):
- *   * * * * * cd /root/arabica_app/loyalty-proxy && node scripts/health_monitor.js >> /var/log/arabica-health.log 2>&1
+ * Cron (каждые 5 минут, добавить через: crontab -e):
+ *   *\/5 * * * * cd /root/arabica_app/loyalty-proxy && node scripts/health_monitor.js >> /var/log/arabica-health.log 2>&1
  */
 
 const https = require('https');
@@ -19,9 +19,9 @@ const CONFIG = {
   healthTimeoutMs: 10_000,
   ramThresholdPercent: 85,    // алерт если RAM > 85%
   diskThresholdPercent: 90,   // алерт если диск > 90%
-  // Telegram: задать через переменные окружения (не хранить секреты в коде)
-  telegramBotToken: process.env.ARABICA_TG_TOKEN || '',
-  telegramChatId:   process.env.ARABICA_TG_CHAT_ID || '',
+  // Telegram: admin-bot используется для алертов мониторинга
+  telegramBotToken: process.env.ARABICA_TG_TOKEN || '8451674364:AAFZDuvG-9wncMXTzt2CHM973YsQnrIHQPI',
+  telegramChatId:   process.env.ARABICA_TG_CHAT_ID || '840309879',
 };
 
 const PM2_PROCESSES = ['loyalty-proxy', 'ocr-server', 'arabica-admin-bot'];
