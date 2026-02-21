@@ -669,6 +669,28 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
               ],
             ),
           ),
+        // Предупреждение о ненадёжном поле (ИИ часто ошибается)
+        if (expectedRange != null && expectedRange['unreliable'] == true)
+          Padding(
+            padding: EdgeInsets.only(left: 12.w, top: 2.h),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, size: 11, color: AppColors.warning),
+                SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    'ИИ часто ошибается в этом поле — проверьте',
+                    style: TextStyle(
+                      fontSize: 9.sp,
+                      color: AppColors.warning,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }

@@ -376,6 +376,18 @@ function getExpectedRanges(intelligence, shopAddress, forDate) {
     }
   }
 
+  // Добавляем метки ненадёжности на основе accuracy stats
+  // Если ИИ ошибается в поле >50% раз (при ≥3 образцах) — помечаем unreliable
+  if (profile.accuracy) {
+    for (const field of Object.keys(ranges)) {
+      const acc = profile.accuracy[field];
+      if (acc && acc.total >= 3 && acc.rate < 0.5) {
+        ranges[field].unreliable = true;
+        ranges[field].accuracyRate = acc.rate;
+      }
+    }
+  }
+
   return Object.keys(ranges).length > 0 ? ranges : null;
 }
 

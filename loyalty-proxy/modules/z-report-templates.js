@@ -854,22 +854,85 @@ async function analyzeAndImprovePatterns(samples) {
     }
   }
 
-  // Ограничиваем количество паттернов (макс 50 на поле)
-  // ВАЖНО: защищённые паттерны (protected: true) никогда не удаляются
-  for (const field of Object.keys(patterns)) {
+  // ============ ВЗВЕШИВАНИЕ ПАТТЕРНОВ ============
+  // Тестируем каждый паттерн на всех образцах для вычисления accuracy-weight
+  const FIELDS_ALL = Object.keys(patterns);
+  for (const field of FIELDS_ALL) {
+    for (const pattern of patterns[field]) {
+      // Сброс счётчиков (пересчитываем с нуля на каждом цикле)
+      pattern.successCount = 0;
+      pattern.failCount = 0;
+
+      for (const sample of samples) {
+        if (!sample.rawText || !sample.correctData || sample.correctData[field] == null) continue;
+
+        try {
+          const isInt = field === 'ofdNotSent' || field === 'resourceKeys';
+          const capture = isInt ? '[^\\d]*(\\d+)' : '[^\\d]*(\\d[\\d\\s]*[.,]\\d{2})';
+          const regex = new RegExp(pattern.pattern + capture, 'i');
+          const match = sample.rawText.match(regex);
+
+          if (match) {
+            const extracted = isInt
+              ? parseInt(match[1], 10)
+              : parseFloat(match[1].replace(/\s/g, '').replace(',', '.'));
+            const correct = isInt
+              ? parseInt(sample.correctData[field], 10)
+              : parseFloat(sample.correctData[field]);
+
+            if (extracted === correct) {
+              pattern.successCount++;
+            } else {
+              pattern.failCount++;
+            }
+          }
+        } catch { /* regex error — skip */ }
+      }
+
+      // Weight: отношение успехов к попыткам (0.5 по умолчанию если нет данных)
+      const total = pattern.successCount + pattern.failCount;
+      pattern.weight = total > 0 ? Math.round((pattern.successCount / total) * 1000) / 1000 : 0.5;
+    }
+  }
+
+  // ============ АВТООЧИСТКА УСТАРЕВШИХ ПАТТЕРНОВ ============
+  // Удаляем паттерны старше 90 дней с accuracy < 30%
+  const PATTERN_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  let removedCount = 0;
+
+  for (const field of FIELDS_ALL) {
+    const before = patterns[field].length;
+    patterns[field] = patterns[field].filter(p => {
+      if (p.protected) return true; // Защищённые — всегда оставляем
+      const age = p.learnedAt ? now - new Date(p.learnedAt).getTime() : 0;
+      if (age > PATTERN_MAX_AGE_MS && p.weight < 0.3) {
+        console.log(`[Training] Удалён устаревший паттерн для ${field}: "${p.context}" (${Math.floor(age / 86400000)}дн, weight: ${p.weight})`);
+        return false;
+      }
+      return true;
+    });
+    removedCount += before - patterns[field].length;
+  }
+
+  if (removedCount > 0) {
+    console.log(`[Training] Автоочистка: удалено ${removedCount} устаревших паттернов`);
+  }
+
+  // ============ ОГРАНИЧЕНИЕ КОЛИЧЕСТВА ПАТТЕРНОВ ============
+  // Макс 50 на поле. Защищённые паттерны (protected: true) никогда не удаляются
+  for (const field of FIELDS_ALL) {
     if (patterns[field].length > 50) {
-      // Разделяем защищённые и обычные паттерны
       const protectedPatterns = patterns[field].filter(p => p.protected);
       const normalPatterns = patterns[field].filter(p => !p.protected);
 
-      // Сортируем обычные по уверенности и дате
+      // Сортируем: по весу (desc), потом по дате (desc)
       normalPatterns.sort((a, b) => {
-        if (a.confidence === 'high' && b.confidence !== 'high') return -1;
-        if (b.confidence === 'high' && a.confidence !== 'high') return 1;
-        return new Date(b.learnedAt) - new Date(a.learnedAt);
+        const wDiff = (b.weight || 0.5) - (a.weight || 0.5);
+        if (Math.abs(wDiff) > 0.01) return wDiff;
+        return new Date(b.learnedAt || 0) - new Date(a.learnedAt || 0);
       });
 
-      // Оставляем все защищённые + столько обычных сколько влезет
       const maxNormal = 50 - protectedPatterns.length;
       patterns[field] = [...protectedPatterns, ...normalPatterns.slice(0, maxNormal)];
     }
@@ -1007,11 +1070,33 @@ async function computeAveragedRegions(shopId) {
   if (!shopId) return null;
 
   const data = await loadTrainingSamples();
-  const samples = (data.samples || [])
-    .filter(s => s.shopId === shopId && s.fieldRegions)
-    .slice(-10); // Последние 10 с регионами
+  const allSamples = data.samples || [];
 
-  if (samples.length < 2) return null; // Минимум 2 образца
+  // Собираем образцы этого магазина с регионами
+  const shopSamples = allSamples
+    .filter(s => s.shopId === shopId && s.fieldRegions)
+    .slice(-10);
+
+  // Определяем тип кассы (templateId) для кросс-магазинного обучения
+  const templateId = shopSamples.find(s => s.templateId)?.templateId
+    || allSamples.find(s => s.shopId === shopId && s.templateId)?.templateId;
+
+  let samples = shopSamples;
+
+  // Кросс-магазин: если мало своих образцов и известен тип кассы — берём от других магазинов
+  if (samples.length < 3 && templateId) {
+    const crossShopSamples = allSamples
+      .filter(s => s.templateId === templateId && s.fieldRegions && s.shopId !== shopId)
+      .slice(-10);
+
+    if (crossShopSamples.length > 0) {
+      // Свои образцы приоритетнее (в конце массива = более новые)
+      samples = [...crossShopSamples, ...shopSamples].slice(-10);
+      console.log(`[Z-Report] Cross-shop regions for ${shopId}: ${shopSamples.length} own + ${crossShopSamples.length} from template ${templateId}`);
+    }
+  }
+
+  if (samples.length < 1) return null; // Достаточно 1 образца для быстрого старта
 
   const fields = ['totalSum', 'cashSum', 'ofdNotSent', 'resourceKeys'];
   const result = {};
@@ -1022,7 +1107,7 @@ async function computeAveragedRegions(shopId) {
       .filter(s => s.fieldRegions[field] && s.fieldRegions[field].width > 0)
       .map(s => s.fieldRegions[field]);
 
-    if (regions.length < 2) continue;
+    if (regions.length < 1) continue;
 
     // Усредняем координаты
     const avg = { x: 0, y: 0, width: 0, height: 0 };

@@ -365,9 +365,10 @@ async function extractZReportData(originalText, learnedPatterns = null, expected
 
   // ============ ОБЩАЯ СУММА / ВЫРУЧКА ============
 
-  // Сначала пробуем выученные паттерны
+  // Сначала пробуем выученные паттерны (отсортированы по weight — лучшие первыми)
   if (learnedPatterns.totalSum && learnedPatterns.totalSum.length > 0) {
-    for (const learned of learnedPatterns.totalSum) {
+    const sortedTotalSum = [...learnedPatterns.totalSum].sort((a, b) => (b.weight || 0.5) - (a.weight || 0.5));
+    for (const learned of sortedTotalSum) {
       try {
         const regex = new RegExp(learned.pattern + '[^\\d]*(\\d[\\d\\s]*[.,]\\d{2})', 'i');
         const match = text.match(regex);
@@ -413,9 +414,10 @@ async function extractZReportData(originalText, learnedPatterns = null, expected
 
   // ============ НАЛИЧНЫЕ ============
 
-  // Сначала пробуем выученные паттерны
+  // Сначала пробуем выученные паттерны (отсортированы по weight)
   if (learnedPatterns.cashSum && learnedPatterns.cashSum.length > 0) {
-    for (const learned of learnedPatterns.cashSum) {
+    const sortedCashSum = [...learnedPatterns.cashSum].sort((a, b) => (b.weight || 0.5) - (a.weight || 0.5));
+    for (const learned of sortedCashSum) {
       try {
         const regex = new RegExp(learned.pattern + '[^\\d]*(\\d[\\d\\s]*[.,]\\d{2})', 'i');
         const match = text.match(regex);
@@ -475,9 +477,10 @@ async function extractZReportData(originalText, learnedPatterns = null, expected
 
   // ============ НЕ ПЕРЕДАНЫ В ОФД ============
 
-  // Сначала пробуем выученные паттерны
+  // Сначала пробуем выученные паттерны (отсортированы по weight)
   if (learnedPatterns.ofdNotSent && learnedPatterns.ofdNotSent.length > 0) {
-    for (const learned of learnedPatterns.ofdNotSent) {
+    const sortedOfdNotSent = [...learnedPatterns.ofdNotSent].sort((a, b) => (b.weight || 0.5) - (a.weight || 0.5));
+    for (const learned of sortedOfdNotSent) {
       try {
         const regex = new RegExp(learned.pattern + '[^\\d]*(\\d+)', 'i');
         const match = text.match(regex);
@@ -715,9 +718,10 @@ async function extractZReportData(originalText, learnedPatterns = null, expected
 
   // ============ РЕСУРС КЛЮЧЕЙ ============
 
-  // Сначала пробуем выученные паттерны
+  // Сначала пробуем выученные паттерны (отсортированы по weight)
   if (learnedPatterns.resourceKeys && learnedPatterns.resourceKeys.length > 0) {
-    for (const learned of learnedPatterns.resourceKeys) {
+    const sortedResourceKeys = [...learnedPatterns.resourceKeys].sort((a, b) => (b.weight || 0.5) - (a.weight || 0.5));
+    for (const learned of sortedResourceKeys) {
       try {
         const regex = new RegExp(learned.pattern + '[^\\d]*(\\d+)', 'i');
         const match = text.match(regex);
