@@ -272,30 +272,28 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
         });
       }
 
-      // Удаляем все существующие файлы
-      const existingFiles = await fsp.readdir(RECOUNT_QUESTIONS_DIR);
-      for (const file of existingFiles) {
-        if (file.endsWith('.json')) {
-          await fsp.unlink(path.join(RECOUNT_QUESTIONS_DIR, file));
-        }
-      }
-      console.log(`Удалено ${existingFiles.length} существующих файлов`);
+      // === АТОМАРНЫЙ ПОРЯДОК: файлы первыми, удаление сирот, потом DB ===
+      //
+      // Старый порядок: delete all files → delete DB → write new files  — ОПАСНО:
+      //   если запись новых файлов упала, оба источника пусты.
+      //
+      // Новый порядок:
+      //   1. Пишем новые файлы (overwrite если barcode совпадает)
+      //   2. Удаляем старые файлы которых нет в новом наборе
+      //   3. DB: DELETE + INSERT в транзакции (try-catch: файлы уже консистентны)
 
-      // DB: удаляем все записи
-      if (USE_DB) {
-        try { await db.query('DELETE FROM "recount_questions"'); }
-        catch (dbErr) { console.error('DB delete all recount_questions error:', dbErr.message); }
-      }
-
-      // Создаем новые файлы
+      // ШАГ 1: Создаём новые файлы, запоминаем их имена
       const createdProducts = [];
+      const newFileNames = new Set();
+
       for (const product of products) {
         const barcode = product.barcode?.toString().trim();
         if (!barcode) continue;
 
         const productId = `product_${barcode}`;
         const sanitizedId = productId.replace(/[^a-zA-Z0-9_\-]/g, '_');
-        const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
+        const fileName = `${sanitizedId}.json`;
+        const filePath = path.join(RECOUNT_QUESTIONS_DIR, fileName);
 
         const productData = {
           id: productId,
@@ -308,13 +306,44 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
         };
 
         await writeJsonFile(filePath, productData);
-
-        if (USE_DB) {
-          try { await db.upsert('recount_questions', { id: productId, data: productData, created_at: productData.createdAt }); }
-          catch (dbErr) { /* bulk - skip errors */ }
-        }
-
+        newFileNames.add(fileName);
         createdProducts.push(productData);
+      }
+
+      // ШАГ 2: Удаляем старые файлы, которых нет в новом наборе (сироты)
+      let deletedCount = 0;
+      const existingFiles = await fsp.readdir(RECOUNT_QUESTIONS_DIR);
+      for (const file of existingFiles) {
+        if (file.endsWith('.json') && !newFileNames.has(file)) {
+          try {
+            await fsp.unlink(path.join(RECOUNT_QUESTIONS_DIR, file));
+            deletedCount++;
+          } catch (e) {
+            console.error(`bulk-upload: не удалось удалить сирота-файл ${file}:`, e.message);
+          }
+        }
+      }
+      console.log(`bulk-upload: создано ${createdProducts.length} файлов, удалено ${deletedCount} сирот`);
+
+      // ШАГ 3: DB — DELETE всех старых + INSERT всех новых в одной транзакции
+      // Файлы уже консистентны, поэтому ошибка DB — только логируется
+      if (USE_DB) {
+        try {
+          await db.transaction(async (client) => {
+            await client.query('DELETE FROM "recount_questions"');
+            for (const p of createdProducts) {
+              await client.query(
+                `INSERT INTO recount_questions (id, data, created_at)
+                 VALUES ($1, $2::jsonb, $3)
+                 ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
+                [p.id, JSON.stringify(p), p.createdAt]
+              );
+            }
+          });
+          console.log(`bulk-upload: DB транзакция завершена (${createdProducts.length} записей)`);
+        } catch (dbErr) {
+          console.error('bulk-upload: DB транзакция не прошла (файлы сохранены):', dbErr.message);
+        }
       }
 
       console.log(`Создано ${createdProducts.length} товаров`);
