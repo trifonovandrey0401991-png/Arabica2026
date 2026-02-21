@@ -9,7 +9,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const fetch = require('node-fetch');
-const { writeJsonFile } = require('../utils/async_fs');
+const { writeJsonFile, withLock } = require('../utils/async_fs');
 const { fileExists } = require('../utils/file_helpers');
 const { getMoscowTime } = require('../utils/moscow_time');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
@@ -100,6 +100,14 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
       // ============================================
       const shiftType = req.body.shiftType; // 'morning' | 'evening'
 
+      if (!shiftType || !['morning', 'evening'].includes(shiftType)) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_SHIFT_TYPE',
+          message: 'shiftType обязателен и должен быть "morning" или "evening"'
+        });
+      }
+
       if (shiftType) {
         // Загружаем настройки пересчёта
         const settingsFile = `${DATA_DIR}/points-settings/recount_points_settings.json`;
@@ -149,6 +157,26 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
       }
 
       // ============================================
+      // D1: Валидация barcode товаров по мастер-каталогу
+      // ============================================
+      if (Array.isArray(req.body.answers) && req.body.answers.length > 0) {
+        const { getMasterProductByBarcode } = require('./master_catalog_api');
+        for (const answer of req.body.answers) {
+          const barcode = answer.barcode || answer.productId;
+          if (barcode) {
+            const product = await getMasterProductByBarcode(barcode);
+            if (!product) {
+              return res.status(400).json({
+                success: false,
+                error: 'PRODUCT_NOT_FOUND',
+                message: `Товар с barcode "${barcode}" не найден в мастер-каталоге`
+              });
+            }
+          }
+        }
+      }
+
+      // ============================================
       // Сохранение отчёта
       // ============================================
       const reportsDir = `${DATA_DIR}/recount-reports`;
@@ -156,7 +184,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         await fsp.mkdir(reportsDir, { recursive: true });
       }
 
-      const reportId = req.body.id || `report_${Date.now()}`;
+      const reportId = req.body.id || `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       // Санитизируем имя файла: заменяем недопустимые символы на подчеркивания
       const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
@@ -186,7 +214,16 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         reviewDeadline: reviewDeadline.toISOString()
       };
 
-      // DB + dual-write
+      // Сначала пишем файл (стандарт проекта: file first, DB second)
+      try {
+        await writeJsonFile(reportFile, reportData);
+        console.log('✅ Отчет пересчёта сохранен:', reportFile);
+      } catch (writeError) {
+        console.error('Ошибка записи файла:', writeError);
+        throw writeError;
+      }
+
+      // DB dual-write (после файла — если DB падает, файл уже есть)
       if (USE_DB) {
         try {
           const dbData = camelToDbRecount(reportData);
@@ -196,15 +233,6 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         } catch (dbErr) {
           console.error('[Recount] DB write error:', dbErr.message);
         }
-      }
-
-      // Всегда пишем в файл (dual-write для внешних потребителей)
-      try {
-        await writeJsonFile(reportFile, reportData);
-        console.log('✅ Отчет пересчёта сохранен:', reportFile);
-      } catch (writeError) {
-        console.error('Ошибка записи файла:', writeError);
-        throw writeError;
       }
 
       // Обновляем/удаляем соответствующий pending отчёт (созданный scheduler)
@@ -218,7 +246,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
               const pfPath = path.join(reportsDir, pf);
               const pfContent = JSON.parse(await fsp.readFile(pfPath, 'utf8'));
               if (pfContent.status === 'pending' && pfContent.shopAddress === shopAddress &&
-                  (!reportShiftType || pfContent.shiftType === reportShiftType)) {
+                  reportShiftType && pfContent.shiftType === reportShiftType) {
                 // Удаляем pending — он заменён реальным отчётом
                 await fsp.unlink(pfPath);
                 console.log(`🗑️ Pending отчёт удалён: ${pf}`);
@@ -596,7 +624,13 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
       report.ratedAt = new Date().toISOString();
       report.status = 'confirmed';
 
-      // DB dual-write
+      // Файл первым (dual-write: файл → затем DB)
+      if (actualFile && await fileExists(actualFile)) {
+        await writeJsonFile(actualFile, report);
+      }
+      console.log('✅ Оценка сохранена для отчета:', reportId);
+
+      // DB dual-write (после файла)
       if (USE_DB) {
         try {
           await db.updateById('recount_reports', reportId, {
@@ -611,12 +645,6 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
           console.error('[Recount] DB update error in rating:', dbErr.message);
         }
       }
-
-      // Всегда пишем в файл (dual-write)
-      if (actualFile && await fileExists(actualFile)) {
-        await writeJsonFile(actualFile, report);
-      }
-      console.log('✅ Оценка сохранена для отчета:', reportId);
 
       // Загружаем настройки баллов пересчёта
       const settingsFile = `${DATA_DIR}/points-settings/recount_points_settings.json`;
@@ -647,39 +675,74 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
       }
 
       const penaltiesFile = path.join(efficiencyDir, `${monthKey}.json`);
-      let penalties = [];
-      if (await fileExists(penaltiesFile)) {
-        penalties = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
-        if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
-      }
-
-      // Проверяем дубликат
       const sourceId = `recount_rating_${reportId}`;
-      const exists = penalties.some(p => p.sourceId === sourceId);
-      if (!exists) {
-        const penalty = {
-          id: `ep_${Date.now()}`,
-          type: 'employee',
-          entityId: report.employeePhone || report.employeeId,
-          entityName: report.employeeName,
-          shopAddress: report.shopAddress || null,
-          employeeId: report.employeePhone || report.employeeId,
-          employeeName: report.employeeName,
-          category: 'recount',
-          categoryName: 'Пересчёт товара',
-          date: today,
-          points: Math.round(efficiencyPoints * 100) / 100,
-          reason: `Оценка пересчёта: ${rating}/10`,
-          sourceId: sourceId,
-          sourceType: 'recount_report',
-          createdAt: now.toISOString()
-        };
 
-        penalties.push(penalty);
-        await writeJsonFile(penaltiesFile, penalties);
-        // DB dual-write
-        await dbInsertPenalty(penalty);
-        console.log(`✅ Баллы эффективности сохранены: ${efficiencyPoints} для ${report.employeeName}`);
+      // withLock: атомарный read-check-write — защита от race condition при двух одновременных оценках
+      await withLock(`efficiency-penalties-${monthKey}`, async () => {
+        let penalties = [];
+        if (await fileExists(penaltiesFile)) {
+          penalties = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
+          if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
+        }
+
+        // Проверяем дубликат внутри лока (защита от race condition)
+        const exists = penalties.some(p => p.sourceId === sourceId);
+        if (!exists) {
+          const penalty = {
+            id: `ep_${Date.now()}`,
+            type: 'employee',
+            entityId: report.employeePhone || report.employeeId,
+            entityName: report.employeeName,
+            shopAddress: report.shopAddress || null,
+            employeeId: report.employeePhone || report.employeeId,
+            employeeName: report.employeeName,
+            category: 'recount',
+            categoryName: 'Пересчёт товара',
+            date: today,
+            points: Math.round(efficiencyPoints * 100) / 100,
+            reason: `Оценка пересчёта: ${rating}/10`,
+            sourceId: sourceId,
+            sourceType: 'recount_report',
+            createdAt: now.toISOString()
+          };
+
+          penalties.push(penalty);
+          await writeJsonFile(penaltiesFile, penalties);
+          // DB dual-write
+          await dbInsertPenalty(penalty);
+          console.log(`✅ Баллы эффективности сохранены: ${efficiencyPoints} для ${report.employeeName}`);
+        } else {
+          console.log(`[Recount] Дубликат sourceId пропущен: ${sourceId}`);
+        }
+      });
+
+      // C4: Feedback loop — рейтинг admin → AI training
+      // Если в ответах есть данные ИИ, сообщаем модели была ли она права
+      if (Array.isArray(report.answers)) {
+        try {
+          const cigaretteVision = require('../modules/cigarette-vision');
+          for (const answer of report.answers) {
+            const pid = answer.productId || answer.barcode;
+            if (!pid || answer.aiQuantity == null || answer.actualBalance == null) continue;
+            const diff = Math.abs(answer.aiQuantity - answer.actualBalance);
+            const isCorrect = diff <= 1;
+            if (isCorrect && rating >= 8) {
+              // ИИ был прав, высокая оценка → успех
+              await cigaretteVision.reportAiSuccess(pid);
+            } else if (!isCorrect && rating <= 4) {
+              // ИИ ошибся, низкая оценка → сохраняем как ошибку для переобучения
+              await cigaretteVision.reportAiError({
+                productId: pid,
+                productName: answer.productName || '',
+                expectedCount: answer.actualBalance,
+                aiCount: answer.aiQuantity,
+                shopAddress: report.shopAddress || '',
+              });
+            }
+          }
+        } catch (aiErr) {
+          console.warn('[Recount] C4 feedback loop error:', aiErr.message);
+        }
       }
 
       // Отправляем push-уведомление сотруднику

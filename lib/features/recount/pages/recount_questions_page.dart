@@ -1,9 +1,11 @@
+import 'dart:async' show TimeoutException;
 import 'dart:io';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -60,6 +62,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   bool _answerSaved = false; // Флаг, что ответ сохранен и заблокирован для изменения
   bool _isModelTrained = false; // Обучена ли модель ИИ
   Map<String, double>? _selectedRegion; // Выделенная область для текущего вопроса
+  double _uploadProgress = 0.0; // Прогресс отправки отчёта (0.0–1.0)
 
   @override
   void initState() {
@@ -160,8 +163,41 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       }
 
       // Проверяем обучена ли модель ИИ (не блокируем загрузку)
+      final questionsWithAi = aiActiveQuestions; // захватываем до async
       CigaretteVisionService.isModelTrained().then((trained) {
-        if (mounted) setState(() => _isModelTrained = trained);
+        if (!mounted) return;
+        setState(() => _isModelTrained = trained);
+        if (trained && questionsWithAi == 0) {
+          // Фаза 2.2: модель обучена, но в этом магазине нет AI-товаров
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Flexible(child: Text('Для этого магазина нет товаров с ИИ — пересчёт без автоматической проверки')),
+                ],
+              ),
+              backgroundColor: Colors.blueGrey[700],
+              duration: Duration(seconds: 5),
+            ),
+          );
+        } else if (!trained && questionsWithAi > 0) {
+          // Фаза 4.1: есть AI-товары, но модель ещё не обучена
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.smart_toy_outlined, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Flexible(child: Text('ИИ ещё обучается — для $questionsWithAi тов. потребуется ввод вручную')),
+                ],
+              ),
+              backgroundColor: Colors.orange[700],
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
       });
 
       if (!mounted) return;
@@ -181,6 +217,9 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           ),
         );
       });
+
+      // Предлагаем восстановить черновик (B1)
+      await _offerDraftRestore();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -202,6 +241,107 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     _lessByController.dispose();
     super.dispose();
   }
+
+  // ─── Черновик пересчёта (B1) ───────────────────────────────────────────────
+
+  String get _draftKey =>
+      'recount_draft_${widget.shopAddress}_${widget.employeeName}';
+
+  Future<void> _saveDraft() async {
+    if (_answers.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = jsonEncode(_answers.map((a) => a.toJson()).toList());
+      await prefs.setString(_draftKey, json);
+    } catch (e) {
+      Logger.warning('Не удалось сохранить черновик: $e');
+    }
+  }
+
+  Future<void> _deleteDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_draftKey);
+    } catch (_) {}
+  }
+
+  Future<void> _offerDraftRestore() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_draftKey);
+      if (saved == null || !mounted) return;
+
+      final restored = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.emerald,
+          title: Text('Восстановить прогресс?',
+              style: TextStyle(color: Colors.white)),
+          content: Text(
+            'Найден незавершённый пересчёт. Продолжить с того места?',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Начать заново', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('Продолжить'),
+            ),
+          ],
+        ),
+      );
+
+      if (restored == true && mounted) {
+        final decoded = jsonDecode(saved) as List<dynamic>;
+        final restoredAnswers =
+            decoded.map((j) => RecountAnswer.fromJson(j as Map<String, dynamic>)).toList();
+
+        // Применяем только ответы, индексы которых совпадают
+        final count = restoredAnswers.length < _answers.length
+            ? restoredAnswers.length
+            : _answers.length;
+
+        setState(() {
+          for (int i = 0; i < count; i++) {
+            if (restoredAnswers[i].answer.isNotEmpty) {
+              _answers[i] = restoredAnswers[i];
+            }
+          }
+          // Переходим к первому неотвеченному вопросу
+          final firstUnanswered =
+              _answers.indexWhere((a) => a.answer.isEmpty);
+          if (firstUnanswered != -1) {
+            _currentQuestionIndex = firstUnanswered;
+          }
+        });
+      } else if (restored == false) {
+        await _deleteDraft();
+      }
+    } catch (e) {
+      Logger.warning('Не удалось восстановить черновик: $e');
+    }
+  }
+
+  // ─── Проверка подключения (B2) ─────────────────────────────────────────────
+
+  Future<bool> _checkConnectivity() async {
+    if (kIsWeb) return true; // на вебе не можем проверить через dart:io
+    try {
+      final result = await InternetAddress.lookup('arabica26.ru')
+          .timeout(const Duration(seconds: 4));
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } on SocketException catch (_) {
+      return false;
+    } on TimeoutException catch (_) {
+      return false;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
 
   Future<void> _takePhoto() async {
     try {
@@ -305,6 +445,8 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     if (mounted) setState(() {
       _answerSaved = true;
     });
+    // Сохраняем черновик (B1) — асинхронно, не блокируем UI
+    _saveDraft();
   }
 
   /// Новый интерактивный поток проверки с ИИ (по паттерну кофемашины)
@@ -383,6 +525,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           aiCount: aiCount,
           question: question,
           imageBytes: imageBytes,
+          confidence: result.confidence,
         );
       } else {
         // ИИ не смог — "Перефотографировать" / "Обвести товар"
@@ -392,10 +535,17 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           questionIndex: questionIndex,
           question: question,
           imageBytes: imageBytes,
+          aiError: result.error,
         );
       }
     } catch (e) {
       Logger.error('Ошибка ИИ проверки', e);
+      if (!mounted) return;
+      // При таймауте или другой ошибке сети — предлагаем ввести вручную
+      if (e is TimeoutException) {
+        _answers[questionIndex] = answer.copyWith(aiVerified: false);
+        await _promptManualQuantity(questionIndex: questionIndex, question: question);
+      }
     } finally {
       if (mounted) setState(() => _isVerifyingAI = false);
     }
@@ -407,6 +557,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     required int aiCount,
     required RecountQuestion question,
     required Uint8List imageBytes,
+    double confidence = 0,
   }) async {
     final result = await showDialog<String>(
       context: context,
@@ -443,6 +594,37 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                     'ИИ насчитал',
                     style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.6)),
                   ),
+                  SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.bar_chart,
+                        size: 12,
+                        color: confidence >= 0.7
+                            ? Colors.green[300]
+                            : confidence >= 0.5
+                                ? Colors.orange[300]
+                                : Colors.red[300],
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        confidence >= 0.7
+                            ? 'Уверенность: высокая'
+                            : confidence >= 0.5
+                                ? 'Уверенность: средняя'
+                                : 'Уверенность: низкая',
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          color: confidence >= 0.7
+                              ? Colors.green[300]
+                              : confidence >= 0.5
+                                  ? Colors.orange[300]
+                                  : Colors.red[300],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -478,19 +660,40 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         employeeConfirmedQuantity: aiCount,
         aiMismatch: false,
       );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('Подтверждено: $aiCount шт.'),
-            ],
+      // Сохраняем позитивный образец для дообучения (fire-and-forget)
+      final confirmedAnswer = _answers[questionIndex];
+      if (confirmedAnswer.photoPath != null) {
+        () async {
+          try {
+            final bytes = kIsWeb
+                ? base64Decode(confirmedAnswer.photoPath!.split(',').last)
+                : await File(confirmedAnswer.photoPath!).readAsBytes();
+            await CigaretteVisionService.detectAndCountWithTraining(
+              imageBytes: bytes,
+              productId: question.barcode,
+              productName: question.productName,
+              shopAddress: widget.shopAddress,
+              isAiActive: question.isAiActive,
+              employeeAnswer: aiCount,
+            );
+          } catch (_) {}
+        }();
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('Подтверждено: $aiCount шт.'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
           ),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
+        );
+      }
     } else {
       // Неверно → предлагаем обвести область или ввести вручную
       await _openRegionAndRetry(
@@ -506,7 +709,18 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     required int questionIndex,
     required RecountQuestion question,
     required Uint8List imageBytes,
+    String? aiError,
   }) async {
+    // Определяем причину и подбираем понятное сообщение
+    final isModelNotTrained = aiError != null &&
+        (aiError.contains('не обучена') || aiError.contains('MODEL_NOT_TRAINED') || aiError.contains('modelMissing'));
+    final isLowConfidence = aiError == 'LOW_CONFIDENCE';
+    final dialogMessage = isModelNotTrained
+        ? 'ИИ ещё обучается — образцов пока недостаточно.\nВведите количество вручную.'
+        : isLowConfidence
+            ? 'Фото нечёткое или товар плохо виден.\nСделайте более чёткое фото или введите вручную.'
+            : 'Попробуйте обвести товар на фото или сделать новое фото.';
+
     final result = await showDialog<String>(
       context: context,
       barrierDismissible: false,
@@ -521,21 +735,34 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           ],
         ),
         content: Text(
-          'Попробуйте обвести товар на фото или сделать новое фото.',
+          dialogMessage,
           style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.8)),
         ),
         actionsAlignment: MainAxisAlignment.spaceEvenly,
         actions: [
+          if (!isModelNotTrained && !isLowConfidence) ...[
+            TextButton.icon(
+              onPressed: () => Navigator.pop(ctx, 'retake'),
+              icon: Icon(Icons.camera_alt, color: Colors.white70, size: 18),
+              label: Text('Перефото', style: TextStyle(color: Colors.white70)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(ctx, 'region'),
+              icon: Icon(Icons.crop, size: 18),
+              label: Text('Обвести'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
+            ),
+          ],
+          if (isLowConfidence)
+            TextButton.icon(
+              onPressed: () => Navigator.pop(ctx, 'retake'),
+              icon: Icon(Icons.camera_alt, color: Colors.white70, size: 18),
+              label: Text('Переснять', style: TextStyle(color: Colors.white70)),
+            ),
           TextButton.icon(
-            onPressed: () => Navigator.pop(ctx, 'retake'),
-            icon: Icon(Icons.camera_alt, color: Colors.white70, size: 18),
-            label: Text('Перефотографировать', style: TextStyle(color: Colors.white70)),
-          ),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pop(ctx, 'region'),
-            icon: Icon(Icons.crop, size: 18),
-            label: Text('Обвести товар'),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
+            onPressed: () => Navigator.pop(ctx, 'manual'),
+            icon: Icon(Icons.edit, color: Colors.blue[300], size: 18),
+            label: Text('Ввести вручную', style: TextStyle(color: Colors.blue[300])),
           ),
         ],
       ),
@@ -554,6 +781,8 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         question: question,
         imageBytes: imageBytes,
       );
+    } else if (result == 'manual') {
+      await _promptManualQuantity(questionIndex: questionIndex, question: question);
     }
   }
 
@@ -565,6 +794,9 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   }) async {
     final answer = _answers[questionIndex];
     if (answer.photoPath == null) return;
+
+    // На web photoPath может быть data URL — File() не работает
+    if (kIsWeb) return;
 
     // Открываем выбор области
     final region = await CounterRegionSelector.show(
@@ -790,8 +1022,11 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       );
       // Отправляем employeeAnswer на сервер для pending sample
       try {
+        final photoBytes = kIsWeb
+            ? base64Decode(_answers[questionIndex].photoPath!.split(',').last)
+            : await File(_answers[questionIndex].photoPath!).readAsBytes();
         await CigaretteVisionService.detectAndCountWithTraining(
-          imageBytes: await File(_answers[questionIndex].photoPath!).readAsBytes(),
+          imageBytes: photoBytes,
           productId: question.barcode,
           productName: question.productName,
           shopAddress: widget.shopAddress,
@@ -801,6 +1036,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         );
       } catch (_) {}
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -968,14 +1204,37 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       }
     }
 
+    // Проверка интернета (B2)
+    if (mounted) setState(() => _uploadProgress = 0.05);
+    final hasInternet = await _checkConnectivity();
+    if (!hasInternet) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _uploadProgress = 0.0;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Нет интернета. Ответы сохранены, попробуйте позже.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      return;
+    }
+
     if (mounted) setState(() {
       _isSubmitting = true;
       _completedAt = DateTime.now();
+      _uploadProgress = 0.2;
     });
 
     try {
       final duration = _completedAt!.difference(_startedAt!);
-      
+
+      if (mounted) setState(() => _uploadProgress = 0.4);
+
       final report = RecountReport(
         id: RecountReport.generateId(
           widget.employeeName,
@@ -991,10 +1250,16 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         answers: _answers,
       );
 
+      if (mounted) setState(() => _uploadProgress = 0.6);
       final success = await RecountService.createReport(report);
+      if (mounted) setState(() => _uploadProgress = 0.9);
 
       if (mounted) {
         if (success) {
+          // Удаляем черновик после успешной отправки (B1)
+          await _deleteDraft();
+          if (mounted) setState(() => _uploadProgress = 1.0);
+
           // Отправляем уведомление админу о новом отчёте
           await ReportNotificationService.createNotification(
             reportType: ReportType.recount,
@@ -1003,6 +1268,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
             shopName: widget.shopAddress,
           );
 
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Отчет успешно отправлен'),
@@ -1019,6 +1285,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           );
           if (mounted) setState(() {
             _isSubmitting = false;
+            _uploadProgress = 0.0;
           });
         }
       }
@@ -1033,6 +1300,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         );
         if (mounted) setState(() {
           _isSubmitting = false;
+          _uploadProgress = 0.0;
         });
       }
     }
@@ -1180,6 +1448,20 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                   ),
                 ),
               ),
+              // Прогресс-бар загрузки отчёта (B3) — виден только при отправке
+              if (_isSubmitting)
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 2.h),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4.r),
+                    child: LinearProgressIndicator(
+                      value: _uploadProgress,
+                      backgroundColor: Colors.white.withOpacity(0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.greenAccent.withOpacity(0.8)),
+                      minHeight: 4,
+                    ),
+                  ),
+                ),
               SizedBox(height: 4),
               // Контент
               Expanded(

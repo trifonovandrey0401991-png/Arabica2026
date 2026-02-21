@@ -110,7 +110,15 @@ class RecountScheduler extends BaseReportScheduler {
     const dataToSave = { ...report };
     delete dataToSave._filePath;
 
-    // DB dual-write: обновляем статус в БД (только для реальных отчётов, не pending)
+    // Файл первым (dual-write: файл → затем DB)
+    try {
+      await writeJsonFile(filePath, dataToSave);
+    } catch (e) {
+      console.error(`${this.tag} Error saving report:`, e.message);
+      return false;
+    }
+
+    // DB dual-write: обновляем статус в БД после файла (только для реальных отчётов, не pending)
     if (USE_DB && report.id && !report.id.startsWith('pending_recount_')) {
       try {
         const dbUpdate = {
@@ -134,13 +142,7 @@ class RecountScheduler extends BaseReportScheduler {
       }
     }
 
-    try {
-      await writeJsonFile(filePath, dataToSave);
-      return true;
-    } catch (e) {
-      console.error(`${this.tag} Error saving report:`, e.message);
-      return false;
-    }
+    return true;
   }
 
   async createPendingReport(shop, shiftType, deadline) {
@@ -149,7 +151,7 @@ class RecountScheduler extends BaseReportScheduler {
     }
 
     const now = new Date();
-    const reportId = `pending_recount_${shiftType}_${shop.address.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
+    const reportId = `pending_recount_${shiftType}_${shop.address.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const filePath = path.join(this.RECOUNT_REPORTS_DIR, `${reportId}.json`);
 
     const report = {
@@ -287,6 +289,9 @@ class RecountScheduler extends BaseReportScheduler {
     const reports = await this.loadTodayReports();
     let rejectedCount = 0;
 
+    // Трекаем ID уже обработанных отчётов чтобы DB-путь не дублировал штрафы
+    const processedIds = new Set();
+
     for (const report of reports) {
       if (report.status !== 'review') continue;
       if (!report.reviewDeadline) continue;
@@ -298,6 +303,7 @@ class RecountScheduler extends BaseReportScheduler {
         report.rejectedAt = now.toISOString();
         await this.saveReport(report);
         rejectedCount++;
+        processedIds.add(report.id);
 
         console.log(`${this.tag} Recount REJECTED (admin timeout): ${report.shopName} (${report.shiftType}), employee: ${report.employeeName}`);
 
@@ -315,12 +321,20 @@ class RecountScheduler extends BaseReportScheduler {
           [now.toISOString()]
         );
         for (const row of stuckRows.rows || stuckRows) {
-          await db.updateById('recount_reports', row.id, {
-            status: 'rejected',
-            rejected_at: now.toISOString(),
-            updated_at: now.toISOString()
-          });
+          // Пропускаем уже обработанные JSON-путём (idempotency)
+          if (processedIds.has(row.id)) continue;
+
+          // Атомарный UPDATE: меняет только если status всё ещё 'review'
+          // Если 0 строк — другой инстанс scheduler уже обработал → пропускаем штраф
+          const updated = await db.query(
+            `UPDATE recount_reports SET status='rejected', rejected_at=$2, updated_at=$3
+             WHERE id=$1 AND status='review' RETURNING id`,
+            [row.id, now.toISOString(), now.toISOString()]
+          );
+          if (!updated.rows || updated.rows.length === 0) continue;
+
           rejectedCount++;
+          processedIds.add(row.id);
           console.log(`${this.tag} DB: Recount REJECTED (stale review): ${row.shop_address}, employee: ${row.employee_name}`);
 
           // Штраф управляющей
@@ -337,12 +351,19 @@ class RecountScheduler extends BaseReportScheduler {
            FROM recount_reports WHERE status = 'review' AND review_deadline IS NULL`
         );
         for (const row of nullDeadlineRows.rows || nullDeadlineRows) {
-          await db.updateById('recount_reports', row.id, {
-            status: 'rejected',
-            rejected_at: now.toISOString(),
-            updated_at: now.toISOString()
-          });
+          // Пропускаем уже обработанные (idempotency)
+          if (processedIds.has(row.id)) continue;
+
+          // Атомарный UPDATE: предотвращает двойной штраф при двух инстансах
+          const updated = await db.query(
+            `UPDATE recount_reports SET status='rejected', rejected_at=$2, updated_at=$3
+             WHERE id=$1 AND status='review' RETURNING id`,
+            [row.id, now.toISOString(), now.toISOString()]
+          );
+          if (!updated.rows || updated.rows.length === 0) continue;
+
           rejectedCount++;
+          processedIds.add(row.id);
           console.log(`${this.tag} DB: Recount REJECTED (null deadline): ${row.shop_address}, employee: ${row.employee_name}`);
 
           // Штраф управляющей
@@ -485,6 +506,65 @@ class RecountScheduler extends BaseReportScheduler {
   }
 
   // ==================== API: CONFIRM REPORT ====================
+
+  // ==================== AI AUTO-TRAINING TRIGGER (C5) ====================
+
+  /**
+   * Override: добавляем ежедневную проверку AI training после стандартных чеков
+   */
+  async runScheduledChecks() {
+    await super.runScheduledChecks();
+    await this._checkAiAutoTraining();
+  }
+
+  /**
+   * Проверить нужно ли запустить переобучение ИИ (раз в сутки)
+   * Если накопилось >= 50 новых аннотированных образцов → рекомендуем обучение
+   */
+  async _checkAiAutoTraining() {
+    try {
+      const state = await this.loadState();
+      const now = new Date();
+
+      // Проверяем не чаще раза в сутки
+      if (state.lastAiTrainingCheck && this.isSameDay(new Date(state.lastAiTrainingCheck), now)) {
+        return;
+      }
+
+      const cigaretteVision = require('../modules/cigarette-vision');
+
+      // Считаем образцы с bounding box аннотациями (annotationCount > 0) — они готовы для YOLO
+      const allSamples = await cigaretteVision.loadSamples().catch(() => []);
+      const totalAnnotated = allSamples.filter(s => s.annotationCount > 0).length;
+
+      const lastCount = state.lastAiTrainingAnnotatedCount || 0;
+      const newSince = totalAnnotated - lastCount;
+
+      if (newSince >= 50) {
+        console.log(`[AI Auto-Train] ${newSince} новых образцов (всего ${totalAnnotated}) → рекомендуем переобучение`);
+        state.lastAiTrainingAnnotatedCount = totalAnnotated;
+        state.lastAiTrainingRecommendedAt = now.toISOString();
+
+        // Пытаемся запустить обучение автоматически
+        try {
+          const trainResult = await cigaretteVision.trainModel();
+          if (trainResult && trainResult.success) {
+            console.log(`[AI Auto-Train] Переобучение запущено успешно`);
+            state.lastAiTrainingAt = now.toISOString();
+          } else {
+            console.log(`[AI Auto-Train] Авто-обучение не запустилось (нет модели или данных), скопировано: ${totalAnnotated} образцов`);
+          }
+        } catch (trainErr) {
+          console.warn(`[AI Auto-Train] Ошибка запуска обучения:`, trainErr.message);
+        }
+      }
+
+      state.lastAiTrainingCheck = now.toISOString();
+      await this.saveState(state);
+    } catch (e) {
+      console.warn(`${this.tag} _checkAiAutoTraining error:`, e.message);
+    }
+  }
 
   async confirmReport(reportId, rating, adminName) {
     const now = new Date();

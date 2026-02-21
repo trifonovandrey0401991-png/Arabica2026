@@ -27,6 +27,14 @@ try {
   console.warn('[Cigarette Vision] YOLO wrapper not available:', e.message);
 }
 
+// sharp для обработки изображений (валидация C1, аугментация C2, нормализация C3)
+let sharp = null;
+try {
+  sharp = require('sharp');
+} catch (e) {
+  console.warn('[Cigarette Vision] sharp not available, image processing disabled');
+}
+
 // Пути к данным
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const SAMPLES_FILE = path.join(DATA_DIR, 'cigarette-training-samples.json');
@@ -48,6 +56,7 @@ const TRAINING_TYPES = {
 const DISPLAY_TRAINING_DIR = path.join(DATA_DIR, 'display-training');
 const COUNTING_TRAINING_DIR = path.join(DATA_DIR, 'counting-training');
 const COUNTING_PENDING_DIR = path.join(DATA_DIR, 'counting-pending'); // Ожидающие подтверждения админа
+const DATASET_VERSION_FILE = path.join(DATA_DIR, 'dataset_version.json'); // E1: версионирование датасета
 
 // Структура поддиректорий для каждого типа
 const getTrainingPaths = (trainingType) => {
@@ -470,6 +479,98 @@ async function getTrainingStats(recountQuestions) {
 const LABELS_DIR = path.join(DATA_DIR, 'cigarette-training-labels');
 
 /**
+ * Валидация фото перед сохранением в датасет (C1)
+ * Проверяет минимальный размер и резкость изображения
+ */
+async function validateTrainingImage(imageBuffer) {
+  if (!sharp) return { valid: true }; // sharp недоступен — пропускаем
+  try {
+    const metadata = await sharp(imageBuffer).metadata();
+    const MIN_SIZE = 320;
+    if (!metadata.width || !metadata.height ||
+        metadata.width < MIN_SIZE || metadata.height < MIN_SIZE) {
+      return {
+        valid: false,
+        reason: 'too_small',
+        message: `Фото слишком маленькое (${metadata.width}×${metadata.height}). Минимум ${MIN_SIZE}×${MIN_SIZE}px`,
+      };
+    }
+    // Blur detection через стандартное отклонение (64x64 для скорости)
+    const stats = await sharp(imageBuffer)
+      .resize(64, 64, { fit: 'fill' })
+      .grayscale()
+      .stats();
+    if (stats.channels[0].stdev < 10) {
+      return {
+        valid: false,
+        reason: 'blurry',
+        message: 'Фото слишком размытое или тёмное. Сделайте более чёткий снимок',
+      };
+    }
+    return { valid: true };
+  } catch (e) {
+    console.warn('[Vision] validateTrainingImage error:', e.message);
+    return { valid: true }; // Не блокируем при ошибке парсинга
+  }
+}
+
+/**
+ * Создать аугментированные копии обучающего образца (C2)
+ * YOLO подхватит их при обучении через сканирование директории.
+ * parsedBoxLines: [{classId, cx, cy, w, h}] — уже нормализованные [0..1]
+ */
+async function createAugmentedTrainingSamples({ imagesDir, labelsDir, imageBuffer, baseName, parsedBoxLines }) {
+  if (!sharp || !parsedBoxLines || parsedBoxLines.length === 0) return;
+
+  const augmentations = [
+    {
+      suffix: '_aug90',
+      transform: (img) => img.rotate(90),
+      // Rotate 90° CW: new_cx = 1-cy, new_cy = cx, swap w↔h
+      boxFn: ({ classId, cx, cy, w, h }) => ({ classId, cx: 1 - cy, cy: cx, w: h, h: w }),
+    },
+    {
+      suffix: '_aug180',
+      transform: (img) => img.rotate(180),
+      // Rotate 180°: new_cx = 1-cx, new_cy = 1-cy
+      boxFn: ({ classId, cx, cy, w, h }) => ({ classId, cx: 1 - cx, cy: 1 - cy, w, h }),
+    },
+    {
+      suffix: '_aug270',
+      transform: (img) => img.rotate(270),
+      // Rotate 270° CW: new_cx = cy, new_cy = 1-cx, swap w↔h
+      boxFn: ({ classId, cx, cy, w, h }) => ({ classId, cx: cy, cy: 1 - cx, w: h, h: w }),
+    },
+    {
+      suffix: '_augflop',
+      transform: (img) => img.flop(),
+      // Horizontal flip: new_cx = 1-cx
+      boxFn: ({ classId, cx, cy, w, h }) => ({ classId, cx: 1 - cx, cy, w, h }),
+    },
+  ];
+
+  for (const aug of augmentations) {
+    try {
+      const augBuffer = await aug.transform(sharp(imageBuffer)).jpeg({ quality: 85 }).toBuffer();
+      await fsp.writeFile(path.join(imagesDir, `${baseName}${aug.suffix}.jpg`), augBuffer);
+
+      const augLines = parsedBoxLines.map(box => {
+        const t = aug.boxFn(box);
+        const cx = Math.max(0, Math.min(1, t.cx));
+        const cy = Math.max(0, Math.min(1, t.cy));
+        const w  = Math.max(0, Math.min(1, t.w));
+        const h  = Math.max(0, Math.min(1, t.h));
+        return `${t.classId} ${cx.toFixed(6)} ${cy.toFixed(6)} ${w.toFixed(6)} ${h.toFixed(6)}`;
+      }).join('\n');
+
+      await fsp.writeFile(path.join(labelsDir, `${baseName}${aug.suffix}.txt`), augLines);
+    } catch (e) {
+      console.warn(`[Vision] Аугментация ${aug.suffix} не удалась:`, e.message);
+    }
+  }
+}
+
+/**
  * Сохранить образец для обучения
  */
 async function saveTrainingSample({
@@ -531,9 +632,12 @@ async function saveTrainingSample({
       createdAt: timestamp,
     };
 
-    const samples = await loadSamples();
-    samples.push(sample);
-    await saveSamples(samples);
+    // withLock: атомарный read-modify-write чтобы избежать race condition при параллельных запросах
+    await withLock('cigarette-samples', async () => {
+      const samples = await loadSamples();
+      samples.push(sample);
+      await saveSamples(samples);
+    });
 
     console.log(`[Cigarette Vision] Образец сохранён: ${productName} (${type}, template=${templateId}, ${boundingBoxes ? boundingBoxes.length : 0} аннотаций)`);
 
@@ -552,30 +656,32 @@ const CLASS_MAPPING_FILE = path.join(DATA_DIR, 'class-mapping.json');
  * Получить classId для товара (создаёт новый если не существует)
  */
 async function getClassIdForProduct(productId) {
-  if (classMapping === null) {
+  return await withLock('cigarette-class-mapping', async () => {
+    // Всегда читаем свежо из файла внутри блокировки (как getTypedClassId)
+    let mapping = {};
     if (await fileExists(CLASS_MAPPING_FILE)) {
       try {
-        classMapping = JSON.parse(await fsp.readFile(CLASS_MAPPING_FILE, 'utf8'));
+        mapping = JSON.parse(await fsp.readFile(CLASS_MAPPING_FILE, 'utf8'));
       } catch (e) {
-        classMapping = {};
+        mapping = {};
       }
-    } else {
-      classMapping = {};
     }
-  }
+    classMapping = mapping; // обновляем in-memory кэш
 
-  if (classMapping[productId] !== undefined) {
-    return classMapping[productId];
-  }
+    if (mapping[productId] !== undefined) {
+      return mapping[productId];
+    }
 
-  const maxId = Object.values(classMapping).reduce((max, id) => Math.max(max, id), -1);
-  const newId = maxId + 1;
-  classMapping[productId] = newId;
+    const maxId = Object.values(mapping).reduce((max, id) => Math.max(max, id), -1);
+    const newId = maxId + 1;
+    mapping[productId] = newId;
+    classMapping = mapping;
 
-  await writeJsonFile(CLASS_MAPPING_FILE, classMapping);
-  console.log(`[Cigarette Vision] Новый classId для ${productId}: ${newId}`);
+    await writeJsonFile(CLASS_MAPPING_FILE, mapping);
+    console.log(`[Cigarette Vision] Новый classId для ${productId}: ${newId}`);
 
-  return newId;
+    return newId;
+  });
 }
 
 /**
@@ -609,26 +715,29 @@ async function getSamplesForProduct(productId) {
  */
 async function deleteSample(sampleId) {
   try {
-    const samples = await loadSamples();
-    const sampleIndex = samples.findIndex(s => s.id === sampleId);
+    // withLock: атомарный read-modify-write чтобы не потерять параллельные добавления
+    return await withLock('cigarette-samples', async () => {
+      const samples = await loadSamples();
+      const sampleIndex = samples.findIndex(s => s.id === sampleId);
 
-    if (sampleIndex === -1) {
-      return { success: false, error: 'Образец не найден' };
-    }
-
-    const sample = samples[sampleIndex];
-
-    if (sample.imageFileName) {
-      const imagePath = path.join(IMAGES_DIR, sample.imageFileName);
-      if (await fileExists(imagePath)) {
-        await fsp.unlink(imagePath);
+      if (sampleIndex === -1) {
+        return { success: false, error: 'Образец не найден' };
       }
-    }
 
-    samples.splice(sampleIndex, 1);
-    await saveSamples(samples);
+      const sample = samples[sampleIndex];
 
-    return { success: true };
+      if (sample.imageFileName) {
+        const imagePath = path.join(IMAGES_DIR, sample.imageFileName);
+        if (await fileExists(imagePath)) {
+          await fsp.unlink(imagePath);
+        }
+      }
+
+      samples.splice(sampleIndex, 1);
+      await saveSamples(samples);
+
+      return { success: true };
+    });
   } catch (error) {
     console.error('Ошибка удаления образца:', error);
     return { success: false, error: error.message };
@@ -672,8 +781,11 @@ async function savePositiveSample({
     await init();
 
     const maxPerProduct = settings.maxPositiveSamplesPerProduct || 50;
-    const samples = await loadSamples();
     const savedCount = { total: 0, rotated: 0 };
+
+    // withLock: атомарный read-modify-write для samples
+    await withLock('cigarette-samples', async () => {
+    const samples = await loadSamples();
 
     for (const detected of detectedProducts) {
       const productId = detected.productId || detected.barcode;
@@ -747,6 +859,7 @@ async function savePositiveSample({
     }
 
     await saveSamples(samples);
+    }); // end withLock('cigarette-samples')
 
     console.log(`[Positive Samples] Сохранено ${savedCount.total} samples, ротировано ${savedCount.rotated}`);
 
@@ -805,28 +918,35 @@ async function cleanupOldPositiveSamples() {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
 
-    const samples = await loadSamples();
     let deletedCount = 0;
+    let remaining = 0;
 
-    const toDelete = samples.filter(s => {
-      if (s.type !== 'positive') return false;
-      const createdAt = new Date(s.createdAt);
-      return createdAt < cutoffDate;
+    // withLock: атомарный read-modify-write чтобы не потерять параллельные добавления
+    await withLock('cigarette-samples', async () => {
+      const samples = await loadSamples();
+
+      const toDelete = samples.filter(s => {
+        if (s.type !== 'positive') return false;
+        const createdAt = new Date(s.createdAt);
+        return createdAt < cutoffDate;
+      });
+
+      for (const sample of toDelete) {
+        const result = await deleteSampleInternal(samples, sample.id);
+        if (result.deleted) {
+          deletedCount++;
+        }
+      }
+
+      if (deletedCount > 0) {
+        await saveSamples(samples);
+        console.log(`[Positive Samples] Очистка: удалено ${deletedCount} старых samples (старше ${maxAgeDays} дней)`);
+      }
+
+      remaining = samples.length;
     });
 
-    for (const sample of toDelete) {
-      const result = await deleteSampleInternal(samples, sample.id);
-      if (result.deleted) {
-        deletedCount++;
-      }
-    }
-
-    if (deletedCount > 0) {
-      await saveSamples(samples);
-      console.log(`[Positive Samples] Очистка: удалено ${deletedCount} старых samples (старше ${maxAgeDays} дней)`);
-    }
-
-    return { success: true, deletedCount, remaining: samples.length };
+    return { success: true, deletedCount, remaining };
   } catch (error) {
     console.error('[Positive Samples] Ошибка очистки:', error);
     return { success: false, error: error.message };
@@ -905,15 +1025,41 @@ async function detectAndCount(imageBase64, productId = null, confidence = 0.5) {
   }
 
   try {
-    const result = await yoloWrapper.detectAndCount(imageBase64, productId, confidence);
+    const raw = await yoloWrapper.detectAndCount(imageBase64, productId, confidence);
 
-    if (result.success) {
-      console.log(`[Cigarette Vision] Обнаружено ${result.count} объектов (confidence: ${result.confidence})`);
-    } else {
-      console.warn('[Cigarette Vision] Ошибка детекции:', result.error);
+    if (!raw.success) {
+      console.warn('[Cigarette Vision] Ошибка детекции:', raw.error);
+      return raw;
     }
 
-    return result;
+    // Нормализуем ответ: yolo_server возвращает productCounts[],
+    // Flutter ожидает count + confidence на верхнем уровне
+    const primary = raw.productCounts && raw.productCounts.length > 0
+      ? raw.productCounts[0]
+      : null;
+    const count = primary ? primary.count : (raw.count || raw.totalDetections || 0);
+    const avgConf = primary ? (primary.avgConfidence || 0) : (raw.confidence || 0);
+
+    console.log(`[Cigarette Vision] Обнаружено ${count} объектов (confidence: ${avgConf})`);
+
+    // CIG-2.1: Порог уверенности — если ИИ не уверен, лучше попросить переснять
+    if (count > 0 && avgConf < 0.40) {
+      console.warn(`[Cigarette Vision] Низкая уверенность (${avgConf} < 0.40), отклоняем результат`);
+      return {
+        success: false,
+        error: 'LOW_CONFIDENCE',
+        count: 0,
+        confidence: avgConf,
+        boxes: raw.detections || raw.boxes || [],
+      };
+    }
+
+    return {
+      ...raw,
+      count,
+      confidence: avgConf,
+      boxes: raw.detections || raw.boxes || [],
+    };
   } catch (error) {
     console.error('[Cigarette Vision] Ошибка вызова YOLO:', error);
     return {
@@ -1003,6 +1149,74 @@ async function trainModel(dataYaml, epochs = 100) {
   }
 
   return await yoloWrapper.trainModel(dataYaml, epochs);
+}
+
+/**
+ * Полный цикл: export данных → обучение → перезагрузка модели в yolo_server
+ * Один вызов для кнопки "Запустить обучение" в админке.
+ */
+async function triggerFullTraining(epochs = 50) {
+  if (!yoloWrapper) {
+    return { success: false, error: 'ML модуль не загружен' };
+  }
+
+  const path = require('path');
+  const os = require('os');
+  const http = require('http');
+
+  // 1. Экспортируем данные во временную директорию
+  const exportDir = path.join(os.tmpdir(), `yolo_export_${Date.now()}`);
+  console.log('[Full Training] Экспорт данных в', exportDir);
+  const exportResult = await yoloWrapper.exportTrainingData(exportDir);
+
+  if (!exportResult.success) {
+    return { success: false, step: 'export', error: exportResult.error };
+  }
+  console.log(`[Full Training] Экспортировано: ${exportResult.total_images} изображений`);
+
+  if ((exportResult.total_images || 0) < 5) {
+    return {
+      success: false,
+      step: 'export',
+      error: `Недостаточно обучающих образцов: ${exportResult.total_images}. Нужно минимум 5.`,
+      exportResult,
+    };
+  }
+
+  // 2. Запускаем обучение
+  const dataYaml = path.join(exportDir, 'data.yaml');
+  console.log(`[Full Training] Запуск обучения (${epochs} эпох)...`);
+  const trainResult = await yoloWrapper.trainModel(dataYaml, epochs);
+
+  if (!trainResult.success) {
+    return { success: false, step: 'train', error: trainResult.error, exportResult };
+  }
+  console.log('[Full Training] Модель обучена:', trainResult.model_path);
+
+  // 3. Перезагружаем модель в yolo_server (горячая перезагрузка без остановки pm2)
+  let reloadResult = { success: false, error: 'reloadModel not available' };
+  if (yoloWrapper.reloadModel) {
+    reloadResult = await yoloWrapper.reloadModel();
+    console.log('[Full Training] Перезагрузка yolo_server:', reloadResult);
+  }
+
+  // E1: Сохраняем версию датасета после успешного обучения
+  const samples = await loadSamples();
+  const annotatedCount = samples.filter(s => s.annotationCount > 0).length;
+  await saveDatasetVersion({
+    samplesCount: samples.length,
+    annotatedCount,
+    epochs,
+    exportResult,
+  });
+
+  return {
+    success: true,
+    exportResult,
+    trainResult,
+    reloadResult,
+    message: `Обучение завершено. Образцов: ${exportResult.total_images}, эпох: ${epochs}. Модель перезагружена: ${reloadResult.success}.`,
+  };
 }
 
 /**
@@ -1143,8 +1357,12 @@ async function saveTypedPositiveSample(trainingType, {
 
     const paths = await initTypedTraining(trainingType);
     const maxPerProduct = settings.maxPositiveSamplesPerProduct || 50;
-    const samples = await loadTypedSamples(trainingType);
     const savedCount = { total: 0, rotated: 0, withLabels: 0 };
+    const augmentationTasks = []; // Задачи C2 — выполняются ПОСЛЕ lock
+
+    // withLock: атомарный read-modify-write для typed samples
+    await withLock(`cigarette-typed-${trainingType}`, async () => {
+    const samples = await loadTypedSamples(trainingType);
 
     for (const detected of detectedProducts) {
       const productId = detected.productId || detected.barcode;
@@ -1176,6 +1394,17 @@ async function saveTypedPositiveSample(trainingType, {
       const imageFileName = `${trainingType}_${id}.jpg`;
 
       const imageBuffer = Buffer.from(imageBase64, 'base64');
+
+      // C3: Получаем размеры изображения для нормализации пиксельных координат
+      let imgWidth = 1, imgHeight = 1;
+      if (sharp) {
+        try {
+          const meta = await sharp(imageBuffer).metadata();
+          imgWidth = meta.width || 1;
+          imgHeight = meta.height || 1;
+        } catch (e) { /* fallback: координаты не нормализуем */ }
+      }
+
       await fsp.writeFile(path.join(paths.imagesDir, imageFileName), imageBuffer);
 
       const productBoxes = boxes.filter(box =>
@@ -1183,6 +1412,8 @@ async function saveTypedPositiveSample(trainingType, {
       );
 
       let annotationCount = 0;
+      const parsedBoxLines = []; // Для аугментации (C2)
+
       if (productBoxes.length > 0) {
         const labelFileName = imageFileName.replace(/\.jpg$/, '.txt');
         const classId = await getTypedClassId(trainingType, productId);
@@ -1190,28 +1421,42 @@ async function saveTypedPositiveSample(trainingType, {
         const yoloLines = productBoxes.map(box => {
           // Поддержка двух форматов: {box: {x1,y1,x2,y2}} и {x,y,width,height}
           const b = box.box || box;
-          let xCenter, yCenter, width, height;
+          let cx, cy, w, h;
           if (b.x1 !== undefined && b.x2 !== undefined) {
-            xCenter = (b.x1 + b.x2) / 2;
-            yCenter = (b.y1 + b.y2) / 2;
-            width = b.x2 - b.x1;
-            height = b.y2 - b.y1;
+            // Абсолютные пиксельные координаты → нормализуем (C3)
+            cx = ((b.x1 + b.x2) / 2) / imgWidth;
+            cy = ((b.y1 + b.y2) / 2) / imgHeight;
+            w  = (b.x2 - b.x1) / imgWidth;
+            h  = (b.y2 - b.y1) / imgHeight;
           } else {
-            // Формат {x, y, width, height} (относительные координаты)
-            xCenter = b.x + b.width / 2;
-            yCenter = b.y + b.height / 2;
-            width = b.width;
-            height = b.height;
+            // Уже нормализованные [0..1]
+            cx = b.x + b.width / 2;
+            cy = b.y + b.height / 2;
+            w  = b.width;
+            h  = b.height;
           }
-          if (isNaN(xCenter) || isNaN(yCenter) || isNaN(width) || isNaN(height)) {
-            return null; // Пропускаем невалидные боксы
-          }
-          return `${classId} ${xCenter.toFixed(6)} ${yCenter.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
+          // Clamp в [0, 1]
+          cx = Math.max(0, Math.min(1, cx));
+          cy = Math.max(0, Math.min(1, cy));
+          w  = Math.max(0, Math.min(1, w));
+          h  = Math.max(0, Math.min(1, h));
+          if (isNaN(cx) || isNaN(cy) || isNaN(w) || isNaN(h)) return null;
+          parsedBoxLines.push({ classId, cx, cy, w, h }); // сохраняем для аугментации
+          return `${classId} ${cx.toFixed(6)} ${cy.toFixed(6)} ${w.toFixed(6)} ${h.toFixed(6)}`;
         }).filter(Boolean).join('\n');
 
         await fsp.writeFile(path.join(paths.labelsDir, labelFileName), yoloLines);
         annotationCount = productBoxes.length;
         savedCount.withLabels++;
+
+        // Собираем задачу аугментации (C2) — выполним вне lock
+        augmentationTasks.push({
+          imagesDir: paths.imagesDir,
+          labelsDir: paths.labelsDir,
+          imageBuffer,
+          baseName: imageFileName.replace(/\.jpg$/, ''),
+          parsedBoxLines,
+        });
       }
 
       const sample = {
@@ -1234,6 +1479,16 @@ async function saveTypedPositiveSample(trainingType, {
     }
 
     await saveTypedSamples(trainingType, samples);
+    }); // end withLock(`cigarette-typed-${trainingType}`)
+
+    // C2: Аугментация ВНЕ lock — создаём повороты/отражения без блокировки
+    for (const task of augmentationTasks) {
+      await createAugmentedTrainingSamples(task);
+    }
+    if (augmentationTasks.length > 0) {
+      console.log(`[Typed Training] ${trainingType}: аугментировано ${augmentationTasks.length} образцов (×4)`);
+    }
+
     console.log(`[Typed Training] ${trainingType}: сохранено ${savedCount.total}, с labels: ${savedCount.withLabels}, ротировано: ${savedCount.rotated}`);
 
     return { success: true, savedCount, trainingType };
@@ -1260,6 +1515,17 @@ async function saveCountingTrainingSample({
     }
 
     const paths = await initCountingPending();
+
+    // C1: Валидация фото ДО lock (не держим lock во время CPU-обработки)
+    const imageBuffer = Buffer.from(imageBase64, 'base64');
+    const validation = await validateTrainingImage(imageBuffer);
+    if (!validation.valid) {
+      console.warn(`[Counting Pending] Фото отклонено (${validation.reason}): ${productId}`);
+      return { success: false, reason: 'image_quality', message: validation.message };
+    }
+
+    // withLock: атомарный read-modify-write для pending counting samples
+    return await withLock('cigarette-counting-pending', async () => {
     const samples = await loadPendingCountingSamples();
 
     const maxPendingPerProduct = 20;
@@ -1287,7 +1553,7 @@ async function saveCountingTrainingSample({
     const timestamp = new Date().toISOString();
     const imageFileName = `pending_${productId}_${id}.jpg`;
 
-    const imageBuffer = Buffer.from(imageBase64, 'base64');
+    // imageBuffer уже декодирован и провалидирован ДО lock
     await fsp.writeFile(path.join(paths.imagesDir, imageFileName), imageBuffer);
 
     const sample = {
@@ -1311,6 +1577,7 @@ async function saveCountingTrainingSample({
     console.log(`[Counting Pending] Фото добавлено в очередь для ${productName || productId}, pending: ${existingForProduct.length + 1}`);
 
     return { success: true, sample, status: 'pending' };
+    }); // end withLock('cigarette-counting-pending')
   } catch (error) {
     console.error('[Counting Pending] Ошибка сохранения:', error);
     return { success: false, error: error.message };
@@ -1369,7 +1636,7 @@ async function approveCountingPendingSample(sampleId) {
     const trainingSample = {
       id: pendingSample.id,
       productId: pendingSample.productId,
-      barcode: pendingSample.productId,
+      barcode: pendingSample.barcode || pendingSample.productId, // fix: использовать barcode, не productId
       productName: pendingSample.productName || '',
       trainingType,
       type: 'counting',
@@ -1405,26 +1672,29 @@ async function approveCountingPendingSample(sampleId) {
 async function rejectCountingPendingSample(sampleId) {
   try {
     const paths = await initCountingPending();
-    const samples = await loadPendingCountingSamples();
+    // withLock: атомарный read-modify-write pending samples
+    return await withLock('cigarette-counting-pending', async () => {
+      const samples = await loadPendingCountingSamples();
 
-    const idx = samples.findIndex(s => s.id === sampleId);
-    if (idx === -1) {
-      return { success: false, error: 'Pending образец не найден' };
-    }
+      const idx = samples.findIndex(s => s.id === sampleId);
+      if (idx === -1) {
+        return { success: false, error: 'Pending образец не найден' };
+      }
 
-    const sample = samples[idx];
+      const sample = samples[idx];
 
-    const imgPath = path.join(paths.imagesDir, sample.imageFileName);
-    try {
-      if (await fileExists(imgPath)) await fsp.unlink(imgPath);
-    } catch (e) { /* ignore */ }
+      const imgPath = path.join(paths.imagesDir, sample.imageFileName);
+      try {
+        if (await fileExists(imgPath)) await fsp.unlink(imgPath);
+      } catch (e) { /* ignore */ }
 
-    samples.splice(idx, 1);
-    await savePendingCountingSamples(samples);
+      samples.splice(idx, 1);
+      await savePendingCountingSamples(samples);
 
-    console.log(`[Counting Pending] Отклонено фото для ${sample.productName || sample.productId}`);
+      console.log(`[Counting Pending] Отклонено фото для ${sample.productName || sample.productId}`);
 
-    return { success: true };
+      return { success: true };
+    });
   } catch (error) {
     console.error('[Counting Pending] Ошибка отклонения:', error);
     return { success: false, error: error.message };
@@ -1495,27 +1765,30 @@ async function deleteCountingSample(sampleId) {
   try {
     const trainingType = TRAINING_TYPES.COUNTING;
     const paths = getTrainingPaths(trainingType);
-    const samples = await loadTypedSamples(trainingType);
+    // withLock: атомарный read-modify-write counting typed samples
+    return await withLock(`cigarette-typed-${trainingType}`, async () => {
+      const samples = await loadTypedSamples(trainingType);
 
-    const idx = samples.findIndex(s => s.id === sampleId);
-    if (idx === -1) {
-      return { success: false, error: 'Образец не найден' };
-    }
+      const idx = samples.findIndex(s => s.id === sampleId);
+      if (idx === -1) {
+        return { success: false, error: 'Образец не найден' };
+      }
 
-    const sample = samples[idx];
+      const sample = samples[idx];
 
-    const imgPath = path.join(paths.imagesDir, sample.imageFileName);
-    const lblPath = path.join(paths.labelsDir, sample.imageFileName.replace(/\.jpg$/, '.txt'));
-    try {
-      if (await fileExists(imgPath)) await fsp.unlink(imgPath);
-      if (await fileExists(lblPath)) await fsp.unlink(lblPath);
-    } catch (e) { /* ignore */ }
+      const imgPath = path.join(paths.imagesDir, sample.imageFileName);
+      const lblPath = path.join(paths.labelsDir, sample.imageFileName.replace(/\.jpg$/, '.txt'));
+      try {
+        if (await fileExists(imgPath)) await fsp.unlink(imgPath);
+        if (await fileExists(lblPath)) await fsp.unlink(lblPath);
+      } catch (e) { /* ignore */ }
 
-    samples.splice(idx, 1);
-    await saveTypedSamples(trainingType, samples);
+      samples.splice(idx, 1);
+      await saveTypedSamples(trainingType, samples);
 
-    console.log(`[Counting Training] Удалён образец ${sampleId}`);
-    return { success: true };
+      console.log(`[Counting Training] Удалён образец ${sampleId}`);
+      return { success: true };
+    });
   } catch (error) {
     console.error('[Counting Training] Ошибка удаления:', error);
     return { success: false, error: error.message };
@@ -1576,31 +1849,38 @@ async function cleanupTypedSamples(trainingType, maxAgeDays = 180) {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
 
-    const samples = await loadTypedSamples(trainingType);
     let deletedCount = 0;
+    let remainingCount = 0;
 
-    const toKeep = [];
-    for (const s of samples) {
-      const createdAt = new Date(s.createdAt);
-      if (createdAt < cutoffDate) {
-        const imgPath = path.join(paths.imagesDir, s.imageFileName);
-        const lblPath = path.join(paths.labelsDir, s.imageFileName.replace(/\.jpg$/, '.txt'));
-        try {
-          if (await fileExists(imgPath)) await fsp.unlink(imgPath);
-          if (await fileExists(lblPath)) await fsp.unlink(lblPath);
-        } catch (e) { /* ignore */ }
-        deletedCount++;
-      } else {
-        toKeep.push(s);
+    // withLock: атомарный read-modify-write typed samples
+    await withLock(`cigarette-typed-${trainingType}`, async () => {
+      const samples = await loadTypedSamples(trainingType);
+      const toKeep = [];
+
+      for (const s of samples) {
+        const createdAt = new Date(s.createdAt);
+        if (createdAt < cutoffDate) {
+          const imgPath = path.join(paths.imagesDir, s.imageFileName);
+          const lblPath = path.join(paths.labelsDir, s.imageFileName.replace(/\.jpg$/, '.txt'));
+          try {
+            if (await fileExists(imgPath)) await fsp.unlink(imgPath);
+            if (await fileExists(lblPath)) await fsp.unlink(lblPath);
+          } catch (e) { /* ignore */ }
+          deletedCount++;
+        } else {
+          toKeep.push(s);
+        }
       }
-    }
 
-    if (deletedCount > 0) {
-      await saveTypedSamples(trainingType, toKeep);
-      console.log(`[Typed Training] ${trainingType}: очищено ${deletedCount} старых образцов`);
-    }
+      if (deletedCount > 0) {
+        await saveTypedSamples(trainingType, toKeep);
+        console.log(`[Typed Training] ${trainingType}: очищено ${deletedCount} старых образцов`);
+      }
 
-    return { success: true, deletedCount, remaining: toKeep.length };
+      remainingCount = toKeep.length;
+    });
+
+    return { success: true, deletedCount, remaining: remainingCount };
   } catch (error) {
     console.error(`[Typed Training] Ошибка очистки ${trainingType}:`, error);
     return { success: false, error: error.message };
@@ -1653,41 +1933,54 @@ async function reportAiError({
   employeeName,
 }) {
   try {
-    const stats = await loadAiErrorsStats();
-    const now = new Date();
+    let statsResult = {};
 
-    if (!stats.products[productId]) {
-      stats.products[productId] = {
-        productName: productName || '',
-        consecutiveErrors: 0,
-        totalErrors: 0,
-        pendingReports: 0,
-        lastErrorAt: null,
-        isDisabled: false,
-        disabledAt: null,
-        errorHistory: [],
+    // withLock: атомарный read-modify-write ai errors stats
+    await withLock('cigarette-ai-errors', async () => {
+      const stats = await loadAiErrorsStats();
+      const now = new Date();
+
+      if (!stats.products[productId]) {
+        stats.products[productId] = {
+          productName: productName || '',
+          consecutiveErrors: 0,
+          totalErrors: 0,
+          pendingReports: 0,
+          lastErrorAt: null,
+          isDisabled: false,
+          disabledAt: null,
+          errorHistory: [],
+        };
+      }
+
+      const product = stats.products[productId];
+      product.productName = productName || product.productName;
+      product.pendingReports = (product.pendingReports || 0) + 1;
+      product.lastReportAt = now.toISOString();
+
+      product.errorHistory.unshift({
+        timestamp: now.toISOString(),
+        expectedCount,
+        aiCount,
+        shopAddress: shopAddress || '',
+        employeeName: employeeName || '',
+        status: 'pending',
+      });
+      if (product.errorHistory.length > 20) {
+        product.errorHistory = product.errorHistory.slice(0, 20);
+      }
+
+      await saveAiErrorsStats(stats);
+
+      statsResult = {
+        pendingReports: product.pendingReports,
+        consecutiveErrors: product.consecutiveErrors,
+        totalErrors: product.totalErrors,
+        isDisabled: product.isDisabled,
       };
-    }
-
-    const product = stats.products[productId];
-    product.productName = productName || product.productName;
-    product.pendingReports = (product.pendingReports || 0) + 1;
-    product.lastReportAt = now.toISOString();
-
-    product.errorHistory.unshift({
-      timestamp: now.toISOString(),
-      expectedCount,
-      aiCount,
-      shopAddress: shopAddress || '',
-      employeeName: employeeName || '',
-      status: 'pending',
     });
-    if (product.errorHistory.length > 20) {
-      product.errorHistory = product.errorHistory.slice(0, 20);
-    }
 
-    await saveAiErrorsStats(stats);
-
+    // saveProblemSample вызывается ВНЕ блокировки ai-errors (нет shared state)
     let savedFileName = null;
     if (imageBase64) {
       const saveResult = await saveProblemSample({
@@ -1707,10 +2000,7 @@ async function reportAiError({
     return {
       success: true,
       productId,
-      pendingReports: product.pendingReports,
-      consecutiveErrors: product.consecutiveErrors,
-      totalErrors: product.totalErrors,
-      isDisabled: product.isDisabled,
+      ...statsResult,
       threshold: AI_ERROR_THRESHOLD,
       savedFileName,
       message: 'Жалоба сохранена, ожидает решения администратора',
@@ -1735,90 +2025,109 @@ async function reportAdminAiDecision({
   shopAddress,
 }) {
   try {
-    const stats = await loadAiErrorsStats();
-    const now = new Date();
+    let statsResult = {};
+    // Флаг: нужно ли после lock вызвать saveTypedPositiveSample
+    // Вызов ВНУТРИ lock создаёт вложенный lock cigarette-typed-counting → deadlock risk
+    let shouldSaveForTraining = false;
 
-    if (!stats.products[productId]) {
-      stats.products[productId] = {
-        productName: productName || '',
-        consecutiveErrors: 0,
-        totalErrors: 0,
-        pendingReports: 0,
-        lastErrorAt: null,
-        isDisabled: false,
-        disabledAt: null,
-        errorHistory: [],
-        adminDecisions: [],
-      };
-    }
+    // withLock: атомарный read-modify-write ai errors stats
+    await withLock('cigarette-ai-errors', async () => {
+      const stats = await loadAiErrorsStats();
+      const now = new Date();
 
-    const product = stats.products[productId];
-    product.productName = productName || product.productName;
-
-    if (product.pendingReports > 0) {
-      product.pendingReports--;
-    }
-
-    if (!product.adminDecisions) {
-      product.adminDecisions = [];
-    }
-    product.adminDecisions.unshift({
-      timestamp: now.toISOString(),
-      decision,
-      adminName,
-      expectedCount,
-      aiCount,
-      shopAddress,
-    });
-    if (product.adminDecisions.length > 50) {
-      product.adminDecisions = product.adminDecisions.slice(0, 50);
-    }
-
-    if (decision === 'approved_for_training') {
-      product.consecutiveErrors++;
-      product.totalErrors++;
-      product.lastErrorAt = now.toISOString();
-
-      if (product.consecutiveErrors >= AI_ERROR_THRESHOLD && !product.isDisabled) {
-        product.isDisabled = true;
-        product.disabledAt = now.toISOString();
-        console.log(`[AI Errors] ⚠️ ИИ ОТКЛЮЧЕН для товара ${productId} (${productName}) после ${product.consecutiveErrors} подтверждённых ошибок`);
+      if (!stats.products[productId]) {
+        stats.products[productId] = {
+          productName: productName || '',
+          consecutiveErrors: 0,
+          totalErrors: 0,
+          pendingReports: 0,
+          lastErrorAt: null,
+          isDisabled: false,
+          disabledAt: null,
+          errorHistory: [],
+          adminDecisions: [],
+        };
       }
 
-      if (imageBase64) {
-        try {
-          await saveTypedPositiveSample(TRAINING_TYPES.COUNTING, {
-            imageBase64,
-            detectedProducts: [{
-              productId,
-              barcode: productId,
-              productName: productName || '',
-              count: expectedCount || 0,
-            }],
-            shopAddress: shopAddress || '',
-            boxes: [],
-          });
-          console.log(`[AI Errors] Фото добавлено в counting-training: ${productId}`);
-        } catch (e) {
-          console.warn(`[AI Errors] Не удалось сохранить в training:`, e.message);
+      const product = stats.products[productId];
+      product.productName = productName || product.productName;
+
+      if (product.pendingReports > 0) {
+        product.pendingReports--;
+      }
+
+      if (!product.adminDecisions) {
+        product.adminDecisions = [];
+      }
+      product.adminDecisions.unshift({
+        timestamp: now.toISOString(),
+        decision,
+        adminName,
+        expectedCount,
+        aiCount,
+        shopAddress,
+      });
+      if (product.adminDecisions.length > 50) {
+        product.adminDecisions = product.adminDecisions.slice(0, 50);
+      }
+
+      if (decision === 'approved_for_training') {
+        product.consecutiveErrors++;
+        product.totalErrors++;
+        product.lastErrorAt = now.toISOString();
+
+        if (product.consecutiveErrors >= AI_ERROR_THRESHOLD && !product.isDisabled) {
+          product.isDisabled = true;
+          product.disabledAt = now.toISOString();
+          console.log(`[AI Errors] ⚠️ ИИ ОТКЛЮЧЕН для товара ${productId} (${productName}) после ${product.consecutiveErrors} подтверждённых ошибок`);
         }
+
+        // Отмечаем что нужно сохранить в training — НО ВНЕ ЭТОГО LOCK
+        if (imageBase64) {
+          shouldSaveForTraining = true;
+        }
+
+        console.log(`[AI Errors] Админ ${adminName} подтвердил ошибку ИИ: ${productId} (consecutiveErrors: ${product.consecutiveErrors})`);
+      } else if (decision === 'rejected_bad_photo') {
+        console.log(`[AI Errors] Админ ${adminName} отклонил жалобу на ИИ: ${productId} (плохое фото)`);
       }
 
-      console.log(`[AI Errors] Админ ${adminName} подтвердил ошибку ИИ: ${productId} (consecutiveErrors: ${product.consecutiveErrors})`);
-    } else if (decision === 'rejected_bad_photo') {
-      console.log(`[AI Errors] Админ ${adminName} отклонил жалобу на ИИ: ${productId} (плохое фото)`);
-    }
+      await saveAiErrorsStats(stats);
 
-    await saveAiErrorsStats(stats);
+      statsResult = {
+        consecutiveErrors: product.consecutiveErrors,
+        totalErrors: product.totalErrors,
+        isDisabled: product.isDisabled,
+      };
+    }); // end withLock('cigarette-ai-errors')
+
+    // saveTypedPositiveSample вызывается ВНЕ блокировки ai-errors
+    // чтобы избежать вложенных locks (cigarette-ai-errors + cigarette-typed-counting)
+    if (shouldSaveForTraining) {
+      try {
+        await saveTypedPositiveSample(TRAINING_TYPES.COUNTING, {
+          imageBase64,
+          detectedProducts: [{
+            productId,
+            barcode: productId,
+            productName: productName || '',
+            count: expectedCount || 0,
+          }],
+          shopAddress: shopAddress || '',
+          boxes: [],
+        });
+        console.log(`[AI Errors] Фото добавлено в counting-training: ${productId}`);
+      } catch (e) {
+        console.warn(`[AI Errors] Не удалось сохранить в training:`, e.message);
+      }
+    }
 
     return {
       success: true,
       productId,
       decision,
       adminName,
-      consecutiveErrors: product.consecutiveErrors,
-      totalErrors: product.totalErrors,
-      isDisabled: product.isDisabled,
+      ...statsResult,
       threshold: AI_ERROR_THRESHOLD,
     };
   } catch (error) {
@@ -1946,38 +2255,52 @@ async function getProductAiStatus(productId) {
  * Сбросить счётчик ошибок и включить ИИ (ручной сброс админом)
  */
 async function resetProductAiErrors(productId) {
-  const stats = await loadAiErrorsStats();
+  try {
+    return await withLock('cigarette-ai-errors', async () => {
+      const stats = await loadAiErrorsStats();
 
-  if (!stats.products[productId]) {
-    return { success: false, error: 'Товар не найден в статистике ошибок' };
+      if (!stats.products[productId]) {
+        return { success: false, error: 'Товар не найден в статистике ошибок' };
+      }
+
+      stats.products[productId].consecutiveErrors = 0;
+      stats.products[productId].isDisabled = false;
+      stats.products[productId].disabledAt = null;
+
+      await saveAiErrorsStats(stats);
+      console.log(`[AI Errors] Счётчик ошибок сброшен для ${productId}, ИИ включен`);
+
+      return {
+        success: true,
+        productId,
+        message: 'ИИ включен, счётчик ошибок сброшен',
+      };
+    });
+  } catch (error) {
+    console.error('[AI Errors] Ошибка сброса счётчика:', error);
+    return { success: false, error: error.message };
   }
-
-  stats.products[productId].consecutiveErrors = 0;
-  stats.products[productId].isDisabled = false;
-  stats.products[productId].disabledAt = null;
-
-  await saveAiErrorsStats(stats);
-  console.log(`[AI Errors] Счётчик ошибок сброшен для ${productId}, ИИ включен`);
-
-  return {
-    success: true,
-    productId,
-    message: 'ИИ включен, счётчик ошибок сброшен',
-  };
 }
 
 /**
  * Сообщить об успешном распознавании (сбрасывает счётчик consecutiveErrors)
  */
 async function reportAiSuccess(productId) {
-  const stats = await loadAiErrorsStats();
+  try {
+    return await withLock('cigarette-ai-errors', async () => {
+      const stats = await loadAiErrorsStats();
 
-  if (stats.products[productId]) {
-    stats.products[productId].consecutiveErrors = 0;
-    await saveAiErrorsStats(stats);
+      if (stats.products[productId]) {
+        stats.products[productId].consecutiveErrors = 0;
+        await saveAiErrorsStats(stats);
+      }
+
+      return { success: true };
+    });
+  } catch (error) {
+    console.error('[AI Errors] Ошибка записи успешного распознавания:', error);
+    return { success: false, error: error.message };
   }
-
-  return { success: true };
 }
 
 /**
@@ -2207,6 +2530,103 @@ async function resetRecognitionStats(productId, type = null) {
   }
 }
 
+// ============ E1: ВЕРСИОНИРОВАНИЕ ДАТАСЕТА ============
+
+/**
+ * Сохранить метаданные версии датасета после обучения.
+ */
+async function saveDatasetVersion({ samplesCount, annotatedCount, epochs, exportResult }) {
+  try {
+    let existing = {};
+    if (await fileExists(DATASET_VERSION_FILE)) {
+      existing = JSON.parse(await fsp.readFile(DATASET_VERSION_FILE, 'utf8'));
+    }
+    const prevVersion = existing.version || 'v0.0';
+    const match = prevVersion.match(/v(\d+)\.(\d+)/);
+    const major = match ? parseInt(match[1]) : 0;
+    const minor = match ? parseInt(match[2]) : 0;
+    const versionData = {
+      version: `v${major}.${minor + 1}`,
+      trainingDate: new Date().toISOString(),
+      samplesCount,
+      annotatedCount,
+      modelEpochs: epochs,
+      exportedImages: exportResult?.total_images || 0,
+      prevVersion,
+    };
+    await writeJsonFile(DATASET_VERSION_FILE, versionData);
+    console.log(`[Cigarette Vision] Версия датасета сохранена: ${versionData.version}`);
+    return versionData;
+  } catch (error) {
+    console.error('[Cigarette Vision] Ошибка сохранения версии датасета:', error);
+    return null;
+  }
+}
+
+/**
+ * Получить текущую версию датасета.
+ */
+async function getDatasetVersion() {
+  try {
+    if (!(await fileExists(DATASET_VERSION_FILE))) {
+      return { version: 'v0.0', trainingDate: null, samplesCount: 0, annotatedCount: 0 };
+    }
+    return JSON.parse(await fsp.readFile(DATASET_VERSION_FILE, 'utf8'));
+  } catch (e) {
+    return { version: 'unknown', error: e.message };
+  }
+}
+
+// ============ E2: ОТЧЁТ О ТОЧНОСТИ ИИ ============
+
+/**
+ * Агрегированный отчёт о точности распознавания.
+ * Использует recognition stats (display + counting) и ai_errors.
+ */
+async function getAccuracyReport() {
+  const recognitionStats = await loadRecognitionStats();
+  const aiErrors = await loadAiErrorsStats();
+
+  let totalAttempts = 0;
+  let totalSuccesses = 0;
+  const byProduct = [];
+
+  for (const [productId, pStats] of Object.entries(recognitionStats)) {
+    const counting = pStats.counting || { attempts: 0, successes: 0 };
+    const display = pStats.display || { attempts: 0, successes: 0 };
+    const attempts = (counting.attempts || 0) + (display.attempts || 0);
+    const successes = (counting.successes || 0) + (display.successes || 0);
+    if (attempts === 0) continue;
+
+    totalAttempts += attempts;
+    totalSuccesses += successes;
+
+    const productName = aiErrors.products?.[productId]?.productName || productId;
+    byProduct.push({
+      productId,
+      name: productName,
+      accuracy: Math.round((successes / attempts) * 100) / 100,
+      attempts,
+      successes,
+      lastAttempt: counting.lastAttempt || display.lastAttempt || null,
+    });
+  }
+
+  // Проблемные товары первые
+  byProduct.sort((a, b) => a.accuracy - b.accuracy);
+
+  const overall = {
+    correct: totalSuccesses,
+    wrong: totalAttempts - totalSuccesses,
+    accuracy: totalAttempts > 0 ? Math.round((totalSuccesses / totalAttempts) * 100) / 100 : null,
+    totalAttempts,
+  };
+
+  const datasetVersion = await getDatasetVersion();
+
+  return { overall, byProduct, datasetVersion };
+}
+
 module.exports = {
   init,
   getProductsWithTrainingInfo,
@@ -2227,6 +2647,7 @@ module.exports = {
   REQUIRED_PHOTOS_COUNT,
   exportTrainingData,
   trainModel,
+  triggerFullTraining,
   getModelStatus,
   savePositiveSample,
   cleanupOldPositiveSamples,
@@ -2263,4 +2684,7 @@ module.exports = {
   getProductRecognitionStats,
   getAllRecognitionStats,
   resetRecognitionStats,
+  saveDatasetVersion,
+  getDatasetVersion,
+  getAccuracyReport,
 };

@@ -305,7 +305,7 @@ async function setupCigaretteVisionAPI(app) {
     }
   });
 
-  // Запуск обучения модели
+  // Запуск обучения модели (требует dataYaml)
   app.post('/api/cigarette-vision/train', requireAuth, async (req, res) => {
     try {
       const { dataYaml, epochs } = req.body;
@@ -318,6 +318,40 @@ async function setupCigaretteVisionAPI(app) {
       res.json(result);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка обучения модели:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Полный цикл обучения: export → train → reload (одна кнопка для админа)
+  app.post('/api/cigarette-vision/trigger-training', requireAuth, async (req, res) => {
+    try {
+      const { epochs } = req.body;
+      const result = await cigaretteVision.triggerFullTraining(epochs || 50);
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка запуска полного обучения:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // E1: Версия датасета
+  app.get('/api/cigarette-vision/dataset-version', requireAuth, async (req, res) => {
+    try {
+      const version = await cigaretteVision.getDatasetVersion();
+      res.json({ success: true, ...version });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения версии датасета:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // E2: Отчёт о точности ИИ по всем товарам
+  app.get('/api/cigarette-vision/accuracy-report', requireAuth, async (req, res) => {
+    try {
+      const report = await cigaretteVision.getAccuracyReport();
+      res.json({ success: true, ...report });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения отчёта точности:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
@@ -489,8 +523,18 @@ async function setupCigaretteVisionAPI(app) {
         expectedCount: employeeAnswer || null,
       });
 
-      // Авто-сохранение убрано: фото уходит на обучение только после проверки админом
-      // через POST /api/cigarette-vision/submit-report-photo-for-training
+      // Авто-сохранение в pending: фото сразу попадает в очередь для проверки админом.
+      // Не ждём результата (fire-and-forget) — не блокирует ответ сотруднику.
+      if (imageBase64 && productId) {
+        cigaretteVision.saveCountingTrainingSample({
+          imageBase64,
+          productId,
+          productName: productName || '',
+          shopAddress: shopAddress || '',
+          employeeAnswer: employeeAnswer || null,
+          selectedRegion: selectedRegion || null,
+        }).catch(err => console.error('[Cigarette Vision API] Ошибка авто-сохранения в pending:', err));
+      }
 
       res.json(result);
     } catch (error) {

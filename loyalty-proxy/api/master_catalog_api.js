@@ -227,7 +227,11 @@ async function savePendingCodes(codes) {
  */
 async function isCodeInMasterCatalog(kod) {
   const products = await loadProducts();
-  return products.some((p) => p.barcode === kod);
+  return products.some((p) =>
+    p.barcode === kod ||
+    (p.additionalBarcodes && p.additionalBarcodes.includes(kod)) ||
+    (p.shopCodes && Object.values(p.shopCodes).includes(kod))
+  );
 }
 
 /**
@@ -283,6 +287,7 @@ async function addPendingCode({ kod, shopId, shopName, name, group }) {
         shopName,
         name,
         group,
+        kod,
         firstSeenAt: new Date().toISOString(),
       });
       await savePendingCodes(pending);
@@ -301,6 +306,7 @@ async function addPendingCode({ kod, shopId, shopName, name, group }) {
         shopName,
         name,
         group,
+        kod,
         firstSeenAt: new Date().toISOString(),
       },
     ],
@@ -336,13 +342,27 @@ async function updateMappingsForProduct(product) {
     }
   });
 
-  // Добавляем новые маппинги
+  // Добавляем новые маппинги для shopCodes
   if (product.shopCodes) {
     Object.entries(product.shopCodes).forEach(([shopId, kod]) => {
       if (kod) {
         mappings[`${shopId}:${kod}`] = product.id;
       }
     });
+  }
+
+  // Также маппим additionalBarcodes чтобы они не попадали повторно в pending
+  if (product.additionalBarcodes && Array.isArray(product.additionalBarcodes)) {
+    product.additionalBarcodes.forEach((barcode) => {
+      if (barcode) {
+        mappings[`barcode:${barcode}`] = product.id;
+      }
+    });
+  }
+
+  // Маппим основной barcode
+  if (product.barcode) {
+    mappings[`barcode:${product.barcode}`] = product.id;
   }
 
   await saveMappings(mappings);
@@ -546,6 +566,12 @@ function setupMasterCatalogAPI(app) {
         }
       });
       await saveMappings(mappings);
+
+      // D2: Удаляем orphan вопросы пересчёта для этого товара
+      if (deleted.barcode) {
+        const { deleteQuestionsByBarcode } = require('./recount_questions_api');
+        await deleteQuestionsByBarcode(deleted.barcode);
+      }
 
       console.log(`[Master Catalog API] Удалён продукт: ${deleted.name}`);
 
@@ -821,10 +847,10 @@ function setupMasterCatalogAPI(app) {
         });
       }
 
-      // Собираем shopCodes из всех источников
+      // Собираем shopCodes из всех источников (используем kod каждого магазина)
       const shopCodes = {};
       pendingCode.sources.forEach((source) => {
-        shopCodes[source.shopId] = kod;
+        shopCodes[source.shopId] = source.kod || kod;
       });
 
       // Создаём новый продукт
@@ -1474,10 +1500,10 @@ function setupMasterCatalogAPI(app) {
         product.additionalBarcodes.push(kod);
       }
 
-      // Перенести shopCodes из sources pending code
+      // Перенести shopCodes из sources pending code (используем kod каждого магазина)
       if (!product.shopCodes) product.shopCodes = {};
       pendingCode.sources.forEach(source => {
-        product.shopCodes[source.shopId] = kod;
+        product.shopCodes[source.shopId] = source.kod || kod;
       });
 
       product.updatedAt = new Date().toISOString();

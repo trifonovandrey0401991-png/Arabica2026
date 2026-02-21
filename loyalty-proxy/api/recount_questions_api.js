@@ -426,4 +426,32 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
   console.log(`✅ Recount Questions API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 
-module.exports = { setupRecountQuestionsAPI };
+/**
+ * D2: Удалить вопрос пересчёта по barcode.
+ * Вызывается при удалении товара из мастер-каталога.
+ */
+async function deleteQuestionsByBarcode(barcode) {
+  if (!barcode) return;
+  const productId = `product_${barcode}`;
+  const sanitizedId = productId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+  const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+  // Удаляем файл (игнорируем ENOENT)
+  try {
+    await fsp.unlink(filePath);
+    console.log(`[Recount Questions] Удалён вопрос для barcode ${barcode}`);
+  } catch (e) {
+    if (e.code !== 'ENOENT') console.error('[Recount Questions] Ошибка удаления файла:', e.message);
+  }
+
+  // Удаляем из DB
+  if (USE_DB) {
+    try {
+      await db.deleteById('recount_questions', productId);
+    } catch (e) {
+      console.error('[Recount Questions] Ошибка удаления из DB:', e.message);
+    }
+  }
+}
+
+module.exports = { setupRecountQuestionsAPI, deleteQuestionsByBarcode };
