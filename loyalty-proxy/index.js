@@ -397,9 +397,9 @@ app.use('/static', express.static(`${DATA_DIR}/html`));
 // ============================================
 // SECURITY: Убран application/octet-stream — проверяем расширение файла вместо слепого доверия MIME
 const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-const allowedMediaTypes = [...allowedImageTypes, 'video/mp4', 'video/quicktime'];
+const allowedMediaTypes = [...allowedImageTypes, 'video/mp4', 'video/quicktime', 'audio/mp4', 'audio/m4a', 'audio/aac', 'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/x-m4a'];
 const allowedImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-const allowedMediaExtensions = [...allowedImageExtensions, '.mp4', '.mov'];
+const allowedMediaExtensions = [...allowedImageExtensions, '.mp4', '.mov', '.m4a', '.aac', '.mp3', '.ogg', '.wav'];
 
 const imageFileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname || '').toLowerCase();
@@ -416,7 +416,7 @@ const mediaFileFilter = (req, file, cb) => {
   if (allowedMediaTypes.includes(file.mimetype) || allowedMediaExtensions.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error(`Invalid file type: ${file.mimetype}. Only images and videos allowed.`), false);
+    cb(new Error(`Invalid file type: ${file.mimetype}. Only images, videos and audio allowed.`), false);
   }
 };
 
