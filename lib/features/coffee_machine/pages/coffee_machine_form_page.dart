@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -46,7 +47,8 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
   final Map<String, Map<String, double>?> _machineSelectedRegions = {};
   final Map<String, String> _machineBase64 = {}; // base64 фото для повторного OCR
 
-  // Фото и данные компьютера
+  // Шаблон и данные компьютера
+  CoffeeMachineTemplate? _computerTemplate;
   File? _computerPhoto;
   int? _computerAiNumber;
   final _computerController = TextEditingController();
@@ -100,6 +102,15 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
         return;
       }
 
+      // Загрузить шаблон компьютера (если привязан)
+      CoffeeMachineTemplate? computerTmpl;
+      if (config.computerTemplateId != null) {
+        computerTmpl = allTemplates.cast<CoffeeMachineTemplate?>().firstWhere(
+          (t) => t!.id == config.computerTemplateId,
+          orElse: () => null,
+        );
+      }
+
       // Инициализировать контроллеры
       for (final t in templates) {
         _machineControllers[t.id] = TextEditingController();
@@ -108,6 +119,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       if (!mounted) return;
       setState(() {
         _machineTemplates = templates;
+        _computerTemplate = computerTmpl;
         _isLoading = false;
       });
     } catch (e) {
@@ -204,9 +216,11 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       ),
     );
 
-    // Найти шаблон машины (для region, preset, machineName)
+    // Найти шаблон (машины или компьютера)
     CoffeeMachineTemplate? machineTemplate;
-    if (!isComputer) {
+    if (isComputer) {
+      machineTemplate = _computerTemplate; // может быть null — тогда fallback на хардкод
+    } else {
       final matches = _machineTemplates.where((t) => t.id == templateId);
       if (matches.isEmpty) {
         if (mounted) Navigator.of(context).pop();
@@ -227,8 +241,8 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       };
     }
 
-    // Пресет OCR
-    final String? preset = isComputer ? 'computer' : machineTemplate?.ocrPreset;
+    // Пресет OCR: из шаблона или fallback 'computer'
+    final String? preset = machineTemplate?.ocrPreset ?? (isComputer ? 'computer' : 'standard');
 
     // Имя машины для поиска обученного region на сервере
     final String? machineNameForTraining = machineTemplate?.name;
@@ -476,10 +490,9 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           ),
         ],
       ),
-    );
-    // НЕ вызываем manualController.dispose() в .then() —
-    // диалог ещё анимируется, и TextField обращается к контроллеру.
-    // Локальный контроллер будет очищен сборщиком мусора.
+    ).then((_) {
+      manualController.dispose();
+    });
   }
 
   /// Диалог при ошибке OCR: только выделить область
@@ -627,7 +640,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
       final shiftType = hour < 14 ? 'morning' : 'evening';
 
       final report = CoffeeMachineReport(
-        id: 'cm_report_${DateTime.now().millisecondsSinceEpoch}',
+        id: 'cm_report_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(10000)}',
         employeeName: widget.employeeName,
         shopAddress: widget.shopAddress,
         shiftType: shiftType,
@@ -934,7 +947,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Показание компьютера',
+                        _computerTemplate?.name ?? 'Показание компьютера',
                         style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.bold),
                       ),
                       Text(
@@ -1369,7 +1382,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           if (_currentStep > 0)
             Expanded(
               child: OutlinedButton(
-                onPressed: () => setState(() => _currentStep--),
+                onPressed: () { if (mounted) setState(() => _currentStep--); },
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: Colors.white.withOpacity(0.3)),
                   padding: EdgeInsets.symmetric(vertical: 14.h),
@@ -1388,7 +1401,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
                       ? null
                       : isLastStep
                           ? _submitReport
-                          : () => setState(() => _currentStep++),
+                          : () { if (mounted) setState(() => _currentStep++); },
               style: ElevatedButton.styleFrom(
                 backgroundColor: isLastStep ? AppColors.gold : AppColors.emerald,
                 padding: EdgeInsets.symmetric(vertical: 14.h),

@@ -166,7 +166,7 @@ function setupCoffeeMachineAPI(app) {
       }
 
       const filePath = path.join(TEMPLATES_DIR, `${sanitizeId(template.id)}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(template, null, 2), 'utf8');
+      await writeJsonFile(filePath, template);
 
       console.log(`[CoffeeMachine] ✅ Шаблон сохранён: ${template.name} (${template.id})`);
       res.json({ success: true, template });
@@ -198,7 +198,7 @@ function setupCoffeeMachineAPI(app) {
         updated.referencePhotoUrl = `/coffee-machine-photos/${photoFileName}`;
       }
 
-      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await writeJsonFile(filePath, updated);
       console.log(`[CoffeeMachine] ✅ Шаблон обновлён: ${updated.name} (${id})`);
       res.json({ success: true, template: updated });
     } catch (error) {
@@ -306,7 +306,7 @@ function setupCoffeeMachineAPI(app) {
 
       const fileName = sanitizeId(shopAddress) + '.json';
       const filePath = path.join(SHOP_CONFIGS_DIR, fileName);
-      await fsp.writeFile(filePath, JSON.stringify(config, null, 2), 'utf8');
+      await writeJsonFile(filePath, config);
 
       console.log(`[CoffeeMachine] ✅ Конфиг магазина обновлён: ${shopAddress}`);
       res.json({ success: true, config });
@@ -1277,7 +1277,7 @@ async function buildMachineIntelligence() {
       const before = samples.length;
       const cleaned = samples.filter(s => {
         if (s.correctNumber) return true; // полезный — оставляем
-        const ts = s.timestamp ? new Date(s.timestamp).getTime() : 0;
+        const ts = s.createdAt ? new Date(s.createdAt).getTime() : 0;
         return ts > cutoff; // свежий — оставляем
       });
       if (cleaned.length < before) {
@@ -1303,18 +1303,20 @@ async function buildMachineIntelligence() {
  */
 async function loadMachineIntelligence(machineName) {
   try {
-    // JSON primary
+    // DB primary if enabled
+    if (USE_DB) {
+      try {
+        const row = await db.findById('app_settings', 'coffee_machine_intelligence', 'key');
+        if (row?.data) {
+          return machineName ? (row.data[machineName] || null) : row.data;
+        }
+      } catch (e) { /* fallback to JSON */ }
+    }
+
+    // JSON fallback
     if (await fileExists(INTELLIGENCE_FILE)) {
       const data = JSON.parse(await fsp.readFile(INTELLIGENCE_FILE, 'utf8'));
       return machineName ? (data[machineName] || null) : data;
-    }
-
-    // DB fallback
-    if (USE_DB) {
-      const row = await db.findById('app_settings', 'coffee_machine_intelligence', 'key');
-      if (row?.data) {
-        return machineName ? (row.data[machineName] || null) : row.data;
-      }
     }
 
     return null;

@@ -172,7 +172,7 @@ async function getCoffeeMachineMetrics() {
     }
 
     // Training samples count
-    const trainingFile = path.join(DATA_DIR, 'coffee-machine-training-samples.json');
+    const trainingFile = path.join(DATA_DIR, 'coffee-machine-training', 'samples.json');
     let trainingSamples = 0;
     if (await fileExists(trainingFile)) {
       const data = JSON.parse(await fsp.readFile(trainingFile, 'utf8'));
@@ -194,7 +194,10 @@ async function getCoffeeMachineMetrics() {
         );
         if (rows) {
           for (const row of rows) {
-            if (row.readings) reports.push({ readings: row.readings });
+            if (row.readings) {
+              const parsed = typeof row.readings === 'string' ? JSON.parse(row.readings) : row.readings;
+              reports.push({ readings: parsed });
+            }
           }
         }
       } catch (e) { /* ignore */ }
@@ -215,9 +218,9 @@ async function getCoffeeMachineMetrics() {
     for (const report of reports) {
       if (!report.readings || !Array.isArray(report.readings)) continue;
       for (const reading of report.readings) {
-        if (reading.ocrNumber !== undefined && reading.confirmedNumber !== undefined) {
+        if ((reading.aiReadNumber !== undefined || reading.ocrNumber !== undefined) && reading.confirmedNumber !== undefined) {
           totalReadings++;
-          const ocrVal = parseFloat(reading.ocrNumber) || 0;
+          const ocrVal = parseFloat(reading.aiReadNumber ?? reading.ocrNumber) || 0;
           const confVal = parseFloat(reading.confirmedNumber) || 0;
           const diff = Math.abs(ocrVal - confVal);
           if (diff < 1) correctReadings++; // OCR точен
@@ -230,7 +233,7 @@ async function getCoffeeMachineMetrics() {
       avgError = Math.round((totalError / totalReadings) * 10) / 10;
     }
 
-    const machineCount = intelligence?.machines ? Object.keys(intelligence.machines).length : 0;
+    const machineCount = intelligence ? Object.keys(intelligence).filter(k => k !== 'updatedAt').length : 0;
 
     return {
       name: 'Coffee Machine OCR',

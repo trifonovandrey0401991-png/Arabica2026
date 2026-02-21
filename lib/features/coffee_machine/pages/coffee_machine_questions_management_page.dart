@@ -23,8 +23,6 @@ class CoffeeMachineQuestionsManagementPage extends StatefulWidget {
 
 class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQuestionsManagementPage>
     with SingleTickerProviderStateMixin {
-  final _imagePicker = ImagePicker();
-
   bool _isLoading = true;
   List<CoffeeMachineTemplate> _templates = [];
   List<CoffeeMachineShopConfig> _shopConfigs = [];
@@ -620,162 +618,14 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
   }
 
   Future<Map<String, dynamic>?> _showTemplateDialog({CoffeeMachineTemplate? existing}) async {
-    final nameController = TextEditingController(text: existing?.name ?? '');
-    String selectedType = existing?.machineType ?? CoffeeMachineTypes.wmf;
-    if (!CoffeeMachineTypes.all.contains(selectedType)) {
-      selectedType = CoffeeMachineTypes.other;
-    }
-    String selectedPreset = existing?.ocrPreset ?? OcrPresets.standard;
-    Uint8List? imageBytes;
-
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            backgroundColor: Color(0xFF1A2E2E),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-            title: Text(
-              existing != null ? 'Редактировать шаблон' : 'Новый шаблон',
-              style: TextStyle(color: Colors.white),
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Название',
-                      hintText: 'WMF 1500S',
-                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(color: AppColors.gold),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: selectedType,
-                    dropdownColor: Color(0xFF1A2E2E),
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Тип машины',
-                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(color: AppColors.gold),
-                      ),
-                    ),
-                    items: CoffeeMachineTypes.all.map((type) => DropdownMenuItem(
-                      value: type,
-                      child: Text(CoffeeMachineTypes.getDisplayName(type)),
-                    )).toList(),
-                    onChanged: (v) {
-                      if (v != null) setDialogState(() => selectedType = v);
-                    },
-                  ),
-                  SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: selectedPreset,
-                    dropdownColor: Color(0xFF1A2E2E),
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Пресет OCR',
-                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(color: AppColors.gold),
-                      ),
-                    ),
-                    items: OcrPresets.all.map((preset) => DropdownMenuItem(
-                      value: preset,
-                      child: Text(OcrPresets.getDisplayName(preset)),
-                    )).toList(),
-                    onChanged: (v) {
-                      if (v != null) setDialogState(() => selectedPreset = v);
-                    },
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(top: 4.h),
-                    child: Text(
-                      OcrPresets.getDescription(selectedPreset),
-                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp),
-                    ),
-                  ),
-                  SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      final picked = await _imagePicker.pickImage(
-                        source: ImageSource.camera,
-                        maxWidth: 1920,
-                        imageQuality: 85,
-                      );
-                      if (picked != null) {
-                        final bytes = await File(picked.path).readAsBytes();
-                        setDialogState(() => imageBytes = bytes);
-                      }
-                    },
-                    icon: Icon(
-                      imageBytes != null ? Icons.check_circle : Icons.camera_alt,
-                      color: imageBytes != null ? Colors.green : AppColors.gold,
-                    ),
-                    label: Text(
-                      imageBytes != null ? 'Фото загружено' : 'Эталонное фото',
-                      style: TextStyle(color: imageBytes != null ? Colors.green : AppColors.gold),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: (imageBytes != null ? Colors.green : AppColors.gold).withOpacity(0.4)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.6))),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (nameController.text.isEmpty) return;
-                  final template = CoffeeMachineTemplate(
-                    id: existing?.id ?? 'tmpl_${DateTime.now().millisecondsSinceEpoch}',
-                    name: nameController.text,
-                    machineType: selectedType,
-                    referencePhotoUrl: existing?.referencePhotoUrl,
-                    counterRegion: existing?.counterRegion,
-                    ocrPreset: selectedPreset,
-                    createdAt: existing?.createdAt ?? DateTime.now(),
-                    updatedAt: DateTime.now(),
-                  );
-                  Navigator.pop(context, {'template': template, 'image': imageBytes});
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
-                child: Text('Сохранить', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          );
-        },
+    // Используем полноэкранную страницу вместо диалога —
+    // StatefulBuilder в showDialog ломается при открытии камеры (Activity)
+    return Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _TemplateEditPage(existing: existing),
       ),
     );
-    nameController.dispose();
-    return result;
   }
 
   // ============ Магазины (привязки) ============
@@ -789,6 +639,10 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
           return t?.name ?? id;
         })
         .join(', ') ?? '';
+    // Шаблон компьютера
+    final computerName = config?.computerTemplateId != null
+        ? _templates.where((t) => t.id == config!.computerTemplateId).firstOrNull?.name
+        : null;
 
     return GestureDetector(
       onTap: () => _editShopConfig(address, config),
@@ -819,13 +673,19 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13.sp),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (assignedCount > 0)
+                  if (assignedCount > 0) ...[
                     Text(
                       templateNames,
                       style: TextStyle(color: AppColors.gold.withOpacity(0.7), fontSize: 11.sp),
                       overflow: TextOverflow.ellipsis,
-                    )
-                  else
+                    ),
+                    if (computerName != null)
+                      Text(
+                        'ПК: $computerName',
+                        style: TextStyle(color: Colors.blue.withOpacity(0.7), fontSize: 11.sp),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ] else
                     Text(
                       'Не настроено',
                       style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11.sp),
@@ -842,8 +702,14 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
 
   Future<void> _editShopConfig(String shopAddress, CoffeeMachineShopConfig? existing) async {
     final selected = Set<String>.from(existing?.machineTemplateIds ?? []);
+    String? computerTemplateId = existing?.computerTemplateId;
 
-    final result = await showDialog<Set<String>>(
+    // Шаблоны компьютеров (preset == 'computer')
+    final computerTemplates = _templates.where((t) => t.ocrPreset == OcrPresets.computer).toList();
+    // Шаблоны машин (preset != 'computer')
+    final machineTemplates = _templates.where((t) => t.ocrPreset != OcrPresets.computer).toList();
+
+    final result = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
@@ -861,28 +727,79 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                   ? Text('Сначала создайте шаблоны', style: TextStyle(color: Colors.white70))
                   : ListView(
                       shrinkWrap: true,
-                      children: _templates.map((t) {
-                        final isSelected = selected.contains(t.id);
-                        return CheckboxListTile(
-                          value: isSelected,
-                          title: Text(t.name, style: TextStyle(color: Colors.white)),
-                          subtitle: Text(
-                            CoffeeMachineTypes.getDisplayName(t.machineType),
-                            style: TextStyle(color: Colors.white.withOpacity(0.4)),
+                      children: [
+                        // Секция: Кофемашины
+                        Padding(
+                          padding: EdgeInsets.only(left: 16.w, top: 8.h, bottom: 4.h),
+                          child: Text('Кофемашины', style: TextStyle(
+                            color: AppColors.gold, fontSize: 13.sp, fontWeight: FontWeight.w600,
+                          )),
+                        ),
+                        ...machineTemplates.map((t) {
+                          final isSelected = selected.contains(t.id);
+                          return CheckboxListTile(
+                            value: isSelected,
+                            title: Text(t.name, style: TextStyle(color: Colors.white)),
+                            subtitle: Text(
+                              CoffeeMachineTypes.getDisplayName(t.machineType),
+                              style: TextStyle(color: Colors.white.withOpacity(0.4)),
+                            ),
+                            activeColor: AppColors.gold,
+                            checkColor: Colors.white,
+                            onChanged: (v) {
+                              setDialogState(() {
+                                if (v == true) {
+                                  selected.add(t.id);
+                                } else {
+                                  selected.remove(t.id);
+                                }
+                              });
+                            },
+                          );
+                        }),
+                        // Секция: Компьютер
+                        Padding(
+                          padding: EdgeInsets.only(left: 16.w, top: 16.h, bottom: 4.h),
+                          child: Text('Компьютер', style: TextStyle(
+                            color: Colors.blue, fontSize: 13.sp, fontWeight: FontWeight.w600,
+                          )),
+                        ),
+                        if (computerTemplates.isEmpty)
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                            child: Text(
+                              'Нет шаблонов компьютера.\nСоздайте шаблон с пресетом "Экран компьютера".',
+                              style: TextStyle(color: Colors.white38, fontSize: 12.sp),
+                            ),
+                          )
+                        else
+                          ...computerTemplates.map((t) {
+                            return RadioListTile<String?>(
+                              value: t.id,
+                              groupValue: computerTemplateId,
+                              title: Text(t.name, style: TextStyle(color: Colors.white)),
+                              subtitle: Text(
+                                OcrPresets.getDisplayName(t.ocrPreset),
+                                style: TextStyle(color: Colors.white.withOpacity(0.4)),
+                              ),
+                              activeColor: Colors.blue,
+                              onChanged: (v) {
+                                setDialogState(() {
+                                  computerTemplateId = v;
+                                });
+                              },
+                            );
+                          }),
+                        if (computerTemplates.isNotEmpty && computerTemplateId != null)
+                          Padding(
+                            padding: EdgeInsets.only(left: 16.w),
+                            child: TextButton(
+                              onPressed: () => setDialogState(() => computerTemplateId = null),
+                              child: Text('Убрать шаблон компьютера',
+                                style: TextStyle(color: Colors.white38, fontSize: 12.sp)),
+                            ),
                           ),
-                          activeColor: AppColors.gold,
-                          checkColor: Colors.white,
-                          onChanged: (v) {
-                            setDialogState(() {
-                              if (v == true) {
-                                selected.add(t.id);
-                              } else {
-                                selected.remove(t.id);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
+                      ],
                     ),
             ),
             actions: [
@@ -891,7 +808,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
                 child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.6))),
               ),
               ElevatedButton(
-                onPressed: () => Navigator.pop(context, selected),
+                onPressed: () => Navigator.pop(context, true),
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
                 child: Text('Сохранить', style: TextStyle(color: Colors.white)),
               ),
@@ -901,15 +818,232 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
       ),
     );
 
-    if (result != null) {
+    if (result == true) {
       final config = CoffeeMachineShopConfig(
         shopAddress: shopAddress,
-        machineTemplateIds: result.toList(),
+        machineTemplateIds: selected.toList(),
         hasComputerVerification: true,
+        computerTemplateId: computerTemplateId,
       );
       await CoffeeMachineTemplateService.updateShopConfig(config);
       _loadData();
     }
+  }
+}
+
+/// Полноэкранная страница для создания/редактирования шаблона кофемашины.
+/// Используется вместо диалога, чтобы камера (отдельная Activity) не ломала виджет-дерево.
+class _TemplateEditPage extends StatefulWidget {
+  final CoffeeMachineTemplate? existing;
+
+  const _TemplateEditPage({this.existing});
+
+  @override
+  State<_TemplateEditPage> createState() => _TemplateEditPageState();
+}
+
+class _TemplateEditPageState extends State<_TemplateEditPage> {
+  late TextEditingController _nameController;
+  late String _selectedType;
+  late String _selectedPreset;
+  Uint8List? _imageBytes;
+  final _imagePicker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.existing?.name ?? '');
+    _selectedType = widget.existing?.machineType ?? CoffeeMachineTypes.wmf;
+    if (!CoffeeMachineTypes.all.contains(_selectedType)) {
+      _selectedType = CoffeeMachineTypes.other;
+    }
+    _selectedPreset = widget.existing?.ocrPreset ?? OcrPresets.standard;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickPhoto() async {
+    final picked = await _imagePicker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1920,
+      imageQuality: 85,
+    );
+    if (picked != null && mounted) {
+      final bytes = await File(picked.path).readAsBytes();
+      setState(() => _imageBytes = bytes);
+    }
+  }
+
+  void _save() {
+    if (_nameController.text.isEmpty) return;
+    final template = CoffeeMachineTemplate(
+      id: widget.existing?.id ?? 'tmpl_${DateTime.now().millisecondsSinceEpoch}',
+      name: _nameController.text,
+      machineType: _selectedType,
+      referencePhotoUrl: widget.existing?.referencePhotoUrl,
+      counterRegion: widget.existing?.counterRegion,
+      ocrPreset: _selectedPreset,
+      createdAt: widget.existing?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    Navigator.pop(context, {'template': template, 'image': _imageBytes});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.existing != null;
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.close, color: Colors.white70),
+                    ),
+                    Text(
+                      isEditing ? 'Редактировать шаблон' : 'Новый шаблон',
+                      style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.bold),
+                    ),
+                    Spacer(),
+                    TextButton(
+                      onPressed: _save,
+                      child: Text('Сохранить', style: TextStyle(color: AppColors.gold, fontSize: 14.sp, fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+              ),
+              // Form
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(16.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: _nameController,
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Название',
+                          hintText: 'WMF 1500S',
+                          labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                            borderSide: BorderSide(color: AppColors.gold),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: _selectedType,
+                        dropdownColor: Color(0xFF1A2E2E),
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Тип машины',
+                          labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                            borderSide: BorderSide(color: AppColors.gold),
+                          ),
+                        ),
+                        items: CoffeeMachineTypes.all.map((type) => DropdownMenuItem(
+                          value: type,
+                          child: Text(CoffeeMachineTypes.getDisplayName(type)),
+                        )).toList(),
+                        onChanged: (v) {
+                          if (v != null) setState(() => _selectedType = v);
+                        },
+                      ),
+                      SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: _selectedPreset,
+                        dropdownColor: Color(0xFF1A2E2E),
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Пресет OCR',
+                          labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                            borderSide: BorderSide(color: AppColors.gold),
+                          ),
+                        ),
+                        items: OcrPresets.all.map((preset) => DropdownMenuItem(
+                          value: preset,
+                          child: Text(OcrPresets.getDisplayName(preset)),
+                        )).toList(),
+                        onChanged: (v) {
+                          if (v != null) setState(() => _selectedPreset = v);
+                        },
+                      ),
+                      Padding(
+                        padding: EdgeInsets.only(top: 4.h),
+                        child: Text(
+                          OcrPresets.getDescription(_selectedPreset),
+                          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp),
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      OutlinedButton.icon(
+                        onPressed: _pickPhoto,
+                        icon: Icon(
+                          _imageBytes != null ? Icons.check_circle : Icons.camera_alt,
+                          color: _imageBytes != null ? Colors.green : AppColors.gold,
+                        ),
+                        label: Text(
+                          _imageBytes != null ? 'Фото загружено' : 'Эталонное фото',
+                          style: TextStyle(color: _imageBytes != null ? Colors.green : AppColors.gold),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: (_imageBytes != null ? Colors.green : AppColors.gold).withOpacity(0.4)),
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                        ),
+                      ),
+                      if (_imageBytes != null) ...[
+                        SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8.r),
+                          child: Image.memory(_imageBytes!, height: 200, fit: BoxFit.cover),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
