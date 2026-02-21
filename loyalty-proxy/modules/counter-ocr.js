@@ -45,7 +45,7 @@ const PRESETS = {
 function callEasyOCR(imagePath, preset, expectedRange) {
   const payload = { imagePath, preset: preset || 'standard' };
   if (expectedRange) payload.expectedRange = expectedRange;
-  return callEasyOCREndpoint('/ocr', payload, 60000);
+  return callEasyOCREndpoint('/ocr', payload, 20000);
 }
 
 /**

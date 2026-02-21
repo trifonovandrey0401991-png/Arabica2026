@@ -652,27 +652,51 @@ function setupCoffeeMachineAPI(app) {
       if (!effectiveRegion) {
         try {
           const samples = await loadTrainingSamples();
-          // Ищем samples для этого preset + machineName (с selectedRegion)
-          const matching = samples.filter(s =>
+          const effectivePreset = preset || 'standard';
+
+          // Сначала ищем samples для этого preset + machineName
+          let matching = samples.filter(s =>
             s.selectedRegion &&
-            s.preset === (preset || 'standard') &&
-            (!machineName || s.machineName === machineName)
+            s.preset === effectivePreset &&
+            s.machineName && machineName && s.machineName === machineName
           );
-          if (matching.length > 0) {
-            // Усредняем region по всем подходящим samples
-            const avg = { x: 0, y: 0, width: 0, height: 0 };
-            for (const s of matching) {
-              avg.x += s.selectedRegion.x || 0;
-              avg.y += s.selectedRegion.y || 0;
-              avg.width += s.selectedRegion.width || 0;
-              avg.height += s.selectedRegion.height || 0;
+
+          // Cross-machine: если нет samples для конкретной машины — берём по тому же preset (тип дисплея)
+          if (matching.length === 0) {
+            matching = samples.filter(s =>
+              s.selectedRegion &&
+              s.preset === effectivePreset
+            );
+            if (matching.length > 0) {
+              console.log(`[CoffeeMachine] 🔄 Cross-machine: нет samples для "${machineName}", используем ${matching.length} samples от других машин (preset: ${effectivePreset})`);
             }
-            avg.x /= matching.length;
-            avg.y /= matching.length;
-            avg.width /= matching.length;
-            avg.height /= matching.length;
+          }
+
+          if (matching.length > 0) {
+            // Взвешенное усреднение: вес 2 если AI был точен, иначе 1
+            const avg = { x: 0, y: 0, width: 0, height: 0 };
+            let totalWeight = 0;
+            for (const s of matching) {
+              const w = (s.correctNumber && s.aiReadNumber && s.correctNumber === s.aiReadNumber) ? 2 : 1;
+              avg.x += (s.selectedRegion.x || 0) * w;
+              avg.y += (s.selectedRegion.y || 0) * w;
+              avg.width += (s.selectedRegion.width || 0) * w;
+              avg.height += (s.selectedRegion.height || 0) * w;
+              totalWeight += w;
+            }
+            avg.x /= totalWeight;
+            avg.y /= totalWeight;
+            avg.width /= totalWeight;
+            avg.height /= totalWeight;
+
+            // Добавляем 5% margin для защиты от обрезки
+            avg.x = Math.max(0, avg.x - avg.width * 0.05);
+            avg.y = Math.max(0, avg.y - avg.height * 0.05);
+            avg.width = Math.min(1 - avg.x, avg.width * 1.1);
+            avg.height = Math.min(1 - avg.y, avg.height * 1.1);
+
             effectiveRegion = avg;
-            console.log(`[CoffeeMachine] 🎓 Используем обученный region (${matching.length} samples): x=${avg.x.toFixed(2)}, y=${avg.y.toFixed(2)}, w=${avg.width.toFixed(2)}, h=${avg.height.toFixed(2)}`);
+            console.log(`[CoffeeMachine] 🎓 Используем обученный region (${matching.length} samples, вес ${totalWeight}): x=${avg.x.toFixed(2)}, y=${avg.y.toFixed(2)}, w=${avg.width.toFixed(2)}, h=${avg.height.toFixed(2)}`);
           }
         } catch (e) {
           // Training data недоступна — продолжаем без region
@@ -689,6 +713,10 @@ function setupCoffeeMachineAPI(app) {
             expectedRange = machineIntel.expectedNext;
             console.log(`[CoffeeMachine] 🧠 Intelligence: ${machineName} → ожидаем ${expectedRange.min}-${expectedRange.max}`);
           }
+          // Подсказка если intelligence знает лучший пресет
+          if (machineIntel && machineIntel.bestPreset && machineIntel.bestPreset !== (preset || 'standard')) {
+            console.log(`[CoffeeMachine] 💡 Hint: ${machineName} лучше работает с preset "${machineIntel.bestPreset}" (текущий: "${preset || 'standard'}")`);
+          }
         } catch (e) { /* intelligence недоступна — продолжаем без неё */ }
       }
 
@@ -704,6 +732,7 @@ function setupCoffeeMachineAPI(app) {
           suggestedPreset: machineIntel.bestPreset,
           successRate: machineIntel.successRate,
           lastKnownValue: machineIntel.lastKnownValue,
+          unreliable: machineIntel.totalReadings >= 3 && machineIntel.successRate < 0.5,
         };
       }
       res.json(result);
@@ -1046,12 +1075,21 @@ async function markPendingAsCompleted(shopAddress, shiftType, date) {
   }
 }
 
+// Debounce кэш для intelligence (10 секунд)
+let _intelligenceCache = null;
+let _intelligenceBuiltAt = 0;
+const INTELLIGENCE_DEBOUNCE_MS = 10000;
+
 /**
  * Построить intelligence-профили всех кофемашин из истории отчётов
  * Сканирует все отчёты, группирует по machineName, вычисляет статистику
  */
 async function buildMachineIntelligence() {
   try {
+    // Debounce: не пересчитывать чаще чем раз в 10 секунд
+    if (_intelligenceCache && (Date.now() - _intelligenceBuiltAt) < INTELLIGENCE_DEBOUNCE_MS) {
+      return _intelligenceCache;
+    }
     const intelligence = {};
 
     // Читаем все отчёты (DB primary → JSON fallback)
@@ -1159,8 +1197,15 @@ async function buildMachineIntelligence() {
       if (lastDate && avgDailyGrowth > 0) {
         const daysSinceLast = Math.max(0, (Date.now() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24));
         const expectedValue = lastKnownValue + Math.round(avgDailyGrowth * daysSinceLast);
-        // Диапазон: -10% ... +30% от среднего прироста (допуск на выходные/пики)
-        const margin = Math.max(500, Math.round(avgDailyGrowth * 3));
+        // Margin учитывает std deviation для точности на медленных машинах
+        let stdDev = 0;
+        if (values.length >= 3) {
+          const diffs = [];
+          for (let i = 1; i < values.length; i++) diffs.push(values[i] - values[i - 1]);
+          const meanDiff = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+          stdDev = Math.sqrt(diffs.reduce((s, d) => s + (d - meanDiff) ** 2, 0) / diffs.length);
+        }
+        const margin = Math.max(200, Math.round(avgDailyGrowth * 2), Math.round(stdDev));
         expectedNext = {
           min: Math.max(lastKnownValue, expectedValue - margin),
           max: expectedValue + margin,
@@ -1221,7 +1266,27 @@ async function buildMachineIntelligence() {
       }
     }
 
+    // Auto-cleanup: удаляем training samples старше 90 дней без correctNumber
+    try {
+      const samples = await loadTrainingSamples();
+      const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+      const before = samples.length;
+      const cleaned = samples.filter(s => {
+        if (s.correctNumber) return true; // полезный — оставляем
+        const ts = s.timestamp ? new Date(s.timestamp).getTime() : 0;
+        return ts > cutoff; // свежий — оставляем
+      });
+      if (cleaned.length < before) {
+        await writeJsonFile(TRAINING_SAMPLES_FILE, cleaned);
+        console.log(`[CoffeeMachine] 🧹 Cleanup: удалено ${before - cleaned.length} старых samples (было ${before}, стало ${cleaned.length})`);
+      }
+    } catch (e) {
+      // Cleanup не критичен — продолжаем
+    }
+
     console.log(`[CoffeeMachine] 🧠 Intelligence обновлён: ${Object.keys(intelligence).length} машин`);
+    _intelligenceCache = intelligence;
+    _intelligenceBuiltAt = Date.now();
     return intelligence;
   } catch (error) {
     console.error('[CoffeeMachine] Ошибка buildMachineIntelligence:', error.message);
