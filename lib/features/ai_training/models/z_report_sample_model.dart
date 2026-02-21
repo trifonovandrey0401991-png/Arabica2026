@@ -62,5 +62,12 @@ class ZReportData {
     if (v is String) return int.tryParse(v);
     return null;
   }
+
+  Map<String, dynamic> toJson() => {
+    'totalSum': totalSum,
+    'cashSum': cashSum,
+    'ofdNotSent': ofdNotSent,
+    'resourceKeys': resourceKeys,
+  };
 }
 

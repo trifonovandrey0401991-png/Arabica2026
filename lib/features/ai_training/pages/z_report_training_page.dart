@@ -469,6 +469,8 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
         resourceKeys: resourceKeys,
         shopAddress: _selectedShop?.address,
         fieldRegions: _fieldRegions,
+        rawText: _parseResult?.rawText,
+        recognizedData: _parseResult?.data?.toJson(),
       );
 
       if (mounted) {

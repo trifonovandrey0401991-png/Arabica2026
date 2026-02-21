@@ -338,7 +338,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
 
       final bytes = await file.readAsBytes();
       final compressedBase64 = await ZReportService.compressImage(bytes);
-      final result = await ZReportService.parseZReport(
+      var lastOcrResult = await ZReportService.parseZReport(
         compressedBase64,
         shopAddress: widget.shopAddress,
       );
@@ -350,10 +350,10 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       var dialogResult = await ZReportRecognitionDialog.show(
         context,
         imageBase64: compressedBase64,
-        recognizedData: result.data,
+        recognizedData: lastOcrResult.data,
         shopAddress: widget.shopAddress,
         employeeName: widget.employeeName,
-        expectedRanges: result.expectedRanges,
+        expectedRanges: lastOcrResult.expectedRanges,
       );
       if (dialogResult == null || !mounted) return;
 
@@ -375,7 +375,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         // ШАГ 5: Повторный OCR с указанными областями
         _showLoadingDialog('Повторное распознавание...');
 
-        final result2 = await ZReportService.parseZReport(
+        lastOcrResult = await ZReportService.parseZReport(
           compressedBase64,
           shopAddress: widget.shopAddress,
           explicitRegions: regions,
@@ -384,18 +384,18 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         if (mounted) Navigator.of(context).pop(); // закрыть загрузку
         if (!mounted) return;
 
-        final hasData2 = result2.success &&
-            result2.data != null &&
-            (result2.data!.totalSum != null || result2.data!.cashSum != null);
+        final hasData2 = lastOcrResult.success &&
+            lastOcrResult.data != null &&
+            (lastOcrResult.data!.totalSum != null || lastOcrResult.data!.cashSum != null);
 
         // ШАГ 6: Показать единый диалог (2-я попытка)
         dialogResult = await ZReportRecognitionDialog.show(
           context,
           imageBase64: compressedBase64,
-          recognizedData: hasData2 ? result2.data : null,
+          recognizedData: hasData2 ? lastOcrResult.data : null,
           shopAddress: widget.shopAddress,
           employeeName: widget.employeeName,
-          expectedRanges: result2.expectedRanges,
+          expectedRanges: lastOcrResult.expectedRanges,
           isSecondAttempt: true,
           secondAttemptFailed: !hasData2,
         );
@@ -414,7 +414,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         }
       }
 
-      // Сохраняем training sample
+      // Сохраняем training sample (rawText + recognizedData для обучения паттернов)
       ZReportService.saveSample(
         imageBase64: compressedBase64,
         totalSum: dialogResult.revenue,
@@ -424,6 +424,8 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         shopAddress: widget.shopAddress,
         employeeName: widget.employeeName,
         fieldRegions: isOoo ? _oooFieldRegions : _ipFieldRegions,
+        rawText: lastOcrResult.rawText,
+        recognizedData: lastOcrResult.data?.toJson(),
       );
     } catch (e) {
       Logger.error('Ошибка распознавания Z-отчёта', e);
