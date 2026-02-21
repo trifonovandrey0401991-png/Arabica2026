@@ -676,7 +676,9 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
               isAiActive: question.isAiActive,
               employeeAnswer: aiCount,
             );
-          } catch (_) {}
+          } catch (e) {
+            debugPrint('[Recount] Ошибка отправки фото в ИИ: $e');
+          }
         }();
       }
       if (mounted) {
@@ -1012,6 +1014,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         ],
       ),
     );
+    controller.dispose();
 
     if (!mounted) return;
 

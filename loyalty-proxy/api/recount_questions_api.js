@@ -11,7 +11,7 @@ const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_RECOUNT_QUESTIONS === 'true';
 
@@ -224,7 +224,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
   }
 
   // Удалить вопрос пересчета
-  app.delete('/api/recount-questions/:questionId', requireAuth, async (req, res) => {
+  app.delete('/api/recount-questions/:questionId', requireAdmin, async (req, res) => {
     try {
       const { questionId } = req.params;
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -260,7 +260,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
   });
 
   // Массовая загрузка товаров пересчета (ЗАМЕНИТЬ ВСЕ)
-  app.post('/api/recount-questions/bulk-upload', requireAuth, async (req, res) => {
+  app.post('/api/recount-questions/bulk-upload', requireAdmin, async (req, res) => {
     try {
       console.log('POST /api/recount-questions/bulk-upload:', req.body?.products?.length, 'товаров');
 
@@ -334,7 +334,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
   });
 
   // Массовое добавление НОВЫХ товаров (только с новыми баркодами)
-  app.post('/api/recount-questions/bulk-add-new', requireAuth, async (req, res) => {
+  app.post('/api/recount-questions/bulk-add-new', requireAdmin, async (req, res) => {
     try {
       console.log('POST /api/recount-questions/bulk-add-new:', req.body?.products?.length, 'товаров');
 

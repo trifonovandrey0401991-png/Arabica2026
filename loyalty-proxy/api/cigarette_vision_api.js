@@ -8,7 +8,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 
 const cigaretteVision = require('../modules/cigarette-vision');
 
@@ -187,7 +187,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Удалить образец
-  app.delete('/api/cigarette-vision/samples/:id', requireAuth, async (req, res) => {
+  app.delete('/api/cigarette-vision/samples/:id', requireAdmin, async (req, res) => {
     try {
       const result = await cigaretteVision.deleteSample(req.params.id);
 
@@ -290,7 +290,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ ОБУЧЕНИЕ МОДЕЛИ ============
 
   // Экспорт данных для обучения
-  app.post('/api/cigarette-vision/export-training', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/export-training', requireAdmin, async (req, res) => {
     try {
       const { outputDir } = req.body;
       // Validate outputDir is within DATA_DIR to prevent path traversal
@@ -306,7 +306,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Запуск обучения модели (требует dataYaml)
-  app.post('/api/cigarette-vision/train', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/train', requireAdmin, async (req, res) => {
     try {
       const { dataYaml, epochs } = req.body;
 
@@ -323,7 +323,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Полный цикл обучения: export → train → reload (одна кнопка для админа)
-  app.post('/api/cigarette-vision/trigger-training', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/trigger-training', requireAdmin, async (req, res) => {
     try {
       const { epochs } = req.body;
       const result = await cigaretteVision.triggerFullTraining(epochs || 50);
@@ -558,7 +558,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Удалить фото пересчёта
-  app.delete('/api/cigarette-vision/counting-samples/:sampleId', requireAuth, async (req, res) => {
+  app.delete('/api/cigarette-vision/counting-samples/:sampleId', requireAdmin, async (req, res) => {
     try {
       const { sampleId } = req.params;
       const result = await cigaretteVision.deleteCountingSample(sampleId);
@@ -671,7 +671,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Отклонить pending фото (удалить)
-  app.delete('/api/cigarette-vision/counting-pending/:sampleId', requireAuth, async (req, res) => {
+  app.delete('/api/cigarette-vision/counting-pending/:sampleId', requireAdmin, async (req, res) => {
     try {
       const { sampleId } = req.params;
       const result = await cigaretteVision.rejectCountingPendingSample(sampleId);
@@ -800,6 +800,45 @@ async function setupCigaretteVisionAPI(app) {
       console.error('[Cigarette Vision API] Ошибка ежедневной очистки:', err.message);
     }
   }, CLEANUP_INTERVAL_MS);
+
+  // ============ АВТО-ОБУЧЕНИЕ: проверка каждые 6 часов ============
+
+  const AUTO_TRAIN_THRESHOLD = 50;     // минимум аннотированных образцов
+  const AUTO_TRAIN_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 часов
+  let _lastAutoTrainCount = 0;         // сколько образцов было при последнем обучении
+  let _isAutoTraining = false;         // блокировка двойного запуска
+
+  async function _checkAndAutoTrain() {
+    if (_isAutoTraining) return;
+    try {
+      const stats = await cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.COUNTING);
+      const annotated = stats.samplesWithAnnotations || 0;
+
+      // Достаточно образцов + появились новые с момента последнего обучения
+      if (annotated >= AUTO_TRAIN_THRESHOLD && annotated > _lastAutoTrainCount) {
+        _isAutoTraining = true;
+        console.log(`[Auto-Train] ${annotated} аннотированных образцов >= ${AUTO_TRAIN_THRESHOLD}, запускаем обучение...`);
+        const result = await cigaretteVision.triggerFullTraining(30);
+        if (result.success) {
+          _lastAutoTrainCount = annotated;
+          console.log(`[Auto-Train] ✅ Обучение завершено. Экспортировано: ${result.exportResult?.total_images}`);
+        } else {
+          console.warn(`[Auto-Train] ⚠️ Ошибка обучения на шаге "${result.step}": ${result.error}`);
+        }
+        _isAutoTraining = false;
+      } else {
+        console.log(`[Auto-Train] Образцов: ${annotated}/${AUTO_TRAIN_THRESHOLD} (последнее обучение при ${_lastAutoTrainCount})`);
+      }
+    } catch (err) {
+      _isAutoTraining = false;
+      console.error('[Auto-Train] Ошибка проверки:', err.message);
+    }
+  }
+
+  // Первая проверка через 10 минут после старта (не сразу, чтобы дать серверу подняться)
+  setTimeout(_checkAndAutoTrain, 10 * 60 * 1000);
+  // Затем каждые 6 часов
+  setInterval(_checkAndAutoTrain, AUTO_TRAIN_INTERVAL_MS);
 
   // ============ СИСТЕМА ОБРАТНОЙ СВЯЗИ И АВТООТКЛЮЧЕНИЯ ИИ ============
 
