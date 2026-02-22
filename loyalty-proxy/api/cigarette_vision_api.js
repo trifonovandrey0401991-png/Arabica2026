@@ -7,6 +7,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const https = require('https');
 const { fileExists } = require('../utils/file_helpers');
 const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
@@ -15,6 +16,63 @@ const cigaretteVision = require('../modules/cigarette-vision');
 
 // Директория с вопросами пересчёта (та же что в index.js)
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
+
+// ============ УВЕДОМЛЕНИЯ TELEGRAM ============
+
+// Флаг: уже отправили уведомление «50 pending» (сбрасывается при одобрении образцов)
+let _pendingNotified50 = false;
+
+/**
+ * Отправить сообщение администратору через Telegram.
+ * BOT_TOKEN читается из env или из конфига admin-bot (оба процесса на одном сервере).
+ */
+function _notifyTelegramAdmin(text) {
+  try {
+    const token = process.env.TELEGRAM_BOT_TOKEN ||
+      (() => { try { return require('../admin-bot/ecosystem.config.js').apps[0].env.BOT_TOKEN; } catch { return null; } })();
+    const chatId = process.env.TELEGRAM_ADMIN_ID ||
+      (() => { try { return require('../admin-bot/ecosystem.config.js').apps[0].env.ADMIN_ID; } catch { return null; } })();
+    if (!token || !chatId) return;
+    const body = JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' });
+    const req = https.request({
+      hostname: 'api.telegram.org',
+      path: `/bot${token}/sendMessage`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    });
+    req.on('error', () => {}); // silent
+    req.write(body);
+    req.end();
+  } catch { /* silent */ }
+}
+
+/**
+ * Проверить количество pending образцов и уведомить если достигнут порог 50.
+ */
+async function _checkAndNotifyPending() {
+  if (_pendingNotified50) return; // уже уведомляли
+  try {
+    const pendingFile = path.join(DATA_DIR, 'counting-pending', 'samples.json');
+    if (!(await fileExists(pendingFile))) return;
+    const data = JSON.parse(await fsp.readFile(pendingFile, 'utf8'));
+    const count = Array.isArray(data) ? data.length : 0;
+    if (count >= 50) {
+      _pendingNotified50 = true;
+      _notifyTelegramAdmin(
+        `🤖 <b>ИИ пересчёта готов к обучению</b>\n\nНакоплено <b>${count} фото</b> ожидают проверки.\n\nОдобрите минимум 50 образцов в дашборде → кнопка «Запустить обучение».`
+      );
+      console.log(`[Cigarette Vision] Уведомление: ${count} pending samples → Telegram admin`);
+    }
+  } catch { /* silent */ }
+}
+
+/**
+ * Сбросить флаг уведомления (вызывается при одобрении/отклонении образцов,
+ * чтобы новый порог 50 снова вызвал уведомление).
+ */
+function _resetPendingNotification() {
+  _pendingNotified50 = false;
+}
 
 const RECOUNT_QUESTIONS_DIR = `${DATA_DIR}/recount-questions`;
 
@@ -537,20 +595,26 @@ async function setupCigaretteVisionAPI(app) {
         expectedCount: employeeAnswer || null,
       });
 
-      // Авто-сохранение в pending: фото сразу попадает в очередь для проверки админом.
-      // Не ждём результата (fire-and-forget) — не блокирует ответ сотруднику.
+      // Сохраняем в pending и возвращаем sampleId — Flutter использует его для добавления аннотаций
+      let pendingSampleId = null;
       if (imageBase64 && productId) {
-        cigaretteVision.saveCountingTrainingSample({
-          imageBase64,
-          productId,
-          productName: productName || '',
-          shopAddress: shopAddress || '',
-          employeeAnswer: employeeAnswer || null,
-          selectedRegion: selectedRegion || null,
-        }).catch(err => console.error('[Cigarette Vision API] Ошибка авто-сохранения в pending:', err));
+        try {
+          const pendingResult = await cigaretteVision.saveCountingTrainingSample({
+            imageBase64,
+            productId,
+            productName: productName || '',
+            shopAddress: shopAddress || '',
+            employeeAnswer: employeeAnswer || null,
+            selectedRegion: selectedRegion || null,
+          });
+          pendingSampleId = pendingResult?.sampleId || null;
+          _checkAndNotifyPending();
+        } catch (err) {
+          console.error('[Cigarette Vision API] Ошибка сохранения в pending:', err);
+        }
       }
 
-      res.json(result);
+      res.json({ ...result, pendingSampleId });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка подсчёта с обучением:', error);
       res.status(500).json({ success: false, error: error.message });
@@ -640,6 +704,7 @@ async function setupCigaretteVisionAPI(app) {
       });
 
       console.log(`[Cigarette Vision API] Фото из отчёта отправлено на обучение: ${productName || productId}`);
+      if (result.success) _checkAndNotifyPending().catch(() => {});
       res.json(result);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка отправки фото из отчёта на обучение:', error);
@@ -672,11 +737,28 @@ async function setupCigaretteVisionAPI(app) {
     }
   });
 
+  // Добавить/обновить рамки (bounding boxes) к pending фото — сотрудник обвёл на телефоне
+  app.patch('/api/cigarette-vision/counting-pending/:sampleId/boxes', requireAuth, async (req, res) => {
+    try {
+      const { sampleId } = req.params;
+      const { boundingBoxes } = req.body;
+      if (!Array.isArray(boundingBoxes)) {
+        return res.status(400).json({ success: false, error: 'boundingBoxes must be array' });
+      }
+      const result = await cigaretteVision.updatePendingSampleBoxes(sampleId, boundingBoxes);
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка обновления рамок:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // Подтвердить pending фото (переместить в training)
   app.post('/api/cigarette-vision/counting-pending/:sampleId/approve', requireAuth, async (req, res) => {
     try {
       const { sampleId } = req.params;
       const result = await cigaretteVision.approveCountingPendingSample(sampleId);
+      _resetPendingNotification(); // сброс: при следующем накоплении уведомим снова
       res.json(result);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка подтверждения pending:', error);
@@ -689,6 +771,7 @@ async function setupCigaretteVisionAPI(app) {
     try {
       const { sampleId } = req.params;
       const result = await cigaretteVision.rejectCountingPendingSample(sampleId);
+      _resetPendingNotification(); // сброс: при следующем накоплении уведомим снова
       res.json(result);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка отклонения pending:', error);

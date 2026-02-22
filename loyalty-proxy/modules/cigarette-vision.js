@@ -1571,6 +1571,7 @@ async function saveCountingTrainingSample({
   shopAddress,
   employeeAnswer,
   selectedRegion,
+  boundingBoxes = [],
 }) {
   try {
     if (!imageBase64 || !productId) {
@@ -1631,18 +1632,42 @@ async function saveCountingTrainingSample({
       selectedRegion: selectedRegion || null,
       imageFileName,
       imageUrl: `/api/cigarette-vision/counting-pending-images/${imageFileName}`,
+      boundingBoxes: boundingBoxes || [],
+      annotationCount: boundingBoxes ? boundingBoxes.length : 0,
       createdAt: timestamp,
     };
 
     samples.push(sample);
     await savePendingCountingSamples(samples);
 
-    console.log(`[Counting Pending] Фото добавлено в очередь для ${productName || productId}, pending: ${existingForProduct.length + 1}`);
+    const hasBoxes = boundingBoxes && boundingBoxes.length > 0;
+    console.log(`[Counting Pending] Фото добавлено в очередь для ${productName || productId}, pending: ${existingForProduct.length + 1}${hasBoxes ? ` (с ${boundingBoxes.length} рамками)` : ''}`);
 
-    return { success: true, sample, status: 'pending' };
+    return { success: true, sample, sampleId: id, status: 'pending' };
     }); // end withLock('cigarette-counting-pending')
   } catch (error) {
     console.error('[Counting Pending] Ошибка сохранения:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Обновить bounding boxes у pending sample (сотрудник обвёл рамки на телефоне)
+ */
+async function updatePendingSampleBoxes(sampleId, boundingBoxes) {
+  try {
+    return await withLock('cigarette-counting-pending', async () => {
+      const samples = await loadPendingCountingSamples();
+      const sample = samples.find(s => s.id === sampleId);
+      if (!sample) return { success: false, error: 'Pending образец не найден' };
+      sample.boundingBoxes = boundingBoxes;
+      sample.annotationCount = boundingBoxes.length;
+      await savePendingCountingSamples(samples);
+      console.log(`[Counting Pending] Рамки добавлены: ${sampleId} (${boundingBoxes.length} boxes)`);
+      return { success: true };
+    });
+  } catch (error) {
+    console.error('[Counting Pending] Ошибка обновления рамок:', error);
     return { success: false, error: error.message };
   }
 }
@@ -1696,10 +1721,32 @@ async function approveCountingPendingSample(sampleId) {
       await fsp.unlink(srcPath);
     }
 
+    // Если сотрудник нарисовал рамки — создаём YOLO .txt аннотацию
+    let annotationCount = 0;
+    const boxes = pendingSample.boundingBoxes || [];
+    if (boxes.length > 0) {
+      try {
+        const classId = await getClassIdForProduct(pendingSample.productId);
+        const yoloLines = boxes.map(box => {
+          const xCenter = box.xCenter || box.x_center || 0;
+          const yCenter = box.yCenter || box.y_center || 0;
+          const w = box.width || 0;
+          const h = box.height || 0;
+          return `${classId} ${xCenter.toFixed(6)} ${yCenter.toFixed(6)} ${w.toFixed(6)} ${h.toFixed(6)}`;
+        }).join('\n');
+        const labelPath = path.join(trainingPaths.labelsDir, newImageFileName.replace('.jpg', '.txt'));
+        await fsp.writeFile(labelPath, yoloLines);
+        annotationCount = boxes.length;
+        console.log(`[Counting Pending] YOLO аннотация создана при одобрении: ${annotationCount} boxes`);
+      } catch (e) {
+        console.error('[Counting Pending] Ошибка записи YOLO аннотации:', e.message);
+      }
+    }
+
     const trainingSample = {
       id: pendingSample.id,
       productId: pendingSample.productId,
-      barcode: pendingSample.barcode || pendingSample.productId, // fix: использовать barcode, не productId
+      barcode: pendingSample.barcode || pendingSample.productId,
       productName: pendingSample.productName || '',
       trainingType,
       type: 'counting',
@@ -1707,9 +1754,9 @@ async function approveCountingPendingSample(sampleId) {
       employeeAnswer: pendingSample.employeeAnswer || null,
       imageFileName: newImageFileName,
       imageUrl: `/api/cigarette-vision/counting-images/${newImageFileName}`,
-      boundingBoxes: [],
-      annotationCount: 0,
-      labeled: false, // Нет bounding box аннотаций — исключить из YOLO обучения
+      boundingBoxes: boxes,
+      annotationCount,
+      labeled: annotationCount > 0,
       createdAt: pendingSample.createdAt,
       approvedAt: new Date().toISOString(),
     };
@@ -2741,6 +2788,7 @@ module.exports = {
   getPendingCountingSamplesForProduct,
   getPendingCountingPhotosCount,
   approveCountingPendingSample,
+  updatePendingSampleBoxes,
   rejectCountingPendingSample,
   reportAiError,
   reportAdminAiDecision,
