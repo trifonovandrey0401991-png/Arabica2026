@@ -619,12 +619,13 @@ async function saveTrainingSample({
     const imagePath = path.join(IMAGES_DIR, imageFileName);
     await fsp.writeFile(imagePath, imageBuffer);
 
+    let yoloLines = '';
     if (boundingBoxes && boundingBoxes.length > 0) {
       const labelFileName = `${id}.txt`;
       const labelPath = path.join(LABELS_DIR, labelFileName);
 
       const classId = await getClassIdForProduct(productId);
-      const yoloLines = boundingBoxes.map(box => {
+      yoloLines = boundingBoxes.map(box => {
         const xCenter = box.xCenter || box.x_center || 0;
         const yCenter = box.yCenter || box.y_center || 0;
         const width = box.width || 0;
@@ -658,6 +659,30 @@ async function saveTrainingSample({
       samples.push(sample);
       await saveSamples(samples);
     });
+
+    // Если тип counting + есть аннотации — дублируем в counting-training для авто-трейна
+    if (type === TRAINING_TYPES.COUNTING && boundingBoxes && boundingBoxes.length > 0 && yoloLines) {
+      try {
+        const countingPaths = getTrainingPaths(TRAINING_TYPES.COUNTING);
+        await fsp.mkdir(countingPaths.imagesDir, { recursive: true });
+        await fsp.mkdir(countingPaths.labelsDir, { recursive: true });
+
+        // Копируем изображение
+        await fsp.copyFile(imagePath, path.join(countingPaths.imagesDir, imageFileName));
+        // Копируем аннотацию
+        await fsp.writeFile(path.join(countingPaths.labelsDir, `${id}.txt`), yoloLines);
+
+        // Добавляем в counting-training/samples.json
+        await withLock(`cigarette-typed-${TRAINING_TYPES.COUNTING}`, async () => {
+          const typedSamples = await loadTypedSamples(TRAINING_TYPES.COUNTING);
+          typedSamples.push(sample);
+          await saveTypedSamples(TRAINING_TYPES.COUNTING, typedSamples);
+        });
+        console.log(`[Cigarette Vision] Аннотация добавлена в counting-training: ${id} (${boundingBoxes.length} boxes)`);
+      } catch (e) {
+        console.error('[Cigarette Vision] Ошибка дублирования в counting-training:', e.message);
+      }
+    }
 
     console.log(`[Cigarette Vision] Образец сохранён: ${productName} (${type}, template=${templateId}, ${boundingBoxes ? boundingBoxes.length : 0} аннотаций)`);
 
@@ -1069,8 +1094,19 @@ async function detectAndCount(imageBase64, productId = null, confidence = 0.5) {
 
     console.log(`[Cigarette Vision] Обнаружено ${count} объектов (confidence: ${avgConf})`);
 
+    // Ничего не обнаружено — просим переснять (товар не попал в кадр)
+    if (count === 0) {
+      return {
+        success: false,
+        error: 'NOTHING_DETECTED',
+        count: 0,
+        confidence: 0,
+        boxes: [],
+      };
+    }
+
     // CIG-2.1: Порог уверенности — если ИИ не уверен, лучше попросить переснять
-    if (count > 0 && avgConf < 0.40) {
+    if (avgConf < 0.40) {
       console.warn(`[Cigarette Vision] Низкая уверенность (${avgConf} < 0.40), отклоняем результат`);
       return {
         success: false,
