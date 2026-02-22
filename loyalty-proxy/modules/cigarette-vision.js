@@ -11,6 +11,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile, withLock } = require('../utils/async_fs');
@@ -1588,15 +1589,40 @@ async function saveCountingTrainingSample({
       return { success: false, reason: 'image_quality', message: validation.message };
     }
 
+    // Дедупликация: md5 фото для этого товара
+    const imageHash = crypto.createHash('md5').update(imageBuffer).digest('hex');
+
     // withLock: атомарный read-modify-write для pending counting samples
     return await withLock('cigarette-counting-pending', async () => {
     const samples = await loadPendingCountingSamples();
 
-    const maxPendingPerProduct = 20;
     const existingForProduct = samples.filter(
       s => (s.productId === productId || s.barcode === productId)
     );
 
+    // Проверка дубля: если фото с таким же md5 уже есть — обновить employeeAnswer и выйти
+    const duplicate = existingForProduct.find(s => s.imageHash === imageHash);
+    if (duplicate) {
+      let updated = false;
+      if (employeeAnswer != null && duplicate.employeeAnswer == null) {
+        duplicate.employeeAnswer = employeeAnswer;
+        updated = true;
+      }
+      if (boundingBoxes && boundingBoxes.length > 0 && (!duplicate.boundingBoxes || duplicate.boundingBoxes.length === 0)) {
+        duplicate.boundingBoxes = boundingBoxes;
+        duplicate.annotationCount = boundingBoxes.length;
+        updated = true;
+      }
+      if (updated) {
+        await savePendingCountingSamples(samples);
+        console.log(`[Counting Pending] Дубль фото для ${productName || productId} — обновлён employeeAnswer/boxes`);
+      } else {
+        console.log(`[Counting Pending] Дубль фото для ${productName || productId} — пропускаем`);
+      }
+      return { success: true, sample: duplicate, sampleId: duplicate.id, status: 'duplicate' };
+    }
+
+    const maxPendingPerProduct = 20;
     if (existingForProduct.length >= maxPendingPerProduct) {
       existingForProduct.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       const toDelete = existingForProduct[0];
@@ -1632,6 +1658,7 @@ async function saveCountingTrainingSample({
       selectedRegion: selectedRegion || null,
       imageFileName,
       imageUrl: `/api/cigarette-vision/counting-pending-images/${imageFileName}`,
+      imageHash,
       boundingBoxes: boundingBoxes || [],
       annotationCount: boundingBoxes ? boundingBoxes.length : 0,
       createdAt: timestamp,

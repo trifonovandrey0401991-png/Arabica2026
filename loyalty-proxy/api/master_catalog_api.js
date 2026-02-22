@@ -1544,6 +1544,69 @@ function setupMasterCatalogAPI(app) {
     }
   });
 
+  // ============ ПЕРЕМЕЩЕНИЕ ШТРИХ-КОДОВ МЕЖДУ КАРТОЧКАМИ ============
+
+  /**
+   * POST /api/master-catalog/move-barcodes
+   * Переместить штрих-коды из одной карточки товара в другую.
+   * Меняет name и group у записей с указанными barcode на name/group целевого товара.
+   * Группировка по name автоматически объединит их в целевую карточку.
+   */
+  app.post('/api/master-catalog/move-barcodes', requireAdmin, async (req, res) => {
+    try {
+      const { barcodes, targetProductId } = req.body;
+
+      if (!Array.isArray(barcodes) || barcodes.length === 0) {
+        return res.status(400).json({ success: false, error: 'barcodes должен быть непустым массивом' });
+      }
+      if (!targetProductId) {
+        return res.status(400).json({ success: false, error: 'targetProductId обязателен' });
+      }
+
+      const products = await loadProducts();
+      const target = products.find(p => p.id === targetProductId);
+      if (!target) {
+        return res.status(404).json({ success: false, error: 'Целевой товар не найден' });
+      }
+
+      let moved = 0;
+      const skipped = [];
+
+      for (const barcode of barcodes) {
+        const source = products.find(p => p.barcode === barcode);
+        if (!source) {
+          skipped.push({ barcode, reason: 'not_found' });
+          continue;
+        }
+        if (source.name === target.name) {
+          skipped.push({ barcode, reason: 'already_in_target' });
+          continue;
+        }
+
+        source.name = target.name;
+        source.group = target.group;
+        source.updatedAt = new Date().toISOString();
+        moved++;
+      }
+
+      if (moved > 0) {
+        await saveProducts(products);
+      }
+
+      console.log(`[Master Catalog API] Перемещено ${moved} штрих-кодов в "${target.name}"`);
+      res.json({
+        success: true,
+        moved,
+        skipped,
+        targetName: target.name,
+        targetGroup: target.group,
+      });
+    } catch (error) {
+      console.error('[Master Catalog API] Ошибка перемещения штрих-кодов:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ============ ФОТО ТОВАРОВ ИЗ ОБУЧЕНИЯ ИИ ============
 
   /**
