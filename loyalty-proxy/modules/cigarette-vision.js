@@ -1866,6 +1866,10 @@ async function getTypedTrainingStats(trainingType) {
     const samples = await loadTypedSamples(trainingType);
     const paths = getTrainingPaths(trainingType);
 
+    // Считаем реальные .txt файлы на диске (источник истины)
+    const labelFiles = await fsp.readdir(paths.labelsDir).catch(() => []);
+    const labelSet = new Set(labelFiles.filter(f => f.endsWith('.txt')).map(f => f.replace('.txt', '')));
+
     const byProduct = {};
     let withAnnotations = 0;
 
@@ -1875,11 +1879,16 @@ async function getTypedTrainingStats(trainingType) {
         byProduct[key] = { count: 0, withLabels: 0, productName: s.productName };
       }
       byProduct[key].count++;
-      if (s.annotationCount > 0) {
+      // Проверяем и JSON поле и реальный .txt файл на диске
+      if (s.annotationCount > 0 || labelSet.has(s.id)) {
         byProduct[key].withLabels++;
         withAnnotations++;
+        labelSet.delete(s.id); // убираем обработанные
       }
     });
+
+    // Аннотации без записи в samples.json (загружены напрямую из annotation page)
+    withAnnotations += labelSet.size;
 
     const modelPath = UNIFIED_MODEL; // Единая модель для обоих типов
     const modelExists = await fileExists(modelPath);
