@@ -21,6 +21,8 @@ import '../services/recount_points_service.dart';
 import '../services/recount_question_service.dart';
 import '../../shops/services/shop_service.dart';
 import '../../ai_training/services/cigarette_vision_service.dart';
+import '../../ai_training/pages/cigarette_annotation_page.dart';
+import '../../ai_training/models/cigarette_training_model.dart';
 import '../../coffee_machine/widgets/counter_region_selector.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
@@ -63,6 +65,8 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   DateTime? _completedAt;
   bool _answerSaved = false; // Флаг, что ответ сохранен и заблокирован для изменения
   bool _isModelTrained = false; // Обучена ли модель ИИ
+  int _aiActiveCount = 0; // Кол-во вопросов с AI (для баннера)
+  bool _aiBannerDismissed = false; // Баннер закрыт пользователем
   Map<String, double>? _selectedRegion; // Выделенная область для текущего вопроса
   double _uploadProgress = 0.0; // Прогресс отправки отчёта (0.0–1.0)
 
@@ -206,7 +210,8 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       setState(() {
         _selectedQuestions = selectedQuestions;
         _photoRequiredIndices = photoIndices;
-        _isLoading = false;
+        _aiActiveCount = aiActiveQuestions;
+        // _isLoading остаётся true — страница не показывается до конца восстановления
         // Инициализируем список ответов
         _answers = List.generate(
           selectedQuestions.length,
@@ -220,8 +225,11 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         );
       });
 
-      // Предлагаем восстановить черновик (B1)
+      // Предлагаем восстановить черновик (B1) — пока спиннер ещё виден
       await _offerDraftRestore();
+
+      // Только после ответа на диалог показываем страницу
+      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -532,15 +540,16 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           question: question,
           imageBytes: imageBytes,
           aiError: result.error,
+          pendingSampleId: result.pendingSampleId,
         );
       }
     } catch (e) {
       Logger.error('Ошибка ИИ проверки', e);
       if (!mounted) return;
-      // При таймауте или другой ошибке сети — предлагаем ввести вручную
+      // При таймауте или другой ошибке сети — авто-расчёт или ручной ввод
       if (e is TimeoutException) {
         _answers[questionIndex] = answer.copyWith(aiVerified: false);
-        await _promptManualQuantity(questionIndex: questionIndex, question: question);
+        await _resolveQuantity(questionIndex: questionIndex, question: question);
       }
     } finally {
       if (mounted) setState(() => _isVerifyingAI = false);
@@ -689,6 +698,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     required RecountQuestion question,
     required Uint8List imageBytes,
     String? aiError,
+    String? pendingSampleId,
   }) async {
     // Определяем причину и подбираем понятное сообщение
     final isModelNotTrained = aiError != null &&
@@ -741,6 +751,15 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
               icon: Icon(Icons.camera_alt, color: Colors.white70, size: 18),
               label: Text('Переснять', style: TextStyle(color: Colors.white70)),
             ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, 'annotate'),
+            icon: Icon(Icons.draw, size: 18),
+            label: Text('Обучить ИИ'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade700,
+              foregroundColor: Colors.white,
+            ),
+          ),
           TextButton.icon(
             onPressed: () => Navigator.pop(ctx, 'manual'),
             icon: Icon(Icons.edit, color: Colors.blue[300], size: 18),
@@ -763,9 +782,60 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         question: question,
         imageBytes: imageBytes,
       );
+    } else if (result == 'annotate') {
+      await _openAnnotationFromRecount(
+        questionIndex: questionIndex,
+        question: question,
+        imageBytes: imageBytes,
+        pendingSampleId: pendingSampleId,
+      );
     } else if (result == 'manual') {
-      await _promptManualQuantity(questionIndex: questionIndex, question: question);
+      await _resolveQuantity(questionIndex: questionIndex, question: question);
     }
+  }
+
+  /// Открыть аннотацию — сотрудник обводит пачки → рамки идут к pending образцу
+  Future<void> _openAnnotationFromRecount({
+    required int questionIndex,
+    required RecountQuestion question,
+    required Uint8List imageBytes,
+    String? pendingSampleId,
+  }) async {
+    final fakeProduct = CigaretteProduct(
+      id: question.barcode,
+      barcode: question.barcode,
+      productGroup: '',
+      productName: question.productName,
+      grade: 0,
+    );
+
+    final annotated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CigaretteAnnotationPage(
+          imageBytes: imageBytes,
+          product: fakeProduct,
+          type: TrainingSampleType.counting,
+          shopAddress: widget.shopAddress,
+          fromRecount: true,
+          pendingSampleId: pendingSampleId,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (annotated == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Спасибо! ИИ получил данные для обучения 🎯'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+
+    // После аннотации — авто-расчёт или ручной ввод
+    await _resolveQuantity(questionIndex: questionIndex, question: question);
   }
 
   /// Открыть CounterRegionSelector → повторный ИИ с регионом → подтвердить/ввести вручную
@@ -828,13 +898,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           question: question,
         );
       } else {
-        // ИИ снова не смог — ручной ввод
+        // ИИ снова не смог — авто-расчёт или ручной ввод
         Logger.warning('Повторный ИИ не смог определить');
-        await _promptManualQuantity(questionIndex: questionIndex, question: question);
+        await _resolveQuantity(questionIndex: questionIndex, question: question);
       }
     } catch (e) {
       Logger.error('Ошибка повторной ИИ проверки', e);
-      await _promptManualQuantity(questionIndex: questionIndex, question: question);
+      await _resolveQuantity(questionIndex: questionIndex, question: question);
     } finally {
       if (mounted) setState(() => _isVerifyingAI = false);
     }
@@ -929,8 +999,57 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         ),
       );
     } else {
-      await _promptManualQuantity(questionIndex: questionIndex, question: question);
+      await _resolveQuantity(questionIndex: questionIndex, question: question);
     }
+  }
+
+  /// Авто-расчёт количества из DBF остатка или ручной ввод если остатка нет
+  Future<void> _resolveQuantity({
+    required int questionIndex,
+    required RecountQuestion question,
+  }) async {
+    final hasDbfStock = question.stock > 0;
+
+    if (hasDbfStock && _selectedAnswer == 'сходится') {
+      // "Сходится" + DBF остаток → количество = остаток
+      _answers[questionIndex] = _answers[questionIndex].copyWith(
+        employeeConfirmedQuantity: question.stock,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Остаток подтверждён: ${question.stock} шт.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (hasDbfStock && _selectedAnswer == 'не сходится') {
+      // "Не сходится" + DBF остаток → авто-расчёт
+      final moreBy = int.tryParse(_moreByController.text.trim()) ?? 0;
+      final lessBy = int.tryParse(_lessByController.text.trim()) ?? 0;
+      final actualBalance = question.stock + moreBy - lessBy;
+      _answers[questionIndex] = _answers[questionIndex].copyWith(
+        employeeConfirmedQuantity: actualBalance,
+      );
+      if (mounted) {
+        final diffStr = moreBy > 0 ? '+$moreBy' : '-$lessBy';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('По факту: $actualBalance шт. (${question.stock} $diffStr)'),
+            backgroundColor: Colors.blue,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Нет DBF остатка — ручной ввод как раньше
+    await _promptManualQuantity(questionIndex: questionIndex, question: question);
   }
 
   /// Диалог ручного ввода количества
@@ -948,45 +1067,53 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           backgroundColor: AppColors.emeraldDark,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           title: Text('Введите количество', style: TextStyle(color: Colors.white)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                question.productName,
-                style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.7)),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                style: TextStyle(color: Colors.white, fontSize: 24.sp),
-                textAlign: TextAlign.center,
-                decoration: InputDecoration(
-                  hintText: '0',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.08),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                    borderSide: BorderSide(color: AppColors.gold.withOpacity(0.3)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                    borderSide: BorderSide(color: AppColors.gold),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  question.productName,
+                  style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.7)),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  autofocus: true,
+                  style: TextStyle(color: Colors.white, fontSize: 24.sp),
+                  textAlign: TextAlign.center,
+                  decoration: InputDecoration(
+                    hintText: '0',
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.08),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: AppColors.gold.withOpacity(0.3)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: AppColors.gold),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx, null),
+              onPressed: () {
+                // Снимаем фокус до закрытия — иначе Android клавиатура
+                // пытается обновить уже disposed контроллер → красный экран
+                FocusManager.instance.primaryFocus?.unfocus();
+                Navigator.pop(ctx, null);
+              },
               child: Text('Пропустить', style: TextStyle(color: Colors.white54)),
             ),
             ElevatedButton(
               onPressed: () {
+                FocusManager.instance.primaryFocus?.unfocus();
                 final value = int.tryParse(controller.text.trim());
                 Navigator.pop(ctx, value);
               },
@@ -997,7 +1124,11 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         ),
       );
     } finally {
-      controller.dispose();
+      // showDialog возвращает управление сразу при Navigator.pop,
+      // но диалог ещё ~300мс анимируется закрытием и TextField остаётся в дереве.
+      // Немедленный dispose вызывает _AnimatedState.didUpdateWidget на мёртвый controller.
+      // Откладываем на 500мс — к этому моменту анимация точно завершена.
+      Future.delayed(const Duration(milliseconds: 500), controller.dispose);
     }
 
     if (!mounted) return;
@@ -1165,6 +1296,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   }
 
   Future<void> _submitReport() async {
+    if (_isSubmitting) return; // защита от двойной отправки
     if (!_canProceed()) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1224,6 +1356,9 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
       if (mounted) setState(() => _uploadProgress = 0.4);
 
+      // Утренняя смена 07:00–19:00, вечерняя 19:05–06:58
+      final shiftType = _startedAt!.hour < 19 ? 'morning' : 'evening';
+
       final report = RecountReport(
         id: RecountReport.generateId(
           widget.employeeName,
@@ -1237,6 +1372,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         completedAt: _completedAt!,
         duration: duration,
         answers: _answers,
+        shiftType: shiftType,
       );
 
       if (mounted) setState(() => _uploadProgress = 0.6);
@@ -1525,6 +1661,55 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                   ),
                 ),
               SizedBox(height: 4),
+              // Баннер статуса ИИ (показывается на первом вопросе, пока не закрыт)
+              if (!_aiBannerDismissed && !_isLoading && _currentQuestionIndex == 0)
+                AnimatedContainer(
+                  duration: Duration(milliseconds: 300),
+                  margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  decoration: BoxDecoration(
+                    color: (_aiActiveCount > 0 && _isModelTrained)
+                        ? AppColors.emerald.withOpacity(0.12)
+                        : Colors.orange.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10.r),
+                    border: Border.all(
+                      color: (_aiActiveCount > 0 && _isModelTrained)
+                          ? AppColors.emerald.withOpacity(0.4)
+                          : Colors.orange.withOpacity(0.4),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        (_aiActiveCount > 0 && _isModelTrained)
+                            ? Icons.smart_toy
+                            : Icons.smart_toy_outlined,
+                        color: (_aiActiveCount > 0 && _isModelTrained)
+                            ? AppColors.emerald
+                            : Colors.orange,
+                        size: 18.sp,
+                      ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text(
+                          (_aiActiveCount > 0 && _isModelTrained)
+                              ? '🤖 ИИ активен для $_aiActiveCount тов. — фото обработаются автоматически'
+                              : (_aiActiveCount > 0)
+                                  ? '⚠️ ИИ обучается — для $_aiActiveCount тов. введите вручную'
+                                  : '⚠️ ИИ не настроен для этого магазина — ввод вручную',
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: Colors.white.withOpacity(0.85),
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => _aiBannerDismissed = true),
+                        child: Icon(Icons.close, size: 16.sp, color: Colors.white.withOpacity(0.4)),
+                      ),
+                    ],
+                  ),
+                ),
               // Контент
               Expanded(
                 child: SingleChildScrollView(

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/constants/api_constants.dart';
 
 /// Обёртка над CachedNetworkImage с API, похожим на Image.network.
 /// Кэширует загруженные изображения — при повторном показе берёт из кэша.
+/// Автоматически добавляет Authorization header если есть sessionToken.
 ///
 /// Использование:
 /// ```dart
@@ -20,6 +22,7 @@ class AppCachedImage extends StatelessWidget {
   final double? height;
   final Widget Function(BuildContext, String, dynamic)? errorWidget;
   final Widget Function(BuildContext, String)? placeholder;
+  final Map<String, String>? httpHeaders;
 
   const AppCachedImage({
     super.key,
@@ -29,6 +32,7 @@ class AppCachedImage extends StatelessWidget {
     this.height,
     this.errorWidget,
     this.placeholder,
+    this.httpHeaders,
   });
 
   @override
@@ -39,12 +43,21 @@ class AppCachedImage extends StatelessWidget {
         ? (width! * MediaQuery.of(context).devicePixelRatio).toInt()
         : null;
 
+    // Авто-добавление Authorization header для запросов к нашему серверу
+    final headers = httpHeaders ?? <String, String>{};
+    if (!headers.containsKey('Authorization') &&
+        ApiConstants.sessionToken != null &&
+        ApiConstants.sessionToken!.isNotEmpty) {
+      headers['Authorization'] = 'Bearer ${ApiConstants.sessionToken}';
+    }
+
     return CachedNetworkImage(
       imageUrl: imageUrl,
       fit: fit,
       width: width,
       height: height,
       memCacheWidth: memCacheWidth,
+      httpHeaders: headers.isNotEmpty ? headers : null,
       placeholder: placeholder ??
           (context, url) => const Center(
                 child: SizedBox(

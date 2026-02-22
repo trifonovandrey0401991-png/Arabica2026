@@ -169,14 +169,14 @@ class _CounterRegionSelectorState extends State<CounterRegionSelector> {
           );
         }
 
-        return GestureDetector(
-          onPanStart: (d) => _onPanStart(d, displaySize),
-          onPanUpdate: (d) => _onPanUpdate(d, displaySize),
-          onPanEnd: (_) => _onPanEnd(),
-          child: Center(
-            child: SizedBox(
-              width: displaySize.width,
-              height: displaySize.height,
+        return Center(
+          child: SizedBox(
+            width: displaySize.width,
+            height: displaySize.height,
+            child: GestureDetector(
+              onPanStart: (d) => _onPanStart(d, displaySize),
+              onPanUpdate: (d) => _onPanUpdate(d, displaySize),
+              onPanEnd: (_) => _onPanEnd(),
               child: CustomPaint(
                 painter: _RegionPainter(
                   image: _image!,

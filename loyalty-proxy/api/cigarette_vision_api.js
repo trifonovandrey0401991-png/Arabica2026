@@ -717,7 +717,9 @@ async function setupCigaretteVisionAPI(app) {
   // Получить все pending фото (для админа)
   app.get('/api/cigarette-vision/counting-pending', requireAuth, async (req, res) => {
     try {
+      console.log('[Counting Pending] GET all pending, user:', req.user?.name || req.user?.phone || 'unknown');
       const samples = await cigaretteVision.getAllPendingCountingSamples();
+      console.log(`[Counting Pending] Отдаём ${samples.length} pending samples`);
       res.json({ success: true, samples, count: samples.length });
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка получения pending samples:', error);

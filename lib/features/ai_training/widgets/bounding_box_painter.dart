@@ -83,15 +83,15 @@ class BoundingBoxPainterState extends State<BoundingBoxPainter> {
           );
         }
 
-        return GestureDetector(
-          onPanStart: (details) => _onPanStart(details, displaySize),
-          onPanUpdate: (details) => _onPanUpdate(details, displaySize),
-          onPanEnd: (details) => _onPanEnd(displaySize),
-          onTapUp: (details) => _onTap(details, displaySize),
-          child: Center(
-            child: SizedBox(
-              width: displaySize.width,
-              height: displaySize.height,
+        return Center(
+          child: SizedBox(
+            width: displaySize.width,
+            height: displaySize.height,
+            child: GestureDetector(
+              onPanStart: (details) => _onPanStart(details, displaySize),
+              onPanUpdate: (details) => _onPanUpdate(details, displaySize),
+              onPanEnd: (details) => _onPanEnd(displaySize),
+              onTapUp: (details) => _onTap(details, displaySize),
               child: CustomPaint(
                 painter: _BoxPainter(
                   image: _image!,

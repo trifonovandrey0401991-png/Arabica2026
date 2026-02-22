@@ -127,10 +127,18 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
           }
         }
 
-        // Boy Scout: getMoscowTime вместо ручного UTC+3
-        const moscowTime = getMoscowTime();
-        const currentHours = moscowTime.getUTCHours();
-        const currentMinutes = moscowTime.getUTCMinutes();
+        // Проверяем время НАЧАЛА пересчёта (startedAt), а не текущее время
+        // Если сотрудник начал вовремя — даём закончить (пересчёт занимает 5-10 мин)
+        let checkTime;
+        if (req.body.startedAt) {
+          checkTime = new Date(req.body.startedAt);
+          // Конвертируем в московское время
+          checkTime = new Date(checkTime.getTime() + 3 * 60 * 60 * 1000);
+        } else {
+          checkTime = getMoscowTime();
+        }
+        const currentHours = checkTime.getUTCHours();
+        const currentMinutes = checkTime.getUTCMinutes();
         const currentTimeMinutes = currentHours * 60 + currentMinutes;
 
         // Определяем дедлайн для текущей смены
@@ -146,8 +154,21 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         const deadlineTimeMinutes = deadlineHours * 60 + deadlineMinutes;
 
         // Проверяем, не просрочено ли время
-        if (currentTimeMinutes > deadlineTimeMinutes) {
-          console.log(`⏰ TIME_EXPIRED: Текущее время ${currentHours}:${currentMinutes}, дедлайн ${deadlineTime}`);
+        // Для вечерней смены дедлайн может быть после полуночи (напр. 06:58)
+        let isExpired = false;
+        if (shiftType === 'evening' && deadlineTimeMinutes < 12 * 60) {
+          // Midnight crossover: дедлайн в утренних часах = следующий день
+          // Просрочено только если текущее время > дедлайна И < начала вечерней смены
+          const [startH, startM] = recountSettings.eveningStartTime.split(':').map(Number);
+          const eveningStartMinutes = startH * 60 + startM;
+          // Если мы между дедлайном (утро) и началом вечерней (вечер) — просрочено
+          isExpired = currentTimeMinutes > deadlineTimeMinutes && currentTimeMinutes < eveningStartMinutes;
+        } else {
+          isExpired = currentTimeMinutes > deadlineTimeMinutes;
+        }
+
+        if (isExpired) {
+          console.log(`⏰ TIME_EXPIRED: Начало пересчёта ${currentHours}:${String(currentMinutes).padStart(2, '0')}, дедлайн ${deadlineTime}`);
           return res.status(400).json({
             success: false,
             error: 'TIME_EXPIRED',

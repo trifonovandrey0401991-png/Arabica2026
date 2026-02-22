@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../../../core/theme/app_colors.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -56,6 +58,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   // Сортировка по точности ИИ
   String _accuracySortMode = 'none'; // 'none', 'worst', 'best'
 
+  // Вкладка "Ожидают" — фото с пересчёта для подтверждения
+  List<TrainingSample> _pendingCountingSamples = [];
+  bool _isPendingSelectionMode = false;
+  Set<String> _selectedPendingIds = {};
+
   // Цвета и градиенты
   static final _greenGradient = [AppColors.emeraldGreen, AppColors.emeraldGreenLight];
   static final _blueGradient = [AppColors.info, AppColors.infoLight];
@@ -64,9 +71,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   static final _redGradient = [AppColors.error, AppColors.errorLight];
 
   /// Количество вкладок зависит от роли
-  /// Для админа: Фото, Товары, Новые, Обученные, Статистика, Настройки = 6
+  /// Для админа: Фото, Товары, Новые, Ожидают, Обученные, Статистика, Настройки = 7
   /// Для сотрудника: Фото, Статистика = 2
-  int get _tabCount => _isAdmin ? 6 : 2;
+  int get _tabCount => _isAdmin ? 7 : 2;
 
   @override
   void initState() {
@@ -137,12 +144,18 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       );
       final stats = await CigaretteVisionService.getStats();
 
+      // Загружаем все pending-фото с пересчёта (для вкладки "Ожидают")
+      final pendingSamples = _isAdmin
+          ? await CigaretteVisionService.getAllPendingCountingSamples()
+          : <TrainingSample>[];
+
       if (mounted) {
         setState(() {
           _selectedShopAddress = shopAddress;
           _productGroups = groups;
           _products = products;
           _stats = stats;
+          _pendingCountingSamples = pendingSamples;
           _isLoading = false;
         });
       }
@@ -191,13 +204,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         : TabBarView(
                             controller: _tabController,
                             children: [
-                              _buildAddPhotoTab(),
-                              // Вкладка "Товары" только для админа
-                              if (_isAdmin) _buildProductsTab(),
-                              if (_isAdmin) PendingCodesPage(onCodeApproved: _loadData),
-                              if (_isAdmin) _buildTrainedProductsTab(),
-                              _buildStatsTab(),
-                              if (_isAdmin) _buildSettingsTab(),
+                              _buildAddPhotoTab(),                          // 0: Фото
+                              if (_isAdmin) _buildProductsTab(),            // 1: Товары
+                              if (_isAdmin) PendingCodesPage(onCodeApproved: _loadData), // 2: Новые
+                              if (_isAdmin) _buildPendingTab(),             // 3: Ожидают
+                              if (_isAdmin) _buildTrainedProductsTab(),     // 4: Обученные
+                              _buildStatsTab(),                             // 5(admin)/1(emp): Статистика
+                              if (_isAdmin) _buildSettingsTab(),            // 6: Настройки
                             ],
                           ),
               ),
@@ -298,77 +311,126 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   }
 
   Widget _buildTabBar() {
-    if (_tabController == null) {
-      return SizedBox.shrink();
-    }
+    if (_tabController == null) return SizedBox.shrink();
 
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-          width: 1,
+    // Для сотрудника — простая однорядная TabBar (2 вкладки)
+    if (!_isAdmin) {
+      return Container(
+        margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        indicator: BoxDecoration(
-          gradient: LinearGradient(colors: _greenGradient),
-          borderRadius: BorderRadius.circular(12.r),
-          boxShadow: [
-            BoxShadow(
-              color: _greenGradient[0].withOpacity(0.4),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
+        child: TabBar(
+          controller: _tabController,
+          indicator: BoxDecoration(
+            gradient: LinearGradient(colors: _greenGradient),
+            borderRadius: BorderRadius.circular(12.r),
+            boxShadow: [BoxShadow(color: _greenGradient[0].withOpacity(0.4), blurRadius: 8, offset: Offset(0, 2))],
+          ),
+          indicatorSize: TabBarIndicatorSize.tab,
+          indicatorPadding: EdgeInsets.all(4.w),
+          dividerColor: Colors.transparent,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white.withOpacity(0.5),
+          labelStyle: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600),
+          tabs: [
+            Tab(icon: Icon(Icons.add_a_photo, size: 20), text: 'Фото'),
+            Tab(icon: Icon(Icons.bar_chart, size: 20), text: 'Статистика'),
           ],
         ),
-        indicatorSize: TabBarIndicatorSize.tab,
-        indicatorPadding: EdgeInsets.all(4.w),
-        dividerColor: Colors.transparent,
-        labelColor: Colors.white,
-        unselectedLabelColor: Colors.white.withOpacity(0.5),
-        labelStyle: TextStyle(
-          fontSize: 11.sp,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: TextStyle(
-          fontSize: 11.sp,
-          fontWeight: FontWeight.w500,
-        ),
-        tabs: [
-          Tab(
-            icon: Icon(Icons.add_a_photo, size: 20),
-            text: 'Фото',
+      );
+    }
+
+    // Для админа — 2 ряда: 4 сверху + 3 снизу
+    // Ряд 1: Фото(0), Товары(1), Новые(2), Ожидают(3)
+    // Ряд 2: Обученные(4), Статистика(5), Настройки(6)
+    return AnimatedBuilder(
+      animation: _tabController!,
+      builder: (context, _) {
+        final cur = _tabController!.index;
+        return Container(
+          margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16.r),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
-          // Вкладка "Товары" только для админа
-          if (_isAdmin)
-            Tab(
-              icon: Icon(Icons.inventory_2, size: 20),
-              text: 'Товары',
-            ),
-          if (_isAdmin)
-            Tab(
-              icon: Icon(Icons.new_releases, size: 20),
-              text: 'Новые',
-            ),
-          if (_isAdmin)
-            Tab(
-              icon: Icon(Icons.model_training, size: 20),
-              text: 'Обученные',
-            ),
-          Tab(
-            icon: Icon(Icons.bar_chart, size: 20),
-            text: 'Статистика',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Ряд 1: 4 вкладки
+              Row(children: [
+                _tabItem(cur, 0, Icons.add_a_photo,    'Фото'),
+                _tabItem(cur, 1, Icons.inventory_2,    'Товары'),
+                _tabItem(cur, 2, Icons.new_releases,   'Новые'),
+                _tabItem(cur, 3, Icons.schedule,       'Ожидают',
+                    badge: _pendingCountingSamples.length),
+              ]),
+              Container(height: 0.5, color: Colors.white.withOpacity(0.1)),
+              // Ряд 2: 3 вкладки
+              Row(children: [
+                _tabItem(cur, 4, Icons.model_training, 'Обученные'),
+                _tabItem(cur, 5, Icons.bar_chart,      'Статистика'),
+                _tabItem(cur, 6, Icons.settings,       'Настройки'),
+              ]),
+            ],
           ),
-          if (_isAdmin)
-            Tab(
-              icon: Icon(Icons.settings, size: 20),
-              text: 'Настройки',
-            ),
-        ],
+        );
+      },
+    );
+  }
+
+  /// Одна кнопка-вкладка для 2-рядного TabBar
+  Widget _tabItem(int current, int index, IconData icon, String label, {int badge = 0}) {
+    final selected = current == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _tabController!.animateTo(index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: EdgeInsets.all(4.w),
+          padding: EdgeInsets.symmetric(vertical: 6.h),
+          decoration: BoxDecoration(
+            gradient: selected ? LinearGradient(colors: _greenGradient) : null,
+            borderRadius: BorderRadius.circular(10.r),
+            boxShadow: selected
+                ? [BoxShadow(color: _greenGradient[0].withOpacity(0.4), blurRadius: 8, offset: Offset(0, 2))]
+                : null,
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 18,
+                      color: selected ? Colors.white : Colors.white.withOpacity(0.5)),
+                  SizedBox(height: 2.h),
+                  Text(label,
+                      style: TextStyle(
+                        fontSize: 10.sp,
+                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                        color: selected ? Colors.white : Colors.white.withOpacity(0.5),
+                      )),
+                ],
+              ),
+              if (badge > 0)
+                Positioned(
+                  top: -2,
+                  right: 4,
+                  child: Container(
+                    padding: EdgeInsets.all(3),
+                    decoration: BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                    child: Text('$badge',
+                        style: TextStyle(color: Colors.white, fontSize: 9.sp, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -892,6 +954,522 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       products: _products,
       onSettingsChanged: _loadData,
     );
+  }
+
+  // ─── Вкладка "Ожидают" ─────────────────────────────────────────────────────
+
+  /// Все фото с пересчёта, ожидающие подтверждения администратором
+  Widget _buildPendingTab() {
+    if (_pendingCountingSamples.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.green, size: 64),
+            SizedBox(height: 16.h),
+            Text('Нет фото, ожидающих подтверждения',
+                style: TextStyle(color: Colors.white70, fontSize: 14.sp)),
+            SizedBox(height: 8.h),
+            Text('Новые фото появятся после пересчёта сотрудниками',
+                style: TextStyle(color: Colors.white38, fontSize: 12.sp),
+                textAlign: TextAlign.center),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // ── Заголовок ──────────────────────────────────────────────────────────
+        Padding(
+          padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 6.h),
+          child: _isPendingSelectionMode
+              ? _buildSelectionHeader()
+              : _buildNormalHeader(),
+        ),
+        // ── Сетка фото ─────────────────────────────────────────────────────────
+        Expanded(
+          child: GridView.builder(
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 10.w,
+              mainAxisSpacing: 10.h,
+              childAspectRatio: 0.62,
+            ),
+            itemCount: _pendingCountingSamples.length,
+            itemBuilder: (context, index) {
+              final sample = _pendingCountingSamples[index];
+              return _buildPendingCard(
+                sample,
+                isSelected: _selectedPendingIds.contains(sample.id),
+                selectionMode: _isPendingSelectionMode,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Обычный заголовок: счётчик + кнопка "Выбрать"
+  Widget _buildNormalHeader() {
+    return Row(
+      children: [
+        Icon(Icons.schedule, color: Colors.orange, size: 18),
+        SizedBox(width: 8.w),
+        Expanded(
+          child: Text('Ожидают: ${_pendingCountingSamples.length}',
+              style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w600)),
+        ),
+        TextButton.icon(
+          onPressed: _showSelectBottomSheet,
+          icon: Icon(Icons.checklist, color: Colors.orange, size: 16),
+          label: Text('Выбрать', style: TextStyle(color: Colors.orange, fontSize: 12.sp)),
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Заголовок режима выбора: Отмена + счётчик + Подтвердить + Отклонить
+  Widget _buildSelectionHeader() {
+    final n = _selectedPendingIds.length;
+    return Row(
+      children: [
+        // Отмена
+        GestureDetector(
+          onTap: () => setState(() {
+            _isPendingSelectionMode = false;
+            _selectedPendingIds.clear();
+          }),
+          child: Icon(Icons.close, color: Colors.white70, size: 22),
+        ),
+        SizedBox(width: 8.w),
+        // Счётчик
+        Expanded(
+          child: Text(
+            n == 0 ? 'Отметьте фото' : 'Выбрано: $n',
+            style: TextStyle(
+              color: n == 0 ? Colors.white38 : Colors.white,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        // Подтвердить
+        ElevatedButton.icon(
+          onPressed: n == 0 ? null : _bulkApprovePending,
+          icon: Icon(Icons.check, size: 14),
+          label: Text('Одобрить', style: TextStyle(fontSize: 11.sp)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green[700],
+            disabledBackgroundColor: Colors.green[900]!.withOpacity(0.4),
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+          ),
+        ),
+        SizedBox(width: 6.w),
+        // Отклонить
+        ElevatedButton.icon(
+          onPressed: n == 0 ? null : _bulkRejectPending,
+          icon: Icon(Icons.close, size: 14),
+          label: Text('Удалить', style: TextStyle(fontSize: 11.sp)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red[700],
+            disabledBackgroundColor: Colors.red[900]!.withOpacity(0.4),
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Шторка выбора режима: "Выбрать все" / "Отметить"
+  void _showSelectBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.darkNavy,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 32.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36.w, height: 4.h,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+            SizedBox(height: 16.h),
+            // Выбрать все
+            ListTile(
+              leading: Container(
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(color: Colors.green.withOpacity(0.15), shape: BoxShape.circle),
+                child: Icon(Icons.select_all, color: Colors.green, size: 22),
+              ),
+              title: Text('Выбрать все', style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w600)),
+              subtitle: Text('Выделить все ${_pendingCountingSamples.length} фото сразу',
+                  style: TextStyle(color: Colors.white54, fontSize: 12.sp)),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() {
+                  _isPendingSelectionMode = true;
+                  _selectedPendingIds = _pendingCountingSamples.map((s) => s.id).toSet();
+                });
+              },
+            ),
+            SizedBox(height: 8.h),
+            // Отметить
+            ListTile(
+              leading: Container(
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(color: Colors.orange.withOpacity(0.15), shape: BoxShape.circle),
+                child: Icon(Icons.touch_app, color: Colors.orange, size: 22),
+              ),
+              title: Text('Отметить', style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w600)),
+              subtitle: Text('Выбрать фото вручную по одному',
+                  style: TextStyle(color: Colors.white54, fontSize: 12.sp)),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() {
+                  _isPendingSelectionMode = true;
+                  _selectedPendingIds.clear();
+                });
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPendingCard(TrainingSample sample,
+      {required bool isSelected, required bool selectionMode}) {
+    return GestureDetector(
+      onTap: selectionMode
+          ? () => setState(() {
+                if (isSelected) {
+                  _selectedPendingIds.remove(sample.id);
+                } else {
+                  _selectedPendingIds.add(sample.id);
+                }
+              })
+          : () => _showPendingDetailDialog(sample),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.green.withOpacity(0.12)
+              : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: isSelected ? Colors.green : Colors.orange.withOpacity(0.35),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Фото с оверлеем галочки при выборе
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(12.r)),
+                    child: _PendingImageWithBoxes(
+                      imageUrl: sample.imageUrl.startsWith('http')
+                          ? sample.imageUrl
+                          : '${ApiConstants.serverUrl}${sample.imageUrl}',
+                      boundingBoxes: sample.boundingBoxes,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  // Значок аннотаций (рамки от сотрудника)
+                  if (sample.hasAnnotations && !isSelected)
+                    Positioned(
+                      top: 6, left: 6,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade700,
+                          borderRadius: BorderRadius.circular(8.r),
+                          boxShadow: [BoxShadow(color: Colors.black54, blurRadius: 3)],
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.draw, color: Colors.white, size: 10),
+                          SizedBox(width: 3),
+                          Text('${sample.annotationCount}', style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.bold)),
+                        ]),
+                      ),
+                    ),
+                  // Галочка выбора
+                  if (isSelected)
+                    Positioned(
+                      top: 8, right: 8,
+                      child: Container(
+                        width: 28, height: 28,
+                        decoration: BoxDecoration(color: Colors.green, shape: BoxShape.circle,
+                            boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 4)]),
+                        child: Icon(Icons.check, color: Colors.white, size: 18),
+                      ),
+                    ),
+                  // Затемнение невыбранных в режиме выбора
+                  if (selectionMode && !isSelected)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(12.r)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Название товара
+            Padding(
+              padding: EdgeInsets.fromLTRB(8.w, 6.h, 8.w, 2.h),
+              child: Text(sample.productName,
+                  style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.w500),
+                  maxLines: 2, overflow: TextOverflow.ellipsis),
+            ),
+            // Ответ сотрудника
+            if (sample.employeeAnswer != null)
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.w),
+                child: Row(children: [
+                  Icon(Icons.person_outline, color: Colors.orange, size: 12),
+                  SizedBox(width: 4.w),
+                  Text('Ответ: ${sample.employeeAnswer}',
+                      style: TextStyle(color: Colors.orange, fontSize: 10.sp, fontWeight: FontWeight.w600)),
+                ]),
+              ),
+            // Магазин
+            if (sample.shopAddress != null)
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                child: Text(sample.shopAddress!,
+                    style: TextStyle(color: Colors.white38, fontSize: 9.sp),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+            // Кнопки ✓/✗ — только в обычном режиме
+            if (!selectionMode)
+              Padding(
+                padding: EdgeInsets.fromLTRB(6.w, 4.h, 6.w, 6.h),
+                child: Row(children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _approvePendingSample(sample),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[700], padding: EdgeInsets.zero,
+                        minimumSize: Size(0, 30.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                      ),
+                      child: Icon(Icons.check, color: Colors.white, size: 16),
+                    ),
+                  ),
+                  SizedBox(width: 6.w),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _rejectPendingSample(sample),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[700], padding: EdgeInsets.zero,
+                        minimumSize: Size(0, 30.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                      ),
+                      child: Icon(Icons.close, color: Colors.white, size: 16),
+                    ),
+                  ),
+                ]),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Полноэкранный просмотр pending фото с наложенными bounding boxes
+  void _showPendingDetailDialog(TrainingSample sample) {
+    final imageUrl = sample.imageUrl.startsWith('http')
+        ? sample.imageUrl
+        : '${ApiConstants.serverUrl}${sample.imageUrl}';
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (ctx) => Dialog.fullscreen(
+        backgroundColor: Colors.black,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Шапка: название + закрыть
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      icon: Icon(Icons.close, color: Colors.white, size: 24),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(sample.productName,
+                              style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                          if (sample.employeeAnswer != null)
+                            Text('Ответ сотрудника: ${sample.employeeAnswer}',
+                                style: TextStyle(color: Colors.orange, fontSize: 12.sp)),
+                        ],
+                      ),
+                    ),
+                    if (sample.hasAnnotations)
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.draw, color: Colors.green, size: 14),
+                          SizedBox(width: 4),
+                          Text('${sample.annotationCount} рамок',
+                              style: TextStyle(color: Colors.green, fontSize: 12.sp, fontWeight: FontWeight.w600)),
+                        ]),
+                      ),
+                  ],
+                ),
+              ),
+              // Фото с рамками
+              Expanded(
+                child: _PendingImageWithBoxes(
+                  imageUrl: imageUrl,
+                  boundingBoxes: sample.boundingBoxes,
+                ),
+              ),
+              // Инфо + кнопки
+              Container(
+                padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 12.h),
+                color: Colors.black,
+                child: Column(
+                  children: [
+                    if (sample.shopAddress != null)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 8.h),
+                        child: Row(children: [
+                          Icon(Icons.store, color: Colors.white38, size: 14),
+                          SizedBox(width: 6),
+                          Expanded(child: Text(sample.shopAddress!,
+                              style: TextStyle(color: Colors.white38, fontSize: 12.sp))),
+                        ]),
+                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _approvePendingSample(sample);
+                            },
+                            icon: Icon(Icons.check, size: 18),
+                            label: Text('Одобрить'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green[700],
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _rejectPendingSample(sample);
+                            },
+                            icon: Icon(Icons.close, size: 18),
+                            label: Text('Отклонить'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red[700],
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _approvePendingSample(TrainingSample sample) async {
+    final success = await CigaretteVisionService.approvePendingCountingSample(sample.id);
+    if (success && mounted) {
+      setState(() => _pendingCountingSamples.removeWhere((s) => s.id == sample.id));
+    }
+  }
+
+  Future<void> _rejectPendingSample(TrainingSample sample) async {
+    final success = await CigaretteVisionService.rejectPendingCountingSample(sample.id);
+    if (success && mounted) {
+      setState(() => _pendingCountingSamples.removeWhere((s) => s.id == sample.id));
+    }
+  }
+
+  Future<void> _bulkApprovePending() async {
+    final ids = _selectedPendingIds.toList();
+    for (final id in ids) {
+      await CigaretteVisionService.approvePendingCountingSample(id);
+    }
+    if (mounted) {
+      setState(() {
+        _pendingCountingSamples.removeWhere((s) => ids.contains(s.id));
+        _selectedPendingIds.clear();
+        _isPendingSelectionMode = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Одобрено: ${ids.length}')),
+      );
+    }
+  }
+
+  Future<void> _bulkRejectPending() async {
+    final ids = _selectedPendingIds.toList();
+    for (final id in ids) {
+      await CigaretteVisionService.rejectPendingCountingSample(id);
+    }
+    if (mounted) {
+      setState(() {
+        _pendingCountingSamples.removeWhere((s) => ids.contains(s.id));
+        _selectedPendingIds.clear();
+        _isPendingSelectionMode = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Удалено: ${ids.length}')),
+      );
+    }
   }
 
   Widget _buildInfoCard({
@@ -3954,4 +4532,196 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       );
     }
   }
+}
+
+/// Виджет: фото с наложенными bounding boxes для просмотра pending образцов.
+/// [fit] — BoxFit.cover для превью в карточке, BoxFit.contain для полноэкранного просмотра.
+class _PendingImageWithBoxes extends StatefulWidget {
+  final String imageUrl;
+  final List<AnnotationBox> boundingBoxes;
+  final BoxFit fit;
+
+  const _PendingImageWithBoxes({
+    required this.imageUrl,
+    required this.boundingBoxes,
+    this.fit = BoxFit.contain,
+  });
+
+  @override
+  State<_PendingImageWithBoxes> createState() => _PendingImageWithBoxesState();
+}
+
+class _PendingImageWithBoxesState extends State<_PendingImageWithBoxes> {
+  ui.Image? _image;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  Future<void> _loadImage() async {
+    try {
+      final response = await http.get(
+        Uri.parse(widget.imageUrl),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.longTimeout);
+
+      if (response.statusCode == 200) {
+        final codec = await ui.instantiateImageCodec(response.bodyBytes);
+        final frame = await codec.getNextFrame();
+        if (mounted) {
+          setState(() {
+            _image = frame.image;
+            _loading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _error = 'HTTP ${response.statusCode}';
+            _loading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = '$e';
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return Center(child: CircularProgressIndicator(color: Colors.orange));
+    }
+    if (_error != null || _image == null) {
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.broken_image, color: Colors.white38, size: 32),
+          SizedBox(height: 4),
+          Text(_error ?? 'Ошибка', style: TextStyle(color: Colors.white38, fontSize: 10)),
+        ]),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox(
+          width: constraints.maxWidth,
+          height: constraints.maxHeight,
+          child: CustomPaint(
+            painter: _BoundingBoxOverlayPainter(
+              image: _image!,
+              boxes: widget.boundingBoxes,
+              fit: widget.fit,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Painter: рисует фото + зелёные рамки bounding boxes.
+/// Поддерживает BoxFit.cover (для превью) и BoxFit.contain (для полноэкрана).
+class _BoundingBoxOverlayPainter extends CustomPainter {
+  final ui.Image image;
+  final List<AnnotationBox> boxes;
+  final BoxFit fit;
+
+  _BoundingBoxOverlayPainter({
+    required this.image,
+    required this.boxes,
+    this.fit = BoxFit.contain,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final imgW = image.width.toDouble();
+    final imgH = image.height.toDouble();
+    final srcRect = Rect.fromLTWH(0, 0, imgW, imgH);
+
+    // Вычисляем dstRect с учётом BoxFit
+    final FittedSizes fittedSizes = applyBoxFit(fit, Size(imgW, imgH), size);
+    final Rect dstRect = Alignment.center.inscribe(fittedSizes.destination, Offset.zero & size);
+
+    // Для BoxFit.cover обрезаем то, что выходит за пределы канваса
+    if (fit == BoxFit.cover) {
+      canvas.save();
+      canvas.clipRect(Offset.zero & size);
+    }
+
+    // srcRect при cover тоже нужен только видимая часть
+    final Rect actualSrc = Alignment.center.inscribe(fittedSizes.source, srcRect);
+    canvas.drawImageRect(image, actualSrc, dstRect, Paint());
+
+    if (boxes.isNotEmpty) {
+      final borderPaint = Paint()
+        ..color = Colors.green
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = fit == BoxFit.cover ? 1.5 : 2.5;
+
+      final fillPaint = Paint()
+        ..color = Colors.green.withOpacity(0.15)
+        ..style = PaintingStyle.fill;
+
+      // Масштабирование: нормализованные координаты → координаты на исходном изображении → на dstRect
+      // При cover видна только часть изображения (actualSrc), нужно учесть смещение
+      for (int i = 0; i < boxes.length; i++) {
+        final box = boxes[i];
+        // Координаты в пикселях исходного изображения
+        final pixLeft = (box.xCenter - box.width / 2) * imgW;
+        final pixTop = (box.yCenter - box.height / 2) * imgH;
+        final pixRight = (box.xCenter + box.width / 2) * imgW;
+        final pixBottom = (box.yCenter + box.height / 2) * imgH;
+
+        // Переводим из координат исходного изображения в координаты канваса
+        final scaleX = dstRect.width / actualSrc.width;
+        final scaleY = dstRect.height / actualSrc.height;
+
+        final drawLeft = dstRect.left + (pixLeft - actualSrc.left) * scaleX;
+        final drawTop = dstRect.top + (pixTop - actualSrc.top) * scaleY;
+        final drawRight = dstRect.left + (pixRight - actualSrc.left) * scaleX;
+        final drawBottom = dstRect.top + (pixBottom - actualSrc.top) * scaleY;
+
+        final rect = Rect.fromLTRB(drawLeft, drawTop, drawRight, drawBottom);
+
+        canvas.drawRect(rect, fillPaint);
+        canvas.drawRect(rect, borderPaint);
+
+        // Номер рамки (только если рамка достаточно большая)
+        if (rect.width > 16 && rect.height > 16) {
+          final textPainter = TextPainter(
+            text: TextSpan(
+              text: '${i + 1}',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: fit == BoxFit.cover ? 9 : 13,
+                fontWeight: FontWeight.bold,
+                backgroundColor: Colors.green,
+              ),
+            ),
+            textDirection: TextDirection.ltr,
+          );
+          textPainter.layout();
+          textPainter.paint(canvas, Offset(rect.left + 2, rect.top + 2));
+        }
+      }
+    }
+
+    if (fit == BoxFit.cover) {
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BoundingBoxOverlayPainter old) =>
+      old.image != image || old.boxes != boxes || old.fit != fit;
 }
