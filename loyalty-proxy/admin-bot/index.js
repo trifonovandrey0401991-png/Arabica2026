@@ -11,6 +11,7 @@ const http = require('http');
 const https = require('https');
 const { Pool } = require('pg');
 const fs = require('fs');
+const path = require('path');
 
 // ============================================
 // КОНФИГУРАЦИЯ
@@ -173,13 +174,20 @@ bot.onText(/\/(start|help)/, (msg) => {
 /tests — запуск API тестов
 /backup — бэкап базы данных
 
+<b>ИИ обучение:</b>
+/ai_status — статус модели YOLO
+/ai_train — запустить обучение
+/ai_train_status — ход обучения
+
 <b>Управление (продвинутое):</b>
 /cmd &lt;команда&gt; — выполнить команду на сервере
+/dbf — статус DBF синхронизации магазинов
 /ssl — проверить SSL-сертификат
 
 <b>Автоматически:</b>
 • Оповещение если сервис упал
 • Оповещение при ошибках 500
+• Оповещение если магазин отключился от DBF
 • Crash-loop детектор (5+ перезапусков)
 • SSL-сертификат истекает &lt; 14 дней
 • Замедление API &gt; 500ms
@@ -351,6 +359,63 @@ bot.on('callback_query', async (query) => {
       );
     }
   }
+
+  // AI Train
+  if (data === 'ai_train:cancel') {
+    await bot.answerCallbackQuery(query.id, { text: 'Отменено' });
+    await bot.editMessageText('❌ Обучение отменено', {
+      chat_id: ADMIN_ID, message_id: query.message.message_id,
+    });
+  }
+
+  if (data === 'ai_train:confirm') {
+    await bot.answerCallbackQuery(query.id, { text: 'Запускаю...' });
+    const msgId = query.message.message_id;
+    await bot.editMessageText('⏳ Запускаю обучение YOLO (50 эпох)...', {
+      chat_id: ADMIN_ID, message_id: msgId, parse_mode: 'HTML',
+    });
+
+    // POST к loyalty-proxy для запуска обучения
+    try {
+      const body = JSON.stringify({ epochs: 50 });
+      const result = await new Promise((resolve) => {
+        const req = http.request({
+          hostname: '127.0.0.1', port: 3000,
+          path: '/api/internal/trigger-recount-training',
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+          timeout: 10000,
+        }, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            try { resolve(JSON.parse(data)); } catch { resolve({ success: false }); }
+          });
+        });
+        req.on('error', () => resolve({ success: false, error: 'Не удалось связаться с API' }));
+        req.write(body);
+        req.end();
+      });
+
+      if (result.success) {
+        await bot.editMessageText(
+          '🚀 <b>Обучение запущено!</b>\n\n🔄 50 эпох\n⏱ Займёт ~5-10 минут\n\nИспользуйте /ai_train_status для проверки хода.\nПо завершении придёт уведомление.',
+          { chat_id: ADMIN_ID, message_id: msgId, parse_mode: 'HTML' }
+        );
+      } else {
+        const errText = result.error === 'already_running' ? 'Обучение уже запущено!' : (result.error || 'Неизвестная ошибка');
+        await bot.editMessageText(
+          `❌ <b>Не удалось запустить:</b> ${escapeHtml(errText)}`,
+          { chat_id: ADMIN_ID, message_id: msgId, parse_mode: 'HTML' }
+        );
+      }
+    } catch (err) {
+      await bot.editMessageText(
+        `❌ Ошибка: ${escapeHtml(err.message)}`,
+        { chat_id: ADMIN_ID, message_id: msgId, parse_mode: 'HTML' }
+      );
+    }
+  }
 });
 
 // /logs — последние строки логов
@@ -515,6 +580,55 @@ bot.onText(/\/cmd (.+)/, async (msg, match) => {
   send(`💻 <b>Результат:</b>\n\n<pre>${escapeHtml(truncated)}</pre>`);
 });
 
+// /dbf — статус DBF синхронизации магазинов
+bot.onText(/\/dbf/, async (msg) => {
+  if (!isAdmin(msg)) return;
+
+  let files;
+  try {
+    files = fs.readdirSync(DBF_SYNC_DIR).filter(f => f.endsWith('.json'));
+  } catch {
+    send('⚠️ Нет данных о синхронизации DBF (директория не найдена)');
+    return;
+  }
+
+  if (files.length === 0) {
+    send('⚠️ Нет магазинов с DBF синхронизацией');
+    return;
+  }
+
+  const shopNames = await loadShopNames();
+  const now = Date.now();
+  const threshold = DBF_STALE_MINUTES * 60 * 1000;
+  const lines = [];
+
+  for (const file of files) {
+    const shopId = file.replace('.json', '');
+    try {
+      const data = JSON.parse(fs.readFileSync(path.join(DBF_SYNC_DIR, file), 'utf8'));
+      const lastSync = data.lastSync ? new Date(data.lastSync).getTime() : 0;
+      const shopName = shopNames[shopId] || shopId;
+      const productCount = data.productCount || 0;
+
+      if (lastSync === 0) {
+        lines.push(`⚪ ${shopName} — нет данных`);
+      } else {
+        const minutesAgo = Math.floor((now - lastSync) / 60000);
+        const isConnected = (now - lastSync) < threshold;
+        const icon = isConnected ? '🟢' : '🔴';
+        const timeStr = minutesAgo < 60
+          ? `${minutesAgo} мин назад`
+          : `${Math.floor(minutesAgo / 60)}ч ${minutesAgo % 60}м назад`;
+        lines.push(`${icon} ${shopName} — ${timeStr} (${productCount} товаров)`);
+      }
+    } catch {
+      lines.push(`⚠️ ${shopId} — ошибка чтения`);
+    }
+  }
+
+  send(`📡 <b>DBF синхронизация магазинов</b>\n\n${lines.join('\n')}\n\n⏱ Порог отключения: ${DBF_STALE_MINUTES} мин`);
+});
+
 // /ssl — проверка SSL-сертификата
 bot.onText(/\/ssl/, async (msg) => {
   if (!isAdmin(msg)) return;
@@ -525,6 +639,124 @@ bot.onText(/\/ssl/, async (msg) => {
   } else {
     send(`🔴 <b>Не удалось проверить SSL!</b>\n\nОшибка: ${ssl.error}`);
   }
+});
+
+// ============================================
+// ИИ ОБУЧЕНИЕ — КОМАНДЫ
+// ============================================
+
+const YOLO_SERVER_URL = 'http://127.0.0.1:5002';
+const LOYALTY_API_URL = 'http://127.0.0.1:3000';
+
+// /ai_status — статус модели и данных
+bot.onText(/\/ai_status/, async (msg) => {
+  if (!isAdmin(msg)) return;
+  send('⏳ Проверяю статус ИИ...');
+
+  const [yoloHealth, modelInfo, trainStatus] = await Promise.all([
+    httpCheck(`${YOLO_SERVER_URL}/health`),
+    execCmd('ls -lh /root/arabica_app/loyalty-proxy/ml/models/cigarette_detector.pt 2>/dev/null | awk \'{print $5, $6, $7}\''),
+    httpCheck(`${LOYALTY_API_URL}/api/internal/recount-train-status`),
+  ]);
+
+  // Количество данных
+  const [trainingCount, pendingCount, labelCount] = await Promise.all([
+    execCmd('ls /root/arabica_app/loyalty-proxy/data/cigarette-training-images/*.jpg 2>/dev/null | wc -l'),
+    execCmd('ls /root/arabica_app/loyalty-proxy/data/counting-pending/images/*.jpg 2>/dev/null | wc -l'),
+    execCmd('ls /root/arabica_app/loyalty-proxy/data/counting-training/labels/*.txt 2>/dev/null | wc -l'),
+  ]);
+
+  const yoloOk = yoloHealth.ok && yoloHealth.data?.modelLoaded;
+  const classCount = yoloHealth.data?.classCount || '?';
+  const modelSize = modelInfo.trim() || 'нет модели';
+
+  // Последнее обучение
+  let lastTrain = '—';
+  if (trainStatus.ok && trainStatus.data?.finishedAt) {
+    const d = new Date(trainStatus.data.finishedAt);
+    lastTrain = d.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });
+  }
+
+  const trainState = trainStatus.data?.status || 'unknown';
+  const stateIcon = { idle: '💤', running: '⏳', done: '✅', error: '🔴' }[trainState] || '❓';
+
+  send(`🤖 <b>Статус ИИ (YOLO)</b>
+
+<b>Модель:</b>
+${yoloOk ? '🟢' : '🔴'} yolo_server: ${yoloOk ? 'загружена' : 'не загружена'}
+📦 Размер: ${modelSize}
+🏷 Классов: ${classCount}
+${stateIcon} Статус обучения: ${trainState}
+📅 Последнее обучение: ${lastTrain}
+
+<b>Данные:</b>
+📸 Тренировочных фото: ${trainingCount.trim()}
+📝 С аннотациями (labels): ${labelCount.trim()}
+⏳ Ожидают проверки: ${pendingCount.trim()}`);
+});
+
+// /ai_train — запуск обучения с подтверждением
+bot.onText(/\/ai_train$/, async (msg) => {
+  if (!isAdmin(msg)) return;
+
+  // Проверяем нет ли уже запущенного обучения
+  const status = await httpCheck(`${LOYALTY_API_URL}/api/ai-dashboard/recount-train-status`);
+  if (status.ok && status.data?.status === 'running') {
+    send('⚠️ Обучение уже запущено! Используйте /ai_train_status для проверки хода.');
+    return;
+  }
+
+  const imgCount = await execCmd('ls /root/arabica_app/loyalty-proxy/data/cigarette-training-images/*.jpg 2>/dev/null | wc -l');
+  send(`🤖 <b>Запуск обучения YOLO</b>\n\n📸 Тренировочных фото: ${imgCount.trim()}\n🔄 Эпох: 50\n\nЗапустить обучение?`, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '🚀 Запустить обучение', callback_data: 'ai_train:confirm' }],
+        [{ text: '❌ Отмена', callback_data: 'ai_train:cancel' }],
+      ]
+    }
+  });
+});
+
+// /ai_train_status — статус текущего обучения
+bot.onText(/\/ai_train_status/, async (msg) => {
+  if (!isAdmin(msg)) return;
+
+  const status = await httpCheck(`${LOYALTY_API_URL}/api/ai-dashboard/recount-train-status`);
+  if (!status.ok) {
+    send('❌ Не удалось получить статус обучения. loyalty-proxy не отвечает.');
+    return;
+  }
+
+  const s = status.data;
+  const stateIcon = { idle: '💤', running: '⏳', done: '✅', error: '🔴' }[s.status] || '❓';
+  const stateText = { idle: 'ожидание', running: 'идёт обучение', done: 'завершено', error: 'ошибка' }[s.status] || s.status;
+
+  let text = `🤖 <b>Статус обучения</b>\n\n${stateIcon} <b>${stateText}</b>`;
+
+  if (s.startedAt) {
+    const started = new Date(s.startedAt).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });
+    text += `\n📅 Начато: ${started}`;
+  }
+  if (s.epochs) {
+    text += `\n🔄 Эпох: ${s.epochs}`;
+  }
+  if (s.retryCount > 0) {
+    text += `\n🔁 Попытка: ${s.retryCount + 1}/3`;
+  }
+  if (s.finishedAt) {
+    const finished = new Date(s.finishedAt).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });
+    text += `\n🏁 Завершено: ${finished}`;
+  }
+  if (s.result) {
+    text += `\n\n<b>Результат:</b>`;
+    if (s.result.totalImages) text += `\n📸 Образцов: ${s.result.totalImages}`;
+    if (s.result.modelReloaded !== undefined) text += `\n🤖 Модель загружена: ${s.result.modelReloaded ? 'да' : 'нет'}`;
+  }
+  if (s.error) {
+    text += `\n\n❌ <b>Ошибка:</b> ${escapeHtml(s.error)}`;
+  }
+
+  send(text);
 });
 
 // ============================================
@@ -547,6 +779,88 @@ const lastState = {
   lastRestartCount: -1, // -1 = ещё не проверяли
   crashLoopAlert: false,
 };
+
+// ============================================
+// DBF МОНИТОРИНГ — подключение магазинов
+// ============================================
+
+const DBF_SYNC_DIR = (process.env.DATA_DIR || '/var/www') + '/shop-products';
+const DBF_STALE_MINUTES = 15; // Магазин считается отключённым если синхронизация > 15 мин назад
+
+// Состояние DBF подключений: shopId → { connected: bool, lastSync: number }
+const dbfShopStates = new Map();
+
+// Кэш названий магазинов из БД
+let shopNamesCache = {};
+let shopNamesCacheTime = 0;
+
+async function loadShopNames() {
+  if (Date.now() - shopNamesCacheTime < 3600000 && Object.keys(shopNamesCache).length > 0) {
+    return shopNamesCache;
+  }
+  try {
+    const res = await pool.query('SELECT id, address FROM shops');
+    const names = {};
+    for (const row of res.rows) {
+      names[row.id] = row.address || row.id;
+    }
+    shopNamesCache = names;
+    shopNamesCacheTime = Date.now();
+    return names;
+  } catch (err) {
+    console.error('[DBF Monitor] Ошибка загрузки названий магазинов:', err.message);
+    return shopNamesCache;
+  }
+}
+
+async function checkDbfSync() {
+  try {
+    let files;
+    try {
+      files = fs.readdirSync(DBF_SYNC_DIR).filter(f => f.endsWith('.json'));
+    } catch {
+      return; // Директория не существует
+    }
+
+    if (files.length === 0) return;
+
+    const shopNames = await loadShopNames();
+    const now = Date.now();
+    const threshold = DBF_STALE_MINUTES * 60 * 1000;
+
+    for (const file of files) {
+      const shopId = file.replace('.json', '');
+
+      try {
+        const data = JSON.parse(fs.readFileSync(path.join(DBF_SYNC_DIR, file), 'utf8'));
+        const lastSync = data.lastSync ? new Date(data.lastSync).getTime() : 0;
+        const isConnected = lastSync > 0 && (now - lastSync) < threshold;
+        const shopName = shopNames[shopId] || shopId;
+
+        const prevState = dbfShopStates.get(shopId);
+
+        if (prevState === undefined) {
+          // Первая проверка — запоминаем состояние, не шлём алерт
+          dbfShopStates.set(shopId, { connected: isConnected, lastSync });
+          continue;
+        }
+
+        if (prevState.connected && !isConnected) {
+          const minutesAgo = Math.floor((now - lastSync) / 60000);
+          send(`🔴 <b>DBF: магазин отключился!</b>\n\n🏪 ${escapeHtml(shopName)}\n⏱ Последняя синхронизация: ${minutesAgo} мин назад`);
+        } else if (!prevState.connected && isConnected) {
+          send(`🟢 <b>DBF: магазин подключился!</b>\n\n🏪 ${escapeHtml(shopName)}`);
+        }
+
+        dbfShopStates.set(shopId, { connected: isConnected, lastSync });
+      } catch (err) {
+        console.error(`[DBF Monitor] Ошибка чтения ${file}:`, err.message);
+      }
+    }
+  } catch (err) {
+    console.error('[DBF Monitor] Error:', err.message);
+  }
+}
 
 // Средняя скорость API (скользящее среднее)
 let apiResponseTimes = [];
@@ -635,6 +949,9 @@ async function monitorLoop() {
         lastState.diskAlert = false;
       }
     }
+
+    // DBF синхронизация магазинов
+    await checkDbfSync();
 
     // Перехват новых ошибок 500 из лога
     try {
