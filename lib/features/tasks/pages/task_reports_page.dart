@@ -6,6 +6,7 @@ import 'task_analytics_page.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/models/user_role_model.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -66,12 +67,19 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
     super.dispose();
   }
 
-  Future<void> _loadAssignments() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  static const _cacheKey = 'task_assignments_all';
 
+  Future<void> _loadAssignments() async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<TaskAssignment>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _allAssignments = cached;
+        _isLoading = false;
+      });
+    }
+
+    // Step 2: Fetch fresh data from server
     try {
       var assignments = await TaskService.getAllAssignments();
 
@@ -83,7 +91,6 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
           (p) => p.replaceAll(RegExp(r'[\s\+]'), ''),
         ).toSet();
 
-        // Строим Set разрешённых ID сотрудников
         final allowedIds = <String>{};
         for (final emp in employees) {
           final phone = emp.phone?.replaceAll(RegExp(r'[\s\+]'), '') ?? '';
@@ -99,13 +106,19 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
       setState(() {
         _allAssignments = assignments;
         _isLoading = false;
+        _error = null;
       });
+
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, assignments);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (_allAssignments.isEmpty) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 

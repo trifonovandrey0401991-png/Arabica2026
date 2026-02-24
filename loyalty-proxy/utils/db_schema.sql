@@ -751,6 +751,30 @@ CREATE INDEX IF NOT EXISTS idx_msgr_msg_conv ON messenger_messages(conversation_
 CREATE INDEX IF NOT EXISTS idx_msgr_msg_time ON messenger_messages(created_at);
 CREATE INDEX IF NOT EXISTS idx_msgr_msg_sender ON messenger_messages(sender_phone);
 
+-- Messenger: профили пользователей (аватар + имя)
+CREATE TABLE IF NOT EXISTS messenger_profiles (
+  phone TEXT PRIMARY KEY,
+  display_name TEXT,
+  avatar_url TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ============================================
--- Готово. Таблицы: ~48
+-- CIGARETTE VISION (сигареты + обучение ИИ)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS cigarette_samples (
+  id TEXT PRIMARY KEY,
+  product_id TEXT,
+  type TEXT,
+  shop_address TEXT,
+  data JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cigarette_samples_product ON cigarette_samples(product_id);
+CREATE INDEX IF NOT EXISTS idx_cigarette_samples_type ON cigarette_samples(type);
+CREATE INDEX IF NOT EXISTS idx_cigarette_samples_shop ON cigarette_samples(shop_address);
+
+-- ============================================
+-- Готово. Таблицы: ~50
 -- ============================================

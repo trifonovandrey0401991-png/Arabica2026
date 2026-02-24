@@ -452,6 +452,64 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
     }
   });
 
+  // Включить/выключить ИИ для товара по баркоду
+  // Обновляет и question-файл, и мастер-каталог
+  app.patch('/api/recount-questions/by-barcode/:barcode/ai-status', requireAdmin, async (req, res) => {
+    try {
+      const { barcode } = req.params;
+      const { isAiActive } = req.body;
+
+      if (typeof isAiActive !== 'boolean') {
+        return res.status(400).json({ success: false, error: 'isAiActive должен быть boolean' });
+      }
+
+      // 1. Обновляем question-файл (для отображения в management-странице)
+      const sanitizedBarcode = barcode.replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const filePath = path.join(RECOUNT_QUESTIONS_DIR, `product_${sanitizedBarcode}.json`);
+      let updatedQuestion = null;
+
+      if (await fileExists(filePath)) {
+        const existingData = JSON.parse(await fsp.readFile(filePath, 'utf8'));
+        updatedQuestion = { ...existingData, isAiActive, updatedAt: new Date().toISOString() };
+        await writeJsonFile(filePath, updatedQuestion);
+
+        if (USE_DB) {
+          try { await db.upsert('recount_questions', { id: existingData.id, data: updatedQuestion, created_at: existingData.createdAt }); }
+          catch (dbErr) { console.error('DB update recount_question isAiActive error:', dbErr.message); }
+        }
+      }
+
+      // 2. Обновляем мастер-каталог (для реального пересчёта)
+      let masterUpdated = false;
+      try {
+        const { loadProducts, saveProducts } = require('./master_catalog_api');
+        const products = await loadProducts();
+        const masterProduct = products.find((p) => p.barcode === barcode);
+        if (masterProduct) {
+          masterProduct.isAiActive = isAiActive;
+          masterProduct.updatedAt = new Date().toISOString();
+          await saveProducts(products);
+          masterUpdated = true;
+        }
+      } catch (mcErr) {
+        console.error('[Recount Questions] Ошибка обновления мастер-каталога:', mcErr.message);
+      }
+
+      console.log(`[Recount Questions] AI статус для barcode=${barcode}: ${isAiActive}, master=${masterUpdated}`);
+
+      res.json({
+        success: true,
+        barcode,
+        isAiActive,
+        questionUpdated: updatedQuestion !== null,
+        masterCatalogUpdated: masterUpdated,
+      });
+    } catch (error) {
+      console.error('[Recount Questions] Ошибка обновления AI статуса:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   console.log(`✅ Recount Questions API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 

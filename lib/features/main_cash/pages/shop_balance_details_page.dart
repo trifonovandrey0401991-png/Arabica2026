@@ -4,6 +4,7 @@ import '../../../core/utils/logger.dart';
 import '../models/shop_cash_balance_model.dart';
 import '../services/main_cash_service.dart';
 import '../widgets/turnover_calendar.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница деталей магазина (баланс и оборот)
@@ -38,8 +39,19 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
     super.dispose();
   }
 
+  String get _cacheKey => 'shop_balance_${widget.shopAddress.hashCode}';
+
   Future<void> _loadBalance() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<ShopCashBalance>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _balance = cached;
+        _isLoading = false;
+      });
+    }
+
+    if (_balance == null && mounted) setState(() => _isLoading = true);
 
     try {
       final balance = await MainCashService.getShopBalance(widget.shopAddress);
@@ -48,10 +60,12 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
         _balance = balance;
         _isLoading = false;
       });
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, balance);
     } catch (e) {
       Logger.error('Ошибка загрузки баланса', e);
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      if (_balance == null) setState(() => _isLoading = false);
     }
   }
 

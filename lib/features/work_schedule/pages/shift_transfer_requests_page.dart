@@ -6,6 +6,7 @@ import '../services/shift_transfer_service.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница заявок на передачу смен (для раздела Отчёты)
 class ShiftTransferRequestsPage extends StatefulWidget {
@@ -25,10 +26,19 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
     _loadNotifications();
   }
 
+  static const _cacheKey = 'shift_transfer_requests';
+
   Future<void> _loadNotifications() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-    });
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<ShiftTransferRequest>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _notifications = cached;
+        _isLoading = false;
+      });
+    }
+
+    if (_notifications.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
       final notifications = await ShiftTransferService.getAdminRequests();
@@ -37,13 +47,13 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
           _notifications = notifications;
           _isLoading = false;
         });
+        // Step 3: Save to cache
+        CacheManager.set(_cacheKey, notifications);
       }
     } catch (e) {
       Logger.error('Ошибка загрузки заявок', e);
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+      if (mounted && _notifications.isEmpty) {
+        setState(() => _isLoading = false);
       }
     }
   }

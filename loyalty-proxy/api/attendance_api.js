@@ -810,7 +810,7 @@ function setupAttendanceAPI(app, {
       console.log(`[GPS-Check] Nearest shop: ${nearestShop.name} (${Math.round(minDistance)}m)`);
 
       // 3. Проверяем расписание - есть ли смена сегодня на этом магазине
-      const today = new Date().toISOString().split('T')[0];
+      const today = getMoscowDateString();
       const monthKey = today.substring(0, 7); // YYYY-MM
       const scheduleFile = path.join(`${DATA_DIR}/work-schedules`, `${monthKey}.json`);
 

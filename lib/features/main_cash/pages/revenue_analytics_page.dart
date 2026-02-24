@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../models/shop_revenue_model.dart';
 import '../services/revenue_analytics_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -54,11 +55,29 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     _loadShopAddresses();
   }
 
+  static const _addressesCacheKey = 'revenue_addresses';
+
   Future<void> _loadShopAddresses() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<String>>(_addressesCacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _shopAddresses = cached;
+        _isLoading = false;
+      });
+      // Show mode dialog even with cached data
+      if (_mode == AnalyticsMode.none) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showModeSelectionDialog();
+        });
+      }
+    }
+
+    if (_shopAddresses.isEmpty && mounted) setState(() => _isLoading = true);
+
     try {
+      // Step 2: Fetch fresh data
       final allAddresses = await RevenueAnalyticsService.getShopAddresses();
-      // Фильтрация по мультитенантности — управляющий видит только свои магазины
       final allowedAddresses = await MultitenancyFilterService.getAllowedShopAddresses();
       final addresses = allowedAddresses == null
           ? allAddresses
@@ -69,8 +88,11 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
         _isLoading = false;
       });
 
-      // Показать диалог выбора режима после загрузки
-      if (_mode == AnalyticsMode.none) {
+      // Step 3: Save to cache
+      CacheManager.set(_addressesCacheKey, addresses);
+
+      // Show mode dialog after fresh load (only if not shown from cache)
+      if (_mode == AnalyticsMode.none && cached == null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _showModeSelectionDialog();
         });
@@ -78,7 +100,7 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     } catch (e) {
       Logger.error('Ошибка загрузки списка магазинов', e);
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      if (_shopAddresses.isEmpty) setState(() => _isLoading = false);
     }
   }
 
@@ -214,8 +236,27 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     _loadSingleShopData(shopAddress);
   }
 
+  String _singleShopCacheKey(String addr) => 'revenue_single_${addr.hashCode}';
+
   Future<void> _loadSingleShopData(String shopAddress) async {
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cacheKey = _singleShopCacheKey(shopAddress);
+    final cached = CacheManager.get<Map<String, dynamic>>(cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _yesterdayRevenue = cached['yesterday'] as double;
+        _weekAgoRevenue = cached['weekAgo'] as double;
+        _monthAgoRevenue = cached['monthAgo'] as double;
+        _currentMonthRevenue = cached['currentMonth'] as double;
+        _prevMonthRevenue = cached['prevMonth'] as double;
+        _currentWeekRevenue = cached['currentWeek'] as double;
+        _prevWeekRevenue = cached['prevWeek'] as double;
+        _dailyRevenues = cached['daily'] as List<DailyRevenue>;
+        _isLoading = false;
+      });
+    }
+
+    if (cached == null && mounted) setState(() => _isLoading = true);
 
     try {
       final now = DateTime.now();
@@ -292,15 +333,38 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
         _dailyRevenues = dailyRevenues;
         _isLoading = false;
       });
+
+      // Step 3: Save to cache
+      CacheManager.set(cacheKey, {
+        'yesterday': yesterdayRev,
+        'weekAgo': weekAgoRev,
+        'monthAgo': monthAgoRev,
+        'currentMonth': currentMonthRev,
+        'prevMonth': prevMonthRev,
+        'currentWeek': currentWeekRev,
+        'prevWeek': prevWeekRev,
+        'daily': dailyRevenues,
+      });
     } catch (e) {
       Logger.error('Ошибка загрузки данных магазина', e);
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      if (cached == null) setState(() => _isLoading = false);
     }
   }
 
+  static const _allShopsCacheKey = 'revenue_all_shops';
+
   Future<void> _loadAllShopsData() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<ShopRevenue>>(_allShopsCacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _allShopsRevenues = cached;
+        _isLoading = false;
+      });
+    }
+
+    if (_allShopsRevenues.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
       final now = DateTime.now();
@@ -332,10 +396,13 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
         _allShopsRevenues = revenues;
         _isLoading = false;
       });
+
+      // Step 3: Save to cache
+      CacheManager.set(_allShopsCacheKey, revenues);
     } catch (e) {
       Logger.error('Ошибка загрузки данных всех магазинов', e);
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      if (_allShopsRevenues.isEmpty) setState(() => _isLoading = false);
     }
   }
 
@@ -520,27 +587,39 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
   }
 
   Future<void> _loadWeeklyRevenues() async {
-    Logger.debug('🔵 _loadWeeklyRevenues() вызван для магазина: $_selectedShop');
-    if (mounted) setState(() => _isLoading = true);
+    Logger.debug('_loadWeeklyRevenues() for shop: $_selectedShop');
+    final cacheKey = 'revenue_weekly_${_selectedShop.hashCode}';
+
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<MonthlyRevenueTable>>(cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _weeklyRevenues = cached;
+        _showWeeklyTable = true;
+        _isLoading = false;
+      });
+    }
+
+    if (cached == null && mounted) setState(() => _isLoading = true);
+
     try {
       final data = await RevenueAnalyticsService.getWeeklyRevenuesAllMonths(
         shopAddress: _selectedShop!,
       );
-      Logger.debug('✅ Загружено месяцев: ${data.length}');
-      for (final month in data) {
-        Logger.debug('   ${month.monthNameWithYear}: ${month.weeks.length} недель, итого: ${month.totalRevenue}');
-      }
       if (!mounted) return;
       setState(() {
         _weeklyRevenues = data;
         _showWeeklyTable = true;
         _isLoading = false;
       });
+
+      // Step 3: Save to cache
+      CacheManager.set(cacheKey, data);
     } catch (e, stackTrace) {
-      Logger.error('❌ Ошибка загрузки недельных данных', e);
+      Logger.error('Ошибка загрузки недельных данных', e);
       Logger.debug('Stack trace: $stackTrace');
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      if (cached == null) setState(() => _isLoading = false);
     }
   }
 
@@ -1428,8 +1507,21 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
     );
   }
 
+  static const _allShopsWeeklyCacheKey = 'revenue_all_shops_weekly';
+
   Future<void> _loadAllShopsWeeklyData() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, List<MonthlyRevenueTable>>>(_allShopsWeeklyCacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _allShopsWeeklyRevenues = cached;
+        _showRevenueTable = true;
+        _isLoading = false;
+      });
+    }
+
+    if (cached == null && mounted) setState(() => _isLoading = true);
+
     try {
       final results = await Future.wait([
         RevenueAnalyticsService.getWeeklyRevenuesAllShops(),
@@ -1452,10 +1544,13 @@ class _RevenueAnalyticsPageState extends State<RevenueAnalyticsPage> {
         _showRevenueTable = true;
         _isLoading = false;
       });
+
+      // Step 3: Save to cache
+      CacheManager.set(_allShopsWeeklyCacheKey, data);
     } catch (e) {
       Logger.error('Ошибка загрузки данных по неделям для всех магазинов', e);
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      if (cached == null) setState(() => _isLoading = false);
     }
   }
 

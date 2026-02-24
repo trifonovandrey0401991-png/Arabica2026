@@ -314,13 +314,15 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           TextButton.icon(
             onPressed: () {
               Navigator.pop(ctx);
-              if (isRetry) {
-                // После повторной попытки — ручной ввод
-                _promptManualInput(templateId: templateId, isComputer: isComputer);
-              } else {
-                // Первая попытка — дать выделить область
-                _openRegionSelector(templateId: templateId, isComputer: isComputer);
-              }
+              // Defer to next frame — dialog must finish disposal before setState
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                if (isRetry) {
+                  _promptManualInput(templateId: templateId, isComputer: isComputer);
+                } else {
+                  _openRegionSelector(templateId: templateId, isComputer: isComputer);
+                }
+              });
             },
             icon: Icon(
               isRetry ? Icons.edit : Icons.crop_free,
@@ -336,7 +338,9 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(ctx);
-              _acceptOcrNumber(number, templateId: templateId, isComputer: isComputer);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _acceptOcrNumber(number, templateId: templateId, isComputer: isComputer);
+              });
             },
             icon: Icon(Icons.check, color: Colors.white, size: 20),
             label: Text(
@@ -473,13 +477,15 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
               final text = manualController.text.trim();
               if (text.isEmpty) return;
               Navigator.pop(ctx);
-              if (mounted) setState(() {
-                if (isComputer) {
-                  _computerController.text = text;
-                } else {
-                  _machineControllers[templateId]?.text = text;
-                  _machineWasEdited[templateId] = true;
-                }
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) setState(() {
+                  if (isComputer) {
+                    _computerController.text = text;
+                  } else {
+                    _machineControllers[templateId]?.text = text;
+                    _machineWasEdited[templateId] = true;
+                  }
+                });
               });
             },
             style: ElevatedButton.styleFrom(
@@ -523,7 +529,10 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(ctx);
-              _openRegionSelector(templateId: templateId, isComputer: isComputer);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                _openRegionSelector(templateId: templateId, isComputer: isComputer);
+              });
             },
             icon: Icon(Icons.crop_free, color: Colors.white, size: 20),
             label: Text('Выделить область', style: TextStyle(color: Colors.white)),

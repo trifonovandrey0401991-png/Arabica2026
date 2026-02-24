@@ -5,6 +5,7 @@ import '../../shops/services/shop_service.dart';
 import '../services/kpi_service.dart';
 import '../models/kpi_shop_month_stats.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка всех магазинов для KPI
@@ -35,10 +36,25 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
     _loadShops();
   }
 
+  static const _cacheKey = 'kpi_shops_stats';
+
   Future<void> _loadShops() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _shops = cached['shops'] as List<Shop>;
+        _monthlyStatsCache.addAll(
+          (cached['stats'] as Map<String, List<KPIShopMonthStats>>),
+        );
+        _isLoading = false;
+      });
+    }
+
+    if (_shops.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
+      // Step 2: Fetch fresh data from server
       Logger.debug('Загрузка списка магазинов для KPI...');
       final shops = await ShopService.getShopsForCurrentUser();
       Logger.debug('Загружено магазинов: ${shops.length}');
@@ -61,11 +77,17 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
               _monthlyStatsCache.putIfAbsent(shop.address, () => []);
             }
           });
+
+          // Step 3: Save to cache
+          CacheManager.set(_cacheKey, {
+            'shops': shops,
+            'stats': Map<String, List<KPIShopMonthStats>>.from(_monthlyStatsCache),
+          });
         }
       }
     } catch (e) {
       Logger.error('Ошибка загрузки списка магазинов', e);
-      if (mounted) {
+      if (mounted && _shops.isEmpty) {
         setState(() => _isLoading = false);
       }
     }

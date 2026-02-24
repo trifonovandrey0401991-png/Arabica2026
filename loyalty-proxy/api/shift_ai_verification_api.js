@@ -346,7 +346,10 @@ function setupShiftAiVerificationAPI(app) {
   // ============ ПРОВЕРКА ============
 
   // Проверить фото с помощью YOLO
-  app.post('/api/shift-ai/verify', requireAuth, async (req, res) => {
+  app.post('/api/shift-ai/verify', (req, res, next) => {
+    console.log(`[ShiftAI] POST /api/shift-ai/verify — user=${req.user?.phone || 'NONE'}, auth=${req.headers.authorization ? 'YES' : 'NO'}, bodySize=${JSON.stringify(req.body || {}).length}`);
+    next();
+  }, requireAuth, async (req, res) => {
     try {
       const { imagesBase64, shopAddress } = req.body;
 

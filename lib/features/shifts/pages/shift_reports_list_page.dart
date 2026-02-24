@@ -277,10 +277,10 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     final eveningDeadline = _shiftSettings?.eveningEndTime ?? '23:00';
     final currentShiftType = _getCurrentShiftType();
 
-    // Фильтруем pending только для текущего интервала
+    // Фильтруем pending: если сейчас активная смена — только её, иначе все
     final filteredPending = currentShiftType != null
         ? pendingReports.where((r) => r.shiftType == currentShiftType).toList()
-        : <ShiftReport>[];
+        : pendingReports;
 
     // Failed берём из уже загруженных _allReports (за сегодня)
     final failedReports = _allReports.where((r) {

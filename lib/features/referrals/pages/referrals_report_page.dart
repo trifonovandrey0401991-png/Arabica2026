@@ -4,6 +4,7 @@ import '../models/referral_stats_model.dart';
 import 'employee_referrals_detail_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница отчёта по приглашениям
 class ReferralsReportPage extends StatefulWidget {
@@ -27,8 +28,23 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
     _loadData();
   }
 
+  static const _cacheKey = 'referrals_report';
+
   Future<void> _loadData() async {
-    if (mounted) setState(() {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _totalClients = cached['totalClients'] as int;
+        _unassignedCount = cached['unassignedCount'] as int;
+        _employeeStats = cached['employeeStats'] as List<EmployeeReferralStats>;
+        _unviewedByEmployee = cached['unviewed'] as Map<String, int>;
+        _isLoading = false;
+        _error = null;
+      });
+    }
+
+    if (_employeeStats.isEmpty && mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
@@ -51,18 +67,27 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
           _unviewedByEmployee = unviewedResult;
           _isLoading = false;
         });
+        // Step 3: Save to cache
+        CacheManager.set(_cacheKey, {
+          'totalClients': statsResult['totalClients'] ?? 0,
+          'unassignedCount': statsResult['unassignedCount'] ?? 0,
+          'employeeStats': statsResult['employeeStats'] ?? <EmployeeReferralStats>[],
+          'unviewed': unviewedResult,
+        });
       } else {
-        if (mounted) setState(() {
+        if (mounted && _employeeStats.isEmpty) setState(() {
           _error = 'Не удалось загрузить данные';
           _isLoading = false;
         });
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = 'Ошибка: $e';
-        _isLoading = false;
-      });
+      if (_employeeStats.isEmpty) {
+        setState(() {
+          _error = 'Ошибка: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 

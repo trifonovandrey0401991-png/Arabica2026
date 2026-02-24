@@ -11,6 +11,7 @@ const path = require('path');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { writeJsonFile } = require('../utils/async_fs');
+const { notifyCounterUpdate } = require('./counters_websocket');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 
@@ -152,6 +153,7 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
         );
       }
 
+      notifyCounterUpdate('unreadReviews', { delta: 1 });
       res.json({ success: true, review });
     } catch (error) {
       console.error('Ошибка создания отзыва:', error);
@@ -357,6 +359,7 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
         await writeJsonFile(reviewFile, review);
       }
 
+      notifyCounterUpdate('unreadReviews', { delta: -1 });
       res.json({ success: true });
     } catch (error) {
       console.error('Ошибка отметки диалога как прочитанного:', error);

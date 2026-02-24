@@ -18,6 +18,12 @@ import re
 import math
 import traceback
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
+import threading
+
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    """Handle each request in a separate thread"""
+    daemon_threads = True
 
 import cv2
 import numpy as np
@@ -194,7 +200,7 @@ def recognize(image_path, preset="standard", expected_range=None):
     raw_texts = []
 
     for vname, vimg in variants:
-        tmp_path = f"/tmp/counter-ocr/easy_{os.getpid()}_{vname}.jpg"
+        tmp_path = f"/tmp/counter-ocr/easy_{os.getpid()}_{threading.get_ident()}_{vname}.jpg"
         try:
             cv2.imwrite(tmp_path, vimg)
             del vimg
@@ -365,7 +371,7 @@ def recognize_text(image_path):
     all_variant_results = []
 
     for vname, vimg in variants:
-        tmp_path = f"/tmp/counter-ocr/zr_{os.getpid()}_{vname}.jpg"
+        tmp_path = f"/tmp/counter-ocr/zr_{os.getpid()}_{threading.get_ident()}_{vname}.jpg"
         try:
             cv2.imwrite(tmp_path, vimg)
             del vimg
@@ -517,7 +523,7 @@ class OCRHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5001
-    server = HTTPServer(("127.0.0.1", port), OCRHandler)
+    server = ThreadingHTTPServer(("127.0.0.1", port), OCRHandler)
     print(f"[OCR Server] Listening on http://127.0.0.1:{port}")
     print(f"[OCR Server] Endpoints: POST /ocr, POST /ocr-text, GET /health")
     try:

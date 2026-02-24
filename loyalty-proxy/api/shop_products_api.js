@@ -251,7 +251,7 @@ function setupShopProductsAPI(app) {
       for (const product of normalizedProducts) {
         if (!product.kod) continue;
 
-        const result = addPendingCode({
+        const result = await addPendingCode({
           kod: product.kod,
           shopId,
           shopName,

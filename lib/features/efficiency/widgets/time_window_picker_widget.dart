@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Виджет редактирования временного окна
-///
-/// Используется для настройки временных интервалов (утренняя/вечерняя смена).
-/// Включает:
-/// - Иконку с заголовком
-/// - Две кнопки выбора времени (начало и конец)
 class TimeWindowPickerWidget extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
@@ -44,7 +40,7 @@ class TimeWindowPickerWidget extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
+                color: iconColor.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(icon, color: iconColor, size: 22),
@@ -55,7 +51,7 @@ class TimeWindowPickerWidget extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF2D3436),
+                color: Colors.white,
               ),
             ),
           ],
@@ -68,19 +64,19 @@ class TimeWindowPickerWidget extends StatelessWidget {
                 label: startLabel,
                 time: startTime,
                 onChanged: onStartChanged,
-                color: Colors.green,
+                color: AppColors.emeraldGreen,
                 primaryColor: primaryColor,
               ),
             ),
             SizedBox(width: 12),
-            Icon(Icons.arrow_forward, color: Colors.grey[400], size: 20),
+            Icon(Icons.arrow_forward, color: Colors.white.withOpacity(0.3), size: 20),
             SizedBox(width: 12),
             Expanded(
               child: _TimePickerButton(
                 label: endLabel,
                 time: endTime,
                 onChanged: onEndChanged,
-                color: Colors.red,
+                color: AppColors.error,
                 primaryColor: primaryColor,
               ),
             ),
@@ -125,11 +121,11 @@ class _TimePickerButton extends StatelessWidget {
               data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
               child: Theme(
                 data: Theme.of(context).copyWith(
-                  colorScheme: ColorScheme.light(
+                  colorScheme: ColorScheme.dark(
                     primary: primaryColor,
                     onPrimary: Colors.white,
-                    surface: Colors.white,
-                    onSurface: Colors.black,
+                    surface: AppColors.emeraldDark,
+                    onSurface: Colors.white,
                   ),
                 ),
                 child: child!,
@@ -157,7 +153,7 @@ class _TimePickerButton extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 12.sp,
-                color: Colors.grey[600],
+                color: Colors.white.withOpacity(0.5),
               ),
             ),
             SizedBox(height: 4),
@@ -184,8 +180,6 @@ class _TimePickerButton extends StatelessWidget {
 }
 
 /// Контейнер для нескольких временных окон
-///
-/// Используется для группировки утренней и вечерней смены.
 class TimeWindowsSection extends StatelessWidget {
   final List<TimeWindowPickerWidget> windows;
 
@@ -198,15 +192,9 @@ class TimeWindowsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: Offset(0, 5),
-          ),
-        ],
+        border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
       ),
       padding: EdgeInsets.all(20.w),
       child: Column(
@@ -215,7 +203,7 @@ class TimeWindowsSection extends StatelessWidget {
             windows[i],
             if (i < windows.length - 1) ...[
               SizedBox(height: 16),
-              Divider(color: Colors.grey[200]),
+              Divider(color: AppColors.emerald.withOpacity(0.3)),
               SizedBox(height: 16),
             ],
           ],

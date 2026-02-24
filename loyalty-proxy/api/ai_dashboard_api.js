@@ -19,6 +19,172 @@ const USE_DB_CIG = process.env.USE_DB_CIGARETTE_VISION === 'true';
 const USE_DB_SHIFT = process.env.USE_DB_SHIFT_AI === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
+// ============ RECOUNT TRAINING STATE ============
+
+// Состояние фонового обучения (in-memory, сбрасывается при рестарте)
+let _recountTrainState = {
+  status: 'idle',       // 'idle' | 'running' | 'done' | 'error'
+  startedAt: null,
+  finishedAt: null,
+  epochs: 30,
+  result: null,
+  error: null,
+  retryCount: 0,
+};
+
+// Расписание ежедневного обучения — "HH:mm" или null
+let _scheduleTime = null;
+let _scheduleTimer = null; // текущий setTimeout
+
+/**
+ * Вычисляет миллисекунды до следующего наступления HH:mm по Москве.
+ * Если время уже прошло сегодня — считаем до завтра.
+ */
+function _msUntilMoscow(timeStr) {
+  const [h, m] = timeStr.split(':').map(Number);
+  const now = new Date();
+  const moscow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
+  const target = new Date(moscow);
+  target.setHours(h, m, 0, 0);
+  if (target <= moscow) target.setDate(target.getDate() + 1); // уже прошло — завтра
+  return target - moscow; // разница в мс
+}
+
+/**
+ * Планирует одиночный setTimeout на нужное время.
+ * После срабатывания планирует следующий (через 24 часа).
+ */
+function _scheduleNextRun(timeStr) {
+  if (_scheduleTimer) { clearTimeout(_scheduleTimer); _scheduleTimer = null; }
+  if (!timeStr) return;
+
+  const ms = _msUntilMoscow(timeStr);
+  const hm = new Date(Date.now() + ms).toLocaleTimeString('ru-RU', { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit' });
+  console.log(`[Recount Scheduler] Следующий запуск через ${Math.round(ms / 60000)} мин (в ${hm} МСК)`);
+
+  _scheduleTimer = setTimeout(() => {
+    if (_recountTrainState.status !== 'running') {
+      console.log(`[Recount Scheduler] Автозапуск по расписанию ${timeStr}...`);
+      _startRecountTraining(30);
+    }
+    _scheduleNextRun(timeStr); // планируем следующий день
+  }, ms);
+}
+
+// Загружаем расписание из БД при старте и сразу планируем
+(async () => {
+  try {
+    const row = await db.findById('app_settings', 'recount_train_schedule', 'key');
+    if (row?.data?.time) {
+      _scheduleTime = row.data.time;
+      console.log(`[Recount Scheduler] Расписание загружено: ${_scheduleTime}`);
+      _scheduleNextRun(_scheduleTime);
+    }
+  } catch (e) { /* ignore — таблица может быть пустой */ }
+})();
+
+/**
+ * Отправить уведомление в Telegram через API напрямую.
+ * Использует BOT_TOKEN и ADMIN_ID из env.
+ */
+function _sendTelegramNotification(text) {
+  const botToken = process.env.BOT_TOKEN;
+  const adminId = process.env.ADMIN_ID || '840309879';
+  if (!botToken) return;
+
+  const https = require('https');
+  const body = JSON.stringify({ chat_id: adminId, text, parse_mode: 'HTML' });
+  const req = https.request({
+    hostname: 'api.telegram.org',
+    path: `/bot${botToken}/sendMessage`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    timeout: 10000,
+  });
+  req.on('error', (e) => console.error('[Telegram Notify] Error:', e.message));
+  req.write(body);
+  req.end();
+}
+
+/** Запускает обучение в фоне, обновляет _recountTrainState. retryCount для auto-retry. */
+function _startRecountTraining(epochs, retryCount = 0) {
+  const cv = require('../modules/cigarette-vision');
+  _recountTrainState = {
+    status: 'running',
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+    epochs,
+    result: null,
+    error: null,
+    retryCount,
+  };
+
+  if (retryCount > 0) {
+    console.log(`[Recount Scheduler] Retry ${retryCount}/2...`);
+  }
+
+  cv.triggerFullTraining(epochs)
+    .then(result => {
+      _recountTrainState = {
+        ..._recountTrainState,
+        status: result.success ? 'done' : 'error',
+        finishedAt: new Date().toISOString(),
+        result: result.success ? {
+          totalImages: result.exportResult?.total_images,
+          modelReloaded: result.reloadResult?.success,
+          message: result.message,
+          metrics: result.trainResult?.metrics || null,
+        } : null,
+        error: result.success ? null : (result.error || 'Ошибка обучения'),
+      };
+      console.log(`[Recount Scheduler] Обучение завершено: ${_recountTrainState.status}`);
+
+      // Уведомление в Telegram
+      if (result.success) {
+        const imgs = result.exportResult?.total_images || '?';
+        _sendTelegramNotification(
+          `✅ <b>Обучение YOLO завершено</b>\n\n📸 Образцов: ${imgs}\n🔄 Эпох: ${epochs}\n🤖 Модель перезагружена: ${result.reloadResult?.success ? 'да' : 'нет'}`
+        );
+      } else {
+        // Ошибка — retry или уведомление
+        if (retryCount < 2) {
+          const nextRetry = retryCount + 1;
+          console.log(`[Recount Scheduler] Ошибка обучения, retry ${nextRetry}/2 через 5 мин...`);
+          _sendTelegramNotification(
+            `⚠️ <b>Обучение YOLO: ошибка</b>\n\n${result.error || 'Неизвестная ошибка'}\n\n🔄 Автоповтор ${nextRetry}/2 через 5 мин...`
+          );
+          setTimeout(() => _startRecountTraining(epochs, nextRetry), 5 * 60 * 1000);
+        } else {
+          _sendTelegramNotification(
+            `🔴 <b>Обучение YOLO провалилось!</b>\n\n${result.error || 'Неизвестная ошибка'}\n\nВсе ${retryCount} попытки исчерпаны. Модель восстановлена из бэкапа.`
+          );
+        }
+      }
+    })
+    .catch(err => {
+      _recountTrainState = {
+        ..._recountTrainState,
+        status: 'error',
+        finishedAt: new Date().toISOString(),
+        error: err.message,
+      };
+
+      // Retry при исключении
+      if (retryCount < 2) {
+        const nextRetry = retryCount + 1;
+        console.log(`[Recount Scheduler] Exception, retry ${nextRetry}/2 через 5 мин...`);
+        _sendTelegramNotification(
+          `⚠️ <b>Обучение YOLO: исключение</b>\n\n${err.message}\n\n🔄 Автоповтор ${nextRetry}/2 через 5 мин...`
+        );
+        setTimeout(() => _startRecountTraining(epochs, nextRetry), 5 * 60 * 1000);
+      } else {
+        _sendTelegramNotification(
+          `🔴 <b>Обучение YOLO провалилось!</b>\n\n${err.message}\n\nВсе ${retryCount} попытки исчерпаны.`
+        );
+      }
+    });
+}
+
 function setupAiDashboardAPI(app) {
   console.log('[AI Dashboard] Инициализация...');
 
@@ -70,6 +236,69 @@ function setupAiDashboardAPI(app) {
       console.error('[AI Dashboard] Manual retrain error:', error.message);
       res.status(500).json({ success: false, error: error.message });
     }
+  });
+
+  // POST /api/ai-dashboard/trigger-recount-training — запуск обучения в фоне (async)
+  app.post('/api/ai-dashboard/trigger-recount-training', requireAuth, (req, res) => {
+    if (_recountTrainState.status === 'running') {
+      return res.json({ success: false, error: 'already_running', state: _recountTrainState });
+    }
+    const epochs = req.body?.epochs || 30;
+    console.log(`[AI Dashboard] Ручной запуск обучения пересчёта (${epochs} эпох) в фоне...`);
+    _startRecountTraining(epochs);
+    res.json({ success: true, started: true, state: _recountTrainState });
+  });
+
+  // GET /api/ai-dashboard/recount-train-status — статус текущего/последнего обучения
+  app.get('/api/ai-dashboard/recount-train-status', requireAuth, (req, res) => {
+    res.json({ success: true, ..._recountTrainState });
+  });
+
+  // GET /api/ai-dashboard/recount-train-schedule — получить расписание
+  app.get('/api/ai-dashboard/recount-train-schedule', requireAuth, (req, res) => {
+    res.json({ success: true, scheduledTime: _scheduleTime });
+  });
+
+  // POST /api/ai-dashboard/recount-train-schedule — сохранить/удалить расписание
+  app.post('/api/ai-dashboard/recount-train-schedule', requireAuth, async (req, res) => {
+    try {
+      const { time } = req.body; // "HH:mm" или null для отключения
+      _scheduleTime = time || null;
+      await db.upsert('app_settings', { key: 'recount_train_schedule', data: { time: _scheduleTime } }, 'key');
+      _scheduleNextRun(_scheduleTime); // перепланируем (или отменяем если null)
+      console.log(`[Recount Scheduler] Расписание ${_scheduleTime ? 'установлено: ' + _scheduleTime : 'отключено'}`);
+      res.json({ success: true, scheduledTime: _scheduleTime });
+    } catch (error) {
+      console.error('[AI Dashboard] Schedule save error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ INTERNAL ENDPOINTS (localhost only, no auth) ============
+  // Используются Telegram-ботом для управления обучением
+
+  function requireLocalhost(req, res, next) {
+    const ip = req.ip || req.connection.remoteAddress;
+    if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') {
+      return next();
+    }
+    res.status(403).json({ success: false, error: 'Internal only' });
+  }
+
+  // GET /api/internal/recount-train-status — статус обучения (без auth)
+  app.get('/api/internal/recount-train-status', requireLocalhost, (req, res) => {
+    res.json({ success: true, ..._recountTrainState });
+  });
+
+  // POST /api/internal/trigger-recount-training — запуск обучения (без auth)
+  app.post('/api/internal/trigger-recount-training', requireLocalhost, (req, res) => {
+    if (_recountTrainState.status === 'running') {
+      return res.json({ success: false, error: 'already_running', state: _recountTrainState });
+    }
+    const epochs = req.body?.epochs || 50;
+    console.log(`[AI Dashboard] Запуск обучения из Telegram бота (${epochs} эпох)...`);
+    _startRecountTraining(epochs);
+    res.json({ success: true, started: true, state: _recountTrainState });
   });
 
   console.log('[AI Dashboard] Инициализация завершена');
@@ -306,6 +535,23 @@ async function getCigaretteVisionMetrics() {
       aiCorrectDecisions += decisions.filter(d => d.decision === 'ai_correct').length;
     }
 
+    // Counting (пересчёт) stats
+    let countingPendingSamples = 0;
+    let countingTrainingSamples = 0;
+    let countingAnnotatedSamples = 0;
+    try {
+      const cv = require('../modules/cigarette-vision');
+      const cStats = await cv.getTypedTrainingStats(cv.TRAINING_TYPES.COUNTING);
+      countingTrainingSamples = cStats.totalSamples || 0;
+      countingAnnotatedSamples = cStats.samplesWithAnnotations || 0;
+
+      const pendingFile = path.join(DATA_DIR, 'counting-pending/samples.json');
+      if (await fileExists(pendingFile)) {
+        const pending = JSON.parse(await fsp.readFile(pendingFile, 'utf8'));
+        countingPendingSamples = Array.isArray(pending) ? pending.length : 0;
+      }
+    } catch (e) { /* ignore — модуль мог не инициализироваться */ }
+
     return {
       name: 'Cigarette Vision (YOLO)',
       status: modelExists ? 'active' : 'model_missing',
@@ -324,6 +570,9 @@ async function getCigaretteVisionMetrics() {
             failedDetections: recognitionStats.failedDetections || 0,
           }
         : null,
+      countingPendingSamples,
+      countingTrainingSamples,
+      countingAnnotatedSamples,
     };
   } catch (e) {
     console.error('[AI Dashboard] Cigarette Vision metrics error:', e.message);

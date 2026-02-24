@@ -16,6 +16,7 @@ const { isPaginationRequested, createPaginatedResponse } = require('../utils/pag
 const db = require('../utils/db');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const { requireAuth } = require('../utils/session_middleware');
+const { notifyCounterUpdate } = require('./counters_websocket');
 
 const USE_DB = process.env.USE_DB_RECOUNT === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -304,6 +305,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         console.log('Google Apps Script не поддерживает это действие, отчет сохранен локально');
       }
 
+      notifyCounterUpdate('pendingRecountReports', { delta: 1 });
       res.json({
         success: true,
         message: 'Отчет успешно сохранен',
@@ -339,7 +341,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
             params.push(`%${req.query.employeeName}%`);
           }
           if (req.query.date) {
-            sql += ` AND created_at::date = $${paramIdx++}`;
+            sql += ` AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $${paramIdx++}`;
             params.push(req.query.date);
           }
 
@@ -790,6 +792,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         }
       }
 
+      notifyCounterUpdate('pendingRecountReports', { delta: -1 });
       res.json({
         success: true,
         message: 'Оценка успешно сохранена',

@@ -9,6 +9,7 @@ import '../../referrals/models/referral_stats_model.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/services/employee_registration_service.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -36,14 +37,26 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
     _loadData();
   }
 
-  Future<void> _loadData({bool forceRefresh = false}) async {
-    if (mounted) setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  String get _cacheKey => 'page_efficiency_employees_${_selectedYear}_$_selectedMonth';
 
+  Future<void> _loadData({bool forceRefresh = false}) async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _data = cached['data'] as EfficiencyData;
+        _filteredEmployees = cached['filtered'] as List<EfficiencySummary>;
+        _isLoading = false;
+      });
+    } else {
+      if (mounted) setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
+
+    // Step 2: Fetch fresh data from server
     try {
-      // Загружаем данные эффективности и информацию о верификации параллельно
       final results = await Future.wait([
         EfficiencyDataService.loadMonthData(
           _selectedYear,
@@ -56,16 +69,13 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
       final data = results[0] as EfficiencyData;
       final verifiedNames = results[1] as Set<String>;
 
-      // Фильтруем только верифицированных сотрудников
       var filtered = data.byEmployee.where((summary) {
         return verifiedNames.contains(summary.entityName.toLowerCase());
       }).toList();
 
-      // Фильтрация по мультитенантности — управляющий видит только сотрудников своих магазинов
       final allowedAddresses = await MultitenancyFilterService.getAllowedShopAddresses();
       if (allowedAddresses != null) {
         filtered = filtered.where((summary) {
-          // Сотрудник отображается, если у него есть хотя бы одна запись из разрешённого магазина
           return summary.records.any((record) =>
             record.shopAddress.isNotEmpty && allowedAddresses.contains(record.shopAddress),
           );
@@ -77,16 +87,24 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
         _data = data;
         _filteredEmployees = filtered;
         _isLoading = false;
+        _error = null;
       });
 
-      // Загружаем данные о приглашениях после основных данных
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, {
+        'data': data,
+        'filtered': filtered,
+      });
+
       _loadReferralPoints();
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = 'Ошибка загрузки данных: $e';
-        _isLoading = false;
-      });
+      if (_filteredEmployees.isEmpty) {
+        setState(() {
+          _error = 'Ошибка загрузки данных: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 

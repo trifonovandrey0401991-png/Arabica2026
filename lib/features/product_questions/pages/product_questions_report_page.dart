@@ -4,6 +4,7 @@ import '../services/product_question_service.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница отчёта по поиску товаров - статистика по магазинам
 class ProductQuestionsReportPage extends StatefulWidget {
@@ -25,10 +26,20 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
     _loadData();
   }
 
+  static const _cacheKey = 'product_questions_report';
+
   Future<void> _loadData() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-    });
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _shopStats = cached['stats'] as Map<String, ShopQuestionStats>;
+        _unreadByShop = cached['unread'] as Map<String, int>;
+        _isLoading = false;
+      });
+    }
+
+    if (_shopStats.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
       final allQuestions = await ProductQuestionService.getQuestions();
@@ -69,18 +80,23 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
         _unreadByShop = unviewedCounts;
         _isLoading = false;
       });
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, {
+        'stats': stats,
+        'unread': unviewedCounts,
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка загрузки: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (_shopStats.isEmpty) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка загрузки: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }

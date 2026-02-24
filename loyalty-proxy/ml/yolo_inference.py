@@ -375,8 +375,10 @@ def export_training_data(output_dir):
             shutil.copy(lbl_path, val_labels_dir / lbl_path.name)
         copied_val += 1
 
-    # Create data.yaml
-    # Собираем объединённый class-mapping из всех typed директорий
+    # FIX-4: Строим актуальный class-mapping из трёх источников:
+    # 1. Существующие typed class-mapping.json (сохраняем старые ID)
+    # 2. samples.json — берём productId всех одобренных образцов
+    # 3. Назначаем новые ID продуктам, которых ещё нет в маппинге
     class_mapping = {}
     for base_dir, _, _ in source_dirs:
         typed_mapping_file = base_dir / 'class-mapping.json'
@@ -386,11 +388,39 @@ def export_training_data(output_dir):
     # Fallback на общий если typed пустой
     if not class_mapping:
         class_mapping = load_class_mapping()
-    num_classes = len(class_mapping)
-    class_names = [''] * num_classes
 
+    # Собираем product IDs из samples.json (все одобренные образцы)
+    all_product_ids = set()
+    for base_dir, _, _ in source_dirs:
+        samples_file = base_dir / 'samples.json'
+        if samples_file.exists():
+            try:
+                with open(samples_file, 'r', encoding='utf-8') as f:
+                    samples_data = json.load(f)
+                for s in (samples_data if isinstance(samples_data, list) else []):
+                    pid = s.get('productId')
+                    if pid:
+                        all_product_ids.add(pid)
+            except Exception:
+                pass
+
+    # Назначаем ID новым продуктам (детерминированно по алфавиту)
+    for pid in sorted(all_product_ids):
+        if pid not in class_mapping:
+            class_mapping[pid] = len(class_mapping)
+
+    # Пишем актуальный class-mapping в главный файл (для yolo_server)
+    if class_mapping:
+        try:
+            with open(CLASS_MAPPING_FILE, 'w', encoding='utf-8') as f:
+                json.dump(class_mapping, f, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+
+    num_classes = max(len(class_mapping), 1)
+    class_names = ['unknown'] * num_classes
     for product_id, class_id in class_mapping.items():
-        if class_id < num_classes:
+        if 0 <= class_id < num_classes:
             class_names[class_id] = product_id
 
     data_yaml = {
@@ -403,7 +433,7 @@ def export_training_data(output_dir):
 
     import yaml
     with open(output_path / 'data.yaml', 'w') as f:
-        yaml.dump(data_yaml, f, default_flow_style=False)
+        yaml.dump(data_yaml, f, default_flow_style=False, allow_unicode=True)
 
     return {
         'success': True,
@@ -412,6 +442,7 @@ def export_training_data(output_dir):
         'val_images': copied_val,
         'total_images': len(all_samples),
         'num_classes': num_classes,
+        'class_mapping': class_mapping,
         'data_yaml': str(output_path / 'data.yaml')
     }
 
@@ -461,10 +492,24 @@ def train_model(data_yaml, epochs=100, imgsz=640, batch=16, output_dir=None):
             MODELS_DIR.mkdir(exist_ok=True)
             shutil.copy(best_model, DEFAULT_MODEL)
 
+        # FIX-6: Извлекаем метрики качества модели
+        metrics = {}
+        try:
+            rd = results.results_dict if hasattr(results, 'results_dict') else {}
+            metrics = {
+                'mAP50':     round(float(rd.get('metrics/mAP50(B)',     rd.get('metrics/mAP50',     0))), 4),
+                'mAP50_95':  round(float(rd.get('metrics/mAP50-95(B)',  rd.get('metrics/mAP50-95',  0))), 4),
+                'precision': round(float(rd.get('metrics/precision(B)', rd.get('metrics/precision',  0))), 4),
+                'recall':    round(float(rd.get('metrics/recall(B)',    rd.get('metrics/recall',     0))), 4),
+            }
+        except Exception:
+            pass  # метрики необязательны
+
         return {
             'success': True,
             'model_path': str(DEFAULT_MODEL),
-            'results_dir': str(results.save_dir)
+            'results_dir': str(results.save_dir),
+            'metrics': metrics,
         }
     except Exception as e:
         return {

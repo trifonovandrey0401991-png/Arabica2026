@@ -8,6 +8,7 @@ import '../../efficiency/services/points_settings_service.dart';
 import '../../efficiency/models/points_settings_model.dart';
 import '../models/pending_recount_report_model.dart';
 import '../services/pending_recount_service.dart';
+import '../services/recount_question_service.dart';
 import '../../ai_training/services/cigarette_vision_service.dart';
 import 'recount_questions_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -31,6 +32,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
   List<PendingRecountReport> _pendingRecounts = []; // Ожидающие пересчёты
   RecountPointsSettings? _recountSettings; // Настройки интервалов
   bool _isAiModelTrained = false; // Обучена ли модель ИИ
+  Map<String, int> _shopAiCounts = {}; // Кол-во AI-товаров per shop (загружается фоном)
 
   /// Таймаут для определения устаревших данных (5 минут)
   static final Duration _staleDataTimeout = Duration(minutes: 5);
@@ -63,6 +65,39 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
       setState(() {
         _isLoading = false;
       });
+    }
+
+    // Per-shop AI счётчики — грузим фоном, не блокируем показ страницы
+    _loadShopAiCounts();
+  }
+
+  /// Загрузить количество AI-активных товаров для каждого магазина
+  Future<void> _loadShopAiCounts() async {
+    try {
+      final shopsWithDbf = _shopsSyncInfo.keys.toList();
+      if (shopsWithDbf.isEmpty) return;
+
+      // Загружаем мастер-каталог и все shop products параллельно
+      final masterCatalogFuture = RecountQuestionService.loadMasterCatalogAiStatus();
+      final shopProductFutures = {
+        for (final shopId in shopsWithDbf)
+          shopId: ShopProductsService.getShopProducts(shopId),
+      };
+
+      final masterCatalog = await masterCatalogFuture;
+      final Map<String, int> counts = {};
+      for (final shopId in shopsWithDbf) {
+        try {
+          final products = await shopProductFutures[shopId]!;
+          counts[shopId] = products.where((p) => masterCatalog[p.kod] == true).length;
+        } catch (_) {
+          counts[shopId] = 0;
+        }
+      }
+
+      if (mounted) setState(() => _shopAiCounts = counts);
+    } catch (e) {
+      debugPrint('[RecountShopSelection] Ошибка загрузки AI счётчиков: $e');
     }
   }
 
@@ -341,6 +376,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
     final hasPending = _hasPendingRecount(shop.address);
     final hasDbf = _hasDbfData(shop.id);
     final isStale = hasDbf && _isDbfDataStale(shop.id);
+    final shopAiCount = _shopAiCounts[shop.id]; // null = ещё грузится
 
     return Padding(
       padding: EdgeInsets.only(bottom: 12.h),
@@ -414,10 +450,12 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       SizedBox(height: 6.h),
-                      Row(
+                      Wrap(
+                        spacing: 6.w,
+                        runSpacing: 4.h,
                         children: [
                           // DBF бейдж
-                          if (hasDbf) ...[
+                          if (hasDbf)
                             _buildBadge(
                               icon: isStale ? Icons.warning_amber_rounded : Icons.check_circle_outline,
                               text: isStale
@@ -425,19 +463,19 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                                   : 'DBF актуален',
                               color: isStale ? Colors.redAccent : Colors.green,
                             ),
-                            SizedBox(width: 6.w),
-                          ],
-                          // AI-статус бейдж (только если есть DBF данные)
-                          if (hasDbf) ...[
+                          // AI-статус бейдж (per-shop: количество AI-товаров)
+                          if (hasDbf && shopAiCount != null)
                             _buildBadge(
-                              icon: _isAiModelTrained
+                              icon: shopAiCount > 0
                                   ? Icons.smart_toy
                                   : Icons.smart_toy_outlined,
-                              text: _isAiModelTrained ? 'ИИ активен' : 'ИИ обучается',
-                              color: _isAiModelTrained ? Colors.blue[300]! : Colors.orange,
+                              text: shopAiCount > 0
+                                  ? 'ИИ: $shopAiCount тов.'
+                                  : 'Без ИИ',
+                              color: shopAiCount > 0
+                                  ? AppColors.emerald
+                                  : Colors.orange.shade700,
                             ),
-                            SizedBox(width: 6.w),
-                          ],
                           // Pending бейдж
                           if (hasPending)
                             _buildBadge(

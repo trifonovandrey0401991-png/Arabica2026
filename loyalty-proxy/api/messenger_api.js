@@ -876,6 +876,66 @@ function setupMessengerAPI(app, uploadMedia) {
     }
   });
 
+  // ============================================
+  // USER PROFILE
+  // ============================================
+
+  /**
+   * GET /api/messenger/profile?phone=X
+   * Профиль пользователя (display_name, avatar_url)
+   */
+  app.get('/api/messenger/profile', requireAuth, async (req, res) => {
+    try {
+      const { phone } = req.query;
+      if (!phone) return res.status(400).json({ success: false, error: 'phone required' });
+
+      const normalizedPhone = phone.replace(/[^\d]/g, '');
+      const result = await db.query(
+        'SELECT phone, display_name, avatar_url, updated_at FROM messenger_profiles WHERE phone = $1',
+        [normalizedPhone]
+      );
+
+      res.json({
+        success: true,
+        profile: result.rows.length > 0 ? result.rows[0] : null,
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * PUT /api/messenger/profile
+   * Обновить профиль (display_name, avatar_url)
+   * Body: { phone, displayName?, avatarUrl? }
+   */
+  app.put('/api/messenger/profile', requireAuth, async (req, res) => {
+    try {
+      const { phone, displayName, avatarUrl } = req.body;
+      if (!phone) return res.status(400).json({ success: false, error: 'phone required' });
+
+      const normalizedPhone = phone.replace(/[^\d]/g, '');
+
+      const result = await db.query(`
+        INSERT INTO messenger_profiles (phone, display_name, avatar_url, updated_at)
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT (phone)
+        DO UPDATE SET
+          display_name = COALESCE($2, messenger_profiles.display_name),
+          avatar_url = COALESCE($3, messenger_profiles.avatar_url),
+          updated_at = NOW()
+        RETURNING phone, display_name, avatar_url, updated_at
+      `, [normalizedPhone, displayName || null, avatarUrl || null]);
+
+      res.json({
+        success: true,
+        profile: result.rows[0],
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   console.log('✅ Messenger API initialized');
 }
 

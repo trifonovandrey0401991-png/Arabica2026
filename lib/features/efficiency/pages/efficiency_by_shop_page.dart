@@ -4,6 +4,7 @@ import '../services/efficiency_data_service.dart';
 import '../widgets/efficiency_common_widgets.dart';
 import '../utils/efficiency_utils.dart';
 import 'shop_efficiency_detail_page.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -29,12 +30,24 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
     _loadData();
   }
 
-  Future<void> _loadData({bool forceRefresh = false}) async {
-    if (mounted) setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  String get _cacheKey => 'efficiency_by_shop_${_selectedYear}_$_selectedMonth';
 
+  Future<void> _loadData({bool forceRefresh = false}) async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<EfficiencyData>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _data = cached;
+        _isLoading = false;
+      });
+    } else {
+      if (mounted) setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
+
+    // Step 2: Fetch fresh data from server
     try {
       final data = await EfficiencyDataService.loadMonthData(
         _selectedYear,
@@ -45,13 +58,19 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
       setState(() {
         _data = data;
         _isLoading = false;
+        _error = null;
       });
+
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, data);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = 'Ошибка загрузки данных: $e';
-        _isLoading = false;
-      });
+      if (_data == null) {
+        setState(() {
+          _error = 'Ошибка загрузки данных: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 

@@ -92,6 +92,7 @@ class CoffeeMachineShopConfig {
   final String shopAddress;
   final List<String> machineTemplateIds; // ID шаблонов машин в этом магазине
   final bool hasComputerVerification; // Есть ли компьютер для сверки
+  final String? computerTemplateId; // ID шаблона компьютера (preset, region, фото)
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -99,6 +100,7 @@ class CoffeeMachineShopConfig {
     required this.shopAddress,
     required this.machineTemplateIds,
     this.hasComputerVerification = true,
+    this.computerTemplateId,
     this.createdAt,
     this.updatedAt,
   });
@@ -110,6 +112,7 @@ class CoffeeMachineShopConfig {
           ?.map((e) => e.toString())
           .toList() ?? [],
       hasComputerVerification: json['hasComputerVerification'] ?? true,
+      computerTemplateId: json['computerTemplateId'],
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'])
           : null,
@@ -123,6 +126,7 @@ class CoffeeMachineShopConfig {
     'shopAddress': shopAddress,
     'machineTemplateIds': machineTemplateIds,
     'hasComputerVerification': hasComputerVerification,
+    if (computerTemplateId != null) 'computerTemplateId': computerTemplateId,
     'createdAt': createdAt?.toIso8601String(),
     'updatedAt': updatedAt?.toIso8601String(),
   };
@@ -131,6 +135,7 @@ class CoffeeMachineShopConfig {
     String? shopAddress,
     List<String>? machineTemplateIds,
     bool? hasComputerVerification,
+    String? computerTemplateId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -138,6 +143,7 @@ class CoffeeMachineShopConfig {
       shopAddress: shopAddress ?? this.shopAddress,
       machineTemplateIds: machineTemplateIds ?? this.machineTemplateIds,
       hasComputerVerification: hasComputerVerification ?? this.hasComputerVerification,
+      computerTemplateId: computerTemplateId ?? this.computerTemplateId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

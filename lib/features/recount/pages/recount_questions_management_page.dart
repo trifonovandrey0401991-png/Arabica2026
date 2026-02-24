@@ -43,6 +43,24 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
     ).toList();
   }
 
+  /// Переключить AI для продукта
+  Future<void> _toggleAiActive(RecountQuestion product) async {
+    final newValue = !product.isAiActive;
+    final ok = await RecountQuestionService.setAiActive(product.barcode, isAiActive: newValue);
+    if (!mounted) return;
+    if (ok) {
+      setState(() {
+        final idx = _products.indexWhere((p) => p.id == product.id);
+        if (idx >= 0) _products[idx] = product.copyWith(isAiActive: newValue);
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Ошибка обновления AI статуса', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.red,
+      ));
+    }
+  }
+
   Future<void> _loadProducts() async {
     if (mounted) setState(() {
       _isLoading = true;
@@ -658,7 +676,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
                                       ),
                                     ),
                                     SizedBox(width: 8),
-                                    // Грейд чип + удаление
+                                    // Грейд чип + AI тоггл + удаление
                                     Column(
                                       children: [
                                         Container(
@@ -679,7 +697,19 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
                                             ),
                                           ),
                                         ),
-                                        SizedBox(height: 8),
+                                        SizedBox(height: 4),
+                                        // AI тоггл
+                                        Tooltip(
+                                          message: product.isAiActive ? 'ИИ включён' : 'ИИ выключен',
+                                          child: Transform.scale(
+                                            scale: 0.75,
+                                            child: Switch(
+                                              value: product.isAiActive,
+                                              onChanged: (_) => _toggleAiActive(product),
+                                              activeColor: AppColors.emerald,
+                                            ),
+                                          ),
+                                        ),
                                         GestureDetector(
                                           onTap: () => _deleteProduct(product),
                                           child: Icon(

@@ -1,33 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 import 'settings_save_button_widget.dart';
 
 /// Scaffold для страниц настроек баллов эффективности.
 ///
 /// Обрабатывает: загрузку данных, индикатор загрузки, кнопку сохранения,
 /// SnackBar'ы успеха/ошибки. Страница передаёт слайдеры и виджеты через [bodyBuilder].
-///
-/// Пример использования:
-/// ```dart
-/// PointsSettingsScaffold(
-///   title: 'Баллы за конверт',
-///   headerIcon: Icons.mail_outlined,
-///   headerTitle: 'Сдача конверта',
-///   headerSubtitle: 'Баллы за сдачу/несдачу конверта',
-///   gradientColors: [Color(0xFFff6a00), Color(0xFFee0979)],
-///   onLoad: () async {
-///     final s = await PointsSettingsService.getEnvelopePointsSettings();
-///     _submittedPoints = s.submittedPoints;
-///   },
-///   onSave: () async {
-///     final r = await PointsSettingsService.saveEnvelopePointsSettings(...);
-///     return r != null;
-///   },
-///   bodyBuilder: (context) => [
-///     SettingsSliderWidget(value: _submittedPoints, ...),
-///   ],
-/// )
-/// ```
 class PointsSettingsScaffold extends StatefulWidget {
   final String title;
   final IconData headerIcon;
@@ -83,8 +62,18 @@ class _PointsSettingsScaffoldState extends State<PointsSettingsScaffold> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка загрузки настроек: $e'),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(child: Text('Ошибка загрузки настроек')),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.r),
+            ),
           ),
         );
       }
@@ -108,7 +97,7 @@ class _PointsSettingsScaffoldState extends State<PointsSettingsScaffold> {
                 Text('Настройки сохранены'),
               ],
             ),
-            backgroundColor: Colors.green[400],
+            backgroundColor: AppColors.emeraldGreen,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12.r),
@@ -126,8 +115,18 @@ class _PointsSettingsScaffoldState extends State<PointsSettingsScaffold> {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка сохранения: $e'),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(child: Text('Ошибка сохранения')),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.r),
+            ),
           ),
         );
       }
@@ -137,20 +136,26 @@ class _PointsSettingsScaffoldState extends State<PointsSettingsScaffold> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F7FA),
+      backgroundColor: AppColors.night,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(widget.title),
-        backgroundColor: widget.gradientColors[0],
+        title: Text(
+          widget.title,
+          style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: IconThemeData(color: AppColors.gold),
       ),
       body: _isLoading
           ? Center(
               child: CircularProgressIndicator(
-                color: widget.gradientColors[0],
+                color: AppColors.gold,
               ),
             )
           : Column(
               children: [
+                SizedBox(height: MediaQuery.of(context).padding.top + kToolbarHeight),
                 SettingsHeaderCard(
                   icon: widget.headerIcon,
                   title: widget.headerTitle,

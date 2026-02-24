@@ -10,6 +10,7 @@ const path = require('path');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { requireAuth } = require('../utils/session_middleware');
+const { getMoscowDateString } = require('../utils/moscow_time');
 
 // Директории хранения данных
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -128,7 +129,7 @@ function calculateGpsDistance(lat1, lon1, lat2, lon2) {
  */
 async function wasNotificationSentRecently(phone, shopId, cooldownHours) {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getMoscowDateString();
     const normalizedPhone = phone.replace(/[^\d]/g, '');
     const notificationFile = path.join(
       GEOFENCE_NOTIFICATIONS_DIR,
@@ -164,7 +165,7 @@ async function wasNotificationSentRecently(phone, shopId, cooldownHours) {
  */
 async function saveNotificationRecord(phone, shop, distance) {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getMoscowDateString();
     const normalizedPhone = phone.replace(/[^\d]/g, '');
     const notificationFile = path.join(
       GEOFENCE_NOTIFICATIONS_DIR,
@@ -366,7 +367,7 @@ function setupGeofenceAPI(app, sendPushToPhone) {
   app.get('/api/geofence/stats', requireAuth, async (req, res) => {
     try {
       const { date } = req.query;
-      const targetDate = date || new Date().toISOString().split('T')[0];
+      const targetDate = date || getMoscowDateString();
 
       const notifications = [];
 

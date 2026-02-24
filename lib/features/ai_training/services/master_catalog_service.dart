@@ -248,6 +248,56 @@ class MasterCatalogService {
     }
   }
 
+  // ============ BATCH PENDING CODES ============
+
+  /// Массовое подтверждение кодов (каждый создаётся как новый товар)
+  static Future<BatchApproveResult> batchApproveCodes(List<Map<String, String>> codes) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}$_endpoint/batch-approve-codes'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({'codes': codes}),
+      ).timeout(ApiConstants.longTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        Logger.info('Batch approve: ${data['approved']} approved');
+        return BatchApproveResult(
+          approved: data['approved'] ?? 0,
+          errors: (data['errors'] as List?)?.length ?? 0,
+          total: data['total'] ?? codes.length,
+        );
+      } else {
+        Logger.error('Error batch approve: ${response.statusCode}');
+        return BatchApproveResult(approved: 0, errors: codes.length, total: codes.length);
+      }
+    } catch (e) {
+      Logger.error('Error batch approve codes', e);
+      return BatchApproveResult(approved: 0, errors: codes.length, total: codes.length);
+    }
+  }
+
+  /// Массовое отклонение кодов (удаление из pending)
+  static Future<int> batchRejectCodes(List<String> kods) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}$_endpoint/batch-reject-codes'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({'kods': kods}),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        Logger.info('Batch reject: ${data['rejected']} rejected');
+        return data['rejected'] ?? 0;
+      }
+      return 0;
+    } catch (e) {
+      Logger.error('Error batch reject codes', e);
+      return 0;
+    }
+  }
+
   // ============ BULK IMPORT ============
 
   /// Массовый импорт товаров
@@ -363,6 +413,36 @@ class MasterCatalogService {
       return false;
     }
   }
+
+  /// Переместить штрих-коды в другую карточку товара
+  static Future<bool> moveBarcodes({
+    required List<String> barcodes,
+    required String targetProductId,
+  }) async {
+    try {
+      final url = '${ApiConstants.serverUrl}$_endpoint/move-barcodes';
+      Logger.debug('POST $url (barcodes: ${barcodes.length}, target: $targetProductId)');
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({
+          'barcodes': barcodes,
+          'targetProductId': targetProductId,
+        }),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true && (data['moved'] ?? 0) > 0;
+      }
+      Logger.error('Error moving barcodes: ${response.statusCode}');
+      return false;
+    } catch (e) {
+      Logger.error('Error moving barcodes', e);
+      return false;
+    }
+  }
 }
 
 /// Продукт из лёгкого поиска для привязки кода
@@ -429,6 +509,19 @@ class MasterCatalogStats {
       linkedShops: json['linkedShops'] ?? 0,
     );
   }
+}
+
+/// Результат массового подтверждения кодов
+class BatchApproveResult {
+  final int approved;
+  final int errors;
+  final int total;
+
+  BatchApproveResult({
+    required this.approved,
+    required this.errors,
+    required this.total,
+  });
 }
 
 /// Результат bulk import

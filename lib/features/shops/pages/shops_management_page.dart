@@ -364,12 +364,15 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                             else
                               Icon(Icons.my_location_rounded, color: AppColors.info),
                             SizedBox(width: 10),
-                            Text(
-                              isGettingLocation ? 'Получение...' : 'Установить текущую геолокацию',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14.sp,
+                            Flexible(
+                              child: Text(
+                                isGettingLocation ? 'Получение...' : 'Установить текущую геолокацию',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14.sp,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],

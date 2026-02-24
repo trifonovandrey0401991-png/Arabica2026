@@ -10,9 +10,10 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
-const { writeJsonFile } = require('../utils/async_fs');
+const { writeJsonFile, withLock } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
+const { notifyCounterUpdate } = require('./counters_websocket');
 
 const USE_DB = process.env.USE_DB_COFFEE_MACHINE === 'true';
 
@@ -485,6 +486,7 @@ function setupCoffeeMachineAPI(app) {
       // Удалить pending если был
       await markPendingAsCompleted(report.shopAddress, report.shiftType, report.date);
 
+      notifyCounterUpdate('coffeeMachineReports', { delta: 1 });
       res.json({ success: true, report });
 
       // Фоновое обновление intelligence (не блокирует ответ)
@@ -538,6 +540,7 @@ function setupCoffeeMachineAPI(app) {
       await writeJsonFile(filePath, report);
 
       console.log(`[CoffeeMachine] ✅ Отчёт подтверждён: ${id} (оценка: ${rating})`);
+      notifyCounterUpdate('coffeeMachineReports', { delta: -1 });
       res.json({ success: true, report });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -806,8 +809,14 @@ function setupCoffeeMachineAPI(app) {
   // ОБУЧЕНИЕ OCR (training)
   // ============================================
 
-  // Загрузить samples.json
+  // Загрузить samples.json (с fallback на DB → JSON)
   async function loadTrainingSamples() {
+    if (USE_DB) {
+      try {
+        const row = await db.findById('app_settings', 'coffee_machine_training_samples', 'key');
+        if (row?.data && Array.isArray(row.data)) return row.data;
+      } catch (e) { /* fallback to JSON */ }
+    }
     try {
       if (await fileExists(TRAINING_SAMPLES_FILE)) {
         return JSON.parse(await fsp.readFile(TRAINING_SAMPLES_FILE, 'utf8'));
@@ -818,9 +827,20 @@ function setupCoffeeMachineAPI(app) {
     return [];
   }
 
-  // Сохранить samples.json
+  // Сохранить samples.json (dual-write: JSON + DB)
   async function saveTrainingSamples(samples) {
     await writeJsonFile(TRAINING_SAMPLES_FILE, samples);
+    if (USE_DB) {
+      try {
+        await db.upsert('app_settings', {
+          key: 'coffee_machine_training_samples',
+          data: JSON.stringify(samples),
+          updated_at: new Date().toISOString(),
+        }, 'key');
+      } catch (e) {
+        console.error('[CoffeeMachine] DB save training samples error:', e.message);
+      }
+    }
   }
 
   // POST /api/coffee-machine/training — сохранить обучающее фото
@@ -843,8 +863,6 @@ function setupCoffeeMachineAPI(app) {
           }
         } catch (e) { /* keep default */ }
       }
-
-      let samples = await loadTrainingSamples();
 
       const sample = {
         id: `train_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -902,25 +920,29 @@ function setupCoffeeMachineAPI(app) {
         }
       }
 
-      samples.push(sample);
+      // Атомарный load → modify → save под блокировкой
+      await withLock('coffee-training-samples', async () => {
+        let samples = await loadTrainingSamples();
+        samples.push(sample);
 
-      // Ротация: удалить самые старые если > лимита
-      if (samples.length > MAX_TRAINING_SAMPLES) {
-        const toRemove = samples.splice(0, samples.length - MAX_TRAINING_SAMPLES);
-        // Удалить фото старых samples
-        for (const old of toRemove) {
-          if (old.localPhotoPath) {
-            try {
-              const oldPath = path.join(DATA_DIR, old.localPhotoPath);
-              if (await fileExists(oldPath)) {
-                await fsp.unlink(oldPath);
-              }
-            } catch (e) { /* ignore */ }
+        // Ротация: удалить самые старые если > лимита
+        if (samples.length > MAX_TRAINING_SAMPLES) {
+          const toRemove = samples.splice(0, samples.length - MAX_TRAINING_SAMPLES);
+          for (const old of toRemove) {
+            if (old.localPhotoPath) {
+              try {
+                const oldPath = path.join(DATA_DIR, old.localPhotoPath);
+                if (await fileExists(oldPath)) {
+                  await fsp.unlink(oldPath);
+                }
+              } catch (e) { /* ignore */ }
+            }
           }
         }
-      }
 
-      await saveTrainingSamples(samples);
+        await saveTrainingSamples(samples);
+      });
+
       console.log(`[CoffeeMachine] ✅ Training sample сохранён: ${sample.id} (${machineName}, число: ${correctNumber})`);
       res.json({ success: true, sample });
     } catch (error) {
@@ -974,16 +996,23 @@ function setupCoffeeMachineAPI(app) {
   app.delete('/api/coffee-machine/training/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      let samples = await loadTrainingSamples();
-      const idx = samples.findIndex(s => s.id === id);
 
-      if (idx === -1) {
+      const removed = await withLock('coffee-training-samples', async () => {
+        let samples = await loadTrainingSamples();
+        const idx = samples.findIndex(s => s.id === id);
+
+        if (idx === -1) return null;
+
+        const item = samples.splice(idx, 1)[0];
+        await saveTrainingSamples(samples);
+        return item;
+      });
+
+      if (!removed) {
         return res.status(404).json({ success: false, error: 'Training sample не найден' });
       }
 
-      const removed = samples.splice(idx, 1)[0];
-
-      // Удалить локальное фото
+      // Удалить локальное фото (вне лока — не блокируем других)
       if (removed.localPhotoPath) {
         try {
           const photoPath = path.join(DATA_DIR, removed.localPhotoPath);
@@ -993,7 +1022,6 @@ function setupCoffeeMachineAPI(app) {
         } catch (e) { /* ignore */ }
       }
 
-      await saveTrainingSamples(samples);
       console.log(`[CoffeeMachine] ❌ Training sample удалён: ${id}`);
       res.json({ success: true });
     } catch (error) {
@@ -1272,18 +1300,20 @@ async function buildMachineIntelligence() {
 
     // Auto-cleanup: удаляем training samples старше 90 дней без correctNumber
     try {
-      const samples = await loadTrainingSamples();
-      const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
-      const before = samples.length;
-      const cleaned = samples.filter(s => {
-        if (s.correctNumber) return true; // полезный — оставляем
-        const ts = s.createdAt ? new Date(s.createdAt).getTime() : 0;
-        return ts > cutoff; // свежий — оставляем
+      await withLock('coffee-training-samples', async () => {
+        const samples = await loadTrainingSamples();
+        const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+        const before = samples.length;
+        const cleaned = samples.filter(s => {
+          if (s.correctNumber) return true; // полезный — оставляем
+          const ts = s.createdAt ? new Date(s.createdAt).getTime() : 0;
+          return ts > cutoff; // свежий — оставляем
+        });
+        if (cleaned.length < before) {
+          await saveTrainingSamples(cleaned);
+          console.log(`[CoffeeMachine] 🧹 Cleanup: удалено ${before - cleaned.length} старых samples (было ${before}, стало ${cleaned.length})`);
+        }
       });
-      if (cleaned.length < before) {
-        await writeJsonFile(TRAINING_SAMPLES_FILE, cleaned);
-        console.log(`[CoffeeMachine] 🧹 Cleanup: удалено ${before - cleaned.length} старых samples (было ${before}, стало ${cleaned.length})`);
-      }
     } catch (e) {
       // Cleanup не критичен — продолжаем
     }

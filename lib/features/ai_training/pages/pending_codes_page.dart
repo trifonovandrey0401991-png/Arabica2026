@@ -22,6 +22,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
   List<PendingCode> _pendingCodes = [];
   bool _isLoading = true;
   String? _error;
+  final Set<String> _selectedCodes = {};
 
   // Цвета
   static final _greenGradient = [AppColors.emeraldGreen, AppColors.emeraldGreenLight];
@@ -39,6 +40,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
     if (mounted) setState(() {
       _isLoading = true;
       _error = null;
+      _selectedCodes.clear();
     });
 
     try {
@@ -76,20 +78,28 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
       return _buildEmptyView();
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      color: _greenGradient[0],
-      backgroundColor: AppColors.darkNavy,
-      child: ListView.builder(
-        padding: EdgeInsets.all(16.w),
-        itemCount: _pendingCodes.length + 1, // +1 для заголовка
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return _buildHeader();
-          }
-          return _buildCodeCard(_pendingCodes[index - 1]);
-        },
-      ),
+    return Stack(
+      children: [
+        RefreshIndicator(
+          onRefresh: _loadData,
+          color: _greenGradient[0],
+          backgroundColor: AppColors.darkNavy,
+          child: ListView.builder(
+            padding: EdgeInsets.only(
+              left: 16.w, right: 16.w, top: 16.w,
+              bottom: _selectedCodes.isNotEmpty ? 80.h : 16.w,
+            ),
+            itemCount: _pendingCodes.length + 1, // +1 для заголовка
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return _buildHeader();
+              }
+              return _buildCodeCard(_pendingCodes[index - 1]);
+            },
+          ),
+        ),
+        if (_selectedCodes.isNotEmpty) _buildSelectionBar(),
+      ],
     );
   }
 
@@ -139,19 +149,70 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
               ],
             ),
           ),
+          // Select All checkbox
+          GestureDetector(
+            onTap: () {
+              if (mounted) setState(() {
+                if (_selectedCodes.length == _pendingCodes.length) {
+                  _selectedCodes.clear();
+                } else {
+                  _selectedCodes.clear();
+                  for (final code in _pendingCodes) {
+                    _selectedCodes.add(code.kod);
+                  }
+                }
+              });
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+              decoration: BoxDecoration(
+                color: _selectedCodes.length == _pendingCodes.length && _selectedCodes.isNotEmpty
+                    ? _blueGradient[0].withOpacity(0.2)
+                    : Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _selectedCodes.length == _pendingCodes.length && _selectedCodes.isNotEmpty
+                        ? Icons.check_box
+                        : _selectedCodes.isNotEmpty
+                            ? Icons.indeterminate_check_box
+                            : Icons.check_box_outline_blank,
+                    color: _selectedCodes.isNotEmpty ? _blueGradient[0] : Colors.white.withOpacity(0.4),
+                    size: 20,
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    'Все',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: Colors.white.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildCodeCard(PendingCode code) {
+    final isSelected = _selectedCodes.contains(code.kod);
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: isSelected
+            ? _blueGradient[0].withOpacity(0.1)
+            : Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+          color: isSelected
+              ? _blueGradient[0].withOpacity(0.4)
+              : Colors.white.withOpacity(0.1),
           width: 1,
         ),
       ),
@@ -164,21 +225,42 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
             padding: EdgeInsets.all(16.w),
             child: Row(
               children: [
+                // Checkbox
+                GestureDetector(
+                  onTap: () {
+                    if (mounted) setState(() {
+                      if (isSelected) {
+                        _selectedCodes.remove(code.kod);
+                      } else {
+                        _selectedCodes.add(code.kod);
+                      }
+                    });
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.only(right: 10.w),
+                    child: Icon(
+                      isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                      color: isSelected ? _blueGradient[0] : Colors.white.withOpacity(0.3),
+                      size: 24,
+                    ),
+                  ),
+                ),
+
                 // Иконка
                 Container(
-                  width: 52,
-                  height: 52,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: _blueGradient),
-                    borderRadius: BorderRadius.circular(14.r),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(
                     Icons.qr_code_2,
                     color: Colors.white,
-                    size: 26,
+                    size: 22,
                   ),
                 ),
-                SizedBox(width: 14),
+                SizedBox(width: 12),
 
                 // Информация
                 Expanded(
@@ -382,6 +464,200 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
     );
   }
 
+  Widget _buildSelectionBar() {
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        decoration: BoxDecoration(
+          color: AppColors.darkNavy,
+          border: Border(
+            top: BorderSide(color: Colors.white.withOpacity(0.1)),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Row(
+            children: [
+              Text(
+                'Выбрано: ${_selectedCodes.length}',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Spacer(),
+              // Reject selected
+              TextButton.icon(
+                onPressed: _batchReject,
+                icon: Icon(Icons.close, size: 18),
+                label: Text('Отклонить'),
+                style: TextButton.styleFrom(
+                  foregroundColor: _redGradient[0],
+                ),
+              ),
+              SizedBox(width: 8),
+              // Approve selected
+              ElevatedButton.icon(
+                onPressed: _batchApprove,
+                icon: Icon(Icons.check, size: 18),
+                label: Text('Подтвердить'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _greenGradient[0],
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _batchApprove() async {
+    final codes = _pendingCodes
+        .where((c) => _selectedCodes.contains(c.kod))
+        .map((c) => {
+              'kod': c.kod,
+              'name': c.primaryName,
+              'group': c.primaryGroup,
+            })
+        .toList();
+
+    if (codes.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.darkNavy,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text(
+          'Подтвердить ${codes.length} товаров?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Каждый товар будет создан в каталоге с названием и группой из DBF.',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _greenGradient[0],
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Подтвердить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    if (mounted) setState(() => _isLoading = true);
+
+    try {
+      final result = await MasterCatalogService.batchApproveCodes(codes);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Добавлено: ${result.approved}, ошибок: ${result.errors}'),
+            backgroundColor: result.errors == 0 ? _greenGradient[0] : AppColors.warning,
+          ),
+        );
+      }
+
+      if (result.approved > 0) {
+        widget.onCodeApproved?.call();
+      }
+      _loadData();
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  Future<void> _batchReject() async {
+    final kods = _selectedCodes.toList();
+    if (kods.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.darkNavy,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text(
+          'Отклонить ${kods.length} кодов?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Выбранные коды будут удалены из списка ожидания.',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _redGradient[0],
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Отклонить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    if (mounted) setState(() => _isLoading = true);
+
+    try {
+      final rejected = await MasterCatalogService.batchRejectCodes(kods);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Отклонено: $rejected'),
+            backgroundColor: AppColors.neutral,
+          ),
+        );
+      }
+      _loadData();
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
   /// Показать выбор действия для pending кода
   void _showApproveDialog(PendingCode code) {
     showModalBottomSheet(
@@ -512,8 +788,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
     final nameController = TextEditingController(text: code.primaryName);
     String selectedGroup = code.primaryGroup;
     List<String> groups = code.allGroups.toList();
-    final groupTextController = TextEditingController();
-    bool useCustomGroup = false;
+    final groupController = TextEditingController(text: code.primaryGroup);
     List<AssignSearchProduct> nameSuggestions = [];
     Timer? debounce;
 
@@ -592,7 +867,10 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                       onTap: () {
                         setDialogState(() {
                           nameController.text = source.name;
-                          if (source.group.isNotEmpty) selectedGroup = source.group;
+                          if (source.group.isNotEmpty) {
+                            selectedGroup = source.group;
+                            groupController.text = source.group;
+                          }
                         });
                       },
                       child: Container(
@@ -613,7 +891,10 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                               groupValue: nameController.text,
                               onChanged: (val) => setDialogState(() {
                                 nameController.text = val!;
-                                if (source.group.isNotEmpty) selectedGroup = source.group;
+                                if (source.group.isNotEmpty) {
+                                  selectedGroup = source.group;
+                                  groupController.text = source.group;
+                                }
                               }),
                               activeColor: _blueGradient[0],
                             ),
@@ -677,7 +958,10 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                             subtitle: Text('${s.group} (${s.barcodesCount} шт-кодов)', style: TextStyle(fontSize: 10.sp, color: Colors.white.withOpacity(0.5))),
                             onTap: () => setDialogState(() {
                               nameController.text = s.name;
-                              if (s.group.isNotEmpty) selectedGroup = s.group;
+                              if (s.group.isNotEmpty) {
+                                selectedGroup = s.group;
+                                groupController.text = s.group;
+                              }
                               nameSuggestions = [];
                             }),
                           );
@@ -687,63 +971,77 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                   ],
                   SizedBox(height: 16),
 
-                  // Группа товара
+                  // Группа товара — Autocomplete combobox
                   Text('Группа товара', style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.6))),
                   SizedBox(height: 4),
-                  if (!useCustomGroup)
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10.r),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: groups.contains(selectedGroup) ? selectedGroup : null,
-                                hint: Text('Выберите группу', style: TextStyle(color: Colors.white.withOpacity(0.5))),
-                                isExpanded: true,
-                                dropdownColor: AppColors.darkNavy,
-                                icon: Icon(Icons.expand_more, color: Colors.white.withOpacity(0.5)),
-                                items: groups.map((g) => DropdownMenuItem(
-                                  value: g,
-                                  child: Text(g, style: TextStyle(color: Colors.white)),
-                                )).toList(),
-                                onChanged: (val) => setDialogState(() => selectedGroup = val ?? ''),
+                  LayoutBuilder(
+                    builder: (context, constraints) => RawAutocomplete<String>(
+                      textEditingController: groupController,
+                      focusNode: FocusNode(),
+                      optionsBuilder: (textEditingValue) {
+                        final text = textEditingValue.text.toLowerCase();
+                        if (text.isEmpty) return groups;
+                        return groups.where((g) => g.toLowerCase().contains(text));
+                      },
+                      onSelected: (value) {
+                        selectedGroup = value;
+                        groupController.text = value;
+                      },
+                      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                        return TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          style: TextStyle(color: Colors.white),
+                          onChanged: (val) => selectedGroup = val,
+                          decoration: InputDecoration(
+                            hintText: 'Выберите или введите группу',
+                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.05),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide.none),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: _blueGradient[0])),
+                            suffixIcon: Icon(Icons.arrow_drop_down, color: Colors.white.withOpacity(0.5)),
+                          ),
+                        );
+                      },
+                      optionsViewBuilder: (context, onSelected, options) {
+                        return Align(
+                          alignment: Alignment.topLeft,
+                          child: Material(
+                            color: AppColors.darkNavy,
+                            elevation: 4,
+                            borderRadius: BorderRadius.circular(10.r),
+                            child: Container(
+                              width: constraints.maxWidth,
+                              constraints: BoxConstraints(maxHeight: 200),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.white.withOpacity(0.15)),
+                                borderRadius: BorderRadius.circular(10.r),
+                              ),
+                              child: ListView.builder(
+                                padding: EdgeInsets.zero,
+                                shrinkWrap: true,
+                                itemCount: options.length,
+                                itemBuilder: (ctx, i) {
+                                  final option = options.elementAt(i);
+                                  return InkWell(
+                                    onTap: () => onSelected(option),
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                                      child: Text(
+                                        option,
+                                        style: TextStyle(color: Colors.white, fontSize: 13.sp),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ),
-                          IconButton(
-                            icon: Icon(Icons.edit, color: Colors.white.withOpacity(0.5), size: 18),
-                            onPressed: () => setDialogState(() {
-                              useCustomGroup = true;
-                              groupTextController.text = selectedGroup;
-                            }),
-                            tooltip: 'Ввести вручную',
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    TextField(
-                      controller: groupTextController,
-                      style: TextStyle(color: Colors.white),
-                      onChanged: (val) => selectedGroup = val,
-                      decoration: InputDecoration(
-                        hintText: 'Название группы',
-                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                        filled: true,
-                        fillColor: Colors.white.withOpacity(0.05),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide.none),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: BorderSide(color: _blueGradient[0])),
-                        suffixIcon: IconButton(
-                          icon: Icon(Icons.list, color: Colors.white.withOpacity(0.5), size: 18),
-                          onPressed: () => setDialogState(() => useCustomGroup = false),
-                        ),
-                      ),
+                        );
+                      },
                     ),
+                  ),
                   SizedBox(height: 24),
 
                   // Кнопки
@@ -758,7 +1056,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
                       SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => _approveCode(code, nameController.text, useCustomGroup ? groupTextController.text : selectedGroup),
+                          onPressed: () => _approveCode(code, nameController.text, selectedGroup),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _greenGradient[0],
                             foregroundColor: Colors.white,
@@ -778,7 +1076,7 @@ class _PendingCodesPageState extends State<PendingCodesPage> {
       ),
     ).then((_) {
       nameController.dispose();
-      groupTextController.dispose();
+      groupController.dispose();
       debounce?.cancel();
     });
   }

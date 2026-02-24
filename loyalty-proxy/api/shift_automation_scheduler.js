@@ -104,7 +104,7 @@ class ShiftScheduler extends BaseReportScheduler {
       try {
         const result = await db.query(
           `SELECT shop_address, shift_type FROM shift_reports
-           WHERE (date = $1 OR created_at::date = $1::date)
+           WHERE (date = $1 OR (created_at AT TIME ZONE 'Europe/Moscow')::date = $1::date)
            AND status IN ('review', 'confirmed')`,
           [today]
         );

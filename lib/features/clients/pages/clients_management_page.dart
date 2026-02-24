@@ -5,6 +5,7 @@ import '../../../shared/dialogs/send_message_dialog.dart';
 import 'client_chat_page.dart';
 import 'admin_management_dialog_page.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления клиентами
@@ -34,30 +35,36 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
     super.dispose();
   }
 
+  static const _cacheKey = 'clients_list';
+
   Future<void> _loadClients() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-    });
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<Client>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _clients = cached;
+        _filteredClients = cached;
+        _isLoading = false;
+      });
+    }
+
+    if (_clients.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
       final clients = await ClientService.getClients();
       // Сортируем: клиенты с непрочитанными сообщениями сверху
       clients.sort((a, b) {
-        // Сначала по наличию непрочитанных (management имеет приоритет)
         final aHasUnread = a.hasUnreadFromClient || a.hasUnreadManagement;
         final bHasUnread = b.hasUnreadFromClient || b.hasUnreadManagement;
         if (aHasUnread && !bHasUnread) return -1;
         if (!aHasUnread && bHasUnread) return 1;
-        // Management сообщения имеют приоритет
         if (a.hasUnreadManagement && !b.hasUnreadManagement) return -1;
         if (!a.hasUnreadManagement && b.hasUnreadManagement) return 1;
-        // Затем по времени последнего сообщения (новые сверху)
         if (a.lastClientMessageTime != null && b.lastClientMessageTime != null) {
           return b.lastClientMessageTime!.compareTo(a.lastClientMessageTime!);
         }
         if (a.lastClientMessageTime != null) return -1;
         if (b.lastClientMessageTime != null) return 1;
-        // По имени
         return a.name.compareTo(b.name);
       });
       if (!mounted) return;
@@ -66,12 +73,12 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
         _filteredClients = clients;
         _isLoading = false;
       });
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, clients);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
+      if (_clients.isEmpty) setState(() => _isLoading = false);
+      if (mounted && _clients.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка загрузки клиентов: $e'),

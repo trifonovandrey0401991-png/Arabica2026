@@ -6,6 +6,7 @@ import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница отчетов по сотрудникам
 class RKOEmployeeReportsPage extends StatefulWidget {
@@ -26,14 +27,22 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
     _loadEmployees();
   }
 
+  static const _cacheKey = 'rko_employee_reports';
+
   Future<void> _loadEmployees() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-    });
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<Employee>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _employees = cached;
+        _isLoading = false;
+      });
+    }
+
+    if (_employees.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
       final allEmployees = await EmployeesPage.loadEmployeesForNotifications();
-      // Фильтруем сотрудников по мультитенантности
       final employees = await MultitenancyFilterService.filterByEmployeePhone<Employee>(
         allEmployees,
         (emp) => emp.phone ?? '',
@@ -43,12 +52,12 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
         _employees = employees;
         _isLoading = false;
       });
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, employees);
     } catch (e) {
       Logger.error('Ошибка загрузки сотрудников', e);
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+      if (_employees.isEmpty) setState(() => _isLoading = false);
     }
   }
 

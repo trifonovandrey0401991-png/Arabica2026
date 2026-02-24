@@ -95,6 +95,7 @@ class RecountService {
         completedAt: report.completedAt,
         duration: report.duration,
         answers: answersWithPhotos,
+        shiftType: report.shiftType,
       );
 
       // Отправляем на сервер

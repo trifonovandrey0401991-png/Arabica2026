@@ -4,6 +4,7 @@ import '../services/kpi_service.dart';
 import '../models/kpi_employee_month_stats.dart';
 import 'kpi_employee_detail_page.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка всех сотрудников для KPI
@@ -34,10 +35,25 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
     _loadEmployees();
   }
 
+  static const _cacheKey = 'kpi_employees_list';
+
   Future<void> _loadEmployees() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _employees = cached['employees'] as List<String>;
+        _monthlyStatsCache.addAll(
+          (cached['stats'] as Map<String, List<KPIEmployeeMonthStats>>),
+        );
+        _isLoading = false;
+      });
+    }
+
+    if (_employees.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
+      // Step 2: Fetch fresh data from server
       final employees = await KPIService.getAllEmployees();
 
       if (mounted) {
@@ -52,10 +68,18 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
           if (!mounted) break;
           await _loadMonthlyStats(employees[i]);
         }
+
+        // Step 3: Save to cache (after all stats loaded)
+        if (mounted) {
+          CacheManager.set(_cacheKey, {
+            'employees': employees,
+            'stats': Map<String, List<KPIEmployeeMonthStats>>.from(_monthlyStatsCache),
+          });
+        }
       }
     } catch (e) {
       Logger.error('Ошибка загрузки списка сотрудников', e);
-      if (mounted) {
+      if (mounted && _employees.isEmpty) {
         setState(() => _isLoading = false);
       }
     }

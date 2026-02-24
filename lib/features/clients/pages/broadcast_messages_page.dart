@@ -4,6 +4,7 @@ import '../models/management_message_model.dart';
 import '../services/management_message_service.dart';
 import '../../../shared/widgets/media_message_widget.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница "Что-то НОВОЕ!" — рассылки от руководства
@@ -32,8 +33,19 @@ class _BroadcastMessagesPageState extends State<BroadcastMessagesPage> {
     super.dispose();
   }
 
+  static const _cacheKey = 'broadcast_messages';
+
   Future<void> _loadMessages() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<ManagementMessage>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _messages = cached;
+        _isLoading = false;
+      });
+    }
+
+    if (_messages.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -56,6 +68,8 @@ class _BroadcastMessagesPageState extends State<BroadcastMessagesPage> {
         _messages = data.broadcastMessages;
         _isLoading = false;
       });
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, data.broadcastMessages);
 
       // Прокручиваем к последнему сообщению
       WidgetsBinding.instance.addPostFrameCallback((_) {

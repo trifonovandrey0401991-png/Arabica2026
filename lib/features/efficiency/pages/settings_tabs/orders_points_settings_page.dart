@@ -3,6 +3,7 @@ import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
 import '../../../orders/services/order_timeout_settings_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../../core/theme/app_colors.dart';
 
 /// Page for configuring orders points settings (Заказы клиентов)
 class OrdersPointsSettingsPage extends StatefulWidget {
@@ -112,16 +113,19 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F7FA),
+      backgroundColor: AppColors.night,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('Баллы за заказы'),
-        backgroundColor: _gradientColors[0],
+        title: Text('Баллы за заказы', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: IconThemeData(color: AppColors.gold),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: _gradientColors[0]))
+          ? Center(child: CircularProgressIndicator(color: AppColors.gold))
           : Column(
               children: [
+                SizedBox(height: MediaQuery.of(context).padding.top + kToolbarHeight),
                 // Заголовок
                 SettingsHeaderCard(
                   icon: Icons.shopping_bag_outlined,
@@ -246,15 +250,9 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withOpacity(0.1),
-            blurRadius: 15,
-            offset: Offset(0, 5),
-          ),
-        ],
+        border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
       ),
       child: Padding(
         padding: EdgeInsets.all(20.w),
@@ -267,7 +265,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.1),
+                    color: accentColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(icon, color: accentColor, size: 24),
@@ -282,14 +280,14 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                         style: TextStyle(
                           fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2D3436),
+                          color: Colors.white,
                         ),
                       ),
                       Text(
                         subtitle,
                         style: TextStyle(
                           fontSize: 12.sp,
-                          color: Colors.grey[500],
+                          color: Colors.white.withOpacity(0.5),
                         ),
                       ),
                     ],
@@ -331,9 +329,10 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                 child: DropdownButton<int>(
                   value: value,
                   isExpanded: true,
+                  dropdownColor: AppColors.emeraldDark,
                   icon: Icon(Icons.keyboard_arrow_down, color: accentColor),
                   style: TextStyle(
-                    color: Colors.grey[800],
+                    color: Colors.white,
                     fontSize: 16.sp,
                     fontWeight: FontWeight.w500,
                   ),
@@ -354,15 +353,9 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
   Widget _buildPreviewTable() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: Offset(0, 5),
-          ),
-        ],
+        border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20.r),
@@ -412,7 +405,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
               label: 'Принят',
               points: _acceptedPoints,
               isPositive: true,
-              backgroundColor: Colors.grey[50]!,
+              backgroundColor: AppColors.emeraldDark,
             ),
             // Rejected row
             _buildPreviewRow(
@@ -421,7 +414,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
               label: 'Отклонён',
               points: _rejectedPoints,
               isPositive: false,
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.night.withOpacity(0.5),
             ),
             // Missed row
             _buildPreviewRow(
@@ -430,7 +423,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
               label: 'Пропущен',
               points: _missedOrderPenalty,
               isPositive: false,
-              backgroundColor: Colors.orange.withOpacity(0.05),
+              backgroundColor: AppColors.emeraldDark,
               pointsColor: Colors.orange,
               isLast: true,
             ),
@@ -454,7 +447,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
-        border: isLast ? null : Border(bottom: BorderSide(color: Colors.grey[200]!)),
+        border: isLast ? null : Border(bottom: BorderSide(color: AppColors.emerald.withOpacity(0.2))),
       ),
       padding: EdgeInsets.symmetric(vertical: 16.h),
       child: Row(
@@ -475,7 +468,7 @@ class _OrdersPointsSettingsPageState extends State<OrdersPointsSettingsPage> {
                 SizedBox(width: 10),
                 Text(
                   label,
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15.sp),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15.sp, color: Colors.white.withOpacity(0.9)),
                 ),
               ],
             ),

@@ -4,6 +4,7 @@ import '../services/cleanup_service.dart' show CleanupService, DiskInfo;
 import '../widgets/cleanup_period_dialog.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница очистки исторических данных сервера.
 class DataCleanupPage extends StatefulWidget {
@@ -30,28 +31,47 @@ class _DataCleanupPageState extends State<DataCleanupPage> {
     _loadStats();
   }
 
+  static const _cacheKey = 'data_cleanup_stats';
+
   Future<void> _loadStats() async {
-    if (mounted) setState(() {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _categories = cached['categories'] as List<CleanupCategory>;
+        _diskInfo = cached['diskInfo'] as DiskInfo?;
+        _isLoading = false;
+        _error = null;
+      });
+    }
+
+    if (_categories.isEmpty && mounted) setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      // Загружаем данные параллельно
       final results = await Future.wait([
         CleanupService.getDataStats(),
         CleanupService.getDiskInfo(),
       ]);
 
       if (mounted) {
+        final categories = results[0] as List<CleanupCategory>;
+        final diskInfo = results[1] as DiskInfo?;
         setState(() {
-          _categories = results[0] as List<CleanupCategory>;
-          _diskInfo = results[1] as DiskInfo?;
+          _categories = categories;
+          _diskInfo = diskInfo;
           _isLoading = false;
+        });
+        // Step 3: Save to cache
+        CacheManager.set(_cacheKey, {
+          'categories': categories,
+          'diskInfo': diskInfo,
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && _categories.isEmpty) {
         setState(() {
           _error = 'Ошибка загрузки данных';
           _isLoading = false;

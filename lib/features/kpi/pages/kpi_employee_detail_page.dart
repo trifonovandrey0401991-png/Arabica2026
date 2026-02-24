@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import '../services/kpi_service.dart';
 import '../models/kpi_models.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Детальная страница сотрудника со списком магазинов и дат работы
@@ -32,13 +33,23 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
     _loadShopDaysData();
   }
 
+  String get _cacheKey => 'kpi_employee_${widget.employeeName.hashCode}_${widget.year}_${widget.month}';
+
   Future<void> _loadShopDaysData() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<KPIEmployeeShopDayData>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _shopDaysData = cached;
+        _isLoading = false;
+      });
+    }
+
+    if (_shopDaysData.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
       final data = await KPIService.getEmployeeShopDaysData(widget.employeeName);
 
-      // Фильтровать по месяцу, если указан
       List<KPIEmployeeShopDayData> filteredData = data;
       if (widget.year != null && widget.month != null) {
         filteredData = data.where((day) {
@@ -51,12 +62,12 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
           _shopDaysData = filteredData;
           _isLoading = false;
         });
+        // Step 3: Save to cache
+        CacheManager.set(_cacheKey, filteredData);
       }
     } catch (e) {
       Logger.error('Ошибка загрузки данных сотрудника', e);
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted && _shopDaysData.isEmpty) setState(() => _isLoading = false);
     }
   }
 

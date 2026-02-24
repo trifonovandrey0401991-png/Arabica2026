@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import '../services/order_service.dart';
 import 'employee_order_detail_page.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница отчётов по заказам клиентов (только для админа)
@@ -53,34 +54,65 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
     super.dispose();
   }
 
+  static const _cacheKey = 'orders_report';
+
   Future<void> _loadOrders() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-    });
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _pendingOrders = cached['pending'] as List<Map<String, dynamic>>;
+        _acceptedOrders = cached['accepted'] as List<Map<String, dynamic>>;
+        _rejectedOrders = cached['rejected'] as List<Map<String, dynamic>>;
+        _unconfirmedOrders = cached['unconfirmed'] as List<Map<String, dynamic>>;
+        _isLoading = false;
+      });
+    }
 
-    // Загружаем заказы по статусам и разрешённые адреса параллельно
-    final results = await Future.wait([
-      OrderService.getAllOrders(status: 'pending'),
-      OrderService.getAllOrders(status: 'accepted'),
-      OrderService.getAllOrders(status: 'rejected'),
-      OrderService.getAllOrders(status: 'unconfirmed'),
-      MultitenancyFilterService.getAllowedShopAddresses(),
-    ]);
+    if (_pendingOrders.isEmpty && _acceptedOrders.isEmpty && mounted) {
+      setState(() => _isLoading = true);
+    }
 
-    final pending = results[0] as List<Map<String, dynamic>>;
-    final accepted = results[1] as List<Map<String, dynamic>>;
-    final rejected = results[2] as List<Map<String, dynamic>>;
-    final unconfirmed = results[3] as List<Map<String, dynamic>>;
-    final allowedAddresses = results[4] as List<String>?;
+    try {
+      final results = await Future.wait([
+        OrderService.getAllOrders(status: 'pending'),
+        OrderService.getAllOrders(status: 'accepted'),
+        OrderService.getAllOrders(status: 'rejected'),
+        OrderService.getAllOrders(status: 'unconfirmed'),
+        MultitenancyFilterService.getAllowedShopAddresses(),
+      ]);
 
-    if (!mounted) return;
-    setState(() {
-      _pendingOrders = _filterOrdersByShop(pending, allowedAddresses);
-      _acceptedOrders = _filterOrdersByShop(accepted, allowedAddresses);
-      _rejectedOrders = _filterOrdersByShop(rejected, allowedAddresses);
-      _unconfirmedOrders = _filterOrdersByShop(unconfirmed, allowedAddresses);
-      _isLoading = false;
-    });
+      final pending = results[0] as List<Map<String, dynamic>>;
+      final accepted = results[1] as List<Map<String, dynamic>>;
+      final rejected = results[2] as List<Map<String, dynamic>>;
+      final unconfirmed = results[3] as List<Map<String, dynamic>>;
+      final allowedAddresses = results[4] as List<String>?;
+
+      if (!mounted) return;
+      final filteredPending = _filterOrdersByShop(pending, allowedAddresses);
+      final filteredAccepted = _filterOrdersByShop(accepted, allowedAddresses);
+      final filteredRejected = _filterOrdersByShop(rejected, allowedAddresses);
+      final filteredUnconfirmed = _filterOrdersByShop(unconfirmed, allowedAddresses);
+
+      setState(() {
+        _pendingOrders = filteredPending;
+        _acceptedOrders = filteredAccepted;
+        _rejectedOrders = filteredRejected;
+        _unconfirmedOrders = filteredUnconfirmed;
+        _isLoading = false;
+      });
+
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, {
+        'pending': filteredPending,
+        'accepted': filteredAccepted,
+        'rejected': filteredRejected,
+        'unconfirmed': filteredUnconfirmed,
+      });
+    } catch (e) {
+      if (!mounted) return;
+      if (_pendingOrders.isEmpty) setState(() => _isLoading = false);
+    }
   }
 
   /// Фильтрация заказов по разрешённым магазинам

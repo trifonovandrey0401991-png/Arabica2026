@@ -29,6 +29,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
   bool _showUrlField = false;
   String _visibility = 'all';  // 'all' или 'managers'
   final ImagePicker _imagePicker = ImagePicker();
+  List<String> _existingGroups = [];
 
   @override
   void initState() {
@@ -53,6 +54,22 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
     if (_contentBlocks.isEmpty) {
       _contentBlocks.add(ContentBlock.text(''));
     }
+    _loadExistingGroups();
+  }
+
+  Future<void> _loadExistingGroups() async {
+    try {
+      final articles = await TrainingArticleService.getArticles();
+      final groups = articles
+          .map((a) => a.group)
+          .where((g) => g.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
+      if (mounted) {
+        setState(() => _existingGroups = groups);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -461,18 +478,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
             },
           ),
           SizedBox(height: 12),
-          _buildTextField(
-            controller: _groupController,
-            label: 'Группа',
-            hint: 'Введите группу',
-            icon: Icons.folder_rounded,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Введите группу';
-              }
-              return null;
-            },
-          ),
+          _buildGroupField(),
           SizedBox(height: 16),
           // Выбор видимости
           _buildVisibilitySelector(),
@@ -1065,6 +1071,111 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildGroupField() {
+    return Autocomplete<String>(
+      initialValue: _groupController.value,
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text.isEmpty) {
+          return _existingGroups;
+        }
+        final query = textEditingValue.text.toLowerCase();
+        return _existingGroups.where(
+          (g) => g.toLowerCase().contains(query),
+        );
+      },
+      onSelected: (String selection) {
+        _groupController.text = selection;
+      },
+      optionsViewOpenDirection: OptionsViewOpenDirection.down,
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(12.r),
+            color: AppColors.emeraldDark,
+            child: Container(
+              constraints: BoxConstraints(maxHeight: 200),
+              width: MediaQuery.of(context).size.width - 72.w,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+              ),
+              child: ListView.builder(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final option = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    leading: Icon(Icons.folder_rounded, color: AppColors.gold, size: 18),
+                    title: Text(
+                      option,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                    onTap: () => onSelected(option),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+      fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
+        // Sync controllers
+        textController.addListener(() {
+          if (_groupController.text != textController.text) {
+            _groupController.text = textController.text;
+          }
+        });
+        return TextFormField(
+          controller: textController,
+          focusNode: focusNode,
+          style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.9)),
+          decoration: InputDecoration(
+            labelText: 'Группа',
+            labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+            hintText: 'Введите группу',
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+            prefixIcon: Icon(Icons.folder_rounded, color: AppColors.gold, size: 20),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.06),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: AppColors.gold.withOpacity(0.5), width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: Colors.red[300]!),
+            ),
+            contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+            isDense: true,
+            errorStyle: TextStyle(color: Colors.red[300]),
+          ),
+          cursorColor: AppColors.gold,
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Введите группу';
+            }
+            return null;
+          },
+        );
+      },
     );
   }
 

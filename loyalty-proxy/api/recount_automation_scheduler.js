@@ -197,7 +197,7 @@ class RecountScheduler extends BaseReportScheduler {
     if (USE_DB) {
       try {
         const result = await db.query(
-          'SELECT shop_address, shift_type FROM recount_reports WHERE date = $1 OR created_at::date = $2::date',
+          `SELECT shop_address, shift_type FROM recount_reports WHERE date = $1 OR (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date`,
           [today, today]
         );
         for (const row of result.rows) {
@@ -284,13 +284,41 @@ class RecountScheduler extends BaseReportScheduler {
 
   // ==================== CHECK REVIEW TIMEOUTS (override) ====================
 
+  // Загрузить персистентный Set обработанных ID (сбрасывается раз в сутки)
+  async _loadProcessedIds() {
+    const stateFile = path.join(this.DATA_DIR, 'recount-automation-state', 'review-processed-ids.json');
+    try {
+      if (await fileExists(stateFile)) {
+        const data = JSON.parse(await fsp.readFile(stateFile, 'utf8'));
+        const today = getMoscowDateString();
+        if (data.date === today && Array.isArray(data.ids)) {
+          return new Set(data.ids);
+        }
+      }
+    } catch { /* ignore, start fresh */ }
+    return new Set();
+  }
+
+  // Сохранить персистентный Set обработанных ID
+  async _saveProcessedIds(processedIds) {
+    const stateDir = path.join(this.DATA_DIR, 'recount-automation-state');
+    const stateFile = path.join(stateDir, 'review-processed-ids.json');
+    try {
+      await fsp.mkdir(stateDir, { recursive: true });
+      await writeJsonFile(stateFile, { date: getMoscowDateString(), ids: [...processedIds] });
+    } catch (e) {
+      console.error(`${this.tag} Error saving processedIds state:`, e.message);
+    }
+  }
+
   async checkReviewTimeouts() {
     const now = new Date();
     const reports = await this.loadTodayReports();
     let rejectedCount = 0;
 
-    // Трекаем ID уже обработанных отчётов чтобы DB-путь не дублировал штрафы
-    const processedIds = new Set();
+    // Персистентный Set: сохраняется между запусками → предотвращает двойные штрафы
+    // если JSON-путь обновил файл, но DB-запись временно упала
+    const processedIds = await this._loadProcessedIds();
 
     for (const report of reports) {
       if (report.status !== 'review') continue;
@@ -376,6 +404,11 @@ class RecountScheduler extends BaseReportScheduler {
       } catch (dbErr) {
         console.error(`${this.tag} DB review timeout check error:`, dbErr.message);
       }
+    }
+
+    // Сохраняем персистентный Set (даже если rejectedCount === 0 — сохраняем уже накопленные)
+    if (processedIds.size > 0) {
+      await this._saveProcessedIds(processedIds);
     }
 
     return rejectedCount;
@@ -547,7 +580,7 @@ class RecountScheduler extends BaseReportScheduler {
 
         // Пытаемся запустить обучение автоматически
         try {
-          const trainResult = await cigaretteVision.trainModel();
+          const trainResult = await cigaretteVision.triggerFullTraining();
           if (trainResult && trainResult.success) {
             console.log(`[AI Auto-Train] Переобучение запущено успешно`);
             state.lastAiTrainingAt = now.toISOString();

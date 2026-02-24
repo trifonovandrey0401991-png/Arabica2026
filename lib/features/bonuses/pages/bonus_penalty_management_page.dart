@@ -5,6 +5,7 @@ import '../../employees/services/employee_service.dart';
 import '../services/bonus_penalty_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 class BonusPenaltyManagementPage extends StatefulWidget {
   const BonusPenaltyManagementPage({super.key});
@@ -30,16 +31,36 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
     _loadData();
   }
 
+  static const _cacheKey = 'bonus_penalty_employees';
+
   Future<void> _loadData() async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<Employee>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _employees = cached;
+        _isLoading = false;
+      });
+    }
+
     final prefs = await SharedPreferences.getInstance();
     _adminName = prefs.getString('employeeName') ?? prefs.getString('name') ?? 'Администратор';
 
-    final employees = await EmployeeService.getEmployees();
-    if (!mounted) return;
-    setState(() {
-      _employees = employees;
-      _isLoading = false;
-    });
+    if (_employees.isEmpty && mounted) setState(() => _isLoading = true);
+
+    try {
+      final employees = await EmployeeService.getEmployees();
+      if (!mounted) return;
+      setState(() {
+        _employees = employees;
+        _isLoading = false;
+      });
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, employees);
+    } catch (e) {
+      if (!mounted) return;
+      if (_employees.isEmpty) setState(() => _isLoading = false);
+    }
   }
 
   List<Employee> get _filteredEmployees {
@@ -57,7 +78,8 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
   void _showAmountDialog(Employee employee) {
     final amountController = TextEditingController();
     final commentController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
+    String? amountError;
+    String? commentError;
 
     final isBonus = _selectedType == 'bonus';
     final typeTitle = isBonus ? 'Премия' : 'Штраф';
@@ -151,11 +173,10 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                   ],
                 ),
               ),
-              // Form
-              Padding(
-                padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 24.h),
-                child: Form(
-                  key: formKey,
+              // Fields (no Form wrapper to avoid _dependents.isEmpty)
+              StatefulBuilder(
+                builder: (sheetContext, setSheetState) => Padding(
+                  padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 24.h),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -164,9 +185,9 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                         decoration: BoxDecoration(
                           color: Colors.grey[50],
                           borderRadius: BorderRadius.circular(16.r),
-                          border: Border.all(color: accentColor.withOpacity(0.3)),
+                          border: Border.all(color: amountError != null ? Colors.red : accentColor.withOpacity(0.3)),
                         ),
-                        child: TextFormField(
+                        child: TextField(
                           controller: amountController,
                           keyboardType: TextInputType.number,
                           style: TextStyle(
@@ -177,6 +198,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                           decoration: InputDecoration(
                             labelText: 'Сумма',
                             labelStyle: TextStyle(color: Colors.grey[600]),
+                            errorText: amountError,
                             prefixIcon: Container(
                               margin: EdgeInsets.all(12.w),
                               width: 44,
@@ -199,16 +221,6 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Введите сумму';
-                            }
-                            final amount = double.tryParse(value);
-                            if (amount == null || amount <= 0) {
-                              return 'Введите корректную сумму';
-                            }
-                            return null;
-                          },
                         ),
                       ),
                       SizedBox(height: 16),
@@ -217,13 +229,14 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                         decoration: BoxDecoration(
                           color: Colors.grey[50],
                           borderRadius: BorderRadius.circular(16.r),
-                          border: Border.all(color: Colors.grey[300]!),
+                          border: Border.all(color: commentError != null ? Colors.red : Colors.grey[300]!),
                         ),
-                        child: TextFormField(
+                        child: TextField(
                           controller: commentController,
                           maxLines: 3,
                           decoration: InputDecoration(
                             labelText: 'Комментарий',
+                            errorText: commentError,
                             labelStyle: TextStyle(color: Colors.grey[600]),
                             hintText: 'Причина ${isBonus ? "премии" : "штрафа"}...',
                             hintStyle: TextStyle(color: Colors.grey[400]),
@@ -244,12 +257,6 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.all(16.w),
                           ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Введите комментарий';
-                            }
-                            return null;
-                          },
                         ),
                       ),
                       SizedBox(height: 24),
@@ -258,7 +265,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                         children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: () => Navigator.pop(context),
+                              onPressed: () => Navigator.pop(sheetContext),
                               style: OutlinedButton.styleFrom(
                                 padding: EdgeInsets.symmetric(vertical: 16.h),
                                 side: BorderSide(color: Colors.grey[400]!),
@@ -293,15 +300,33 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                                 ],
                               ),
                               child: ElevatedButton(
-                                onPressed: () async {
-                                  if (formKey.currentState!.validate()) {
-                                    Navigator.pop(context);
-                                    await _createRecord(
-                                      employee,
-                                      double.parse(amountController.text),
-                                      commentController.text.trim(),
-                                    );
+                                onPressed: () {
+                                  // Manual validation (no Form/InheritedElement)
+                                  String? aErr;
+                                  String? cErr;
+                                  final amountText = amountController.text.trim();
+                                  if (amountText.isEmpty) {
+                                    aErr = 'Введите сумму';
+                                  } else {
+                                    final parsed = double.tryParse(amountText);
+                                    if (parsed == null || parsed <= 0) {
+                                      aErr = 'Введите корректную сумму';
+                                    }
                                   }
+                                  if (commentController.text.trim().isEmpty) {
+                                    cErr = 'Введите комментарий';
+                                  }
+                                  if (aErr != null || cErr != null) {
+                                    setSheetState(() {
+                                      amountError = aErr;
+                                      commentError = cErr;
+                                    });
+                                    return;
+                                  }
+                                  Navigator.pop(sheetContext, {
+                                    'amount': double.parse(amountText),
+                                    'comment': commentController.text.trim(),
+                                  });
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.transparent,
@@ -342,9 +367,10 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
           ),
         ),
       ),
-    ).then((_) {
-      amountController.dispose();
-      commentController.dispose();
+    ).then((result) {
+      if (result != null && result is Map) {
+        _createRecord(employee, result['amount'], result['comment']);
+      }
     });
   }
 

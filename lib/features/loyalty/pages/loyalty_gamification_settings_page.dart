@@ -246,15 +246,16 @@ class _LoyaltyGamificationSettingsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.night,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppColors.primaryGreen,
-              Color(0xFF00695C),
-              Color(0xFF00897B),
+              AppColors.emeraldDark,
+              AppColors.night,
+              AppColors.night,
             ],
           ),
         ),
@@ -272,7 +273,7 @@ class _LoyaltyGamificationSettingsPageState
                     : Container(
                         margin: EdgeInsets.only(top: 8.h),
                         decoration: BoxDecoration(
-                          color: Color(0xFFF5F7FA),
+                          color: AppColors.night,
                           borderRadius: BorderRadius.vertical(
                             top: Radius.circular(24.r),
                           ),
@@ -283,17 +284,17 @@ class _LoyaltyGamificationSettingsPageState
                             Container(
                               margin: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 8.h),
                               decoration: BoxDecoration(
-                                color: Colors.grey.shade200,
+                                color: AppColors.emeraldDark,
                                 borderRadius: BorderRadius.circular(12.r),
                               ),
                               child: TabBar(
                                 controller: _tabController,
                                 indicator: BoxDecoration(
-                                  color: _primaryColor,
+                                  color: AppColors.emerald,
                                   borderRadius: BorderRadius.circular(12.r),
                                 ),
                                 labelColor: Colors.white,
-                                unselectedLabelColor: Colors.grey.shade700,
+                                unselectedLabelColor: Colors.white.withOpacity(0.5),
                                 labelStyle: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14.sp,
@@ -430,12 +431,12 @@ class _LoyaltyGamificationSettingsPageState
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            _primaryColor.withOpacity(0.1),
-            _accentColor.withOpacity(0.05),
+            AppColors.emeraldDark,
+            AppColors.emerald.withOpacity(0.3),
           ],
         ),
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: _primaryColor.withOpacity(0.2)),
+        border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,6 +457,7 @@ class _LoyaltyGamificationSettingsPageState
                 style: TextStyle(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
             ],
@@ -466,7 +468,7 @@ class _LoyaltyGamificationSettingsPageState
             'Значки появляются вокруг QR-кода.',
             style: TextStyle(
               fontSize: 13.sp,
-              color: Colors.grey.shade700,
+              color: Colors.white.withOpacity(0.6),
               height: 1.4,
             ),
           ),
@@ -486,7 +488,7 @@ class _LoyaltyGamificationSettingsPageState
                     'Рекомендуемый размер значка: 100x100 px, PNG с прозрачностью',
                     style: TextStyle(
                       fontSize: 12.sp,
-                      color: Colors.amber.shade800,
+                      color: Colors.amber[300],
                     ),
                   ),
                 ),
@@ -504,15 +506,9 @@ class _LoyaltyGamificationSettingsPageState
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
       ),
       child: Padding(
         padding: EdgeInsets.all(16.w),
@@ -575,7 +571,7 @@ class _LoyaltyGamificationSettingsPageState
                         'от ${_levelMinDrinksControllers[index].text} напитков',
                         style: TextStyle(
                           fontSize: 12.sp,
-                          color: Colors.grey.shade600,
+                          color: Colors.white.withOpacity(0.5),
                         ),
                       ),
                     ],
@@ -591,7 +587,7 @@ class _LoyaltyGamificationSettingsPageState
                     decoration: BoxDecoration(
                       color: level.color,
                       borderRadius: BorderRadius.circular(8.r),
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: AppColors.emerald.withOpacity(0.5)),
                     ),
                     child: Icon(Icons.palette, color: Colors.white, size: 18),
                   ),
@@ -602,13 +598,20 @@ class _LoyaltyGamificationSettingsPageState
             // Название уровня
             TextField(
               controller: _levelNameControllers[index],
+              style: TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 labelText: 'Название уровня',
+                labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.r),
+                  borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                  borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
                 ),
                 isDense: true,
-                prefixIcon: Icon(Icons.label_outline),
+                prefixIcon: Icon(Icons.label_outline, color: Colors.white.withOpacity(0.5)),
               ),
             ),
             SizedBox(height: 12),
@@ -619,13 +622,20 @@ class _LoyaltyGamificationSettingsPageState
                   child: TextField(
                     controller: _levelMinDrinksControllers[index],
                     keyboardType: TextInputType.number,
+                    style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Мин. напитков',
+                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.r),
+                        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
                       ),
                       isDense: true,
-                      prefixIcon: Icon(Icons.local_cafe_outlined),
+                      prefixIcon: Icon(Icons.local_cafe_outlined, color: Colors.white.withOpacity(0.5)),
                     ),
                   ),
                 ),
@@ -947,14 +957,14 @@ class _LoyaltyGamificationSettingsPageState
               SizedBox(width: 12),
               Text(
                 'Секторы колеса',
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               Spacer(),
               Text(
                 '${_wheelSettings.sectors.length} шт',
                 style: TextStyle(
                   fontSize: 14.sp,
-                  color: Colors.grey.shade600,
+                  color: Colors.white.withOpacity(0.5),
                 ),
               ),
             ],
@@ -1043,6 +1053,7 @@ class _LoyaltyGamificationSettingsPageState
                       style: TextStyle(
                         fontSize: 14.sp,
                         fontWeight: FontWeight.w500,
+                        color: Colors.white,
                       ),
                     ),
                     Text(
@@ -1051,7 +1062,7 @@ class _LoyaltyGamificationSettingsPageState
                           : 'Превышен лимит! Уменьшите вероятности.',
                       style: TextStyle(
                         fontSize: 12.sp,
-                        color: isValid ? Colors.grey.shade600 : Colors.red,
+                        color: isValid ? Colors.white.withOpacity(0.5) : Colors.red,
                       ),
                     ),
                   ],
@@ -1073,7 +1084,7 @@ class _LoyaltyGamificationSettingsPageState
             borderRadius: BorderRadius.circular(4.r),
             child: LinearProgressIndicator(
               value: (total / 100).clamp(0.0, 1.0),
-              backgroundColor: Colors.grey.shade200,
+              backgroundColor: AppColors.emerald.withOpacity(0.3),
               valueColor: AlwaysStoppedAnimation<Color>(
                 isValid ? Colors.green : Colors.red,
               ),
@@ -1088,15 +1099,9 @@ class _LoyaltyGamificationSettingsPageState
   Widget _buildWheelMainSettings() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
       ),
       child: Padding(
         padding: EdgeInsets.all(16.w),
@@ -1116,7 +1121,7 @@ class _LoyaltyGamificationSettingsPageState
                 SizedBox(width: 12),
                 Text(
                   'Основные настройки',
-                  style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ],
             ),
@@ -1132,11 +1137,12 @@ class _LoyaltyGamificationSettingsPageState
               ),
               child: SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text('Колесо удачи'),
+                title: Text('Колесо удачи', style: TextStyle(color: Colors.white)),
                 subtitle: Text(
                   _wheelSettings.enabled
                       ? 'Клиенты могут крутить колесо'
                       : 'Колесо отключено',
+                  style: TextStyle(color: Colors.white.withOpacity(0.5)),
                 ),
                 value: _wheelSettings.enabled,
                 onChanged: (value) {
@@ -1152,13 +1158,21 @@ class _LoyaltyGamificationSettingsPageState
             TextField(
               controller: _freeDrinksPerSpinController,
               keyboardType: TextInputType.number,
+              style: TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 labelText: 'Напитков для прокрутки',
+                labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                 helperText: 'Сколько бесплатных напитков нужно для 1 спина',
+                helperStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.r),
+                  borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
                 ),
-                prefixIcon: Icon(Icons.local_cafe),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                  borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
+                ),
+                prefixIcon: Icon(Icons.local_cafe, color: Colors.white.withOpacity(0.5)),
               ),
             ),
           ],
@@ -1173,15 +1187,9 @@ class _LoyaltyGamificationSettingsPageState
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
       ),
       child: Padding(
         padding: EdgeInsets.all(12.w),
@@ -1220,10 +1228,17 @@ class _LoyaltyGamificationSettingsPageState
                 Expanded(
                   child: TextField(
                     controller: _sectorTextControllers[index],
+                    style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Текст приза',
+                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.r),
+                        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
                       ),
                       isDense: true,
                     ),
@@ -1240,7 +1255,7 @@ class _LoyaltyGamificationSettingsPageState
                     decoration: BoxDecoration(
                       color: sector.color,
                       borderRadius: BorderRadius.circular(8.r),
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: AppColors.emerald.withOpacity(0.5)),
                     ),
                     child: Icon(Icons.palette, color: Colors.white, size: 18),
                   ),
@@ -1260,14 +1275,21 @@ class _LoyaltyGamificationSettingsPageState
                   child: TextField(
                     controller: _sectorProbControllers[index],
                     keyboardType: TextInputType.number,
+                    style: TextStyle(color: Colors.white),
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       labelText: 'Вероятность %',
+                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.r),
+                        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
                       ),
                       isDense: true,
-                      prefixIcon: Icon(Icons.percent, size: 20),
+                      prefixIcon: Icon(Icons.percent, size: 20, color: Colors.white.withOpacity(0.5)),
                     ),
                   ),
                 ),
@@ -1277,10 +1299,18 @@ class _LoyaltyGamificationSettingsPageState
                   flex: 2,
                   child: DropdownButtonFormField<String>(
                     value: sector.prizeType,
+                    dropdownColor: AppColors.emeraldDark,
+                    style: TextStyle(color: Colors.white, fontSize: 14.sp),
                     decoration: InputDecoration(
                       labelText: 'Тип приза',
+                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.r),
+                        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
                       ),
                       isDense: true,
                     ),
@@ -1311,10 +1341,17 @@ class _LoyaltyGamificationSettingsPageState
                   child: TextField(
                     controller: _sectorValueControllers[index],
                     keyboardType: TextInputType.number,
+                    style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Кол-во',
+                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.r),
+                        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
                       ),
                       isDense: true,
                     ),

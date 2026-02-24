@@ -18,6 +18,7 @@ import '../../../shared/dialogs/auto_fill_schedule_dialog.dart';
 import '../services/auto_fill_schedule_service.dart';
 import '../../../shared/dialogs/shift_edit_dialog.dart';
 import '../../../shared/dialogs/schedule_errors_dialog.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'employee_bulk_schedule_dialog.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
@@ -119,14 +120,30 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     }
   }
 
+  String get _cacheKey => 'work_schedule_${_selectedMonth.year}_${_selectedMonth.month}';
+
   Future<void> _loadData() async {
-    if (mounted) setState(() {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _employees = cached['employees'] as List<Employee>;
+        _shops = cached['shops'] as List<Shop>;
+        _schedule = cached['schedule'] as WorkSchedule?;
+        _shopSettingsCache = cached['shopSettings'] as Map<String, ShopSettings>;
+        _isLoading = false;
+        _error = null;
+      });
+      _validateCurrentSchedule();
+    }
+
+    if (mounted && _employees.isEmpty) setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      // Параллельная загрузка сотрудников, магазинов и графика
+      // Step 2: Fetch fresh data from server
       List<Employee> employees = [];
       List<Shop> shops = [];
       WorkSchedule? schedule;
@@ -156,11 +173,18 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           _schedule = schedule;
           _isLoading = false;
         });
+        // Step 3: Save to cache
+        CacheManager.set(_cacheKey, {
+          'employees': employees,
+          'shops': shops,
+          'schedule': schedule,
+          'shopSettings': _shopSettingsCache,
+        });
         // Валидация графика после загрузки
         _validateCurrentSchedule();
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && _employees.isEmpty) {
         setState(() {
           _error = e.toString();
           _isLoading = false;

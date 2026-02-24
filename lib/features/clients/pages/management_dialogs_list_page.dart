@@ -6,6 +6,7 @@ import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import 'admin_management_dialog_page.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка диалогов "Связь с руководством" для админа
@@ -27,8 +28,20 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
     _loadDialogs();
   }
 
+  static const _cacheKey = 'management_dialogs';
+
   Future<void> _loadDialogs() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _dialogs = cached['dialogs'] as List<ManagementDialogSummary>;
+        _totalUnread = cached['totalUnread'] as int;
+        _isLoading = false;
+      });
+    }
+
+    if (_dialogs.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
       final result = await BaseHttpService.getRaw(
@@ -40,13 +53,8 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
         final dialogsData = result['dialogs'] as List<dynamic>? ?? [];
         final dialogs = dialogsData
             .map((json) => ManagementDialogSummary.fromJson(json as Map<String, dynamic>))
-            .where((dialog) => dialog.phone.isNotEmpty) // Фильтруем диалоги с пустым телефоном
+            .where((dialog) => dialog.phone.isNotEmpty)
             .toList();
-
-        Logger.debug('ManagementDialogsList: Loaded ${dialogs.length} dialogs');
-        for (var i = 0; i < dialogs.length && i < 3; i++) {
-          Logger.debug('Dialog $i: ${dialogs[i].clientName} (${Logger.maskPhone(dialogs[i].phone)}), unread: ${dialogs[i].unreadCount}');
-        }
 
         if (mounted) {
           setState(() {
@@ -54,9 +62,14 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
             _totalUnread = result['totalUnread'] ?? 0;
             _isLoading = false;
           });
+          // Step 3: Save to cache
+          CacheManager.set(_cacheKey, {
+            'dialogs': dialogs,
+            'totalUnread': result['totalUnread'] ?? 0,
+          });
         }
       } else {
-        if (mounted) {
+        if (mounted && _dialogs.isEmpty) {
           setState(() {
             _dialogs = [];
             _totalUnread = 0;
@@ -65,7 +78,7 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
         }
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && _dialogs.isEmpty) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

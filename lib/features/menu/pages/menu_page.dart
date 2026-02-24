@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../orders/pages/cart_page.dart';
 import '../../recipes/models/recipe_model.dart';
@@ -81,9 +82,12 @@ class MenuPage extends StatefulWidget {
 }
 
 class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin {
-  late Future<List<MenuItem>> _menuFuture;
+  List<MenuItem> _menuItems = [];
+  bool _isLoading = true;
   String _searchQuery = '';
   late AnimationController _animationController;
+
+  static const _cacheKey = 'page_menu_items';
 
   @override
   void initState() {
@@ -92,7 +96,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
       vsync: this,
       duration: Duration(milliseconds: 800),
     );
-    _menuFuture = _loadMenu();
+    _loadMenu();
   }
 
   @override
@@ -101,27 +105,46 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
     super.dispose();
   }
 
-  Future<List<MenuItem>> _loadMenu() async {
+  Future<void> _loadMenu() async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<MenuItem>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _menuItems = cached;
+        _isLoading = false;
+      });
+      _animationController.forward();
+    }
+
+    // Step 2: Fetch fresh data from server
     try {
-      // Загружаем напитки из рецептов - в меню показываем только позиции с рецептами
       final recipes = await Recipe.loadRecipesFromServer();
 
-      // Преобразуем рецепты в MenuItem
       final items = recipes.map((recipe) => MenuItem(
         id: recipe.id,
         name: recipe.name,
         price: recipe.price ?? '',
         category: recipe.category,
-        shop: '', // Магазин не привязан к рецепту
+        shop: '',
         photoId: recipe.photoId ?? '',
         photoUrl: recipe.photoUrl,
       )).toList();
 
-      _animationController.forward();
-      return items;
+      if (!mounted) return;
+      setState(() {
+        _menuItems = items;
+        _isLoading = false;
+      });
+
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, items, duration: const Duration(minutes: 15));
+
+      if (cached == null) _animationController.forward();
     } catch (e) {
       Logger.warning('Ошибка загрузки рецептов: $e');
-      return [];
+      if (mounted && _menuItems.isEmpty) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -365,10 +388,9 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
             ],
           ),
         ),
-        child: FutureBuilder<List<MenuItem>>(
-          future: _menuFuture,
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
+        child: Builder(
+          builder: (context) {
+            if (_isLoading && _menuItems.isEmpty) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -397,7 +419,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
               );
             }
 
-            final all = snapshot.data!;
+            final all = _menuItems;
 
             // Фильтруем по категории (магазин не учитываем - рецепты общие для всех)
             final filtered = all.where((item) {

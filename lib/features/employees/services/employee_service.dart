@@ -4,10 +4,10 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class EmployeeService {
-  // Кэш списка сотрудников (30 сек TTL)
+  // Кэш списка сотрудников (5 мин TTL — сотрудники меняются редко)
   static List<Employee>? _cachedEmployees;
   static DateTime? _cacheTime;
-  static const _cacheDuration = Duration(seconds: 30);
+  static const _cacheDuration = Duration(minutes: 5);
   // Защита от параллельных вызовов
   static Future<List<Employee>>? _loadingFuture;
 

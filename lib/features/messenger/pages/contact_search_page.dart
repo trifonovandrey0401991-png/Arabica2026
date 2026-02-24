@@ -9,11 +9,15 @@ import 'group_create_page.dart';
 class ContactSearchPage extends StatefulWidget {
   final String userPhone;
   final String userName;
+  /// Если передан — показываем только этих людей (из телефонной книги).
+  /// Если null — доступ к контактам не дан, показываем всех зарегистрированных.
+  final List<MessengerContact>? matchedContacts;
 
   const ContactSearchPage({
     super.key,
     required this.userPhone,
     required this.userName,
+    this.matchedContacts,
   });
 
   @override
@@ -24,8 +28,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
   final _searchController = TextEditingController();
   List<MessengerContact> _allContacts = [];
   List<MessengerContact> _contacts = [];
-  bool _isSearching = false;
-  Timer? _debounce;
+  bool _isLoading = true;
 
   bool _isMultiSelect = false;
   final Set<String> _selectedPhones = {};
@@ -33,60 +36,54 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
   @override
   void initState() {
     super.initState();
-    _loadAllContacts();
+    _loadContacts();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    _debounce?.cancel();
     super.dispose();
   }
 
-  Future<void> _loadAllContacts() async {
-    if (mounted) setState(() => _isSearching = true);
+  Future<void> _loadContacts() async {
+    if (mounted) setState(() => _isLoading = true);
+
     try {
-      final contacts = await MessengerService.searchContacts('');
+      List<MessengerContact> contacts;
+
+      if (widget.matchedContacts != null) {
+        // Используем список из телефонной книги (уже отфильтрованный на сервере)
+        contacts = widget.matchedContacts!;
+      } else {
+        // Нет разрешения на контакты — загружаем всех зарегистрированных пользователей
+        contacts = await MessengerService.searchContacts('');
+      }
+
       if (mounted) {
         setState(() {
           _allContacts = contacts.where((c) => c.phone != widget.userPhone).toList();
           _contacts = _allContacts;
-          _isSearching = false;
+          _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isSearching = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _onSearchChanged(String query) {
-    _debounce?.cancel();
     if (query.isEmpty) {
-      setState(() => _contacts = _allContacts);
+      if (mounted) setState(() => _contacts = _allContacts);
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 400), () {
-      if (query.length >= 2) {
-        _search(query);
-      } else if (mounted) {
-        setState(() => _contacts = _allContacts);
-      }
-    });
-  }
-
-  Future<void> _search(String query) async {
-    if (mounted) setState(() => _isSearching = true);
-
-    try {
-      final contacts = await MessengerService.searchContacts(query);
-      if (mounted) {
-        setState(() {
-          _contacts = contacts.where((c) => c.phone != widget.userPhone).toList();
-          _isSearching = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isSearching = false);
+    final lower = query.toLowerCase();
+    if (mounted) {
+      setState(() {
+        _contacts = _allContacts.where((c) {
+          return c.displayName.toLowerCase().contains(lower) ||
+              c.phone.contains(query);
+        }).toList();
+      });
     }
   }
 
@@ -127,7 +124,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
   void _createGroup() {
     if (_selectedPhones.isEmpty) return;
 
-    final selectedContacts = _contacts.where((c) => _selectedPhones.contains(c.phone)).toList();
+    final selectedContacts = _allContacts.where((c) => _selectedPhones.contains(c.phone)).toList();
 
     Navigator.push(
       context,
@@ -136,6 +133,73 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
           userPhone: widget.userPhone,
           userName: widget.userName,
           selectedContacts: selectedContacts,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNewGroupRow() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        splashColor: Colors.white.withOpacity(0.05),
+        highlightColor: Colors.white.withOpacity(0.03),
+        onTap: () {
+          if (mounted) {
+            setState(() {
+              _isMultiSelect = true;
+              _selectedPhones.clear();
+            });
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [AppColors.turquoise, AppColors.emerald],
+                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.15)),
+                ),
+                child: const Icon(Icons.group_add, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Новая группа',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'До 256 участников',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.35),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.2)),
+            ],
+          ),
         ),
       ),
     );
@@ -153,25 +217,27 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
           _isMultiSelect ? 'Создать группу' : 'Новый чат',
           style: TextStyle(color: Colors.white.withOpacity(0.95)),
         ),
+        leading: _isMultiSelect
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  if (mounted) {
+                    setState(() {
+                      _isMultiSelect = false;
+                      _selectedPhones.clear();
+                    });
+                  }
+                },
+              )
+            : null,
         actions: [
-          IconButton(
-            icon: Icon(
-              _isMultiSelect ? Icons.person : Icons.group_add,
-              color: Colors.white.withOpacity(0.6),
-            ),
-            tooltip: _isMultiSelect ? 'Личный чат' : 'Создать группу',
-            onPressed: () {
-              if (mounted) {
-                setState(() {
-                  _isMultiSelect = !_isMultiSelect;
-                  _selectedPhones.clear();
-                });
-              }
-            },
-          ),
           if (_isMultiSelect && _selectedPhones.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.check, color: AppColors.turquoise),
+            TextButton.icon(
+              icon: const Icon(Icons.check, color: AppColors.turquoise, size: 20),
+              label: Text(
+                'Далее (${_selectedPhones.length})',
+                style: const TextStyle(color: AppColors.turquoise, fontWeight: FontWeight.w600),
+              ),
               onPressed: _createGroup,
             ),
         ],
@@ -190,7 +256,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
       ),
       body: Column(
         children: [
-          // Search field
+          // Поиск (только локальная фильтрация по кэшу)
           Padding(
             padding: const EdgeInsets.all(12),
             child: Container(
@@ -202,7 +268,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
               child: TextField(
                 controller: _searchController,
                 onChanged: _onSearchChanged,
-                autofocus: true,
+                autofocus: false,
                 style: TextStyle(color: Colors.white.withOpacity(0.9)),
                 decoration: InputDecoration(
                   hintText: 'Поиск по имени или телефону...',
@@ -215,6 +281,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
             ),
           ),
 
+          // Горизонтальные чипы выбранных участников (в режиме группы)
           if (_isMultiSelect && _selectedPhones.isNotEmpty)
             Container(
               height: 50,
@@ -222,7 +289,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: _selectedPhones.map((phone) {
-                  final contact = _contacts.firstWhere(
+                  final contact = _allContacts.firstWhere(
                     (c) => c.phone == phone,
                     orElse: () => MessengerContact(phone: phone),
                   );
@@ -243,23 +310,36 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
               ),
             ),
 
-          // Results
+          // Пояснение откуда список (если из контактов)
+          if (!_isMultiSelect && widget.matchedContacts != null && _allContacts.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.contacts, size: 14, color: AppColors.turquoise.withOpacity(0.5)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Из ваших контактов · ${_allContacts.length}',
+                    style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.35)),
+                  ),
+                ],
+              ),
+            ),
+
+          // Список
           Expanded(
-            child: _isSearching
+            child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.turquoise, strokeWidth: 2.5))
                 : _contacts.isEmpty
-                    ? Center(
-                        child: Text(
-                          _searchController.text.isEmpty
-                              ? 'Нет контактов'
-                              : 'Ничего не найдено',
-                          style: TextStyle(color: Colors.white.withOpacity(0.35)),
-                        ),
-                      )
+                    ? _buildEmptyState()
                     : ListView.builder(
-                        itemCount: _contacts.length,
+                        itemCount: _contacts.length + (_isMultiSelect ? 0 : 1),
                         itemBuilder: (context, index) {
-                          final contact = _contacts[index];
+                          if (!_isMultiSelect && index == 0) {
+                            return _buildNewGroupRow();
+                          }
+                          final contactIndex = _isMultiSelect ? index : index - 1;
+                          final contact = _contacts[contactIndex];
                           final isSelected = _selectedPhones.contains(contact.phone);
 
                           return Material(
@@ -356,6 +436,43 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
                       ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    if (_searchController.text.isNotEmpty) {
+      return Center(
+        child: Text(
+          'Ничего не найдено',
+          style: TextStyle(color: Colors.white.withOpacity(0.35)),
+        ),
+      );
+    }
+
+    if (widget.matchedContacts != null) {
+      // Разрешение дано, но никого из контактов нет в системе
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.contacts, size: 56, color: Colors.white.withOpacity(0.1)),
+            const SizedBox(height: 16),
+            Text(
+              'Никого из ваших контактов\nпока нет в системе',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 15, color: Colors.white.withOpacity(0.4)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Нет разрешения — список пуст
+    return Center(
+      child: Text(
+        'Нет контактов',
+        style: TextStyle(color: Colors.white.withOpacity(0.35)),
       ),
     );
   }

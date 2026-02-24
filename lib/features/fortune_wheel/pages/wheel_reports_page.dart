@@ -3,6 +3,7 @@ import '../models/fortune_wheel_model.dart';
 import '../services/fortune_wheel_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница отчёта по Колесу Удачи (для админа)
 class WheelReportsPage extends StatefulWidget {
@@ -29,16 +30,32 @@ class _WheelReportsPageState extends State<WheelReportsPage> {
     _selectedMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
   }
 
+  String get _cacheKey => 'wheel_reports_$_selectedMonth';
+
   Future<void> _loadRecords() async {
-    if (mounted) setState(() => _isLoading = true);
-
-    final records = await FortuneWheelService.getHistory(month: _selectedMonth);
-
-    if (mounted) {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<WheelSpinRecord>>(_cacheKey);
+    if (cached != null && mounted) {
       setState(() {
-        _records = records;
+        _records = cached;
         _isLoading = false;
       });
+    }
+
+    if (_records.isEmpty && mounted) setState(() => _isLoading = true);
+
+    try {
+      final records = await FortuneWheelService.getHistory(month: _selectedMonth);
+      if (mounted) {
+        setState(() {
+          _records = records;
+          _isLoading = false;
+        });
+        // Step 3: Save to cache
+        CacheManager.set(_cacheKey, records);
+      }
+    } catch (e) {
+      if (mounted && _records.isEmpty) setState(() => _isLoading = false);
     }
   }
 

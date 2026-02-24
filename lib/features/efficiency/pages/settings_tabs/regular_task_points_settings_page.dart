@@ -98,7 +98,7 @@ class _RegularTaskPointsSettingsPageState
                 child: Text(
                   'Новые правила будут применяться только к новым задачам. Существующие задачи сохранят прежние баллы.',
                   style: TextStyle(
-                    color: Colors.blue[900],
+                    color: Colors.blue[300],
                     fontSize: 13.sp,
                   ),
                 ),

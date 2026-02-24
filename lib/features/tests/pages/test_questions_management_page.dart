@@ -4,6 +4,7 @@ import '../models/test_model.dart';
 import '../services/test_question_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница управления вопросами тестирования
 class TestQuestionsManagementPage extends StatefulWidget {
@@ -47,8 +48,20 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
     }
   }
 
+  static const _cacheKey = 'test_questions';
+
   Future<void> _loadQuestions() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<TestQuestion>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _questions = cached;
+        _applyFilter();
+        _isLoading = false;
+      });
+    }
+
+    if (_questions.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
       final questions = await TestQuestionService.getQuestions();
@@ -58,9 +71,11 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
         _applyFilter();
         _isLoading = false;
       });
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, questions);
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-      if (mounted) {
+      if (mounted && _questions.isEmpty) setState(() => _isLoading = false);
+      if (mounted && _questions.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка загрузки вопросов: $e'),

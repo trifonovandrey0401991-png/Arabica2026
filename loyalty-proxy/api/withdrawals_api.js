@@ -12,6 +12,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
+const { notifyCounterUpdate } = require('./counters_websocket');
 
 const USE_DB = process.env.USE_DB_WITHDRAWALS === 'true';
 
@@ -336,6 +337,7 @@ function setupWithdrawalsAPI(app) {
       // Отправить push-уведомления админам
       await sendWithdrawalNotifications(withdrawal);
 
+      notifyCounterUpdate('unconfirmedWithdrawals', { delta: 1 });
       res.json({ success: true, withdrawal });
     } catch (err) {
       console.error('Ошибка создания выемки:', err);
@@ -372,6 +374,7 @@ function setupWithdrawalsAPI(app) {
       // Отправить push-уведомления о подтверждении
       await sendWithdrawalConfirmationNotifications(withdrawal);
 
+      notifyCounterUpdate('unconfirmedWithdrawals', { delta: -1 });
       res.json({ success: true, withdrawal });
     } catch (err) {
       console.error('Ошибка подтверждения выемки:', err);

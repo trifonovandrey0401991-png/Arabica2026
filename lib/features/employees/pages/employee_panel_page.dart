@@ -38,6 +38,7 @@ import '../../../app/pages/client_functions_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/firebase_service.dart';
+import '../../../core/services/counters_ws_service.dart';
 
 /// Страница панели работника (сетка как у сотрудника)
 class EmployeePanelPage extends StatefulWidget {
@@ -57,6 +58,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
   int _activeTasksCount = 0;
   int _shiftTransferUnreadCount = 0;
   Timer? _badgeTimer;
+  StreamSubscription<CounterUpdateEvent>? _countersSub;
 
   @override
   void initState() {
@@ -74,11 +76,13 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
     _badgeTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _loadPendingOrdersCount();
     });
+    _connectCountersWs();
   }
 
   @override
   void dispose() {
     _badgeTimer?.cancel();
+    _countersSub?.cancel();
     if (FirebaseService.onOrderPushReceived == _loadPendingOrdersCount) {
       FirebaseService.onOrderPushReceived = null;
     }
@@ -93,6 +97,47 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
       _loadPendingOrdersCount();
       _loadUnreadProductQuestionsCount();
       _loadActiveTasksCount();
+    }
+  }
+
+  /// Connect to counters WebSocket for live badge updates
+  Future<void> _connectCountersWs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('user_phone');
+      if (phone == null || phone.isEmpty) return;
+
+      await CountersWsService.instance.connect(phone, role: 'employee');
+
+      _countersSub?.cancel();
+      _countersSub = CountersWsService.instance.onCounterUpdate.listen((event) {
+        if (!mounted) return;
+        switch (event.counter) {
+          case 'pendingOrders':
+            _loadPendingOrdersCount();
+            break;
+          case 'activeTaskAssignments':
+            _loadActiveTasksCount();
+            break;
+          case 'unreadProductQuestions':
+            _loadUnreadProductQuestionsCount();
+            break;
+          case 'shiftTransferRequests':
+            _loadShiftTransferUnreadCount();
+            break;
+          case 'availableSpins':
+            _loadAvailableSpins();
+            break;
+          default:
+            // Reload all employee badges for unknown counter
+            _loadPendingOrdersCount();
+            _loadActiveTasksCount();
+            _loadUnreadProductQuestionsCount();
+            break;
+        }
+      });
+    } catch (e) {
+      Logger.warning('Counters WS connection error: $e');
     }
   }
 

@@ -6,6 +6,7 @@ import 'training_article_view_page.dart';
 import 'training_article_editor_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница управления статьями обучения
 class TrainingArticlesManagementPage extends StatefulWidget {
@@ -50,10 +51,20 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
     }).toList();
   }
 
+  static const _cacheKey = 'training_articles';
+
   Future<void> _loadArticles() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-    });
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<TrainingArticle>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _articles = cached;
+        _applyFilters();
+        _isLoading = false;
+      });
+    }
+
+    if (_articles.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
       final articles = await TrainingArticleService.getArticles();
@@ -63,18 +74,20 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
         _applyFilters();
         _isLoading = false;
       });
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, articles);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка загрузки статей: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (_articles.isEmpty) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка загрузки статей: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }

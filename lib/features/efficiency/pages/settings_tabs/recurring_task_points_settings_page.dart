@@ -98,7 +98,7 @@ class _RecurringTaskPointsSettingsPageState
                 child: Text(
                   'Циклические задачи повторяются каждую смену. Новые правила будут применяться только к новым задачам.',
                   style: TextStyle(
-                    color: Colors.orange[900],
+                    color: Colors.orange[300],
                     fontSize: 13.sp,
                   ),
                 ),

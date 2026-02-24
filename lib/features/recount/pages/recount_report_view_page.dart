@@ -88,7 +88,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Фото отправлено на обучение ИИ'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.success,
             ),
           );
         }
@@ -97,7 +97,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка отправки фото на обучение'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -129,18 +129,18 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
         margin: EdgeInsets.only(top: 8.h),
         padding: EdgeInsets.all(10.w),
         decoration: BoxDecoration(
-          color: Colors.green.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(color: Colors.green),
+          color: AppColors.success.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(color: AppColors.success.withOpacity(0.3)),
         ),
         child: Row(
           children: [
-            Icon(Icons.school, color: Colors.green, size: 20),
+            Icon(Icons.school, color: AppColors.success, size: 20),
             SizedBox(width: 8),
             Text(
               'Отправлено на обучение ИИ',
               style: TextStyle(
-                color: Colors.green[700],
+                color: AppColors.success,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -163,9 +163,10 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
             : Icon(Icons.school, size: 16),
         label: Text('В обучение ИИ', style: TextStyle(fontSize: 12.sp)),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
+          backgroundColor: AppColors.info,
           foregroundColor: Colors.white,
           padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 16.w),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
         ),
       ),
     );
@@ -199,7 +200,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Не удалось определить администратора или телефон сотрудника'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -231,7 +232,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Фото $statusText ($pointsChange баллов)'),
-              backgroundColor: status == 'approved' ? Colors.green : Colors.red,
+              backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
             ),
           );
         }
@@ -244,7 +245,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка верификации фото'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -255,7 +256,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -275,27 +276,33 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
 
     // Если фото уже верифицировано - показываем статус
     if (status != null && status != 'pending') {
+      final isApproved = status == 'approved';
       return Container(
-        padding: EdgeInsets.all(8.w),
+        padding: EdgeInsets.all(10.w),
         decoration: BoxDecoration(
-          color: status == 'approved'
-              ? Colors.green.withOpacity(0.2)
-              : Colors.red.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(8.r),
+          color: isApproved
+              ? AppColors.success.withOpacity(0.1)
+              : AppColors.error.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(
+            color: isApproved
+                ? AppColors.success.withOpacity(0.3)
+                : AppColors.error.withOpacity(0.3),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              status == 'approved' ? Icons.check_circle : Icons.cancel,
-              color: status == 'approved' ? Colors.green : Colors.red,
+              isApproved ? Icons.check_circle_rounded : Icons.cancel_rounded,
+              color: isApproved ? AppColors.success : AppColors.error,
               size: 20,
             ),
             SizedBox(width: 8),
             Text(
-              status == 'approved' ? 'Принято (+0.2 балла)' : 'Отклонено (-2.5 балла)',
+              isApproved ? 'Принято (+0.2 балла)' : 'Отклонено (-2.5 балла)',
               style: TextStyle(
-                color: status == 'approved' ? Colors.green[700] : Colors.red[700],
+                color: isApproved ? AppColors.success : AppColors.error,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -321,12 +328,13 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : Icon(Icons.check, size: 18),
+                : Icon(Icons.check_rounded, size: 18),
             label: Text('Принять'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.success,
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(vertical: 12.h),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
             ),
           ),
         ),
@@ -340,12 +348,13 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : Icon(Icons.close, size: 18),
+                : Icon(Icons.close_rounded, size: 18),
             label: Text('Отклонить'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(vertical: 12.h),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
             ),
           ),
         ),
@@ -365,19 +374,18 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
         padding: EdgeInsets.all(10.w),
         decoration: BoxDecoration(
           color: isApproved
-              ? Colors.green.withOpacity(0.15)
-              : Colors.orange.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(8.r),
+              ? AppColors.success.withOpacity(0.1)
+              : AppColors.warning.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10.r),
           border: Border.all(
-            color: isApproved ? Colors.green : Colors.orange,
-            width: 1,
+            color: isApproved ? AppColors.success.withOpacity(0.3) : AppColors.warning.withOpacity(0.3),
           ),
         ),
         child: Row(
           children: [
             Icon(
               isApproved ? Icons.school : Icons.photo_camera_back,
-              color: isApproved ? Colors.green : Colors.orange,
+              color: isApproved ? AppColors.success : AppColors.warning,
               size: 20,
             ),
             SizedBox(width: 8),
@@ -388,7 +396,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                   Text(
                     isApproved ? 'Добавлено к обучению' : 'Плохое фото (отклонено)',
                     style: TextStyle(
-                      color: isApproved ? Colors.green[700] : Colors.orange[700],
+                      color: isApproved ? AppColors.success : AppColors.warning,
                       fontWeight: FontWeight.bold,
                       fontSize: 13.sp,
                     ),
@@ -450,9 +458,10 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                     : Icon(Icons.school, size: 16),
                 label: Text('К обучению', style: TextStyle(fontSize: 12.sp)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
+                  backgroundColor: AppColors.success,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 8.w),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                 ),
               ),
             ),
@@ -471,9 +480,10 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                     : Icon(Icons.photo_camera_back, size: 16),
                 label: Text('Плохое фото', style: TextStyle(fontSize: 12.sp)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
+                  backgroundColor: AppColors.warning,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 8.w),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                 ),
               ),
             ),
@@ -489,7 +499,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Не удалось определить администратора'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -527,7 +537,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                     ? 'Фото добавлено к обучению ИИ'
                     : 'Фото отклонено (плохое качество)',
               ),
-              backgroundColor: isApproved ? Colors.green : Colors.orange,
+              backgroundColor: isApproved ? AppColors.success : AppColors.warning,
             ),
           );
         }
@@ -538,9 +548,9 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  '⚠️ ИИ отключен для "${answer.question}" после ${result.consecutiveErrors} ошибок',
+                  'ИИ отключен для "${answer.question}" после ${result.consecutiveErrors} ошибок',
                 ),
-                backgroundColor: Colors.red,
+                backgroundColor: AppColors.error,
                 duration: Duration(seconds: 5),
               ),
             );
@@ -555,7 +565,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка: ${result.error}'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -566,7 +576,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -584,7 +594,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Выберите оценку'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -608,7 +618,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
           adminName: _adminName,
           ratedAt: DateTime.now(),
         );
-        
+
         if (!mounted) return;
         setState(() {
           _currentReport = updatedReport;
@@ -618,7 +628,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Оценка успешно поставлена'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.success,
             ),
           );
         }
@@ -631,7 +641,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка постановки оценки'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -642,7 +652,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -655,740 +665,956 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
     }
   }
 
+  // ═══════════════════════════════════════════════════
+  // UI Helper methods
+  // ═══════════════════════════════════════════════════
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 5.h),
+      child: Row(
+        children: [
+          Container(
+            width: 32.w,
+            height: 32.w,
+            decoration: BoxDecoration(
+              color: AppColors.emerald.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: Icon(icon, size: 16, color: AppColors.emerald),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    color: Colors.grey[500],
+                  ),
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.night,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _gradeColor(int? grade) {
+    switch (grade) {
+      case 1: return AppColors.error;
+      case 2: return AppColors.gold;
+      default: return AppColors.emerald;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════
+  // BUILD
+  // ═══════════════════════════════════════════════════
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('Отчет пересчета'),
-        backgroundColor: AppColors.primaryGreen,
+        title: Text(
+          'Отчет пересчета',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18.sp,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.emeraldDark, AppColors.emerald],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: AppColors.primaryGreen,
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6,
+          gradient: LinearGradient(
+            colors: [AppColors.emeraldDark, AppColors.night],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
         ),
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.all(16.w),
-                children: [
-                  // Информация об отчете
-                  Card(
-                    color: Colors.white.withOpacity(0.95),
-                    child: Padding(
-                      padding: EdgeInsets.all(16.w),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+        child: SafeArea(
+          child: ListView(
+            padding: EdgeInsets.all(16.w),
+            children: [
+              // ═══ Info Card ═══
+              _buildInfoCard(),
+              SizedBox(height: 16.h),
+
+              // ═══ Rating Card ═══
+              if (!_currentReport.isRated && !_currentReport.isExpired && !widget.isReadOnly) ...[
+                _buildRatingCard(),
+                SizedBox(height: 16.h),
+              ],
+
+              // ═══ Answer cards ═══
+              ..._currentReport.answers.asMap().entries.map((entry) {
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 12.h),
+                  child: _buildAnswerCard(entry.key, entry.value),
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Info Card — shop, employee, time, status
+  // ═══════════════════════════════════════════════════
+
+  Widget _buildInfoCard() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.r),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Gradient header
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.emerald, AppColors.emeraldLight],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Icon(Icons.store_rounded, color: AppColors.gold, size: 22),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Text(
+                    _currentReport.shopAddress,
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Info rows
+          Padding(
+            padding: EdgeInsets.all(16.w),
+            child: Column(
+              children: [
+                _buildInfoRow(Icons.person_outline, 'Сотрудник', _currentReport.employeeName),
+                _buildInfoRow(Icons.timer_outlined, 'Время пересчета', _currentReport.formattedDuration),
+                _buildInfoRow(
+                  Icons.calendar_today_outlined,
+                  'Дата',
+                  '${_currentReport.completedAt.day.toString().padLeft(2, '0')}.${_currentReport.completedAt.month.toString().padLeft(2, '0')}.${_currentReport.completedAt.year} '
+                  '${_currentReport.completedAt.hour.toString().padLeft(2, '0')}:${_currentReport.completedAt.minute.toString().padLeft(2, '0')}',
+                ),
+                // Rating badge
+                if (_currentReport.isRated) ...[
+                  SizedBox(height: 12.h),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppColors.gold.withOpacity(0.15), AppColors.gold.withOpacity(0.05)],
+                      ),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.star_rounded, color: AppColors.gold, size: 24),
+                        SizedBox(width: 8.w),
+                        Text(
+                          'Оценка: ${_currentReport.adminRating}/10',
+                          style: TextStyle(
+                            color: AppColors.darkGold,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15.sp,
+                          ),
+                        ),
+                        if (_currentReport.adminName != null) ...[
+                          SizedBox(width: 8.w),
                           Text(
-                            'Магазин: ${_currentReport.shopAddress}',
+                            '(${_currentReport.adminName})',
                             style: TextStyle(
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primaryGreen,
+                              color: Colors.grey[600],
+                              fontSize: 12.sp,
                             ),
                           ),
-                          SizedBox(height: 8),
-                          Text('Сотрудник: ${_currentReport.employeeName}'),
-                          Text('Время пересчета: ${_currentReport.formattedDuration}'),
-                          Text(
-                            'Дата: ${_currentReport.completedAt.day}.${_currentReport.completedAt.month}.${_currentReport.completedAt.year} '
-                            '${_currentReport.completedAt.hour.toString().padLeft(2, '0')}:${_currentReport.completedAt.minute.toString().padLeft(2, '0')}',
-                          ),
-                          if (_currentReport.isRated) ...[
-                            SizedBox(height: 8),
-                            Container(
-                              padding: EdgeInsets.all(8.w),
-                              decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8.r),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.star, color: Colors.green),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Оценка: ${_currentReport.adminRating}/10',
-                                    style: TextStyle(
-                                      color: Colors.green,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  if (_currentReport.adminName != null)
-                                    Text(
-                                      ' (${_currentReport.adminName})',
-                                      style: TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12.sp,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          // Блок "Отчёт просрочен"
-                          if (_currentReport.isExpired && !_currentReport.isRated) ...[
-                            SizedBox(height: 8),
-                            Container(
-                              padding: EdgeInsets.all(12.w),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8.r),
-                                border: Border.all(color: Colors.red.withOpacity(0.5)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.warning_amber, color: Colors.red),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Отчёт просрочен',
-                                          style: TextStyle(
-                                            color: Colors.red,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16.sp,
-                                          ),
-                                        ),
-                                        if (_currentReport.expiredAt != null)
-                                          Text(
-                                            'Просрочен: ${_currentReport.expiredAt!.day}.${_currentReport.expiredAt!.month}.${_currentReport.expiredAt!.year}',
-                                            style: TextStyle(
-                                              color: Colors.red[700],
-                                              fontSize: 12.sp,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          // Блок "Отчёт не оценен вовремя" (ожидает более 5 часов)
-                          if (widget.isReadOnly && !_currentReport.isRated && !_currentReport.isExpired) ...[
-                            SizedBox(height: 8),
-                            Container(
-                              padding: EdgeInsets.all(12.w),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8.r),
-                                border: Border.all(color: Colors.orange.withOpacity(0.5)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.access_time, color: Colors.orange),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Отчёт не оценен вовремя',
-                                          style: TextStyle(
-                                            color: Colors.orange,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16.sp,
-                                          ),
-                                        ),
-                                        Text(
-                                          'Ожидает более 5 часов - только просмотр',
-                                          style: TextStyle(
-                                            color: Colors.orange[700],
-                                            fontSize: 12.sp,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
                         ],
+                      ],
+                    ),
+                  ),
+                ],
+                // Expired badge
+                if (_currentReport.isExpired && !_currentReport.isRated) ...[
+                  SizedBox(height: 12.h),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 22),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Отчёт просрочен',
+                                style: TextStyle(
+                                  color: AppColors.error,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                              if (_currentReport.expiredAt != null)
+                                Text(
+                                  'Просрочен: ${_currentReport.expiredAt!.day}.${_currentReport.expiredAt!.month}.${_currentReport.expiredAt!.year}',
+                                  style: TextStyle(
+                                    color: AppColors.error.withOpacity(0.7),
+                                    fontSize: 12.sp,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                // Read-only badge
+                if (widget.isReadOnly && !_currentReport.isRated && !_currentReport.isExpired) ...[
+                  SizedBox(height: 12.h),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.access_time_rounded, color: AppColors.warning, size: 22),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Отчёт не оценен вовремя',
+                                style: TextStyle(
+                                  color: AppColors.warning,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                              Text(
+                                'Ожидает более 5 часов — только просмотр',
+                                style: TextStyle(
+                                  color: AppColors.warning.withOpacity(0.8),
+                                  fontSize: 12.sp,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Rating Card — gold-themed star rating
+  // ═══════════════════════════════════════════════════
+
+  Widget _buildRatingCard() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.r),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.all(16.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.star_rounded, color: AppColors.gold, size: 24),
+              SizedBox(width: 8.w),
+              Text(
+                'Оценка отчета',
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.emeraldDark,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16.h),
+          // Circle rating buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(10, (index) {
+              final rating = index + 1;
+              final isSelected = _selectedRating == rating;
+              return GestureDetector(
+                onTap: () {
+                  if (mounted) setState(() {
+                    _selectedRating = isSelected ? null : rating;
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: Duration(milliseconds: 200),
+                  width: 30.w,
+                  height: 30.w,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSelected ? AppColors.gold : Colors.grey[200],
+                    boxShadow: isSelected
+                        ? [BoxShadow(color: AppColors.gold.withOpacity(0.4), blurRadius: 8, offset: Offset(0, 2))]
+                        : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$rating',
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.grey[600],
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13.sp,
                       ),
                     ),
                   ),
-                  SizedBox(height: 16),
-
-                  // Оценка (если еще не оценено, не просрочено и не read-only)
-                  if (!_currentReport.isRated && !_currentReport.isExpired && !widget.isReadOnly)
-                    Card(
-                      color: Colors.white.withOpacity(0.95),
-                      child: Padding(
-                        padding: EdgeInsets.all(16.w),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Оценка отчета:',
-                              style: TextStyle(
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primaryGreen,
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: List.generate(10, (index) {
-                                final rating = index + 1;
-                                return ChoiceChip(
-                                  label: Text('$rating'),
-                                  selected: _selectedRating == rating,
-                                  onSelected: (selected) {
-                                    if (mounted) setState(() {
-                                      _selectedRating = selected ? rating : null;
-                                    });
-                                  },
-                                  selectedColor: Colors.green,
-                                  labelStyle: TextStyle(
-                                    color: _selectedRating == rating
-                                        ? Colors.white
-                                        : Colors.black,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                );
-                              }),
-                            ),
-                            SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _isRating ? null : _rateReport,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primaryGreen,
-                                  padding: EdgeInsets.symmetric(vertical: 16.h),
-                                ),
-                                child: _isRating
-                                    ? SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        ),
-                                      )
-                                    : Text(
-                                        'Поставить оценку',
-                                        style: TextStyle(
-                                          fontSize: 16.sp,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          ],
-                        ),
+                ),
+              );
+            }),
+          ),
+          SizedBox(height: 16.h),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isRating ? null : _rateReport,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.emerald,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 14.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                elevation: 2,
+              ),
+              child: _isRating
+                  ? SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      'Поставить оценку',
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  if (!_currentReport.isRated && !_currentReport.isExpired && !widget.isReadOnly) SizedBox(height: 16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-                  // Ответы на вопросы
-                  ..._currentReport.answers.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final answer = entry.value;
-                    return Card(
-                      color: Colors.white.withOpacity(0.95),
-                      margin: EdgeInsets.only(bottom: 12.h),
-                      child: Padding(
-                        padding: EdgeInsets.all(16.w),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 8.w,
-                                    vertical: 4.h,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: answer.grade == 1
-                                        ? Colors.red
-                                        : answer.grade == 2
-                                            ? Colors.orange
-                                            : Colors.blue,
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                  child: Text(
-                                    'Грейд ${answer.grade}',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10.sp,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                if (answer.photoRequired)
-                                  Padding(
-                                    padding: EdgeInsets.only(left: 8.w),
-                                    child: Icon(
-                                      Icons.camera_alt,
-                                      color: Colors.orange,
-                                      size: 16,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Вопрос ${index + 1}: ${answer.question}',
-                              style: TextStyle(
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primaryGreen,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            if (answer.answer == 'сходится')
-                              Container(
-                                padding: EdgeInsets.all(12.w),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8.r),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.check_circle, color: Colors.green, size: 24),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Сходится',
-                                            style: TextStyle(
-                                              color: Colors.green[700],
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16.sp,
-                                            ),
-                                          ),
-                                          if (answer.quantity != null)
-                                            Text(
-                                              'Количество: ${answer.quantity} шт',
-                                              style: TextStyle(fontSize: 14.sp),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            else if (answer.answer == 'не сходится')
-                              Container(
-                                padding: EdgeInsets.all(12.w),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8.r),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(Icons.cancel, color: Colors.red, size: 24),
-                                        SizedBox(width: 12),
-                                        Text(
-                                          'Не сходится',
-                                          style: TextStyle(
-                                            color: Colors.red[700],
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16.sp,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 8),
-                                    // Строка с данными: По программе | По факту | Разница
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            children: [
-                                              Text(
-                                                'По программе',
-                                                style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-                                              ),
-                                              Text(
-                                                '${answer.programBalance ?? '-'} шт',
-                                                style: TextStyle(
-                                                  fontSize: 16.sp,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: Column(
-                                            children: [
-                                              Text(
-                                                'По факту',
-                                                style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-                                              ),
-                                              Text(
-                                                '${answer.actualBalance ?? '-'} шт',
-                                                style: TextStyle(
-                                                  fontSize: 16.sp,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: Column(
-                                            children: [
-                                              Text(
-                                                'Разница',
-                                                style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-                                              ),
-                                              if (answer.difference != null)
-                                                Text(
-                                                  answer.difference! > 0
-                                                      ? '-${answer.difference}' // Недостача
-                                                      : '+${answer.difference!.abs()}', // Излишек
-                                                  style: TextStyle(
-                                                    fontSize: 16.sp,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: answer.difference! > 0
-                                                        ? Colors.red // Недостача - красный
-                                                        : Colors.blue, // Излишек - синий
-                                                  ),
-                                                )
-                                              else
-                                                Text('-'),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    // Подсказка: что означает разница
-                                    if (answer.difference != null && answer.difference != 0) ...[
-                                      SizedBox(height: 8),
-                                      Text(
-                                        answer.difference! > 0
-                                            ? 'Недостача: меньше на ${answer.difference} шт'
-                                            : 'Излишек: больше на ${answer.difference!.abs()} шт',
-                                        style: TextStyle(
-                                          fontSize: 12.sp,
-                                          color: answer.difference! > 0 ? Colors.red[700] : Colors.blue[700],
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            // Блок ИИ проверки
-                            if (answer.aiVerified == true) ...[
-                              SizedBox(height: 12),
-                              Container(
-                                padding: EdgeInsets.all(12.w),
-                                decoration: BoxDecoration(
-                                  color: answer.aiMismatch == true
-                                      ? Colors.orange.withOpacity(0.1)
-                                      : Colors.blue.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8.r),
-                                  border: Border.all(
-                                    color: answer.aiMismatch == true ? Colors.orange : Colors.blue,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          answer.aiMismatch == true ? Icons.warning_amber : Icons.check_circle,
-                                          color: answer.aiMismatch == true ? Colors.orange : Colors.blue,
-                                          size: 20,
-                                        ),
-                                        SizedBox(width: 8),
-                                        Icon(
-                                          Icons.smart_toy,
-                                          color: answer.aiMismatch == true ? Colors.orange : Colors.blue,
-                                          size: 20,
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          '✓ Проверено ИИ',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: answer.aiMismatch == true ? Colors.orange[700] : Colors.blue[700],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'Сотрудник:',
-                                                style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-                                              ),
-                                              Text(
-                                                '${answer.actualBalance ?? answer.quantity ?? '-'} шт',
-                                                style: TextStyle(
-                                                  fontSize: 16.sp,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'ИИ насчитал:',
-                                                style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-                                              ),
-                                              Text(
-                                                '${answer.aiQuantity ?? '-'} шт',
-                                                style: TextStyle(
-                                                  fontSize: 16.sp,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: answer.aiMismatch == true ? Colors.orange[700] : Colors.blue[700],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        if (answer.aiConfidence != null)
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'Уверенность:',
-                                                  style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-                                                ),
-                                                Text(
-                                                  '${(answer.aiConfidence! * 100).toInt()}%',
-                                                  style: TextStyle(
-                                                    fontSize: 16.sp,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                    // Бейдж "Сотрудник подтвердил количество"
-                                    if (answer.employeeConfirmedQuantity != null) ...[
-                                      SizedBox(height: 8),
-                                      Container(
-                                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(4.r),
-                                          border: Border.all(color: Colors.green.withOpacity(0.3)),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.person_pin, color: Colors.green, size: 14),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              'Сотрудник подтвердил: ${answer.employeeConfirmedQuantity} шт.',
-                                              style: TextStyle(
-                                                color: Colors.green[700],
-                                                fontSize: 11.sp,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                    // Бейдж "Сотрудник выделил область"
-                                    if (answer.selectedRegion != null) ...[
-                                      SizedBox(height: 4),
-                                      Container(
-                                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                                        decoration: BoxDecoration(
-                                          color: Colors.cyan.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(4.r),
-                                          border: Border.all(color: Colors.cyan.withOpacity(0.3)),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.crop, color: Colors.cyan, size: 14),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              'Сотрудник выделил область на фото',
-                                              style: TextStyle(
-                                                color: Colors.cyan[700],
-                                                fontSize: 11.sp,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                    if (answer.aiMismatch == true) ...[
-                                      SizedBox(height: 8),
-                                      Container(
-                                        padding: EdgeInsets.all(8.w),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(4.r),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.warning, color: Colors.red, size: 16),
-                                            SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                'Расхождение между сотрудником и ИИ!',
-                                                style: TextStyle(
-                                                  color: Colors.red,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12.sp,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      // Метка если сотрудник сообщил об ошибке ИИ
-                                      if (answer.employeeReportedAiError == true) ...[
-                                        SizedBox(height: 4),
-                                        Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                                          decoration: BoxDecoration(
-                                            color: Colors.purple.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(4.r),
-                                            border: Border.all(color: Colors.purple.withOpacity(0.3)),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(Icons.report_problem, color: Colors.purple, size: 14),
-                                              SizedBox(width: 4),
-                                              Text(
-                                                'Сотрудник сообщил об ошибке ИИ',
-                                                style: TextStyle(
-                                                  color: Colors.purple,
-                                                  fontSize: 11.sp,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                      // Кнопки решения админа по ошибке ИИ
-                                      SizedBox(height: 8),
-                                      _buildAiErrorDecisionButtons(index, answer),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ],
-                            // Фото
-                            if (answer.photoUrl != null || answer.photoPath != null) ...[
-                              SizedBox(height: 12),
-                              LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final imageWidget = answer.photoUrl != null
-                                      ? AppCachedImage(
-                                          imageUrl: answer.photoUrl!,
-                                          fit: BoxFit.cover,
-                                          errorWidget: (context, error, stackTrace) {
-                                            return Center(
-                                              child: Icon(Icons.error),
-                                            );
-                                          },
-                                        )
-                                      : answer.photoPath != null
-                                          ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                                              ? AppCachedImage(
-                                                  imageUrl: answer.photoPath!,
-                                                  fit: BoxFit.cover,
-                                                  errorWidget: (context, error, stackTrace) {
-                                                    return Center(
-                                                      child: Icon(Icons.error),
-                                                    );
-                                                  },
-                                                ) as Widget
-                                              : Image.file(
-                                                  File(answer.photoPath!),
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (context, error, stackTrace) {
-                                                    return Center(
-                                                      child: Icon(Icons.error),
-                                                    );
-                                                  },
-                                                )
-                                          : Center(
-                                              child: Icon(Icons.image_not_supported),
-                                            ) as Widget;
+  // ═══════════════════════════════════════════════════
+  // Answer Card — single question with result
+  // ═══════════════════════════════════════════════════
 
-                                  return Container(
-                                    height: 200,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12.r),
-                                      border: Border.all(color: Colors.grey),
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(12.r),
-                                      child: answer.selectedRegion != null
-                                          ? Stack(
-                                              fit: StackFit.expand,
-                                              children: [
-                                                imageWidget,
-                                                // Красный прямоугольник — область, выделенная сотрудником
-                                                CustomPaint(
-                                                  painter: _RegionOverlayPainter(
-                                                    region: answer.selectedRegion!,
-                                                    containerWidth: constraints.maxWidth,
-                                                    containerHeight: 200,
-                                                  ),
-                                                ),
-                                              ],
-                                            )
-                                          : imageWidget,
-                                    ),
-                                  );
-                                },
-                              ),
-                              // Кнопки верификации фото
-                              SizedBox(height: 8),
-                              _buildPhotoVerificationButtons(index),
-                              // Кнопка "В обучение ИИ" (по решению админа)
-                              _buildReportTrainingButton(index, answer),
-                            ],
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
+  Widget _buildAnswerCard(int index, RecountAnswer answer) {
+    final gradeColor = _gradeColor(answer.grade);
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.r),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with grade
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+            decoration: BoxDecoration(
+              color: gradeColor.withOpacity(0.08),
+              border: Border(
+                bottom: BorderSide(color: gradeColor.withOpacity(0.2)),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                  decoration: BoxDecoration(
+                    color: gradeColor,
+                    borderRadius: BorderRadius.circular(20.r),
+                  ),
+                  child: Text(
+                    'Грейд ${answer.grade}',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                if (answer.photoRequired)
+                  Padding(
+                    padding: EdgeInsets.only(left: 8.w),
+                    child: Icon(Icons.camera_alt_outlined, color: AppColors.gold, size: 16),
+                  ),
+              ],
+            ),
+          ),
+          // Question title
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 4.h),
+            child: Text(
+              'Вопрос ${index + 1}: ${answer.question}',
+              style: TextStyle(
+                fontSize: 15.sp,
+                fontWeight: FontWeight.bold,
+                color: AppColors.emeraldDark,
+              ),
+            ),
+          ),
+          // Answer content
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Match result
+                if (answer.answer == 'сходится')
+                  _buildMatchBlock(answer)
+                else if (answer.answer == 'не сходится')
+                  _buildMismatchBlock(answer),
+
+                // AI verification
+                if (answer.aiVerified == true) ...[
+                  SizedBox(height: 12.h),
+                  _buildAiVerificationBlock(index, answer),
+                ],
+
+                // Photo
+                if (answer.photoUrl != null || answer.photoPath != null) ...[
+                  SizedBox(height: 12.h),
+                  _buildPhotoBlock(index, answer),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Match / Mismatch blocks
+  // ═══════════════════════════════════════════════════
+
+  Widget _buildMatchBlock(RecountAnswer answer) {
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: AppColors.success.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: AppColors.success.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36.w,
+            height: 36.w,
+            decoration: BoxDecoration(
+              color: AppColors.success.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.check_circle_rounded, color: AppColors.success, size: 22),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Сходится',
+                  style: TextStyle(
+                    color: AppColors.success,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15.sp,
+                  ),
+                ),
+                if (answer.quantity != null)
+                  Text(
+                    'Количество: ${answer.quantity} шт',
+                    style: TextStyle(fontSize: 13.sp, color: Colors.grey[700]),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMismatchBlock(RecountAnswer answer) {
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: AppColors.error.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: AppColors.error.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36.w,
+                height: 36.w,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.cancel_rounded, color: AppColors.error, size: 22),
+              ),
+              SizedBox(width: 12.w),
+              Text(
+                'Не сходится',
+                style: TextStyle(
+                  color: AppColors.error,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15.sp,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          // Data row with separators
+          Container(
+            padding: EdgeInsets.all(10.w),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildCountColumn('По программе', '${answer.programBalance ?? '-'} шт', Colors.grey[700]!),
+                  ),
+                  VerticalDivider(width: 1, thickness: 1, color: Colors.grey[300]),
+                  Expanded(
+                    child: _buildCountColumn('По факту', '${answer.actualBalance ?? '-'} шт', Colors.grey[700]!),
+                  ),
+                  VerticalDivider(width: 1, thickness: 1, color: Colors.grey[300]),
+                  Expanded(
+                    child: _buildCountColumn(
+                      'Разница',
+                      answer.difference != null
+                          ? (answer.difference! > 0
+                              ? '-${answer.difference}'
+                              : '+${answer.difference!.abs()}')
+                          : '-',
+                      answer.difference != null
+                          ? (answer.difference! > 0 ? AppColors.error : AppColors.info)
+                          : Colors.grey[700]!,
+                    ),
+                  ),
                 ],
               ),
             ),
+          ),
+          // Hint text
+          if (answer.difference != null && answer.difference != 0) ...[
+            SizedBox(height: 8.h),
+            Text(
+              answer.difference! > 0
+                  ? 'Недостача: меньше на ${answer.difference} шт'
+                  : 'Излишек: больше на ${answer.difference!.abs()} шт',
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: answer.difference! > 0 ? AppColors.error : AppColors.info,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
           ],
-        ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildCountColumn(String label, String value, Color valueColor) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 11.sp, color: Colors.grey[500]),
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(height: 4.h),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.bold,
+            color: valueColor,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════
+  // AI Verification block
+  // ═══════════════════════════════════════════════════
+
+  Widget _buildAiVerificationBlock(int index, RecountAnswer answer) {
+    final isMismatch = answer.aiMismatch == true;
+    final accentColor = isMismatch ? AppColors.warning : AppColors.info;
+
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: accentColor.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: accentColor.withOpacity(0.25), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Icon(Icons.smart_toy_rounded, color: accentColor, size: 20),
+              SizedBox(width: 8.w),
+              Text(
+                'Проверено ИИ',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: accentColor,
+                  fontSize: 14.sp,
+                ),
+              ),
+              Spacer(),
+              if (answer.aiConfidence != null)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Text(
+                    '${(answer.aiConfidence! * 100).toInt()}%',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.bold,
+                      color: accentColor,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          // Counts row
+          Row(
+            children: [
+              Expanded(
+                child: _buildAiCountItem(
+                  'Сотрудник',
+                  '${answer.actualBalance ?? answer.quantity ?? '-'} шт',
+                ),
+              ),
+              Container(
+                width: 24.w,
+                alignment: Alignment.center,
+                child: Icon(Icons.compare_arrows, color: Colors.grey[400], size: 20),
+              ),
+              Expanded(
+                child: _buildAiCountItem(
+                  'ИИ насчитал',
+                  '${answer.aiQuantity ?? '-'} шт',
+                  valueColor: isMismatch ? AppColors.warning : null,
+                ),
+              ),
+            ],
+          ),
+          // Employee confirmed
+          if (answer.employeeConfirmedQuantity != null) ...[
+            SizedBox(height: 8.h),
+            _buildSmallBadge(
+              Icons.person_pin,
+              'Сотрудник подтвердил: ${answer.employeeConfirmedQuantity} шт.',
+              AppColors.success,
+            ),
+          ],
+          // Employee selected region
+          if (answer.selectedRegion != null) ...[
+            SizedBox(height: 4.h),
+            _buildSmallBadge(
+              Icons.crop,
+              'Сотрудник выделил область на фото',
+              AppColors.info,
+            ),
+          ],
+          // Mismatch warning
+          if (isMismatch) ...[
+            SizedBox(height: 8.h),
+            Container(
+              padding: EdgeInsets.all(8.w),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_rounded, color: AppColors.error, size: 16),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      'Расхождение между сотрудником и ИИ!',
+                      style: TextStyle(
+                        color: AppColors.error,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12.sp,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Employee reported AI error
+            if (answer.employeeReportedAiError == true) ...[
+              SizedBox(height: 4.h),
+              _buildSmallBadge(
+                Icons.report_problem,
+                'Сотрудник сообщил об ошибке ИИ',
+                AppColors.purple,
+              ),
+            ],
+            // AI error decision buttons
+            SizedBox(height: 8.h),
+            _buildAiErrorDecisionButtons(index, answer),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiCountItem(String label, String value, {Color? valueColor}) {
+    return Container(
+      padding: EdgeInsets.all(8.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: TextStyle(fontSize: 11.sp, color: Colors.grey[500])),
+          SizedBox(height: 4.h),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+              color: valueColor ?? AppColors.night,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmallBadge(IconData icon, String text, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(6.r),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 14),
+          SizedBox(width: 4.w),
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: color,
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Photo block
+  // ═══════════════════════════════════════════════════
+
+  Widget _buildPhotoBlock(int index, RecountAnswer answer) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final imageWidget = answer.photoUrl != null
+                ? AppCachedImage(
+                    imageUrl: answer.photoUrl!,
+                    fit: BoxFit.cover,
+                    errorWidget: (context, error, stackTrace) {
+                      return Center(child: Icon(Icons.error, color: AppColors.error));
+                    },
+                  )
+                : answer.photoPath != null
+                    ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
+                        ? AppCachedImage(
+                            imageUrl: answer.photoPath!,
+                            fit: BoxFit.cover,
+                            errorWidget: (context, error, stackTrace) {
+                              return Center(child: Icon(Icons.error, color: AppColors.error));
+                            },
+                          ) as Widget
+                        : Image.file(
+                            File(answer.photoPath!),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Center(child: Icon(Icons.error, color: AppColors.error));
+                            },
+                          )
+                    : Center(child: Icon(Icons.image_not_supported, color: Colors.grey)) as Widget;
+
+            return Container(
+              height: 200,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12.r),
+                child: answer.selectedRegion != null
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          imageWidget,
+                          CustomPaint(
+                            painter: _RegionOverlayPainter(
+                              region: answer.selectedRegion!,
+                              containerWidth: constraints.maxWidth,
+                              containerHeight: 200,
+                            ),
+                          ),
+                        ],
+                      )
+                    : imageWidget,
+              ),
+            );
+          },
+        ),
+        // Photo verification buttons
+        SizedBox(height: 8.h),
+        _buildPhotoVerificationButtons(index),
+        // Training button
+        _buildReportTrainingButton(index, answer),
+      ],
     );
   }
 }

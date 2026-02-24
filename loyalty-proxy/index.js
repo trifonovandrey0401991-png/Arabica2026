@@ -99,6 +99,7 @@ const { setupGeofenceAPI } = require("./api/geofence_api");
 const { setupEmployeeChatAPI } = require("./api/employee_chat_api");
 const { setupChatWebSocket } = require("./api/employee_chat_websocket");
 const { setupMessengerWebSocket } = require("./api/messenger_websocket");
+const { setupCountersWebSocket } = require("./api/counters_websocket");
 const { setupMessengerAPI } = require("./api/messenger_api");
 const { setupMediaAPI } = require("./api/media_api");
 const { setupShopManagersAPI } = require("./api/shop_managers_api");
@@ -211,7 +212,7 @@ try {
   helmet = null;
 }
 
-app.use(bodyParser.json({ limit: "10mb" }));
+app.use(bodyParser.json({ limit: "50mb" }));
 
 // Применяем Security Headers если helmet установлен
 if (helmet) {
@@ -803,6 +804,7 @@ const server = http.createServer(app);
 // Инициализируем WebSocket серверы (noServer mode — ручная маршрутизация upgrade)
 const wss = setupChatWebSocket(server);
 const messengerWss = setupMessengerWebSocket(server);
+const countersWss = setupCountersWebSocket(server);
 
 // Маршрутизация WebSocket upgrade запросов по path
 server.on('upgrade', (request, socket, head) => {
@@ -815,6 +817,10 @@ server.on('upgrade', (request, socket, head) => {
   } else if (pathname === '/ws/messenger') {
     messengerWss.handleUpgrade(request, socket, head, (ws) => {
       messengerWss.emit('connection', ws, request);
+    });
+  } else if (pathname === '/ws/counters') {
+    countersWss.handleUpgrade(request, socket, head, (ws) => {
+      countersWss.emit('connection', ws, request);
     });
   } else {
     socket.destroy();
@@ -952,11 +958,15 @@ app.get('/health', async (req, res) => {
 const gracefulShutdown = (signal) => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
 
-  // Закрываем WebSocket сервер
+  // Закрываем WebSocket серверы
   if (wss) {
-    wss.close(() => {
-      console.log('✅ WebSocket server closed');
-    });
+    wss.close(() => console.log('✅ Employee Chat WS closed'));
+  }
+  if (messengerWss) {
+    messengerWss.close(() => console.log('✅ Messenger WS closed'));
+  }
+  if (countersWss) {
+    countersWss.close(() => console.log('✅ Counters WS closed'));
   }
 
   // Закрываем пул PostgreSQL

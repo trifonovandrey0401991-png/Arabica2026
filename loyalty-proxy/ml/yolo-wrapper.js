@@ -22,7 +22,7 @@ const YOLO_SERVER_URL = `http://127.0.0.1:${YOLO_SERVER_PORT}`;
 let yoloServerAvailable = null; // null = unknown, true/false = cached
 
 /**
- * Check if YOLO persistent server is running
+ * Check if YOLO persistent server is running (returns true even if model not loaded)
  */
 async function isYoloServerReady() {
   return new Promise((resolve) => {
@@ -32,7 +32,8 @@ async function isYoloServerReady() {
       res.on('end', () => {
         try {
           const result = JSON.parse(data);
-          resolve(result.modelLoaded === true);
+          // Server is "ready" if it's running, even without model loaded
+          resolve(result.status === 'ok');
         } catch (e) {
           resolve(false);
         }
@@ -40,6 +41,34 @@ async function isYoloServerReady() {
     });
     req.on('error', () => resolve(false));
     req.on('timeout', () => { req.destroy(); resolve(false); });
+  });
+}
+
+/**
+ * Ask yolo_server to reload model from disk (call after training)
+ */
+async function reloadModel() {
+  return new Promise((resolve) => {
+    const body = '{}';
+    const options = {
+      hostname: '127.0.0.1',
+      port: YOLO_SERVER_PORT,
+      path: '/reload',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      timeout: 10000,
+    };
+    const req = http.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); } catch (e) { resolve({ success: false, error: 'Invalid JSON' }); }
+      });
+    });
+    req.on('error', (e) => resolve({ success: false, error: e.message }));
+    req.on('timeout', () => { req.destroy(); resolve({ success: false, error: 'Timeout' }); });
+    req.write(body);
+    req.end();
   });
 }
 
@@ -114,7 +143,7 @@ function runCommand(command, args) {
   return new Promise((resolve) => {
     const proc = spawn(command, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 60000 // 60 second timeout
+      timeout: 30 * 60 * 1000 // 30 min — training can take many minutes
     });
 
     let stdout = '';
@@ -373,6 +402,93 @@ async function trainModel(dataYaml, epochs = 100) {
 }
 
 /**
+ * Check display using embedding-based recognition (1000+ products)
+ * Same response format as checkDisplay() — drop-in replacement.
+ * Falls back to checkDisplay() on error.
+ *
+ * @param {string} imageBase64 - Base64 encoded image
+ * @param {string[]} expectedProducts - List of expected product IDs
+ * @param {number} confidence - YOLO confidence threshold (0-1)
+ * @param {number} similarityThreshold - Embedding similarity threshold (0-1)
+ * @returns {Promise<object>} Display check results (same format as checkDisplay)
+ */
+async function checkDisplayEmbed(imageBase64, expectedProducts = [], confidence = 0.3, similarityThreshold = 0.6) {
+  // Check server availability
+  if (yoloServerAvailable === null) {
+    yoloServerAvailable = await isYoloServerReady();
+  }
+  if (yoloServerAvailable) {
+    try {
+      const result = await callYoloServer('/display-embed', {
+        imageBase64,
+        expectedProducts,
+        confidence,
+        similarityThreshold,
+      });
+      return result;
+    } catch (e) {
+      console.warn('[YOLO Wrapper] Embedding server failed, falling back to classic checkDisplay:', e.message);
+      // Fallback to old pipeline
+      return checkDisplay(imageBase64, expectedProducts, confidence);
+    }
+  }
+
+  // No server — fallback to classic
+  console.warn('[YOLO Wrapper] YOLO server not available, falling back to classic checkDisplay');
+  return checkDisplay(imageBase64, expectedProducts, confidence);
+}
+
+/**
+ * Add a reference embedding to the catalog
+ *
+ * @param {string} productId - Product ID
+ * @param {string} imageBase64 - Base64 encoded image
+ * @param {string} name - Human-readable product name
+ * @returns {Promise<object>} Result with catalog stats
+ */
+async function addToCatalog(productId, imageBase64, name = '') {
+  if (yoloServerAvailable === null) {
+    yoloServerAvailable = await isYoloServerReady();
+  }
+  if (!yoloServerAvailable) {
+    return { success: false, error: 'YOLO server not available' };
+  }
+
+  try {
+    return await callYoloServer('/catalog/add', {
+      productId,
+      imageBase64,
+      name,
+    });
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * Get embedding catalog statistics
+ *
+ * @returns {Promise<object>} Catalog stats
+ */
+async function getCatalogStats() {
+  return new Promise((resolve) => {
+    const req = http.get(`${YOLO_SERVER_URL}/catalog/stats`, { timeout: 5000 }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          resolve({ loaded: false, productCount: 0, totalEmbeddings: 0, error: 'Invalid JSON' });
+        }
+      });
+    });
+    req.on('error', () => resolve({ loaded: false, productCount: 0, totalEmbeddings: 0, error: 'Server unavailable' }));
+    req.on('timeout', () => { req.destroy(); resolve({ loaded: false, productCount: 0, totalEmbeddings: 0, error: 'Timeout' }); });
+  });
+}
+
+/**
  * Check if model is trained and ready
  */
 function isModelReady() {
@@ -404,8 +520,12 @@ module.exports = {
   checkStatus,
   detectAndCount,
   checkDisplay,
+  checkDisplayEmbed,
+  addToCatalog,
+  getCatalogStats,
   exportTrainingData,
   trainModel,
+  reloadModel,
   isModelReady,
   getModelInfo,
   DEFAULT_MODEL,

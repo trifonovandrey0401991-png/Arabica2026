@@ -3,6 +3,7 @@ import '../models/referral_stats_model.dart';
 import '../services/referral_service.dart';
 import '../../efficiency/widgets/settings_widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Страница настроек баллов за приглашения с милестоунами
 class ReferralsPointsSettingsPage extends StatefulWidget {
@@ -110,16 +111,19 @@ class _ReferralsPointsSettingsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F7FA),
+      backgroundColor: AppColors.night,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('Баллы за приглашения'),
-        backgroundColor: _gradientColors[0],
+        title: Text('Баллы за приглашения', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: IconThemeData(color: AppColors.gold),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: _gradientColors[0]))
+          ? Center(child: CircularProgressIndicator(color: AppColors.gold))
           : Column(
               children: [
+                SizedBox(height: MediaQuery.of(context).padding.top + kToolbarHeight),
                 // Заголовок
                 SettingsHeaderCard(
                   icon: Icons.person_add_rounded,

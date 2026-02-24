@@ -18,6 +18,7 @@ const { writeJsonFile, withLock } = require('../utils/async_fs');
 const db = require('../utils/db');
 
 const USE_DB = process.env.USE_DB_CIGARETTE_VISION === 'true';
+const USE_EMBEDDING = process.env.USE_EMBEDDING_RECOGNITION === 'true';
 
 // YOLO ML Wrapper для детекции
 let yoloWrapper = null;
@@ -123,6 +124,7 @@ const DEFAULT_SETTINGS = {
   positiveSampleRate: 0.1,
   maxPositiveSamplesPerProduct: 50,
   positiveSamplesMaxAgeDays: 180,
+  useEmbeddingRecognition: false,
 };
 
 // Кэш настроек с TTL
@@ -348,7 +350,7 @@ async function saveSamples(samples) {
 /**
  * Получить список товаров с информацией об обучении
  */
-async function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
+async function getProductsWithTrainingInfo(recountQuestions, productGroup = null, shopAddress = null) {
   const samples = await loadSamples();
   const settings = await loadSettings();
   const shops = await loadAllShops();
@@ -405,7 +407,24 @@ async function getProductsWithTrainingInfo(recountQuestions, productGroup = null
     const completedTemplates = Array.from(completedTemplatesSet).sort((a, b) => a - b);
     const isRecountComplete = completedTemplates.length >= requiredRecount;
 
-    const perShopDisplayStats = shops.map(shop => {
+    // Compute totals across ALL shops (always correct regardless of filter)
+    let totalDisplayPhotos = 0;
+    let shopsWithAiReady = 0;
+    for (const shop of shops) {
+      const keyById = `${q.id}|${shop.address}`;
+      const keyByBarcode = `${q.barcode}|${shop.address}`;
+      const count = displayPhotosByProductAndShop[keyById] || displayPhotosByProductAndShop[keyByBarcode] || 0;
+      totalDisplayPhotos += count;
+      if (count >= requiredDisplayPerShop) shopsWithAiReady++;
+    }
+    const isDisplayComplete = shopsWithAiReady > 0;
+
+    // If shopAddress provided, only include per-shop stats for that shop (15MB → ~1MB)
+    const shopsToSend = shopAddress
+      ? shops.filter(s => s.address === shopAddress)
+      : shops;
+
+    const perShopDisplayStats = shopsToSend.map(shop => {
       const keyById = `${q.id}|${shop.address}`;
       const keyByBarcode = `${q.barcode}|${shop.address}`;
       const count = displayPhotosByProductAndShop[keyById] || displayPhotosByProductAndShop[keyByBarcode] || 0;
@@ -418,10 +437,6 @@ async function getProductsWithTrainingInfo(recountQuestions, productGroup = null
         isDisplayComplete: count >= requiredDisplayPerShop,
       };
     });
-
-    const totalDisplayPhotos = perShopDisplayStats.reduce((sum, s) => sum + s.displayPhotosCount, 0);
-    const shopsWithAiReady = perShopDisplayStats.filter(s => s.isDisplayComplete).length;
-    const isDisplayComplete = shopsWithAiReady > 0;
 
     return {
       id: q.id,
@@ -776,11 +791,22 @@ async function deleteSample(sampleId) {
         const imagePath = path.join(IMAGES_DIR, sample.imageFileName);
         if (await fileExists(imagePath)) {
           await fsp.unlink(imagePath);
+          console.log(`[Cigarette Vision] Deleted image file: ${sample.imageFileName}`);
         }
       }
 
       samples.splice(sampleIndex, 1);
       await saveSamples(samples);
+
+      // Удалить из БД напрямую (saveSamples делает только upsert, не удаляет)
+      if (USE_DB) {
+        try {
+          await db.deleteById('cigarette_samples', sampleId);
+          console.log(`[Cigarette Vision] Deleted sample from DB: ${sampleId}`);
+        } catch (dbErr) {
+          console.error(`[Cigarette Vision] DB delete error: ${dbErr.message}`);
+        }
+      }
 
       return { success: true };
     });
@@ -1167,10 +1193,19 @@ async function checkDisplay(imageBase64, expectedProducts = [], confidence = 0.3
   }
 
   try {
-    const result = await yoloWrapper.checkDisplay(imageBase64, expectedProducts, confidence);
+    // Dynamic setting — reads from DB/JSON settings (cached 5 min), no restart needed
+    const settings = await loadSettings();
+    const useEmbed = (settings.useEmbeddingRecognition || USE_EMBEDDING);
+
+    let result;
+    if (useEmbed && yoloWrapper.checkDisplayEmbed) {
+      result = await yoloWrapper.checkDisplayEmbed(imageBase64, expectedProducts, confidence);
+    } else {
+      result = await yoloWrapper.checkDisplay(imageBase64, expectedProducts, confidence);
+    }
 
     if (result.success) {
-      console.log(`[Cigarette Vision] Выкладка: обнаружено ${result.totalDetected} товаров, отсутствует ${result.missingProducts?.length || 0}`);
+      console.log(`[Cigarette Vision] Выкладка: обнаружено ${result.totalDetections || 0} товаров, отсутствует ${result.missingProducts?.length || 0}`);
     } else {
       console.warn('[Cigarette Vision] Ошибка проверки выкладки:', result.error);
     }
@@ -1228,6 +1263,14 @@ async function triggerFullTraining(epochs = 50) {
   const os = require('os');
   const http = require('http');
 
+  // 0. Бэкап текущей модели перед обучением
+  const modelPath = yoloWrapper.DEFAULT_MODEL;
+  const backupPath = modelPath + '.backup';
+  if (fs.existsSync(modelPath)) {
+    fs.copyFileSync(modelPath, backupPath);
+    console.log('[Full Training] Бэкап модели создан:', backupPath);
+  }
+
   // 1. Экспортируем данные во временную директорию
   const exportDir = path.join(os.tmpdir(), `yolo_export_${Date.now()}`);
   console.log('[Full Training] Экспорт данных в', exportDir);
@@ -1253,6 +1296,11 @@ async function triggerFullTraining(epochs = 50) {
   const trainResult = await yoloWrapper.trainModel(dataYaml, epochs);
 
   if (!trainResult.success) {
+    // Восстановление модели из бэкапа при ошибке обучения
+    if (fs.existsSync(backupPath)) {
+      fs.copyFileSync(backupPath, modelPath);
+      console.log('[Full Training] Модель восстановлена из бэкапа');
+    }
     return { success: false, step: 'train', error: trainResult.error, exportResult };
   }
   console.log('[Full Training] Модель обучена:', trainResult.model_path);
@@ -1554,6 +1602,23 @@ async function saveTypedPositiveSample(trainingType, {
     }
 
     console.log(`[Typed Training] ${trainingType}: сохранено ${savedCount.total}, с labels: ${savedCount.withLabels}, ротировано: ${savedCount.rotated}`);
+
+    // Auto-populate embedding catalog when embedding recognition is on
+    const embedSettings = await loadSettings();
+    if ((embedSettings.useEmbeddingRecognition || USE_EMBEDDING) && yoloWrapper && yoloWrapper.addToCatalog && imageBase64 && detectedProducts) {
+      try {
+        for (const detected of detectedProducts) {
+          const productId = detected.productId || detected.barcode;
+          const name = detected.productName || '';
+          if (productId) {
+            await yoloWrapper.addToCatalog(productId, imageBase64, name);
+          }
+        }
+      } catch (embedErr) {
+        // Non-critical: don't break main flow
+        console.warn('[Typed Training] Embedding catalog auto-add failed:', embedErr.message);
+      }
+    }
 
     return { success: true, savedCount, trainingType };
   } catch (error) {
@@ -2338,7 +2403,7 @@ async function saveProblemSample({
 }
 
 /**
- * Проверить отключен ли ИИ для товара
+ * Проверить отключен ли ИИ для товара (чистая проверка, без побочных эффектов)
  */
 async function isProductAiDisabled(productId) {
   const stats = await loadAiErrorsStats();
@@ -2346,19 +2411,45 @@ async function isProductAiDisabled(productId) {
 
   if (!product) return false;
 
+  // Проверяем авто-включение по времени, но НЕ сохраняем — это делает checkAndReenableProducts
   if (product.isDisabled && product.lastErrorAt) {
     const daysSinceLastError = (Date.now() - new Date(product.lastErrorAt).getTime()) / (1000 * 60 * 60 * 24);
     if (daysSinceLastError >= ERROR_RESET_DAYS) {
-      product.isDisabled = false;
-      product.consecutiveErrors = 0;
-      product.disabledAt = null;
-      await saveAiErrorsStats(stats);
-      console.log(`[AI Errors] ИИ автоматически включен для ${productId} (прошло ${daysSinceLastError.toFixed(1)} дней без ошибок)`);
-      return false;
+      return false; // Считаем включённым, фактический сброс — в checkAndReenableProducts
     }
   }
 
   return product.isDisabled;
+}
+
+/**
+ * Периодическая проверка: авто-включить ИИ для товаров, у которых прошло 7+ дней без ошибок
+ * Вызывается из scheduler, НЕ из isProductAiDisabled (чтобы избежать race condition)
+ */
+async function checkAndReenableProducts() {
+  try {
+    const stats = await loadAiErrorsStats();
+    let changed = false;
+
+    for (const [productId, product] of Object.entries(stats.products)) {
+      if (product.isDisabled && product.lastErrorAt) {
+        const daysSinceLastError = (Date.now() - new Date(product.lastErrorAt).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSinceLastError >= ERROR_RESET_DAYS) {
+          product.isDisabled = false;
+          product.consecutiveErrors = 0;
+          product.disabledAt = null;
+          changed = true;
+          console.log(`[AI Errors] ИИ автоматически включен для ${productId} (прошло ${daysSinceLastError.toFixed(1)} дней без ошибок)`);
+        }
+      }
+    }
+
+    if (changed) {
+      await saveAiErrorsStats(stats);
+    }
+  } catch (error) {
+    console.error('[AI Errors] Ошибка checkAndReenableProducts:', error.message);
+  }
 }
 
 /**
@@ -2567,32 +2658,35 @@ async function saveRecognitionStats(stats) {
  */
 async function recordRecognitionAttempt(productId, type, success, metadata = {}) {
   try {
-    const stats = await loadRecognitionStats();
+    // withLock: атомарный read-modify-write для статистики распознаваний
+    await withLock('recognition-stats', async () => {
+      const stats = await loadRecognitionStats();
 
-    if (!stats[productId]) {
-      stats[productId] = {
-        display: { attempts: 0, successes: 0 },
-        counting: { attempts: 0, successes: 0 },
-      };
-    }
+      if (!stats[productId]) {
+        stats[productId] = {
+          display: { attempts: 0, successes: 0 },
+          counting: { attempts: 0, successes: 0 },
+        };
+      }
 
-    if (!stats[productId][type]) {
-      stats[productId][type] = { attempts: 0, successes: 0 };
-    }
+      if (!stats[productId][type]) {
+        stats[productId][type] = { attempts: 0, successes: 0 };
+      }
 
-    stats[productId][type].attempts++;
-    if (success) {
-      stats[productId][type].successes++;
-    }
+      stats[productId][type].attempts++;
+      if (success) {
+        stats[productId][type].successes++;
+      }
 
-    stats[productId][type].lastAttempt = new Date().toISOString();
-    if (metadata.shopAddress) {
-      stats[productId][type].lastShop = metadata.shopAddress;
-    }
+      stats[productId][type].lastAttempt = new Date().toISOString();
+      if (metadata.shopAddress) {
+        stats[productId][type].lastShop = metadata.shopAddress;
+      }
 
-    await saveRecognitionStats(stats);
+      await saveRecognitionStats(stats);
+    });
 
-    console.log(`[Cigarette Vision] Записана попытка распознавания: ${productId} (${type}) - ${success ? 'успех' : 'провал'}`);
+    console.log(`[Cigarette Vision] Записана попытку распознавания: ${productId} (${type}) - ${success ? 'успех' : 'провал'}`);
     return true;
   } catch (error) {
     console.error('[Cigarette Vision] Ошибка записи попытки распознавания:', error);
@@ -2652,22 +2746,25 @@ async function getAllRecognitionStats() {
  */
 async function resetRecognitionStats(productId, type = null) {
   try {
-    const stats = await loadRecognitionStats();
+    // withLock: атомарный read-modify-write для статистики распознаваний
+    await withLock('recognition-stats', async () => {
+      const stats = await loadRecognitionStats();
 
-    if (!stats[productId]) {
-      return true;
-    }
+      if (!stats[productId]) {
+        return;
+      }
 
-    if (type) {
-      stats[productId][type] = { attempts: 0, successes: 0 };
-    } else {
-      stats[productId] = {
-        display: { attempts: 0, successes: 0 },
-        counting: { attempts: 0, successes: 0 },
-      };
-    }
+      if (type) {
+        stats[productId][type] = { attempts: 0, successes: 0 };
+      } else {
+        stats[productId] = {
+          display: { attempts: 0, successes: 0 },
+          counting: { attempts: 0, successes: 0 },
+        };
+      }
 
-    await saveRecognitionStats(stats);
+      await saveRecognitionStats(stats);
+    });
     console.log(`[Cigarette Vision] Сброшена статистика для ${productId}${type ? ` (${type})` : ''}`);
     return true;
   } catch (error) {
@@ -2821,6 +2918,7 @@ module.exports = {
   reportAdminAiDecision,
   reportAiSuccess,
   isProductAiDisabled,
+  checkAndReenableProducts,
   getProductAiStatus,
   resetProductAiErrors,
   getProblematicProducts,
@@ -2834,4 +2932,5 @@ module.exports = {
   saveDatasetVersion,
   getDatasetVersion,
   getAccuracyReport,
+  USE_EMBEDDING,
 };

@@ -174,22 +174,54 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: AppColors.emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
         title: Row(
           children: [
-            Icon(icon, color: backgroundColor),
-            SizedBox(width: 8),
-            Expanded(child: Text(title)),
+            Container(
+              padding: EdgeInsets.all(8.w),
+              decoration: BoxDecoration(
+                color: backgroundColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              child: Icon(icon, color: backgroundColor, size: 24),
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ],
         ),
-        content: Text(message),
-        backgroundColor: backgroundColor.withOpacity(0.1),
+        content: Text(
+          message,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.7),
+            fontSize: 15.sp,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Закрываем диалог
               Navigator.pop(context); // Закрываем страницу выбора магазина
             },
-            child: Text('OK'),
+            child: Text(
+              'OK',
+              style: TextStyle(
+                color: AppColors.gold,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница ДашБорд AI — метрики всех AI-систем
 class AiDashboardPage extends StatefulWidget {
@@ -17,38 +19,230 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
   String? _error;
   Map<String, dynamic>? _metrics;
 
+  // Training state (polling)
+  Map<String, dynamic>? _trainStatus; // {status, startedAt, finishedAt, result, error}
+  Timer? _pollingTimer;
+
+  // Schedule
+  TimeOfDay? _scheduledTime;
+  bool _savingSchedule = false;
+
+  // Embedding toggle
+  bool _embeddingEnabled = false;
+  bool _embeddingToggling = false;
+
   @override
   void initState() {
     super.initState();
     _loadMetrics();
+    _loadTrainStatus();
+    _loadSchedule();
+    _loadCvSettings();
   }
 
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  static const _cacheKey = 'ai_dashboard_metrics';
+
   Future<void> _loadMetrics() async {
-    if (mounted) setState(() { _loading = true; _error = null; });
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _metrics = cached;
+        _loading = false;
+        _error = null;
+      });
+    }
+
+    if (_metrics == null && mounted) setState(() { _loading = true; _error = null; });
+
     try {
       final result = await BaseHttpService.getRaw(
         endpoint: '/api/ai-dashboard/metrics',
       );
       if (!mounted) return;
       if (result != null && result['success'] == true) {
+        final systems = result['systems'] as Map<String, dynamic>?;
         setState(() {
-          _metrics = result['systems'] as Map<String, dynamic>?;
+          _metrics = systems;
           _loading = false;
         });
+        // Step 3: Save to cache
+        if (systems != null) CacheManager.set(_cacheKey, systems);
       } else {
-        setState(() {
-          _error = 'Не удалось загрузить метрики';
-          _loading = false;
-        });
+        if (_metrics == null) {
+          setState(() {
+            _error = 'Не удалось загрузить метрики';
+            _loading = false;
+          });
+        }
       }
     } catch (e) {
       Logger.error('AI Dashboard load error', e);
-      if (mounted) {
+      if (mounted && _metrics == null) {
         setState(() {
           _error = 'Ошибка: $e';
           _loading = false;
         });
       }
+    }
+  }
+
+  // ── Training: запуск, polling, статус ──
+
+  Future<void> _loadTrainStatus() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '/api/ai-dashboard/recount-train-status',
+      );
+      if (!mounted) return;
+      if (result != null) {
+        setState(() => _trainStatus = result);
+        if (result['status'] == 'running') _startPolling();
+      }
+    } catch (e) {
+      Logger.error('Train status load error', e);
+    }
+  }
+
+  void _startPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      try {
+        final result = await BaseHttpService.getRaw(
+          endpoint: '/api/ai-dashboard/recount-train-status',
+        );
+        if (!mounted) { _pollingTimer?.cancel(); return; }
+        if (result != null) {
+          setState(() => _trainStatus = result);
+          if (result['status'] != 'running') {
+            _pollingTimer?.cancel();
+            if (result['status'] == 'done') _loadMetrics();
+          }
+        }
+      } catch (_) {}
+    });
+  }
+
+  Future<void> _triggerRecountTraining() async {
+    if (_trainStatus?['status'] == 'running') return;
+    try {
+      final result = await BaseHttpService.postRaw(
+        endpoint: '/api/ai-dashboard/trigger-recount-training',
+        body: {'epochs': 30},
+      );
+      if (!mounted) return;
+      if (result != null) {
+        final state = result['state'] as Map<String, dynamic>?;
+        if (state != null) setState(() => _trainStatus = state);
+        if (result['started'] == true) _startPolling();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _trainStatus = {'status': 'error', 'error': '$e'});
+      }
+    }
+  }
+
+  // ── Schedule ──
+
+  Future<void> _loadSchedule() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '/api/ai-dashboard/recount-train-schedule',
+      );
+      if (!mounted) return;
+      final t = result?['scheduledTime'] as String?;
+      if (t != null && t.contains(':')) {
+        final parts = t.split(':');
+        setState(() => _scheduledTime = TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        ));
+      }
+    } catch (e) {
+      Logger.error('Schedule load error', e);
+    }
+  }
+
+  Future<void> _pickAndSaveSchedule() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _scheduledTime ?? const TimeOfDay(hour: 3, minute: 0),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.dark(
+            primary: AppColors.gold,
+            surface: AppColors.night,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (!mounted || picked == null) return;
+    await _saveSchedule(picked);
+  }
+
+  Future<void> _clearSchedule() async => _saveSchedule(null);
+
+  Future<void> _saveSchedule(TimeOfDay? time) async {
+    if (_savingSchedule) return;
+    setState(() => _savingSchedule = true);
+    try {
+      final timeStr = time != null
+          ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
+          : null;
+      await BaseHttpService.postRaw(
+        endpoint: '/api/ai-dashboard/recount-train-schedule',
+        body: {'time': timeStr},
+      );
+      if (!mounted) return;
+      setState(() => _scheduledTime = time);
+    } catch (e) {
+      Logger.error('Schedule save error', e);
+    } finally {
+      if (mounted) setState(() => _savingSchedule = false);
+    }
+  }
+
+  // ── CV Settings (embedding toggle) ──
+
+  Future<void> _loadCvSettings() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '/api/cigarette-vision/settings',
+      );
+      if (!mounted) return;
+      final settings = result?['settings'] as Map<String, dynamic>?;
+      if (settings != null) {
+        setState(() {
+          _embeddingEnabled = settings['useEmbeddingRecognition'] == true;
+        });
+      }
+    } catch (e) {
+      Logger.error('CV settings load error', e);
+    }
+  }
+
+  Future<void> _toggleEmbedding(bool value) async {
+    if (_embeddingToggling) return;
+    setState(() => _embeddingToggling = true);
+    try {
+      await BaseHttpService.putRaw(
+        endpoint: '/api/cigarette-vision/settings',
+        body: {'useEmbeddingRecognition': value},
+      );
+      if (!mounted) return;
+      setState(() => _embeddingEnabled = value);
+    } catch (e) {
+      Logger.error('Embedding toggle error', e);
+    } finally {
+      if (mounted) setState(() => _embeddingToggling = false);
     }
   }
 
@@ -61,7 +255,8 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.darkNavy, AppColors.navy, Color(0xFF0A0A1A)],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
         child: SafeArea(
@@ -70,12 +265,12 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
               _buildAppBar(),
               Expanded(
                 child: _loading
-                    ? const Center(child: CircularProgressIndicator(color: AppColors.indigo))
+                    ? const Center(child: CircularProgressIndicator(color: AppColors.gold))
                     : _error != null
                         ? _buildError()
                         : RefreshIndicator(
                             onRefresh: _loadMetrics,
-                            color: AppColors.indigo,
+                            color: AppColors.gold,
                             child: _buildContent(),
                           ),
               ),
@@ -148,7 +343,7 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
           SizedBox(height: 16.h),
           ElevatedButton(
             onPressed: _loadMetrics,
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.indigo),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold, foregroundColor: AppColors.night),
             child: const Text('Повторить'),
           ),
         ],
@@ -178,7 +373,7 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
           _buildSystemCard(
             _metrics!['zReport'] as Map<String, dynamic>,
             Icons.receipt_long_outlined,
-            [AppColors.indigo, AppColors.purple],
+            [AppColors.gold, AppColors.darkGold],
           ),
         SizedBox(height: 12.h),
 
@@ -191,13 +386,9 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
           ),
         SizedBox(height: 12.h),
 
-        // Cigarette Vision
+        // Cigarette Vision + Пересчёт ИИ (объединённая карточка)
         if (_metrics!['cigaretteVision'] != null)
-          _buildSystemCard(
-            _metrics!['cigaretteVision'] as Map<String, dynamic>,
-            Icons.camera_alt_outlined,
-            [AppColors.warning, AppColors.warningLight],
-          ),
+          _buildRecountAiCard(_metrics!['cigaretteVision'] as Map<String, dynamic>),
         SizedBox(height: 12.h),
 
         // Shift AI
@@ -243,17 +434,17 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColors.indigo.withOpacity(0.2),
-            AppColors.purple.withOpacity(0.1),
+            AppColors.gold.withOpacity(0.15),
+            AppColors.darkGold.withOpacity(0.05),
           ],
         ),
-        border: Border.all(color: AppColors.indigo.withOpacity(0.3)),
+        border: Border.all(color: AppColors.gold.withOpacity(0.25)),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome, color: AppColors.indigo, size: 24),
+              Icon(Icons.auto_awesome, color: AppColors.gold, size: 24),
               SizedBox(width: 8.w),
               Text(
                 'Общая сводка',
@@ -448,6 +639,326 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
     );
   }
 
+  Widget _buildRecountAiCard(Map<String, dynamic> cigMetrics) {
+    final modelExists = cigMetrics['modelExists'] == true;
+    final pending = cigMetrics['countingPendingSamples'] as int? ?? 0;
+    final approved = cigMetrics['countingTrainingSamples'] as int? ?? 0;
+    final annotated = cigMetrics['countingAnnotatedSamples'] as int? ?? 0;
+    final needMore = annotated < 50 ? (50 - annotated) : 0;
+    final accuracy = cigMetrics['accuracy'];
+    final totalErrors = cigMetrics['totalErrors'] as int? ?? 0;
+    final totalDecisions = cigMetrics['totalDecisions'] as int? ?? 0;
+    final productsTracked = cigMetrics['productsTracked'] as int? ?? 0;
+    final statusColor = modelExists ? AppColors.success : AppColors.warning;
+    const gradientA = AppColors.emerald;
+    const gradientB = AppColors.emeraldLight;
+
+    final trainStatus = _trainStatus?['status'] as String? ?? 'idle';
+    final isRunning = trainStatus == 'running';
+    final isDone = trainStatus == 'done';
+    final isError = trainStatus == 'error';
+
+    return Container(
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.r),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [gradientA.withOpacity(0.15), gradientB.withOpacity(0.05)],
+        ),
+        border: Border.all(color: gradientA.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Заголовок ──
+          Row(
+            children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10.r),
+                  gradient: const LinearGradient(colors: [gradientA, gradientB]),
+                ),
+                child: const Icon(Icons.camera_alt_outlined, color: Colors.white, size: 20),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Text(
+                  'Cigarette Vision (YOLO)',
+                  style: TextStyle(color: Colors.white.withOpacity(0.95), fontSize: 14.sp, fontWeight: FontWeight.w600),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8.r),
+                  color: statusColor.withOpacity(0.15),
+                  border: Border.all(color: statusColor.withOpacity(0.4)),
+                ),
+                child: Text(
+                  modelExists ? 'Обучена' : 'Нет модели',
+                  style: TextStyle(color: statusColor, fontSize: 10.sp, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+
+          // ── Общие метрики ──
+          Wrap(
+            spacing: 8.w,
+            runSpacing: 6.h,
+            children: [
+              if (accuracy != null && accuracy is num)
+                _buildMetricChip('Точность', '${accuracy.toStringAsFixed(1)}%',
+                    accuracy >= 80 ? AppColors.success : AppColors.warning),
+              if (productsTracked > 0)
+                _buildMetricChip('Товаров', '$productsTracked', Colors.blue),
+              if (totalDecisions > 0)
+                _buildMetricChip('Решений админа', '$totalDecisions', AppColors.gold),
+              if (totalErrors > 0)
+                _buildMetricChip('Ошибок ИИ', '$totalErrors', AppColors.error),
+            ],
+          ),
+          SizedBox(height: 10.h),
+
+          // ── Метрики обучения ──
+          Wrap(
+            spacing: 8.w,
+            runSpacing: 6.h,
+            children: [
+              _buildMetricChip('Ожидают проверки', '$pending', Colors.orange),
+              _buildMetricChip('Одобрено', '$approved', Colors.blue[300]!),
+              _buildMetricChip('С аннотациями', '$annotated', gradientA),
+              if (needMore > 0)
+                _buildMetricChip('Нужно ещё', '$needMore', AppColors.warning),
+            ],
+          ),
+          SizedBox(height: 14.h),
+
+          // ── Статус обучения ──
+          if (isRunning) ...[
+            Row(children: [
+              SizedBox(
+                width: 14, height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2, color: gradientA),
+              ),
+              SizedBox(width: 8.w),
+              Text('Обучение идёт...', style: TextStyle(color: Colors.white70, fontSize: 12.sp)),
+            ]),
+            SizedBox(height: 6.h),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4.r),
+              child: LinearProgressIndicator(
+                backgroundColor: Colors.white12,
+                color: gradientA,
+              ),
+            ),
+            SizedBox(height: 10.h),
+          ] else if (isDone) ...[
+            _buildTrainResultBanner(
+              icon: Icons.check_circle_outline,
+              color: AppColors.success,
+              text: 'Обучение завершено. '
+                  'Изображений: ${_trainStatus?['result']?['totalImages'] ?? '?'}. '
+                  'Модель перезагружена: ${_trainStatus?['result']?['modelReloaded'] == true ? 'да' : 'нет'}.',
+            ),
+            // Метрики точности модели
+            Builder(builder: (_) {
+              final metrics = _trainStatus?['result']?['metrics'] as Map<String, dynamic>?;
+              if (metrics == null) return const SizedBox.shrink();
+              final mAP50 = metrics['mAP50'] as num?;
+              final precision = metrics['precision'] as num?;
+              final recall = metrics['recall'] as num?;
+              if (mAP50 == null && precision == null && recall == null) return const SizedBox.shrink();
+              return Padding(
+                padding: EdgeInsets.only(top: 8.h),
+                child: Wrap(
+                  spacing: 8.w, runSpacing: 6.h,
+                  children: [
+                    if (mAP50 != null)
+                      _buildMetricChip('mAP50', '${(mAP50 * 100).toStringAsFixed(1)}%',
+                          mAP50 > 0.7 ? AppColors.success : mAP50 > 0.5 ? Colors.orange : AppColors.error),
+                    if (precision != null)
+                      _buildMetricChip('Точность', '${(precision * 100).toStringAsFixed(1)}%', Colors.blue[300]!),
+                    if (recall != null)
+                      _buildMetricChip('Полнота', '${(recall * 100).toStringAsFixed(1)}%', Colors.teal[300]!),
+                  ],
+                ),
+              );
+            }),
+            SizedBox(height: 10.h),
+          ] else if (isError) ...[
+            _buildTrainResultBanner(
+              icon: Icons.error_outline,
+              color: AppColors.error,
+              text: 'Ошибка: ${_trainStatus?['error'] ?? 'неизвестная'}',
+            ),
+            SizedBox(height: 10.h),
+          ],
+
+          // ── Кнопка запуска ──
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: (isRunning || annotated < 5) ? null : _triggerRecountTraining,
+              icon: isRunning
+                  ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.model_training, size: 18),
+              label: Text(isRunning ? 'Обучение идёт...' : 'Запустить обучение (30 эпох)'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: annotated >= 5 ? AppColors.gold : Colors.grey[700],
+                foregroundColor: annotated >= 5 ? AppColors.night : Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                padding: EdgeInsets.symmetric(vertical: 10.h),
+              ),
+            ),
+          ),
+          if (annotated < 5)
+            Padding(
+              padding: EdgeInsets.only(top: 5.h),
+              child: Text(
+                'Нужно минимум 5 одобренных образцов для обучения',
+                style: TextStyle(color: Colors.white38, fontSize: 10.sp),
+                textAlign: TextAlign.center,
+              ),
+            ),
+
+          SizedBox(height: 14.h),
+          Divider(color: Colors.white.withOpacity(0.08), height: 1),
+          SizedBox(height: 12.h),
+
+          // ── Эмбеддинги (1000+ товаров) ──
+          Row(
+            children: [
+              Icon(Icons.hub_rounded, color: Colors.white38, size: 16),
+              SizedBox(width: 6.w),
+              Expanded(
+                child: Text(
+                  'Распознавание 1000+ товаров',
+                  style: TextStyle(color: Colors.white54, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                ),
+              ),
+              if (_embeddingToggling)
+                SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
+              else
+                SizedBox(
+                  height: 28,
+                  child: Switch(
+                    value: _embeddingEnabled,
+                    onChanged: _toggleEmbedding,
+                    activeColor: AppColors.gold,
+                    activeTrackColor: AppColors.gold.withOpacity(0.3),
+                    inactiveThumbColor: Colors.white24,
+                    inactiveTrackColor: Colors.white.withOpacity(0.08),
+                  ),
+                ),
+            ],
+          ),
+          if (_embeddingEnabled)
+            Padding(
+              padding: EdgeInsets.only(top: 4.h, left: 22.w),
+              child: Text(
+                'Двухэтапное распознавание: YOLO + MobileNet эмбеддинги',
+                style: TextStyle(color: AppColors.gold.withOpacity(0.6), fontSize: 10.sp),
+              ),
+            ),
+
+          SizedBox(height: 14.h),
+          Divider(color: Colors.white.withOpacity(0.08), height: 1),
+          SizedBox(height: 12.h),
+
+          // ── Расписание ──
+          Row(
+            children: [
+              Icon(Icons.schedule_rounded, color: Colors.white38, size: 16),
+              SizedBox(width: 6.w),
+              Text(
+                'Авто-обучение',
+                style: TextStyle(color: Colors.white54, fontSize: 12.sp, fontWeight: FontWeight.w500),
+              ),
+              const Spacer(),
+              if (_savingSchedule)
+                SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
+              else if (_scheduledTime != null)
+                GestureDetector(
+                  onTap: _clearSchedule,
+                  child: Icon(Icons.close_rounded, color: Colors.white38, size: 16),
+                ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: _pickAndSaveSchedule,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 9.h),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10.r),
+                      color: Colors.white.withOpacity(0.05),
+                      border: Border.all(
+                        color: _scheduledTime != null ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _scheduledTime != null ? Icons.alarm_on_rounded : Icons.alarm_off_rounded,
+                          color: _scheduledTime != null ? AppColors.gold : Colors.white30,
+                          size: 18,
+                        ),
+                        SizedBox(width: 8.w),
+                        Text(
+                          _scheduledTime != null
+                              ? 'Ежедневно в ${_scheduledTime!.hour.toString().padLeft(2, '0')}:${_scheduledTime!.minute.toString().padLeft(2, '0')}'
+                              : 'Не задано — нажмите для настройки',
+                          style: TextStyle(
+                            color: _scheduledTime != null ? Colors.white.withOpacity(0.85) : Colors.white30,
+                            fontSize: 12.sp,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrainResultBanner({
+    required IconData icon,
+    required Color color,
+    required String text,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8.r),
+        color: color.withOpacity(0.08),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 16),
+          SizedBox(width: 6.w),
+          Expanded(
+            child: Text(text, style: TextStyle(color: Colors.white70, fontSize: 11.sp)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMetricChip(String label, String value, Color color) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 5.h),
@@ -484,18 +995,18 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColors.indigo.withOpacity(0.15),
-            AppColors.purple.withOpacity(0.05),
+            AppColors.gold.withOpacity(0.15),
+            AppColors.darkGold.withOpacity(0.05),
           ],
         ),
-        border: Border.all(color: AppColors.indigo.withOpacity(0.25)),
+        border: Border.all(color: AppColors.gold.withOpacity(0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.calendar_today_outlined, color: AppColors.indigo, size: 18),
+              Icon(Icons.calendar_today_outlined, color: AppColors.gold, size: 18),
               SizedBox(width: 8.w),
               Text(
                 'Коэффициенты по дням недели',
@@ -523,7 +1034,7 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
                   ? AppColors.success
                   : isLow
                       ? AppColors.warning
-                      : AppColors.indigo;
+                      : AppColors.gold;
 
               // Нормализация высоты бара (0.5 → 0%, 1.5 → 100%)
               final barHeight = ((coeff - 0.5) / 1.0).clamp(0.1, 1.0) * 60;

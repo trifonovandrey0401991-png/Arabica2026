@@ -983,19 +983,22 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
             children: [
               Icon(icon, size: 18, color: AppColors.gold),
               SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14.sp,
-                  color: Colors.white.withOpacity(0.9),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14.sp,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (required) ...[
                 SizedBox(width: 4),
                 Text('*', style: TextStyle(color: AppColors.error)),
               ],
-              Spacer(),
+              SizedBox(width: 8),
               if (hasPhoto)
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),

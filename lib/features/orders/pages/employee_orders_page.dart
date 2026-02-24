@@ -79,9 +79,90 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
 
     final preview = firstThree.join(', ');
     if (items.length > 3) {
-      return '$preview...';
+      return '$preview ...ещё ${items.length - 3}';
     }
     return preview;
+  }
+
+  String _formatTime(dynamic createdAt) {
+    if (createdAt == null) return '';
+    try {
+      DateTime dt;
+      if (createdAt is String) {
+        dt = DateTime.parse(createdAt);
+      } else if (createdAt is num) {
+        dt = DateTime.fromMillisecondsSinceEpoch(createdAt.toInt());
+      } else {
+        return '';
+      }
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.inMinutes < 1) return 'только что';
+      if (diff.inMinutes < 60) return '${diff.inMinutes} мин назад';
+      if (diff.inHours < 24) return '${diff.inHours} ч назад';
+      return '${dt.day}.${dt.month.toString().padLeft(2, '0')} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 16.h),
+      child: Row(
+        children: [
+          // Кнопка назад
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.1),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+              ),
+              child: Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white.withOpacity(0.8),
+                size: 18,
+              ),
+            ),
+          ),
+          SizedBox(width: 12.w),
+          // Заголовок
+          Expanded(
+            child: Text(
+              'Заказы клиентов (${_pendingOrders.length})',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          // Кнопка обновления
+          GestureDetector(
+            onTap: _loadOrders,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.1),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+              ),
+              child: Icon(
+                Icons.refresh_rounded,
+                color: Colors.white.withOpacity(0.8),
+                size: 20,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildOrderCard(Map<String, dynamic> order) {
@@ -91,145 +172,231 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
     final items = order['items'] as List<dynamic>? ?? [];
     final totalPrice = order['totalPrice'];
     final comment = order['comment'] as String?;
+    final createdAt = order['createdAt'];
+    final timeAgo = _formatTime(createdAt);
 
-    // Получаем фото первого товара
-    final firstItemPhotoId = items.isNotEmpty
-        ? items[0]['photoId'] as String?
-        : null;
-
-    return Card(
+    return Container(
       margin: EdgeInsets.only(bottom: 12.h),
-      child: InkWell(
-        onTap: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EmployeeOrderDetailPage(
-                orderData: order,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14.r),
+          onTap: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EmployeeOrderDetailPage(
+                  orderData: order,
+                ),
               ),
-            ),
-          );
+            );
 
-          if (result == true) {
-            _loadOrders();
-          }
-        },
-        child: Padding(
-          padding: EdgeInsets.all(16.w),
-          child: Row(
-            children: [
-              // Фото первого товара или иконка
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: Colors.grey[200],
-                backgroundImage: firstItemPhotoId != null && firstItemPhotoId.isNotEmpty
-                    ? AssetImage('assets/images/$firstItemPhotoId.jpg')
-                    : null,
-                child: firstItemPhotoId == null || firstItemPhotoId.isEmpty
-                    ? Icon(Icons.receipt, color: Colors.grey, size: 32)
-                    : null,
-              ),
-              SizedBox(width: 12),
-              // Информация о заказе
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          orderNumber != null
-                              ? 'Заказ $orderNumber'
-                              : 'Заказ ${order['id'].toString().substring(0, 6)}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18.sp,
+            if (result == true) {
+              _loadOrders();
+            }
+          },
+          child: Padding(
+            padding: EdgeInsets.all(14.w),
+            child: Row(
+              children: [
+                // Иконка заказа
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Icon(
+                    Icons.receipt_long_rounded,
+                    color: AppColors.gold,
+                    size: 26,
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                // Информация о заказе
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Номер заказа + цена
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            orderNumber != null
+                                ? 'Заказ #$orderNumber'
+                                : 'Заказ',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16.sp,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
                           ),
-                        ),
-                        Text(
-                          '${_formatPrice(totalPrice)} руб.',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18.sp,
-                            color: Colors.green,
+                          Text(
+                            '${_formatPrice(totalPrice)} \u20BD',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16.sp,
+                              color: AppColors.gold,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.store, size: 16, color: Colors.grey),
-                        SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            shopAddress,
-                            style: TextStyle(fontSize: 14.sp),
+                        ],
+                      ),
+                      SizedBox(height: 8.h),
+                      // Магазин
+                      Row(
+                        children: [
+                          Icon(Icons.store_rounded, size: 14, color: Colors.white.withOpacity(0.35)),
+                          SizedBox(width: 6.w),
+                          Expanded(
+                            child: Text(
+                              shopAddress,
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                color: Colors.white.withOpacity(0.55),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.person, size: 16, color: Colors.grey),
-                        SizedBox(width: 4),
-                        Text(
-                          clientName,
-                          style: TextStyle(fontSize: 14.sp),
-                        ),
-                      ],
-                    ),
-                    // Показываем комментарий с временем получения
-                    if (comment != null && comment.isNotEmpty) ...[
-                      SizedBox(height: 4),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                        decoration: BoxDecoration(
-                          color: Colors.blue[50],
-                          borderRadius: BorderRadius.circular(4.r),
-                          border: Border.all(color: Colors.blue[200]!),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.timer, size: 14, color: Colors.blue),
-                            SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                comment,
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  color: Colors.blue[800],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                        ],
+                      ),
+                      SizedBox(height: 4.h),
+                      // Клиент + время
+                      Row(
+                        children: [
+                          Icon(Icons.person_rounded, size: 14, color: Colors.white.withOpacity(0.35)),
+                          SizedBox(width: 6.w),
+                          Text(
+                            clientName,
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              color: Colors.white.withOpacity(0.55),
+                            ),
+                          ),
+                          if (timeAgo.isNotEmpty) ...[
+                            Spacer(),
+                            Icon(Icons.access_time_rounded, size: 12, color: Colors.white.withOpacity(0.3)),
+                            SizedBox(width: 4.w),
+                            Text(
+                              timeAgo,
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: Colors.white.withOpacity(0.35),
                               ),
                             ),
                           ],
+                        ],
+                      ),
+                      // Комментарий (время получения)
+                      if (comment != null && comment.isNotEmpty) ...[
+                        SizedBox(height: 8.h),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                          decoration: BoxDecoration(
+                            color: AppColors.gold.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6.r),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.timer_rounded, size: 14, color: AppColors.gold),
+                              SizedBox(width: 4.w),
+                              Flexible(
+                                child: Text(
+                                  comment,
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    color: AppColors.gold,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                      ],
+                      // Товары
+                      SizedBox(height: 8.h),
+                      Row(
+                        children: [
+                          Icon(Icons.shopping_bag_rounded, size: 14, color: Colors.white.withOpacity(0.3)),
+                          SizedBox(width: 6.w),
+                          Expanded(
+                            child: Text(
+                              _getItemsPreview(items),
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.white.withOpacity(0.45),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-                    SizedBox(height: 8),
-                    Text(
-                      _getItemsPreview(items),
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        color: Colors.black87,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              // Стрелка для перехода
-              Icon(Icons.chevron_right, color: Colors.grey),
-            ],
+                SizedBox(width: 8.w),
+                // Стрелка
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.white.withOpacity(0.25),
+                  size: 22,
+                ),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(20.r),
+            ),
+            child: Icon(
+              Icons.inbox_rounded,
+              size: 40,
+              color: Colors.white.withOpacity(0.3),
+            ),
+          ),
+          SizedBox(height: 20.h),
+          Text(
+            'Нет ожидающих заказов',
+            style: TextStyle(
+              fontSize: 18.sp,
+              color: Colors.white.withOpacity(0.5),
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            'Новые заказы появятся автоматически',
+            style: TextStyle(
+              fontSize: 14.sp,
+              color: Colors.white.withOpacity(0.3),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -237,42 +404,43 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Заказы клиентов (${_pendingOrders.length})'),
-        backgroundColor: AppColors.primaryGreen,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _loadOrders,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
+            stops: const [0.0, 0.3, 1.0],
           ),
-        ],
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(color: AppColors.gold),
+                      )
+                    : _pendingOrders.isEmpty
+                        ? _buildEmptyState()
+                        : RefreshIndicator(
+                            color: AppColors.gold,
+                            backgroundColor: AppColors.emeraldDark,
+                            onRefresh: _loadOrders,
+                            child: ListView.builder(
+                              padding: EdgeInsets.symmetric(horizontal: 16.w),
+                              itemCount: _pendingOrders.length,
+                              itemBuilder: (context, index) {
+                                return _buildOrderCard(_pendingOrders[index]);
+                              },
+                            ),
+                          ),
+              ),
+            ],
+          ),
+        ),
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _pendingOrders.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.inbox, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
-                        'Нет ожидающих заказов',
-                        style: TextStyle(fontSize: 18.sp, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadOrders,
-                  child: ListView.builder(
-                    padding: EdgeInsets.all(16.w),
-                    itemCount: _pendingOrders.length,
-                    itemBuilder: (context, index) {
-                      return _buildOrderCard(_pendingOrders[index]);
-                    },
-                  ),
-                ),
     );
   }
 }

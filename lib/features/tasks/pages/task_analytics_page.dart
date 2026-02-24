@@ -6,6 +6,7 @@ import '../widgets/task_common_widgets.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/models/user_role_model.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -30,17 +31,23 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  static const _cacheKey = 'task_analytics_overview';
 
+  Future<void> _loadData() async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<_MonthData>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _monthsData = cached;
+        _isLoading = false;
+      });
+    }
+
+    // Step 2: Fetch fresh data from server
     try {
       final now = DateTime.now();
       final months = <Map<String, int>>[];
 
-      // Собираем 3 месяца: позапрошлый, прошлый, текущий
       for (int i = 2; i >= 0; i--) {
         final date = DateTime(now.year, now.month - i, 1);
         months.add({'year': date.year, 'month': date.month});
@@ -97,13 +104,19 @@ class _TaskAnalyticsPageState extends State<TaskAnalyticsPage> {
       setState(() {
         _monthsData = monthsData;
         _isLoading = false;
+        _error = null;
       });
+
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, monthsData);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = 'Ошибка загрузки: $e';
-        _isLoading = false;
-      });
+      if (_monthsData.isEmpty) {
+        setState(() {
+          _error = 'Ошибка загрузки: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 

@@ -15,6 +15,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 const pushService = require('../utils/push_service');
+const { notifyCounterUpdate } = require('./counters_websocket');
 
 const USE_DB = process.env.USE_DB_ENVELOPE === 'true';
 
@@ -535,6 +536,7 @@ function setupEnvelopeAPI(app) {
         console.error('[Envelope] Push notification error:', pushErr.message);
       }
 
+      notifyCounterUpdate('unconfirmedEnvelopes', { delta: 1 });
       res.json({ success: true, report });
     } catch (error) {
       console.error('Ошибка создания отчета конверта:', error);
@@ -672,6 +674,7 @@ function setupEnvelopeAPI(app) {
         }
       }
 
+      notifyCounterUpdate('unconfirmedEnvelopes', { delta: -1 });
       res.json({ success: true, report });
     } catch (error) {
       console.error('Ошибка подтверждения отчета:', error);

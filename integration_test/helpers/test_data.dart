@@ -1,12 +1,33 @@
 /// Тестовые данные для Integration тестов
+///
+/// Тестовые аккаунты созданы на сервере arabica26.ru
+/// Все используют PIN: 1111
 
 class TestData {
-  // Тестовый пользователь (клиент)
+  // === ТЕСТОВЫЕ АККАУНТЫ (4 роли) ===
+
+  // Клиент — видит меню, заказы, лояльность
+  static const String clientPhone = '79000001111';
+  static const String clientName = 'Тест Клиент';
+
+  // Сотрудник — видит смены, задачи, чат, рецепты
+  static const String employeePhone = '79000002222';
+  static const String employeeName = 'Тест Сотрудник';
+
+  // Управляющий (admin) — видит свои магазины, сотрудников, отчёты
+  static const String adminPhone = '79000003333';
+  static const String adminName = 'Тест Управляющий';
+
+  // Разработчик (developer) — видит ВСЕ магазины, управление сетью
+  static const String developerPhone = '79000004444';
+  static const String developerName = 'Тест Разработчик';
+
+  // PIN-код для всех тестовых аккаунтов
+  static const String testPin = '1111';
+
+  // Реальный аккаунт (для обратной совместимости)
   static const String testClientPhone = '79054443224';
   static const String testClientName = 'Андрей В';
-
-  // Тестовый сотрудник
-  static const String testEmployeeName = 'Тестовый Сотрудник';
 
   // Тестовый магазин
   static const String testShopAddress = 'Лермонтов,Комсомольская 1 (На Площади)';

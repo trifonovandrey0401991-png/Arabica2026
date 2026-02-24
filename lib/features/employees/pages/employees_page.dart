@@ -6,6 +6,7 @@ import 'employee_registration_page.dart';
 import '../services/employee_service.dart';
 import 'unverified_employees_page.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -274,11 +275,16 @@ class EmployeesPage extends StatefulWidget {
 }
 
 class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateMixin {
-  late Future<List<Employee>> _employeesFuture;
+  List<Employee> _employees = [];
+  bool _isLoading = true;
+  String? _error;
   String _searchQuery = '';
   final Map<String, bool> _verificationStatus = {}; // Кэш статуса верификации по телефону
   bool _isLoadingVerification = false;
   late AnimationController _animationController;
+
+  static const _cacheKey = 'page_employees';
+
   @override
   void initState() {
     super.initState();
@@ -286,8 +292,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
       vsync: this,
       duration: Duration(milliseconds: 800),
     );
-    _employeesFuture = _loadEmployees();
-    _loadVerificationStatuses();
+    _loadData();
     _animationController.forward();
   }
 
@@ -316,8 +321,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
       }
 
       // Также добавляем записи для сотрудников без регистрации (isVerified = false)
-      final employees = await _employeesFuture;
-      for (var employee in employees) {
+      for (var employee in _employees) {
         if (employee.phone != null && employee.phone!.isNotEmpty) {
           final phone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
           _verificationStatus.putIfAbsent(phone, () => false);
@@ -338,21 +342,44 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
     }
   }
 
-  Future<List<Employee>> _loadEmployees() async {
-    try {
-      // Загружаем сотрудников с сервера
-      final employees = await EmployeeService.getEmployees();
+  Future<void> _loadData() async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<Employee>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _employees = cached;
+        _isLoading = false;
+      });
+    }
 
-      // Сортируем по имени
+    // Step 2: Fetch fresh data from server
+    try {
+      final employees = await EmployeeService.getEmployees();
       employees.sort((a, b) => a.name.compareTo(b.name));
 
-      Logger.info('Загружено сотрудников и админов: ${employees.length}');
+      if (!mounted) return;
+      setState(() {
+        _employees = employees;
+        _isLoading = false;
+        _error = null;
+      });
 
-      return employees;
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, employees);
+
+      Logger.info('Загружено сотрудников и админов: ${employees.length}');
     } catch (e) {
       Logger.error('Ошибка загрузки сотрудников', e);
-      rethrow;
+      if (mounted && _employees.isEmpty) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
+
+    // Load verification statuses
+    await _loadVerificationStatuses();
   }
 
 
@@ -459,11 +486,9 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
             child: IconButton(
               icon: Icon(Icons.refresh, color: Colors.white),
               onPressed: () {
-                if (mounted) setState(() {
-                  _employeesFuture = _loadEmployees();
-                });
-                _loadVerificationStatuses();
+                EmployeeService.clearCache();
                 _animationController.reset();
+                _loadData();
                 _animationController.forward();
               },
               tooltip: 'Обновить',
@@ -476,11 +501,9 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
 
   // Метод для обновления данных
   void refreshEmployeesData() {
-    if (mounted) setState(() {
-      _employeesFuture = _loadEmployees();
-    });
-    _loadVerificationStatuses();
+    EmployeeService.clearCache();
     _animationController.reset();
+    _loadData();
     _animationController.forward();
   }
 
@@ -526,225 +549,154 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
           ),
           // Список сотрудников
           Expanded(
-            child: FutureBuilder<List<Employee>>(
-              future: _employeesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: AppColors.gold),
-                        SizedBox(height: 16),
-                        Text(
-                          'Загрузка сотрудников...',
-                          style: TextStyle(color: Colors.white.withOpacity(0.5)),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(24.w),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(20.w),
-                            decoration: BoxDecoration(
-                              color: AppColors.error.withOpacity(0.15),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.error_outline,
-                              size: 48,
-                              color: AppColors.error,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'Ошибка загрузки данных',
-                            style: TextStyle(
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            '${snapshot.error}',
-                            style: TextStyle(color: Colors.white.withOpacity(0.5)),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              if (mounted) setState(() {
-                                _employeesFuture = _loadEmployees();
-                              });
-                              _animationController.reset();
-                              _animationController.forward();
-                            },
-                            icon: Icon(Icons.refresh),
-                            label: Text('Повторить'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.gold,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12.r),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                final allEmployees = snapshot.data ?? [];
-
-                // Пока статусы верификации загружаются — показываем индикатор
-                if (_isLoadingVerification) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: AppColors.gold),
-                        SizedBox(height: 16),
-                        Text(
-                          'Проверка верификации...',
-                          style: TextStyle(color: Colors.white.withOpacity(0.5)),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                // Фильтрация: ТОЛЬКО верифицированные сотрудники
-                // Не верифицированные отображаются на отдельной странице
-                final filteredEmployees = allEmployees.where((employee) {
-                  // Если нет телефона, исключаем из списка
-                  if (employee.phone == null || employee.phone!.isEmpty) {
-                    return false;
-                  }
-
-                  // Показываем только верифицированных
-                  final normalizedPhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
-                  final isVerified = _verificationStatus[normalizedPhone] ?? false;
-                  if (!isVerified) {
-                    return false;
-                  }
-
-                  // Фильтрация по поисковому запросу
-                  if (_searchQuery.isEmpty) return true;
-
-                  final name = employee.name.toLowerCase();
-                  final position = (employee.position ?? '').toLowerCase();
-                  final department = (employee.department ?? '').toLowerCase();
-
-                  return name.contains(_searchQuery) ||
-                      position.contains(_searchQuery) ||
-                      department.contains(_searchQuery);
-                }).toList();
-
-                if (filteredEmployees.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(24.w),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.06),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.person_search,
-                            size: 48,
-                            color: Colors.white.withOpacity(0.3),
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'Сотрудники не найдены',
-                          style: TextStyle(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white.withOpacity(0.7),
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Попробуйте изменить параметры поиска',
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            color: Colors.white.withOpacity(0.4),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    if (mounted) setState(() {
-                      _employeesFuture = _loadEmployees();
-                    });
-                    await _loadVerificationStatuses();
-                    _animationController.reset();
-                    _animationController.forward();
-                  },
-                  color: AppColors.gold,
-                  backgroundColor: AppColors.emeraldDark,
-                  child: ListView.builder(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w),
-                    itemCount: filteredEmployees.length,
-                    itemBuilder: (context, index) {
-                      final employee = filteredEmployees[index];
-                      final normalizedPhone = employee.phone?.replaceAll(RegExp(r'[\s\+]'), '');
-                      final isVerified = normalizedPhone != null
-                          ? _verificationStatus[normalizedPhone] ?? false
-                          : false;
-
-                      // Анимация появления
-                      final delay = index * 0.05;
-                      final animation = Tween<double>(begin: 0.0, end: 1.0).animate(
-                        CurvedAnimation(
-                          parent: _animationController,
-                          curve: Interval(
-                            delay.clamp(0.0, 0.7),
-                            (delay + 0.3).clamp(0.0, 1.0),
-                            curve: Curves.easeOutBack,
-                          ),
-                        ),
-                      );
-
-                      return AnimatedBuilder(
-                        animation: animation,
-                        builder: (context, child) {
-                          // Clamp нужен т.к. easeOutBack может генерировать значения > 1.0
-                          final animValue = animation.value.clamp(0.0, 1.0);
-                          return Transform.translate(
-                            offset: Offset(0, 30 * (1 - animValue)),
-                            child: Opacity(
-                              opacity: animValue,
-                              child: _buildEmployeeCard(employee, isVerified),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
+            child: _buildEmployeesList(),
           ),
         ],
+    );
+  }
+
+  Widget _buildEmployeesList() {
+    if (_isLoading && _employees.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: AppColors.gold),
+            SizedBox(height: 16),
+            Text(
+              'Загрузка сотрудников...',
+              style: TextStyle(color: Colors.white.withOpacity(0.5)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_error != null && _employees.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.w),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: EdgeInsets.all(20.w),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.error_outline, size: 48, color: AppColors.error),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Ошибка загрузки данных',
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              SizedBox(height: 8),
+              Text(_error!, style: TextStyle(color: Colors.white.withOpacity(0.5)), textAlign: TextAlign.center),
+              SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () {
+                  _animationController.reset();
+                  _loadData();
+                  _animationController.forward();
+                },
+                icon: Icon(Icons.refresh),
+                label: Text('Повторить'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.gold,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Пока статусы верификации загружаются и нет кэша — показываем индикатор
+    if (_isLoadingVerification && _verificationStatus.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: AppColors.gold),
+            SizedBox(height: 16),
+            Text('Проверка верификации...', style: TextStyle(color: Colors.white.withOpacity(0.5))),
+          ],
+        ),
+      );
+    }
+
+    // Фильтрация: ТОЛЬКО верифицированные сотрудники
+    final filteredEmployees = _employees.where((employee) {
+      if (employee.phone == null || employee.phone!.isEmpty) return false;
+      final normalizedPhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+      final isVerified = _verificationStatus[normalizedPhone] ?? false;
+      if (!isVerified) return false;
+      if (_searchQuery.isEmpty) return true;
+      final name = employee.name.toLowerCase();
+      final position = (employee.position ?? '').toLowerCase();
+      final department = (employee.department ?? '').toLowerCase();
+      return name.contains(_searchQuery) || position.contains(_searchQuery) || department.contains(_searchQuery);
+    }).toList();
+
+    if (filteredEmployees.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(24.w),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), shape: BoxShape.circle),
+              child: Icon(Icons.person_search, size: 48, color: Colors.white.withOpacity(0.3)),
+            ),
+            SizedBox(height: 16),
+            Text('Сотрудники не найдены', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.7))),
+            SizedBox(height: 8),
+            Text('Попробуйте изменить параметры поиска', style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.4))),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        EmployeeService.clearCache();
+        await _loadData();
+        _animationController.reset();
+        _animationController.forward();
+      },
+      color: AppColors.gold,
+      backgroundColor: AppColors.emeraldDark,
+      child: ListView.builder(
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
+        itemCount: filteredEmployees.length,
+        itemBuilder: (context, index) {
+          final employee = filteredEmployees[index];
+          final normalizedPhone = employee.phone?.replaceAll(RegExp(r'[\s\+]'), '');
+          final isVerified = normalizedPhone != null ? _verificationStatus[normalizedPhone] ?? false : false;
+          final delay = index * 0.05;
+          final animation = Tween<double>(begin: 0.0, end: 1.0).animate(
+            CurvedAnimation(
+              parent: _animationController,
+              curve: Interval(delay.clamp(0.0, 0.7), (delay + 0.3).clamp(0.0, 1.0), curve: Curves.easeOutBack),
+            ),
+          );
+          return AnimatedBuilder(
+            animation: animation,
+            builder: (context, child) {
+              final animValue = animation.value.clamp(0.0, 1.0);
+              return Transform.translate(
+                offset: Offset(0, 30 * (1 - animValue)),
+                child: Opacity(opacity: animValue, child: _buildEmployeeCard(employee, isVerified)),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 

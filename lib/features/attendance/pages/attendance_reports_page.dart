@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../models/shop_attendance_summary.dart';
 import '../services/attendance_report_service.dart';
 import '../../../core/services/report_notification_service.dart';
@@ -46,12 +47,20 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
     super.dispose();
   }
 
-  Future<void> _loadAllData() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  static const _cacheKey = 'page_attendance_reports';
 
+  Future<void> _loadAllData() async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _employeesSummary = cached['employees'] as List<EmployeeAttendanceSummary>;
+        _shopsSummary = cached['shops'] as List<ShopAttendanceSummary>;
+        _isLoading = false;
+      });
+    }
+
+    // Step 2: Fetch fresh data from server
     try {
       final results = await Future.wait([
         AttendanceReportService.getEmployeesSummary(),
@@ -63,10 +72,17 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
           _employeesSummary = results[0] as List<EmployeeAttendanceSummary>;
           _shopsSummary = results[1] as List<ShopAttendanceSummary>;
           _isLoading = false;
+          _error = null;
         });
       }
+
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, {
+        'employees': _employeesSummary,
+        'shops': _shopsSummary,
+      });
     } catch (e) {
-      if (mounted) {
+      if (mounted && _employeesSummary.isEmpty) {
         setState(() {
           _error = e.toString();
           _isLoading = false;

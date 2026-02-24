@@ -10,6 +10,7 @@ const { isAdminPhone } = require('../utils/admin_cache');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { requireAuth } = require('../utils/session_middleware');
+const { notifyCounterUpdate } = require('./counters_websocket');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -334,6 +335,7 @@ function setupShiftTransfersAPI(app) {
         console.error('Ошибка отправки уведомлений:', e);
       }
 
+      notifyCounterUpdate('shiftTransferRequests', { delta: 1 });
       res.json({ success: true, request: transfer });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -566,6 +568,7 @@ function setupShiftTransfersAPI(app) {
         console.error('Ошибка отправки уведомлений:', e);
       }
 
+      notifyCounterUpdate('shiftTransferRequests', { delta: -1 });
       res.json({
         success: true,
         request: transfer,

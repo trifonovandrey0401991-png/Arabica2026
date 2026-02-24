@@ -1,7 +1,7 @@
 # Arabica - Полная архитектурная документация
 
-**Версия:** 2.6.0
-**Дата обновления:** 2026-02-19
+**Версия:** 2.7.2
+**Дата обновления:** 2026-02-24
 **Автор:** Claude Code (полный архитектурный анализ + аудит безопасности + полный аудит 09.02.2026)
 **Назначение:** Исчерпывающая документация для любого IT-специалиста
 
@@ -12,7 +12,7 @@
 1. [Общая архитектура системы](#1-общая-архитектура-системы)
 2. [Запуск приложения (App Flow)](#2-запуск-приложения)
 3. [Система авторизации](#3-система-авторизации)
-4. [Flutter модули (35 штук)](#4-flutter-модули)
+4. [Flutter модули (36 штук)](#4-flutter-модули)
 5. [Сервер (loyalty-proxy)](#5-сервер-loyalty-proxy)
 6. [Потоки данных](#6-потоки-данных)
 7. [Автоматизация (Schedulers)](#7-автоматизация-schedulers)
@@ -150,12 +150,13 @@ arabica2026/
 │   │   │   └── phone_normalizer.dart # Нормализация телефонов
 │   │   └── widgets/
 │   │       └── shop_icon.dart        # Иконка магазина
-│   ├── features/                   # 35 функциональных модулей
+│   ├── features/                   # 36 функциональных модулей
 │   │   ├── auth/                   # Авторизация
 │   │   ├── attendance/             # Посещаемость
 │   │   ├── shifts/                 # Пересменки
-│   │   ├── ... (ещё 30 модулей)
-│   │   └── ai_training/            # ИИ распознавание (Z-отчёты, сигареты)
+│   │   ├── messenger/              # Мессенджер (чаты, группы, WebSocket)
+│   │   ├── ... (ещё 32 модуля)
+│   │   └── ai_training/            # ИИ распознавание (Z-отчёты, сигареты, YOLO)
 │   └── shared/                     # Общие компоненты (17 файлов)
 │       ├── dialogs/                # 8 диалогов (расписание, уведомления, и др.)
 │       ├── models/                 # unified_dialog_message_model.dart
@@ -163,10 +164,11 @@ arabica2026/
 │       └── widgets/                # 6 виджетов (report_list, shop_selection, и др.)
 ├── loyalty-proxy/                  # Node.js сервер
 │   ├── index.js                    # Точка входа (middleware, schedulers, routes)
-│   ├── api/                        # 67 API модулей
-│   ├── modules/                    # Вспомогательные модули (7 файлов)
+│   ├── api/                        # 71 API модулей
+│   ├── modules/                    # Вспомогательные модули (9 файлов)
+│   ├── ml/                         # ML/AI модули (YOLO inference, server)
 │   ├── services/                   # Сервисы (Telegram bot)
-│   ├── utils/                      # Утилиты (13 файлов: cache, db, pagination, и др.)
+│   ├── utils/                      # Утилиты (15 файлов: cache, db, pagination, push, и др.)
 │   └── efficiency_calc.js          # Расчёт эффективности
 ├── test/                           # 33 тестовых файла (517 unit тестов)
 ├── assets/                         # Ресурсы (изображения, шрифты)
@@ -186,7 +188,7 @@ arabica2026/
 | Node.js порт | 3000 |
 | WebSocket | wss://arabica26.ru/ws |
 | API базовый URL | https://arabica26.ru/api |
-| Статика (nginx) | shift-photos/, shift-question-photos/, shift-handover-question-photos/, shift-reference-photos/, training-articles-media/, product-question-photos/, task-media/, chat-media/ |
+| Статика (nginx) | shift-photos/, shift-question-photos/, shift-handover-question-photos/, shift-reference-photos/, training-articles-media/, product-question-photos/, task-media/, chat-media/, messenger-media/ |
 
 ## 1.6 Безопасность сервера
 
@@ -582,7 +584,7 @@ class AuthCredentials {
 
 # 4. FLUTTER МОДУЛИ
 
-## 4.1 Обзор модулей (35 штук)
+## 4.1 Обзор модулей (36 штук)
 
 | # | Модуль | Директория | Роли | Статус | Описание |
 |---|--------|------------|------|--------|----------|
@@ -617,10 +619,11 @@ class AuthCredentials {
 | 29 | Поставщики | `suppliers/` | Админ | Работает | Закупки |
 | 30 | Очистка данных | `data_cleanup/` | Админ | Работает | Maintenance |
 | 31 | KPI | `kpi/` | Админ | Работает | Аналитика |
-| 32 | ИИ распознавание | `ai_training/` | Админ | В разработке | Z-отчёты, сигареты, шаблоны фото |
+| 32 | ИИ распознавание | `ai_training/` | Админ | В разработке | Z-отчёты, сигареты, YOLO, шаблоны фото, дашборд |
 | 33 | Управление сетью | `network_management/` | Developer | Работает | Настройки |
 | 34 | Кофемашины | `coffee_machine/` | Сотрудник, Админ | Работает | OCR счётчиков, шаблоны, автоматизация |
 | 35 | Цепочки выполнения | `execution_chain/` | Админ | Работает | Цепочки задач для автоматизации |
+| 36 | Мессенджер | `messenger/` | Все сотрудники | В разработке | Чаты, группы, WebSocket, голосовые |
 
 > **Примечание:** Передача смен (`shift_transfers`) — НЕ отдельный модуль, а часть `work_schedule/` (shift_transfer_model.dart, shift_transfer_service.dart, shift_transfer_requests_page.dart).
 
@@ -1061,6 +1064,66 @@ tests/
 
 ---
 
+### МОДУЛЬ: messenger (Мессенджер)
+
+**Директория:** `lib/features/messenger/`
+
+```
+messenger/
+├── models/
+│   ├── contact_model.dart            # Модель контакта
+│   ├── conversation_model.dart       # Модель беседы
+│   ├── message_model.dart            # Модель сообщения
+│   └── participant_model.dart        # Модель участника
+├── services/
+│   ├── messenger_service.dart        # REST API сервис
+│   ├── messenger_ws_service.dart     # WebSocket real-time
+│   └── voice_recorder_service.dart   # Запись голосовых сообщений
+├── pages/
+│   ├── messenger_shell_page.dart     # Shell (навигация внутри мессенджера)
+│   ├── messenger_list_page.dart      # Список бесед
+│   ├── messenger_chat_page.dart      # Экран чата
+│   ├── messenger_profile_page.dart   # Профиль пользователя
+│   ├── contact_search_page.dart      # Поиск контактов
+│   ├── group_create_page.dart        # Создание группы
+│   └── group_info_page.dart          # Информация о группе
+└── widgets/
+    ├── chat_list_tile.dart           # Плитка беседы в списке
+    ├── message_bubble.dart           # Пузырь сообщения
+    └── message_input_bar.dart        # Панель ввода с голосовыми
+```
+
+**Роли:** Все сотрудники
+
+**Статус:** В разработке (замена employee_chat)
+
+**Ключевые особенности:**
+- **WebSocket real-time** — через `messenger_ws_service.dart`, отдельный от employee_chat
+- **Голосовые сообщения** — запись через `voice_recorder_service.dart`
+- **Shell навигация** — `messenger_shell_page.dart` как обёртка
+- **Группы** — создание, управление участниками, информация
+- **Профили** — страница профиля пользователя
+
+**API Endpoints:**
+
+| Method | Path | Описание |
+|--------|------|----------|
+| GET | `/api/messenger/conversations` | Список бесед |
+| POST | `/api/messenger/conversations` | Создать беседу |
+| GET | `/api/messenger/conversations/:id/messages` | Сообщения беседы |
+| POST | `/api/messenger/conversations/:id/messages` | Отправить сообщение |
+| POST | `/api/messenger/conversations/:id/read` | Прочитать сообщения |
+| GET | `/api/messenger/contacts` | Список контактов |
+| POST | `/api/messenger/groups` | Создать группу |
+| PUT | `/api/messenger/groups/:id` | Обновить группу |
+| WS | `/ws/messenger` | WebSocket подключение |
+
+**Бэкенд файлы:**
+- `loyalty-proxy/api/messenger_api.js` (REST API, 36.7KB)
+- `loyalty-proxy/api/messenger_websocket.js` (WebSocket, 12.3KB)
+
+---
+
 # 5. СЕРВЕР (loyalty-proxy)
 
 ## 5.1 Структура сервера
@@ -1069,7 +1132,7 @@ tests/
 loyalty-proxy/
 ├── index.js                              # Точка входа (middleware, schedulers, routes, PUBLIC_WRITE_PATHS)
 │
-├── api/                                  # 67 API модулей (включая schedulers и notifications)
+├── api/                                  # 71 API модулей (включая schedulers и notifications)
 │   │
 │   │── CORE API ──────────────────────────────────────────────────
 │   ├── auth_api.js                       # Авторизация
@@ -1128,6 +1191,9 @@ loyalty-proxy/
 │   ├── job_applications_api.js           # Заявки на работу
 │   ├── report_notifications_api.js       # Push отчётов
 │   ├── product_questions_penalty_scheduler.js # Штрафы поиска товара
+│   ├── messenger_api.js                  # Мессенджер (REST API)
+│   ├── messenger_websocket.js            # Мессенджер (WebSocket)
+│   ├── ai_dashboard_api.js              # ИИ дашборд (статистика, обучение, retry, Telegram notify, internal API)
 │   │
 │   │── AUTOMATION SCHEDULERS ──────────────────────────────────────
 │   ├── attendance_automation_scheduler.js   # Посещаемость
@@ -1138,6 +1204,8 @@ loyalty-proxy/
 │   ├── recount_automation_scheduler.js      # Пересчёты
 │   ├── coffee_machine_automation_scheduler.js # Кофемашины
 │   │
+│   ├── yolo_retrain_scheduler.js           # Авто-ретрейн YOLO модели
+│   │
 │   │── NOTIFICATIONS ──────────────────────────────────────────────
 │   ├── master_catalog_notifications.js
 │   ├── product_questions_notifications.js
@@ -1145,15 +1213,27 @@ loyalty-proxy/
 │
 ├── modules/
 │   ├── orders.js                         # Логика заказов
-│   ├── cigarette-vision.js               # ИИ модуль (сигареты)
+│   ├── cigarette-vision.js               # ИИ модуль (сигареты) + бэкап/восстановление модели
 │   ├── counter-ocr.js                    # OCR счётчиков кофемашин
+│   ├── ocr-engine.js                     # Общий движок OCR
 │   ├── z-report-ocr.js                   # OCR Z-отчётов
 │   ├── z-report-templates.js             # Шаблоны Z-отчётов
 │   ├── z-report-vision.js                # ИИ Z-отчётов
+│   ├── z-report-intelligence.js          # Анализ и интеллект Z-отчётов
 │   └── ocr_server.py                     # Python OCR сервер (EasyOCR)
+│
+├── ml/                                   # ML/AI система (YOLO + Embeddings)
+│   ├── yolo-wrapper.js                   # Node.js обёртка для YOLO + embedding API
+│   ├── yolo_inference.py                 # Python инференс YOLO модели
+│   ├── yolo_server.py                    # Python HTTP сервер YOLO + MobileNetV3 embeddings
+│   ├── embedding_catalog.py             # Каталог эмбеддингов товаров (cosine similarity)
+│   └── build_reference_catalog.py       # Построение референсного каталога из фото
 │
 ├── services/
 │   └── telegram_bot_service.js           # Telegram бот для OTP
+│
+├── admin-bot/
+│   └── index.js                         # Telegram бот администратора (OTP, SSL, AI: /ai_status, /ai_train, /ai_train_status)
 │
 ├── utils/
 │   ├── admin_cache.js                    # Кэш для админ-запросов
@@ -1167,6 +1247,8 @@ loyalty-proxy/
 │   ├── image_compress.js                 # Сжатие изображений (sharp)
 │   ├── moscow_time.js                    # Московское время (UTC+3)
 │   ├── pagination.js                     # Пагинация
+│   ├── pending_notify.js                 # Уведомления о pending-отчётах
+│   ├── push_service.js                   # Сервис отправки push-уведомлений
 │   ├── session_middleware.js             # Session middleware (token → session index)
 │   └── test_file_lock.js                 # Тесты для file locking
 │
@@ -1180,12 +1262,14 @@ loyalty-proxy/
 ```
 
 **Общая статистика:**
-- ~37000 строк JavaScript кода
-- 67 API файлов в api/ + 1 в корне (efficiency_calc.js)
-- 13 утилит в utils/ (включая db.js, db_schema.sql)
-- 10 Scheduler'ов (8 именованных + order_timeout + auto_cleanup)
+- ~42000 строк JavaScript кода
+- 71 API файлов в api/ + 1 в корне (efficiency_calc.js)
+- 9 модулей в modules/ (OCR, vision, orders, z-report intelligence)
+- 3 ML файла в ml/ (YOLO inference, server, wrapper)
+- 15 утилит в utils/ (включая db.js, db_schema.sql, push_service, pending_notify)
+- 11 Scheduler'ов (8 именованных + order_timeout + auto_cleanup + yolo_retrain)
 - 503+ endpoints
-- PostgreSQL: ~40 таблиц, 10400+ записей, 17MB данных
+- PostgreSQL: ~44 таблицы, 10400+ записей, 17MB данных
 
 ## 5.2 ПОЛНАЯ ТАБЛИЦА API ENDPOINTS (240+)
 
@@ -1636,14 +1720,21 @@ curl -X POST http://arabica26.ru:3000/api/auth/register \
 
 | Method | Path | Описание | Auth |
 |--------|------|----------|------|
-| GET | `/api/cigarette-vision/settings` | Настройки | ✅ |
-| PUT | `/api/cigarette-vision/settings` | Сохранить | ✅ |
+| GET | `/api/cigarette-vision/settings` | Настройки (вкл. `useEmbeddingRecognition`) | ✅ |
+| PUT | `/api/cigarette-vision/settings` | Сохранить (вкл. toggle эмбеддингов) | ✅ |
 | GET | `/api/cigarette-vision/model-status` | Статус модели | ✅ |
 | POST | `/api/cigarette-vision/detect` | Распознать товар | ✅ |
 | POST | `/api/cigarette-vision/train` | Обучить модель | ✅ |
 | GET | `/api/cigarette-vision/samples` | Образцы | ✅ |
 | POST | `/api/cigarette-vision/samples` | Загрузить образец | ✅ |
 | DELETE | `/api/cigarette-vision/samples/:id` | Удалить | ✅ |
+| GET | `/api/cigarette-vision/embedding-catalog/stats` | Статистика каталога эмбеддингов | ✅ |
+
+**Двухступенчатое распознавание 1000+ товаров (добавлено 2026-02-24):**
+- **Ступень 1**: YOLO YOLOv8n (1 класс "pack") — обнаружение пачек на фото
+- **Ступень 2**: MobileNetV3-Small (576-dim embeddings) — идентификация товара по cosine similarity
+- Переключатель `useEmbeddingRecognition` в настройках — вкл/выкл из AI Dashboard без перезапуска сервера
+- Настройка хранится в `app_settings` таблице, кэшируется 5 мин через `loadSettings()`
 
 ### MASTER CATALOG API (Мастер-каталог товаров)
 
@@ -1662,6 +1753,8 @@ curl -X POST http://arabica26.ru:3000/api/auth/register \
 | GET | `/api/master-catalog/pending-codes` | Очередь новых кодов | ✅ |
 | POST | `/api/master-catalog/approve-code` | Одобрить pending-код | ✅ |
 | POST | `/api/master-catalog/reject-code` | Отклонить pending-код | ✅ |
+| POST | `/api/master-catalog/batch-approve-codes` | Массовое одобрение pending-кодов (body: {codes: [{kod, name, group}]}) | ✅ |
+| POST | `/api/master-catalog/batch-reject-codes` | Массовое отклонение pending-кодов (body: {kods: [...]}) | ✅ |
 | GET | `/api/master-catalog/for-training` | Продукты для обучения ИИ (с группировкой, фото, статистикой) | ✅ |
 | GET | `/api/master-catalog/search-for-assign` | Поиск товаров для привязки кода | ✅ |
 | POST | `/api/master-catalog/assign-code-to-product` | Привязать pending-код к существующему товару | ✅ |
@@ -1672,20 +1765,52 @@ curl -X POST http://arabica26.ru:3000/api/auth/register \
 **Файл:** `loyalty-proxy/api/shift_ai_verification_api.js`
 
 AI верификация проверяет фото товаров на соответствие ожидаемому ассортименту.
+При включённом `useEmbeddingRecognition` использует двухступенчатый пайплайн (YOLO → MobileNetV3 embeddings).
 
 | Method | Path | Описание | Auth |
 |--------|------|----------|------|
-| POST | `/api/shift-ai-verification/verify` | Запустить верификацию | ✅ |
-| GET | `/api/shift-ai-verification/status/:reportId` | Статус верификации | ✅ |
-| GET | `/api/shift-ai-verification/results/:reportId` | Результаты | ✅ |
+| POST | `/api/shift-ai/verify` | Запустить верификацию (base64 фото, до 50MB) | ✅ |
+| GET | `/api/shift-ai/readiness/:shopAddress` | Готовность ИИ для магазина | ✅ |
+| GET | `/api/shift-ai/active-products/:shopAddress` | Активные товары для проверки | ✅ |
 
 **Где используется AI верификация:**
-- ✅ **Пересменка (Shift Transfer)** — проверка фото при передаче смены
-- ✅ **Пересчёт (Recount)** — верификация инвентаризации
-- ✅ **Конверты (Envelope)** — проверка фото при инкассации
+- ✅ **Пересменка (Shift Transfer)** — проверка фото при передаче смены (shift_questions_page.dart → _runAiVerification)
 
 **Где НЕ используется:**
 - ❌ **Сдача смены (Shift Handover)** — только ручная проверка админом
+
+**Готовность ИИ для магазина (per-shop readiness):**
+- Каждый товар должен иметь: ≥10 фото пересчёта + ≥3 фото выкладки для конкретного магазина
+- Если не набрано — товар попадает в `skippedProducts`, показывается экран "ИИ не готов"
+- Три экрана результата: "ИИ не готов" / "Требуют подтверждения" (интерактивный) / "Все найдены"
+
+### AI DASHBOARD API (ИИ дашборд + обучение YOLO)
+
+**Файл:** `loyalty-proxy/api/ai_dashboard_api.js`
+
+Единый дашборд метрик всех AI-систем: Z-Report OCR, Coffee Machine OCR, Cigarette Vision (YOLO), Shift AI Verification.
+Включает управление обучением YOLO-модели с retry и Telegram-уведомлениями.
+**Flutter-переключатель** "Распознавание 1000+ товаров" — вкл/выкл эмбеддинг-распознавания через `PUT /api/cigarette-vision/settings`.
+
+| Method | Path | Описание | Auth |
+|--------|------|----------|------|
+| GET | `/api/ai-dashboard/metrics` | Метрики всех 4 AI-систем | ✅ |
+| GET | `/api/ai-dashboard/recount-train-status` | Статус обучения YOLO | ✅ |
+| POST | `/api/ai-dashboard/trigger-recount-training` | Запустить обучение (body: {epochs}) | ✅ |
+| GET | `/api/ai-dashboard/recount-train-schedule` | Расписание авто-обучения | ✅ |
+| POST | `/api/ai-dashboard/recount-train-schedule` | Задать расписание (body: {time}) | ✅ |
+| GET | `/api/internal/recount-train-status` | Статус обучения (localhost only, no auth) | ❌ |
+| POST | `/api/internal/trigger-recount-training` | Запуск обучения (localhost only, no auth) | ❌ |
+
+**Защита обучения (добавлено 2026-02-23):**
+- Бэкап модели `.pt` → `.pt.backup` перед обучением
+- Авто-восстановление из бэкапа при ошибке
+- Авто-retry до 2 попыток с 5-минутным интервалом
+- Telegram-уведомления админу об успехе/ошибке/retry
+
+**Внутренние API (`/api/internal/`):**
+- Доступны только с localhost (middleware `requireLocalhost`)
+- Используются Telegram-ботом (`admin-bot/index.js`) для удалённого управления
 
 ### DATA CLEANUP API (Очистка данных)
 
@@ -1992,6 +2117,7 @@ Scheduler (каждые 5 минут)
 | 8 | Product Questions | `product_questions_penalty_scheduler.js` | 5 мин | N/A | N/A | -1 |
 | 9 | Order Timeout | `order_timeout_api.js` (скрытый) | 1 мин | N/A | N/A | штраф |
 | 10 | Auto Cleanup | `data_cleanup_api.js` (скрытый) | ежедневно 3:00 | N/A | N/A | N/A |
+| 11 | YOLO Retrain | `yolo_retrain_scheduler.js` | по расписанию | N/A | N/A | N/A |
 
 ## 7.2 ATTENDANCE AUTOMATION SCHEDULER
 
@@ -3391,7 +3517,7 @@ Client broadcast ──────────────┘
 | 🔴 Критических проблем | 12 |
 | 🟠 Важных проблем | 24 |
 | 🟡 Рекомендаций | 31 |
-| ✅ Модулей без проблем | 22 / 35 |
+| ✅ Модулей без проблем | 22 / 36 |
 | flutter analyze | 0 ошибок, 45 warnings, 135 infos |
 
 ## 13.2 Цепочки данных (35 модулей)

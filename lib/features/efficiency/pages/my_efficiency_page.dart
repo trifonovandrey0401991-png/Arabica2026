@@ -17,6 +17,7 @@ import '../../referrals/services/referral_service.dart';
 import '../../rating/pages/my_rating_page.dart';
 import '../../tests/services/test_result_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -87,11 +88,34 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     }
   }
 
+  String get _cacheKey => 'my_efficiency_${_selectedYear}_$_selectedMonth';
+
   Future<void> _loadData({bool forceRefresh = false}) async {
-    if (mounted) setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _summary = cached['summary'] as EfficiencySummary?;
+        _previousMonthSummary = cached['prevSummary'] as EfficiencySummary?;
+        _bonusSummary = cached['bonusSummary'] as BonusPenaltySummary?;
+        _referralPoints = cached['referralPoints'] as EmployeeReferralPoints?;
+        _avgTestScore = cached['avgTestScore'] as double?;
+        _totalTests = cached['totalTests'] as int? ?? 0;
+        _managerEfficiency = cached['managerEfficiency'] as ManagerEfficiencyData?;
+        _isManagerWithShops = cached['isManagerWithShops'] as bool? ?? false;
+        _employeeName = cached['employeeName'] as String?;
+        _employeeId = cached['employeeId'] as String?;
+        _isLoading = false;
+        _error = null;
+      });
+    }
+
+    if (mounted && _summary == null && _managerEfficiency == null) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
 
     try {
       // Получаем имя текущего сотрудника и роль
@@ -244,12 +268,28 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
         _totalTests = totalTests;
         _isLoading = false;
       });
+
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, {
+        'summary': mySummary,
+        'prevSummary': prevSummary,
+        'bonusSummary': bonusSummary,
+        'referralPoints': referralPoints,
+        'avgTestScore': avgScore,
+        'totalTests': totalTests,
+        'managerEfficiency': null,
+        'isManagerWithShops': false,
+        'employeeName': employeeName,
+        'employeeId': _employeeId,
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = 'Ошибка загрузки данных: $e';
-        _isLoading = false;
-      });
+      if (_summary == null && _managerEfficiency == null) {
+        setState(() {
+          _error = 'Ошибка загрузки данных: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -269,12 +309,28 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
         _employeeName = _userRole?.displayName;
         _isLoading = false;
       });
+
+      // Step 3: Save to cache (manager path)
+      CacheManager.set(_cacheKey, {
+        'summary': null,
+        'prevSummary': null,
+        'bonusSummary': null,
+        'referralPoints': null,
+        'avgTestScore': null,
+        'totalTests': 0,
+        'managerEfficiency': efficiency ?? ManagerEfficiencyData.empty(),
+        'isManagerWithShops': true,
+        'employeeName': _userRole?.displayName,
+        'employeeId': null,
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = 'Ошибка загрузки данных: $e';
-        _isLoading = false;
-      });
+      if (_managerEfficiency == null && _summary == null) {
+        setState(() {
+          _error = 'Ошибка загрузки данных: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 

@@ -487,20 +487,23 @@ async function loadLearnedPatterns() {
  * Сохранить выученные паттерны
  */
 async function saveLearnedPatterns(data) {
-  await ensureDataDir();
-  await writeJsonFile(LEARNED_PATTERNS_FILE, data);
+  // withLock: предотвращает потерю данных при параллельных записях
+  await withLock('z-report-learned-patterns', async () => {
+    await ensureDataDir();
+    await writeJsonFile(LEARNED_PATTERNS_FILE, data);
 
-  if (USE_DB) {
-    try {
-      await db.upsert('app_settings', {
-        key: 'z_report_learned_patterns',
-        data: data,
-        updated_at: new Date().toISOString(),
-      }, 'key');
-    } catch (e) {
-      console.error('[Z-Report] DB saveLearnedPatterns error:', e.message);
+    if (USE_DB) {
+      try {
+        await db.upsert('app_settings', {
+          key: 'z_report_learned_patterns',
+          data: data,
+          updated_at: new Date().toISOString(),
+        }, 'key');
+      } catch (e) {
+        console.error('[Z-Report] DB saveLearnedPatterns error:', e.message);
+      }
     }
-  }
+  });
 }
 
 /**
@@ -1044,20 +1047,23 @@ async function loadLearnedRegions() {
  * Сохранить выученные регионы
  */
 async function saveLearnedRegions(data) {
-  await ensureDataDir();
-  await writeJsonFile(LEARNED_REGIONS_FILE, data);
+  // withLock: предотвращает потерю данных при параллельных записях
+  await withLock('z-report-learned-regions', async () => {
+    await ensureDataDir();
+    await writeJsonFile(LEARNED_REGIONS_FILE, data);
 
-  if (USE_DB) {
-    try {
-      await db.upsert('app_settings', {
-        key: 'z_report_learned_regions',
-        data: data,
-        updated_at: new Date().toISOString(),
-      }, 'key');
-    } catch (e) {
-      console.error('[Z-Report] DB saveLearnedRegions error:', e.message);
+    if (USE_DB) {
+      try {
+        await db.upsert('app_settings', {
+          key: 'z_report_learned_regions',
+          data: data,
+          updated_at: new Date().toISOString(),
+        }, 'key');
+      } catch (e) {
+        console.error('[Z-Report] DB saveLearnedRegions error:', e.message);
+      }
     }
-  }
+  });
 }
 
 /**

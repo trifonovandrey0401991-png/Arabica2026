@@ -16,6 +16,7 @@ import 'withdrawal_shop_selection_page.dart';
 import 'revenue_analytics_page.dart';
 import 'store_managers_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Главная страница отчета по кассе
 class MainCashPage extends StatefulWidget {
@@ -57,14 +58,29 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     super.dispose();
   }
 
+  static const _cacheKey = 'main_cash_data';
+
   Future<void> _loadData() async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _balances = cached['balances'] as List<ShopCashBalance>;
+        _withdrawals = cached['withdrawals'] as List<Withdrawal>;
+        _isLoading = false;
+      });
+    }
+
+    if (_balances.isEmpty) {
+      setState(() => _isLoading = true);
+    }
 
     try {
       Logger.debug('🔄 Начало загрузки данных главной кассы');
 
-      // Параллельная загрузка балансов и выемок
+      // Step 2: Fetch fresh data from server
       late List<ShopCashBalance> balances;
       late List<Withdrawal> allWithdrawals;
 
@@ -85,21 +101,6 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
       );
       Logger.debug('✅ Загружено выемок: ${withdrawals.length}');
 
-      // Логирование для отладки
-      for (final b in balances) {
-        Logger.debug('=== Баланс магазина: ${b.shopAddress}');
-        Logger.debug('    ООО: ${b.oooBalance}');
-        Logger.debug('    ИП: ${b.ipBalance}');
-        Logger.debug('    Итого: ${b.totalBalance}');
-      }
-
-      for (final w in withdrawals) {
-        Logger.debug('=== Выемка: ${w.id}');
-        Logger.debug('    Магазин: ${w.shopAddress}');
-        Logger.debug('    Сумма: ${w.totalAmount}');
-        Logger.debug('    Расходов: ${w.expenses.length}');
-      }
-
       if (!mounted) return;
       setState(() {
         _balances = balances;
@@ -107,12 +108,18 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         _isLoading = false;
       });
 
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, {
+        'balances': balances,
+        'withdrawals': withdrawals,
+      });
+
       Logger.debug('✅ Состояние обновлено: балансов=${_balances.length}, выемок=${_withdrawals.length}');
     } catch (e, stackTrace) {
       Logger.error('❌ Ошибка загрузки данных', e);
       Logger.debug('Stack trace: $stackTrace');
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      if (_balances.isEmpty) setState(() => _isLoading = false);
     }
   }
 

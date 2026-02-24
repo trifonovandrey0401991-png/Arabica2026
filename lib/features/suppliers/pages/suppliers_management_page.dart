@@ -9,6 +9,7 @@ import '../../tasks/services/recurring_task_service.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница управления поставщиками
 class SuppliersManagementPage extends StatefulWidget {
@@ -41,36 +42,59 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
     _loadData();
   }
 
+  static const _cacheKey = 'suppliers_data';
+
   Future<void> _loadData() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _suppliers = cached['suppliers'] as List<Supplier>;
+        _shops = cached['shops'] as List<Shop>;
+        _managers = cached['managers'] as List<Employee>;
+        _isLoading = false;
+      });
+    }
+
+    if (_suppliers.isEmpty && mounted) setState(() => _isLoading = true);
+
     try {
       final results = await Future.wait([
         SupplierService.getSuppliers(),
-        ShopService.getShopsForCurrentUser(),  // Фильтрация по роли
+        ShopService.getShopsForCurrentUser(),
         EmployeeService.getEmployees(),
       ]);
       if (!mounted) return;
+      final suppliers = results[0] as List<Supplier>;
+      final shops = results[1] as List<Shop>;
+      final allEmployees = results[2] as List<Employee>;
+      final managersOnly = allEmployees.where((e) => e.isManager == true).toList();
+      final managers = managersOnly.isNotEmpty ? managersOnly : allEmployees;
+
       setState(() {
-        _suppliers = results[0] as List<Supplier>;
-        _shops = results[1] as List<Shop>;
-        // Фильтруем только заведующих (с флагом isManager)
-        final allEmployees = results[2] as List<Employee>;
-        final managersOnly = allEmployees.where((e) => e.isManager == true).toList();
-        // Если нет сотрудников с флагом isManager, показываем всех сотрудников
-        // (для обратной совместимости пока не у всех установлен флаг)
-        _managers = managersOnly.isNotEmpty ? managersOnly : allEmployees;
+        _suppliers = suppliers;
+        _shops = shops;
+        _managers = managers;
         _isLoading = false;
+      });
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, {
+        'suppliers': suppliers,
+        'shops': shops,
+        'managers': managers,
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка загрузки данных'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (_suppliers.isEmpty) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка загрузки данных'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }

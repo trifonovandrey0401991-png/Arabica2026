@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../models/job_application_model.dart';
 import '../services/job_application_service.dart';
 import 'job_application_detail_page.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class JobApplicationsListPage extends StatefulWidget {
@@ -25,16 +26,36 @@ class _JobApplicationsListPageState extends State<JobApplicationsListPage> {
     _loadData();
   }
 
+  static const _cacheKey = 'job_applications';
+
   Future<void> _loadData() async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<JobApplication>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _applications = cached;
+        _isLoading = false;
+      });
+    }
+
     final prefs = await SharedPreferences.getInstance();
     _adminName = prefs.getString('employeeName') ?? prefs.getString('name') ?? 'Администратор';
 
-    final applications = await JobApplicationService.getAll();
-    if (!mounted) return;
-    setState(() {
-      _applications = applications;
-      _isLoading = false;
-    });
+    if (_applications.isEmpty && mounted) setState(() => _isLoading = true);
+
+    try {
+      final applications = await JobApplicationService.getAll();
+      if (!mounted) return;
+      setState(() {
+        _applications = applications;
+        _isLoading = false;
+      });
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, applications);
+    } catch (e) {
+      if (!mounted) return;
+      if (_applications.isEmpty) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _refresh() async {

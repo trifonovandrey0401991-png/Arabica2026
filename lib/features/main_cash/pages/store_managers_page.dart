@@ -6,6 +6,7 @@ import '../../shops/services/shop_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart' show Employee;
 import '../services/store_manager_service.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка заведующих с привязкой магазинов
@@ -29,20 +30,32 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
     _loadData();
   }
 
+  static const _cacheKey = 'store_managers';
+
   Future<void> _loadData() async {
-    if (mounted) setState(() {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _managers = cached['managers'] as List<Employee>;
+        _shopAssignments = cached['assignments'] as Map<String, StoreManagerInfo>;
+        _allShops = cached['shops'] as List<Shop>;
+        _isLoading = false;
+        _errorMessage = null;
+      });
+    }
+
+    if (_managers.isEmpty && mounted) setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      // Загружаем сотрудников и фильтруем по флагу isManager
       final allEmployees = await EmployeeService.getEmployees();
       final managerEmployees = allEmployees
           .where((e) => e.isManager == true)
           .toList();
 
-      // Загружаем привязки магазинов из shop-managers
       final storeManagerInfos = await StoreManagerService.getStoreManagers();
       final assignmentsMap = <String, StoreManagerInfo>{};
       for (final sm in storeManagerInfos) {
@@ -58,10 +71,16 @@ class _StoreManagersPageState extends State<StoreManagersPage> {
           _allShops = shops;
           _isLoading = false;
         });
+        // Step 3: Save to cache
+        CacheManager.set(_cacheKey, {
+          'managers': managerEmployees,
+          'assignments': assignmentsMap,
+          'shops': shops,
+        });
       }
     } catch (e) {
       Logger.error('Ошибка загрузки данных', e);
-      if (mounted) {
+      if (mounted && _managers.isEmpty) {
         setState(() {
           _errorMessage = 'Ошибка загрузки: $e';
           _isLoading = false;

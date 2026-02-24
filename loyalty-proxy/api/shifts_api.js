@@ -14,6 +14,7 @@ const { getMoscowTime } = require('../utils/moscow_time');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { withLock } = require('../utils/file_lock');
 const { writeJsonFile } = require('../utils/async_fs');
+const { notifyCounterUpdate } = require('./counters_websocket');
 const db = require('../utils/db');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const { requireAuth } = require('../utils/session_middleware');
@@ -261,7 +262,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
             params.push(shopAddress);
           }
           if (date) {
-            sql += ` AND (date = $${paramIdx} OR created_at::date = $${paramIdx}::date)`;
+            sql += ` AND (date = $${paramIdx} OR (created_at AT TIME ZONE 'Europe/Moscow')::date = $${paramIdx}::date)`;
             params.push(date);
             paramIdx++;
           }
@@ -494,6 +495,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
         return result;
       });
 
+      notifyCounterUpdate('pendingShiftReports', { delta: 1 });
       res.json({ success: true, report: updatedReport });
     } catch (error) {
       console.error('Ошибка сохранения отчета пересменки:', error);
@@ -746,6 +748,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       }
 
       console.log(`Отчет пересменки обновлен: ${reportId}, статус: ${updatedReport.status}, оценка: ${updatedReport.rating}`);
+      notifyCounterUpdate('pendingShiftReports', { delta: -1 });
       res.json({ success: true, report: updatedReport });
     } catch (error) {
       console.error('Ошибка обновления отчета пересменки:', error);
@@ -912,6 +915,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
         await sendShiftHandoverNewReportNotification(report);
       }
 
+      notifyCounterUpdate('pendingHandoverReports', { delta: 1 });
       res.json({ success: true, message: 'Отчет сохранен' });
     } catch (error) {
       console.error('Ошибка сохранения отчета сдачи смены:', error);
@@ -994,6 +998,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
         }
       }
 
+      notifyCounterUpdate('pendingHandoverReports', { delta: -1 });
       res.json({ success: true, message: 'Отчет обновлен', report: updatedReport });
     } catch (error) {
       console.error('Ошибка обновления отчета сдачи смены:', error);

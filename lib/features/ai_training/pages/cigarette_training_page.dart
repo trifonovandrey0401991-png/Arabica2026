@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/theme/app_colors.dart';
+import '../services/master_catalog_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/api_constants.dart';
@@ -47,13 +49,25 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   String? _selectedShopAddress;
   List<Shop> _shops = [];
 
+  // Pagination state
+  int _totalProducts = 0;
+  int _currentPage = 1;
+  bool _hasMoreProducts = false;
+  bool _isLoadingMore = false;
+
+  // Products for "Обученные" and "Настройки" tabs (loaded separately)
+  List<CigaretteProduct> _trainedProducts = [];
+  List<CigaretteProduct> _productsWithPhotos = [];
+
   // Поиск по наименованию (вкладка Товары)
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  Timer? _searchDebounce;
 
   // Поиск по наименованию (вкладка Фото)
   final TextEditingController _photoSearchController = TextEditingController();
   String _photoSearchQuery = '';
+  Timer? _photoSearchDebounce;
 
   // Сортировка по точности ИИ
   String _accuracySortMode = 'none'; // 'none', 'worst', 'best'
@@ -120,6 +134,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     _tabController?.dispose();
     _searchController.dispose();
     _photoSearchController.dispose();
+    _searchDebounce?.cancel();
+    _photoSearchDebounce?.cancel();
     super.dispose();
   }
 
@@ -131,16 +147,23 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
     try {
       // Перезагружаем выбранный магазин из SharedPreferences
-      // (важно для корректного отображения per-shop прогресса)
       final prefs = await SharedPreferences.getInstance();
       final shopAddress = prefs.getString('selectedShopAddress');
 
+      // Determine sort for server
+      String? sortParam;
+      if (_accuracySortMode == 'worst') sortParam = 'accuracy-asc';
+      if (_accuracySortMode == 'best') sortParam = 'accuracy-desc';
+
       final groups = await CigaretteVisionService.getProductGroups();
-      // Передаём shopAddress для оптимизации - сервер вернёт perShopDisplayStats
-      // только для выбранного магазина, а не для всех (экономия 7MB → 100KB)
-      final products = await CigaretteVisionService.getProducts(
+      // Paginated: first page only (50 items, ~250KB instead of 15MB)
+      final response = await CigaretteVisionService.getProductsPaginated(
         productGroup: _selectedGroup,
         shopAddress: shopAddress,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+        sort: sortParam ?? 'progress-asc',
+        page: 1,
+        limit: 50,
       );
       final stats = await CigaretteVisionService.getStats();
 
@@ -149,11 +172,31 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           ? await CigaretteVisionService.getAllPendingCountingSamples()
           : <TrainingSample>[];
 
+      // Load trained products for "Обученные" tab (separate lightweight call)
+      final trainedResponse = await CigaretteVisionService.getProductsPaginated(
+        shopAddress: shopAddress,
+        filter: 'counting-complete',
+        sort: 'accuracy-asc',
+        limit: 200,
+      );
+
+      // Load products with photos for "Настройки" tab
+      final photosResponse = await CigaretteVisionService.getProductsPaginated(
+        shopAddress: shopAddress,
+        filter: 'has-photos',
+        limit: 200,
+      );
+
       if (mounted) {
         setState(() {
           _selectedShopAddress = shopAddress;
           _productGroups = groups;
-          _products = products;
+          _products = response.products;
+          _totalProducts = response.total;
+          _currentPage = response.page;
+          _hasMoreProducts = response.hasNextPage;
+          _trainedProducts = trainedResponse.products;
+          _productsWithPhotos = photosResponse.products;
           _stats = stats;
           _pendingCountingSamples = pendingSamples;
           _isLoading = false;
@@ -166,6 +209,117 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// Load next page of products (for "Показать ещё" button)
+  Future<void> _loadMoreProducts() async {
+    if (_isLoadingMore || !_hasMoreProducts) return;
+
+    if (mounted) setState(() => _isLoadingMore = true);
+
+    try {
+      String? sortParam;
+      if (_accuracySortMode == 'worst') sortParam = 'accuracy-asc';
+      if (_accuracySortMode == 'best') sortParam = 'accuracy-desc';
+
+      final response = await CigaretteVisionService.getProductsPaginated(
+        productGroup: _selectedGroup,
+        shopAddress: _selectedShopAddress,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+        sort: sortParam ?? 'progress-asc',
+        page: _currentPage + 1,
+        limit: 50,
+      );
+
+      if (mounted) {
+        setState(() {
+          _products.addAll(response.products);
+          _currentPage = response.page;
+          _hasMoreProducts = response.hasNextPage;
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingMore = false);
+    }
+  }
+
+  /// Server-side search with debounce
+  void _onProductSearchChanged(String value) {
+    if (mounted) setState(() => _searchQuery = value);
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      _searchFromServer(value);
+    });
+  }
+
+  Future<void> _searchFromServer(String query) async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      String? sortParam;
+      if (_accuracySortMode == 'worst') sortParam = 'accuracy-asc';
+      if (_accuracySortMode == 'best') sortParam = 'accuracy-desc';
+
+      final response = await CigaretteVisionService.getProductsPaginated(
+        productGroup: _selectedGroup,
+        shopAddress: _selectedShopAddress,
+        search: query.isNotEmpty ? query : null,
+        sort: sortParam ?? 'progress-asc',
+        page: 1,
+        limit: 50,
+      );
+
+      if (mounted) {
+        setState(() {
+          _products = response.products;
+          _totalProducts = response.total;
+          _currentPage = 1;
+          _hasMoreProducts = response.hasNextPage;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Photo search debounce (same as product search, reuses _products)
+  void _onPhotoSearchChanged(String value) {
+    if (mounted) setState(() => _photoSearchQuery = value);
+    _photoSearchDebounce?.cancel();
+    _photoSearchDebounce = Timer(const Duration(milliseconds: 400), () {
+      _photoSearchFromServer(value);
+    });
+  }
+
+  Future<void> _photoSearchFromServer(String query) async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await CigaretteVisionService.getProductsPaginated(
+        productGroup: _selectedGroup,
+        shopAddress: _selectedShopAddress,
+        search: query.isNotEmpty ? query : null,
+        sort: 'progress-asc',
+        page: 1,
+        limit: 50,
+      );
+
+      if (mounted) {
+        setState(() {
+          _products = response.products;
+          _totalProducts = response.total;
+          _currentPage = 1;
+          _hasMoreProducts = response.hasNextPage;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -484,27 +638,6 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   /// Вкладка добавления фото
   Widget _buildAddPhotoTab() {
-    // Фильтрация и ранжирование по поиску
-    List<CigaretteProduct> filteredPhotoProducts;
-    if (_photoSearchQuery.isEmpty) {
-      filteredPhotoProducts = _products;
-    } else {
-      final scored = _products
-          .map((product) {
-            final queryLower = _photoSearchQuery.toLowerCase();
-            final barcodeMatch = product.barcodes.any((b) => b.contains(queryLower));
-            if (barcodeMatch) return MapEntry(product, 0.95);
-            return MapEntry(
-              product,
-              _calculateSearchRelevance(product.productName, _photoSearchQuery),
-            );
-          })
-          .where((entry) => entry.value > 0.3)
-          .toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
-      filteredPhotoProducts = scored.map((e) => e.key).toList();
-    }
-
     return ListView(
       padding: EdgeInsets.all(16.w),
       children: [
@@ -521,7 +654,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         ),
         SizedBox(height: 16),
 
-        // Поиск по наименованию
+        // Поиск по наименованию (server-side)
         _buildPhotoSearchField(),
         SizedBox(height: 12),
 
@@ -531,22 +664,44 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           SizedBox(height: 16),
         ],
 
-        // Счётчик найденных товаров
-        if (_photoSearchQuery.isNotEmpty) ...[
-          Padding(
-            padding: EdgeInsets.only(bottom: 12.h),
-            child: Text(
-              'Найдено: ${filteredPhotoProducts.length} из ${_products.length}',
-              style: TextStyle(
-                fontSize: 13.sp,
-                color: Colors.white.withOpacity(0.6),
-              ),
+        // Счётчик товаров
+        Padding(
+          padding: EdgeInsets.only(bottom: 12.h),
+          child: Text(
+            _photoSearchQuery.isNotEmpty
+                ? 'Найдено: $_totalProducts'
+                : 'Показано: ${_products.length} из $_totalProducts',
+            style: TextStyle(
+              fontSize: 13.sp,
+              color: Colors.white.withOpacity(0.6),
             ),
           ),
-        ],
+        ),
 
-        // Список товаров для добавления фото
-        ...filteredPhotoProducts.map((product) => _buildProductCard(product, forUpload: true)),
+        // Список товаров для добавления фото (server-paginated)
+        ..._products.map((product) => _buildProductCard(product, forUpload: true)),
+
+        // Кнопка "Показать ещё"
+        if (_hasMoreProducts)
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 16.h),
+            child: Center(
+              child: _isLoadingMore
+                  ? CircularProgressIndicator(color: _greenGradient[0])
+                  : OutlinedButton.icon(
+                      onPressed: _loadMoreProducts,
+                      icon: Icon(Icons.expand_more, color: Colors.white70),
+                      label: Text(
+                        'Показать ещё (${_products.length} из $_totalProducts)',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.white24),
+                        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                      ),
+                    ),
+            ),
+          ),
       ],
     );
   }
@@ -566,7 +721,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         controller: _photoSearchController,
         style: TextStyle(color: Colors.white),
         decoration: InputDecoration(
-          hintText: 'Поиск товара (с учётом опечаток)...',
+          hintText: 'Поиск по названию или штрихкоду...',
           hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
           prefixIcon: Icon(
             Icons.search,
@@ -580,202 +735,21 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   ),
                   onPressed: () {
                     _photoSearchController.clear();
-                    if (mounted) setState(() {
-                      _photoSearchQuery = '';
-                    });
+                    _onPhotoSearchChanged('');
                   },
                 )
               : null,
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         ),
-        onChanged: (value) {
-          if (mounted) setState(() {
-            _photoSearchQuery = value;
-          });
-        },
+        onChanged: _onPhotoSearchChanged,
       ),
     );
   }
 
-  /// Вычисляет релевантность товара для поискового запроса
-  /// Возвращает значение от 0.0 (нет совпадения) до 1.0 (точное совпадение)
-  double _calculateSearchRelevance(String productName, String query) {
-    if (query.isEmpty) return 1.0;
-
-    final nameLower = productName.toLowerCase();
-    final queryLower = query.toLowerCase();
-
-    // 1. Точное совпадение слова - максимальный приоритет
-    if (nameLower == queryLower) return 1.0;
-
-    // 2. Начинается с запроса
-    if (nameLower.startsWith(queryLower)) return 0.95;
-
-    // 3. Содержит точный запрос
-    if (nameLower.contains(queryLower)) return 0.9;
-
-    // 4. Разбиваем запрос на слова и проверяем каждое
-    final queryWords = queryLower.split(RegExp(r'\s+'));
-    final nameWords = nameLower.split(RegExp(r'[\s\(\)\-\+/]+'));
-
-    double totalScore = 0.0;
-    int matchedWords = 0;
-
-    for (final queryWord in queryWords) {
-      if (queryWord.length < 2) continue; // Пропускаем слишком короткие
-
-      double bestWordScore = 0.0;
-
-      for (final nameWord in nameWords) {
-        if (nameWord.isEmpty) continue;
-
-        // Точное совпадение слова
-        if (nameWord == queryWord) {
-          bestWordScore = 1.0;
-          break;
-        }
-
-        // Слово начинается с запроса
-        if (nameWord.startsWith(queryWord)) {
-          bestWordScore = 0.9 > bestWordScore ? 0.9 : bestWordScore;
-          continue;
-        }
-
-        // Слово содержит запрос
-        if (nameWord.contains(queryWord)) {
-          bestWordScore = 0.8 > bestWordScore ? 0.8 : bestWordScore;
-          continue;
-        }
-
-        // Запрос содержит слово (частичное совпадение)
-        if (queryWord.contains(nameWord) && nameWord.length >= 3) {
-          bestWordScore = 0.7 > bestWordScore ? 0.7 : bestWordScore;
-          continue;
-        }
-
-        // Fuzzy match - проверяем похожесть (для опечаток)
-        final similarity = _stringSimilarity(nameWord, queryWord);
-        if (similarity > 0.6) {
-          final fuzzyScore = 0.5 + (similarity - 0.6) * 0.5; // 0.5-0.7
-          bestWordScore = fuzzyScore > bestWordScore ? fuzzyScore : bestWordScore;
-        }
-      }
-
-      if (bestWordScore > 0) {
-        totalScore += bestWordScore;
-        matchedWords++;
-      }
-    }
-
-    if (matchedWords == 0) return 0.0;
-
-    // Средняя релевантность по словам, умноженная на долю совпавших слов
-    final avgScore = totalScore / queryWords.length;
-    final coverageBonus = matchedWords / queryWords.length;
-
-    return avgScore * 0.7 + coverageBonus * 0.3;
-  }
-
-  /// Вычисляет похожесть двух строк (0.0 - 1.0)
-  /// Использует алгоритм сравнения n-грамм для быстроты
-  double _stringSimilarity(String s1, String s2) {
-    if (s1.isEmpty || s2.isEmpty) return 0.0;
-    if (s1 == s2) return 1.0;
-
-    // Для коротких строк используем посимвольное сравнение
-    if (s1.length <= 3 || s2.length <= 3) {
-      int matches = 0;
-      final shorter = s1.length < s2.length ? s1 : s2;
-      final longer = s1.length >= s2.length ? s1 : s2;
-
-      for (int i = 0; i < shorter.length; i++) {
-        if (longer.contains(shorter[i])) matches++;
-      }
-      return matches / longer.length;
-    }
-
-    // Биграммы для более длинных строк
-    final bigrams1 = _getBigrams(s1);
-    final bigrams2 = _getBigrams(s2);
-
-    if (bigrams1.isEmpty || bigrams2.isEmpty) return 0.0;
-
-    int matches = 0;
-    for (final bigram in bigrams1) {
-      if (bigrams2.contains(bigram)) matches++;
-    }
-
-    return (2.0 * matches) / (bigrams1.length + bigrams2.length);
-  }
-
-  /// Получает биграммы (пары символов) из строки
-  Set<String> _getBigrams(String s) {
-    final bigrams = <String>{};
-    for (int i = 0; i < s.length - 1; i++) {
-      bigrams.add(s.substring(i, i + 2));
-    }
-    return bigrams;
-  }
-
   /// Вкладка списка товаров
   Widget _buildProductsTab() {
-    // Фильтруем и ранжируем по поиску с fuzzy-matching
-    List<MapEntry<CigaretteProduct, double>> scoredProducts;
-
-    if (_searchQuery.isEmpty) {
-      // Без поиска - просто все товары с равным весом
-      scoredProducts = _products.map((p) => MapEntry(p, 1.0)).toList();
-    } else {
-      // С поиском - вычисляем релевантность каждого товара
-      final queryLower = _searchQuery.toLowerCase();
-      scoredProducts = _products
-          .map((product) {
-            // Проверяем совпадение по штрихкодам
-            final barcodeMatch = product.barcodes.any((b) => b.contains(queryLower));
-            if (barcodeMatch) return MapEntry(product, 0.95);
-            return MapEntry(
-              product,
-              _calculateSearchRelevance(product.productName, _searchQuery),
-            );
-          })
-          .where((entry) => entry.value > 0.3) // Минимальный порог релевантности
-          .toList();
-
-      // Сортируем по релевантности (от большей к меньшей)
-      scoredProducts.sort((a, b) => b.value.compareTo(a.value));
-    }
-
-    var filteredProducts = scoredProducts.map((e) => e.key).toList();
-
-    // Сортировка
-    if (_accuracySortMode == 'worst') {
-      // Сначала товары с худшей точностью (приоритет тем, у кого есть данные)
-      filteredProducts.sort((a, b) {
-        final aAccuracy = _getCombinedAccuracy(a);
-        final bAccuracy = _getCombinedAccuracy(b);
-        // Товары без данных в конец
-        if (aAccuracy == null && bAccuracy == null) return 0;
-        if (aAccuracy == null) return 1;
-        if (bAccuracy == null) return -1;
-        return aAccuracy.compareTo(bAccuracy);
-      });
-    } else if (_accuracySortMode == 'best') {
-      // Сначала товары с лучшей точностью
-      filteredProducts.sort((a, b) {
-        final aAccuracy = _getCombinedAccuracy(a);
-        final bAccuracy = _getCombinedAccuracy(b);
-        // Товары без данных в конец
-        if (aAccuracy == null && bAccuracy == null) return 0;
-        if (aAccuracy == null) return 1;
-        if (bAccuracy == null) return -1;
-        return bAccuracy.compareTo(aAccuracy);
-      });
-    } else if (_searchQuery.isEmpty) {
-      // Если нет поискового запроса и нет сортировки по точности, сортируем по прогрессу
-      filteredProducts.sort((a, b) => a.trainingProgress.compareTo(b.trainingProgress));
-    }
-
+    // Server-side search/sort/filter — _products already contains the right page
     return RefreshIndicator(
       onRefresh: _loadData,
       color: _greenGradient[0],
@@ -783,40 +757,60 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       child: ListView(
         padding: EdgeInsets.all(16.w),
         children: [
-          // Поиск по наименованию
+          // Поиск по наименованию (server-side)
           _buildSearchField(),
           SizedBox(height: 12),
 
           // Фильтры: группа и точность
           Row(
             children: [
-              // Фильтр по группе
               if (_productGroups.isNotEmpty)
                 Expanded(child: _buildGroupDropdown()),
               if (_productGroups.isNotEmpty)
                 SizedBox(width: 12),
-              // Сортировка по точности ИИ
               Expanded(child: _buildAccuracySortDropdown()),
             ],
           ),
           SizedBox(height: 16),
 
-          // Счётчик найденных товаров
-          if (_searchQuery.isNotEmpty) ...[
-            Padding(
-              padding: EdgeInsets.only(bottom: 12.h),
-              child: Text(
-                'Найдено: ${filteredProducts.length} из ${_products.length}',
-                style: TextStyle(
-                  fontSize: 13.sp,
-                  color: Colors.white.withOpacity(0.6),
-                ),
+          // Счётчик: показано N из M
+          Padding(
+            padding: EdgeInsets.only(bottom: 12.h),
+            child: Text(
+              _searchQuery.isNotEmpty
+                  ? 'Найдено: $_totalProducts'
+                  : 'Показано: ${_products.length} из $_totalProducts',
+              style: TextStyle(
+                fontSize: 13.sp,
+                color: Colors.white.withOpacity(0.6),
               ),
             ),
-          ],
+          ),
 
           // Список товаров
-          ...filteredProducts.map((product) => _buildProductCard(product)),
+          ..._products.map((product) => _buildProductCard(product)),
+
+          // Кнопка "Показать ещё"
+          if (_hasMoreProducts)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.h),
+              child: Center(
+                child: _isLoadingMore
+                    ? CircularProgressIndicator(color: _greenGradient[0])
+                    : OutlinedButton.icon(
+                        onPressed: _loadMoreProducts,
+                        icon: Icon(Icons.expand_more, color: Colors.white70),
+                        label: Text(
+                          'Показать ещё (${_products.length} из $_totalProducts)',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.white24),
+                          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                        ),
+                      ),
+              ),
+            ),
         ],
       ),
     );
@@ -837,7 +831,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         controller: _searchController,
         style: TextStyle(color: Colors.white),
         decoration: InputDecoration(
-          hintText: 'Поиск (поддерживает опечатки)...',
+          hintText: 'Поиск по названию или штрихкоду...',
           hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
           prefixIcon: Icon(
             Icons.search,
@@ -851,20 +845,14 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   ),
                   onPressed: () {
                     _searchController.clear();
-                    if (mounted) setState(() {
-                      _searchQuery = '';
-                    });
+                    _onProductSearchChanged('');
                   },
                 )
               : null,
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         ),
-        onChanged: (value) {
-          if (mounted) setState(() {
-            _searchQuery = value;
-          });
-        },
+        onChanged: _onProductSearchChanged,
       ),
     );
   }
@@ -951,7 +939,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   /// Вкладка настроек
   Widget _buildSettingsTab() {
     return TrainingSettingsPage(
-      products: _products,
+      products: _productsWithPhotos,
       onSettingsChanged: _loadData,
     );
   }
@@ -1529,7 +1517,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   Widget _buildGroupDropdown() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12.r),
@@ -1546,12 +1534,13 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           icon: Icon(Icons.expand_more, color: Colors.white.withOpacity(0.5)),
           hint: Row(
             children: [
-              Icon(Icons.filter_list, color: Colors.white.withOpacity(0.5), size: 20),
-              SizedBox(width: 12),
-              Text(
+              Icon(Icons.filter_list, color: Colors.white.withOpacity(0.5), size: 18),
+              SizedBox(width: 6),
+              Flexible(child: Text(
                 'Все группы',
-                style: TextStyle(color: Colors.white.withOpacity(0.7)),
-              ),
+                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13.sp),
+                overflow: TextOverflow.ellipsis,
+              )),
             ],
           ),
           items: [
@@ -1559,9 +1548,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               value: null,
               child: Row(
                 children: [
-                  Icon(Icons.filter_list, color: Colors.white.withOpacity(0.5), size: 20),
-                  SizedBox(width: 12),
-                  Text('Все группы', style: TextStyle(color: Colors.white)),
+                  Icon(Icons.filter_list, color: Colors.white.withOpacity(0.5), size: 18),
+                  SizedBox(width: 6),
+                  Flexible(child: Text('Все группы', style: TextStyle(color: Colors.white, fontSize: 13.sp), overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),
@@ -1584,7 +1573,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   /// Dropdown сортировки по точности ИИ
   Widget _buildAccuracySortDropdown() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
       decoration: BoxDecoration(
         color: _accuracySortMode != 'none'
             ? (_accuracySortMode == 'worst' ? _redGradient[0] : _greenGradient[0]).withOpacity(0.1)
@@ -1608,9 +1597,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               value: 'none',
               child: Row(
                 children: [
-                  Icon(Icons.sort, color: Colors.white.withOpacity(0.5), size: 20),
-                  SizedBox(width: 8),
-                  Text('По прогрессу', style: TextStyle(color: Colors.white, fontSize: 13.sp)),
+                  Icon(Icons.sort, color: Colors.white.withOpacity(0.5), size: 18),
+                  SizedBox(width: 6),
+                  Flexible(child: Text('По прогрессу', style: TextStyle(color: Colors.white, fontSize: 13.sp), overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),
@@ -1618,9 +1607,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               value: 'worst',
               child: Row(
                 children: [
-                  Icon(Icons.trending_down, color: _redGradient[0], size: 20),
-                  SizedBox(width: 8),
-                  Text('Худшая точность', style: TextStyle(color: _redGradient[0], fontSize: 13.sp)),
+                  Icon(Icons.trending_down, color: _redGradient[0], size: 18),
+                  SizedBox(width: 6),
+                  Flexible(child: Text('Худшая точность', style: TextStyle(color: _redGradient[0], fontSize: 13.sp), overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),
@@ -1628,9 +1617,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               value: 'best',
               child: Row(
                 children: [
-                  Icon(Icons.trending_up, color: _greenGradient[0], size: 20),
-                  SizedBox(width: 8),
-                  Text('Лучшая точность', style: TextStyle(color: _greenGradient[0], fontSize: 13.sp)),
+                  Icon(Icons.trending_up, color: _greenGradient[0], size: 18),
+                  SizedBox(width: 6),
+                  Flexible(child: Text('Лучшая точность', style: TextStyle(color: _greenGradient[0], fontSize: 13.sp), overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),
@@ -1639,6 +1628,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             if (mounted) setState(() {
               _accuracySortMode = value ?? 'none';
             });
+            _searchFromServer(_searchQuery);
           },
         ),
       ),
@@ -1906,10 +1896,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     final countingGradient = _getProgressGradient(product.countingProgress);
 
     return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
+      margin: EdgeInsets.only(bottom: 6.h),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -1919,9 +1909,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         color: Colors.transparent,
         child: InkWell(
           onTap: forUpload ? () => _showPhotoTypeDialog(product) : () => _showProductDetails(product),
-          borderRadius: BorderRadius.circular(16.r),
+          borderRadius: BorderRadius.circular(12.r),
           child: Padding(
-            padding: EdgeInsets.all(14.w),
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
             child: Column(
               children: [
                 // Заголовок: иконка + название + кнопка справа
@@ -1929,33 +1919,26 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   children: [
                     // Фото товара или иконка статуса
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
                         gradient: product.productPhotoUrl == null
                             ? LinearGradient(colors: progressGradient)
                             : null,
-                        borderRadius: BorderRadius.circular(12.r),
-                        boxShadow: [
-                          BoxShadow(
-                            color: progressGradient[0].withOpacity(0.3),
-                            blurRadius: 6,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: product.productPhotoUrl != null
                           ? AppCachedImage(
                               imageUrl: '${ApiConstants.serverUrl}${product.productPhotoUrl}',
-                              width: 44,
-                              height: 44,
+                              width: 32,
+                              height: 32,
                               fit: BoxFit.cover,
                               errorWidget: (ctx, url, err) => Container(
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(colors: progressGradient),
                                 ),
-                                child: Icon(Icons.inventory_2, color: Colors.white, size: 22),
+                                child: Icon(Icons.inventory_2, color: Colors.white, size: 16),
                               ),
                             )
                           : Icon(
@@ -1963,82 +1946,65 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                                   ? Icons.check_circle
                                   : Icons.add_a_photo,
                               color: Colors.white,
-                              size: 22,
+                              size: 16,
                             ),
                     ),
-                    SizedBox(width: 12),
+                    SizedBox(width: 8),
 
                     // Название товара
                     Expanded(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             product.productName,
-                            textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 14.sp,
+                              fontSize: 12.sp,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
-                            maxLines: 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (product.productGroup.isNotEmpty)
-                            Text(
-                              product.productGroup,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 11.sp,
-                                color: Colors.white.withOpacity(0.5),
-                              ),
-                            ),
-                          if (product.barcodes.length > 1)
-                            Container(
-                              margin: EdgeInsets.only(top: 4.h),
-                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8.r),
-                              ),
-                              child: Text(
-                                '${product.barcodes.length} шт-кодов',
-                                style: TextStyle(
-                                  fontSize: 10.sp,
-                                  color: Colors.white.withOpacity(0.6),
-                                ),
-                              ),
+                          if (product.productGroup.isNotEmpty || product.barcodes.length > 1)
+                            Row(
+                              children: [
+                                if (product.productGroup.isNotEmpty)
+                                  Flexible(
+                                    child: Text(
+                                      product.productGroup,
+                                      style: TextStyle(fontSize: 10.sp, color: Colors.white.withOpacity(0.5)),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                if (product.barcodes.length > 1) ...[
+                                  if (product.productGroup.isNotEmpty)
+                                    Text(' \u2022 ', style: TextStyle(fontSize: 10.sp, color: Colors.white.withOpacity(0.3))),
+                                  Text(
+                                    '${product.barcodes.length} шт-кодов',
+                                    style: TextStyle(fontSize: 10.sp, color: Colors.white.withOpacity(0.5)),
+                                  ),
+                                ],
+                              ],
                             ),
                         ],
                       ),
                     ),
-                    SizedBox(width: 12),
+                    SizedBox(width: 6),
 
                     // Кнопка добавления фото или Toggle ИИ
                     if (forUpload)
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: Icon(
-                          Icons.camera_alt,
-                          color: Colors.white.withOpacity(0.7),
-                          size: 20,
-                        ),
-                      )
+                      Icon(Icons.camera_alt, color: Colors.white.withOpacity(0.5), size: 18)
                     else if (_isAdmin)
                       _buildAiToggle(product)
                     else
-                      SizedBox(width: 44), // Placeholder для выравнивания
+                      SizedBox(width: 32),
                   ],
                 ),
-                SizedBox(height: 12),
+                SizedBox(height: 6),
 
                 // Прогресс-бары
-                // Раздельный прогресс: крупный план
                 _buildProgressRow(
                   icon: Icons.crop_free,
                   progress: product.recountProgress / 100,
@@ -2046,16 +2012,14 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   gradient: recountGradient,
                   isComplete: product.isRecountComplete,
                 ),
-                SizedBox(height: 6),
-                // Раздельный прогресс: выкладка (per-shop)
+                SizedBox(height: 4),
                 if (_isAdmin)
                   _buildShopsSummaryRow(product, displayGradient)
                 else if (_selectedShopAddress != null && _selectedShopAddress!.isNotEmpty)
                   _buildShopProgressRow(product, displayGradient)
                 else
                   _buildNoShopSelectedRow(),
-                SizedBox(height: 6),
-                // Прогресс: пересчёт (counting) - фото с пересчёта для обучения
+                SizedBox(height: 4),
                 _buildCountingProgressRow(product, countingGradient),
               ],
             ),
@@ -2065,8 +2029,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     );
   }
 
-  /// Плашка прогресса (recount / display)
-  /// Двухстрочный дизайн: прогресс-бар сверху, статистика снизу
+  /// Компактная плашка прогресса (иконка + бар + лейбл в одну строку)
   Widget _buildProgressRow({
     required IconData icon,
     required double progress,
@@ -2076,62 +2039,42 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   }) {
     final mainColor = isComplete ? _greenGradient[0] : gradient[0];
 
-    return Container(
-      padding: EdgeInsets.all(10.w),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(10.r),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 1.h),
+      child: Row(
         children: [
-          // Первая строка: иконка + прогресс-бар
-          Row(
-            children: [
-              Icon(icon, size: 20, color: mainColor),
-              SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4.r),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4.r),
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: progress.clamp(0.0, 1.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: isComplete ? _greenGradient : gradient),
-                        ),
-                      ),
+          Icon(icon, size: 14, color: mainColor),
+          SizedBox(width: 6),
+          Expanded(
+            child: Container(
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(3.r),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(3.r),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: progress.clamp(0.0, 1.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: isComplete ? _greenGradient : gradient),
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-          SizedBox(height: 6),
-          // Вторая строка: статистика (центрировано)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
-                  color: mainColor,
-                ),
-              ),
-              if (isComplete) ...[
-                SizedBox(width: 6),
-                Icon(Icons.check_circle, size: 16, color: _greenGradient[0]),
-              ],
-            ],
+          SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600, color: mainColor),
           ),
+          if (isComplete) ...[
+            SizedBox(width: 3),
+            Icon(Icons.check_circle, size: 12, color: _greenGradient[0]),
+          ],
         ],
       ),
     );
@@ -2147,76 +2090,51 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     final summaryGradient = _getProgressGradient(progress * 100);
     final mainColor = isComplete ? _greenGradient[0] : summaryGradient[0];
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _showShopDetailsDialog(product),
-        borderRadius: BorderRadius.circular(10.r),
-        child: Container(
-          padding: EdgeInsets.all(10.w),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(10.r),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Первая строка: иконка + прогресс-бар
-              Row(
-                children: [
-                  Icon(Icons.store, size: 20, color: mainColor),
-                  SizedBox(width: 8),
-                  Expanded(
+    return InkWell(
+      onTap: () => _showShopDetailsDialog(product),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 1.h),
+        child: Row(
+          children: [
+            Icon(Icons.store, size: 14, color: mainColor),
+            SizedBox(width: 6),
+            Expanded(
+              child: Container(
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(3.r),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(3.r),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: progress.clamp(0.0, 1.0),
                     child: Container(
-                      height: 8,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4.r),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4.r),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: progress.clamp(0.0, 1.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: isComplete ? _greenGradient : summaryGradient),
-                            ),
-                          ),
-                        ),
+                        gradient: LinearGradient(colors: isComplete ? _greenGradient : summaryGradient),
                       ),
                     ),
                   ),
-                  SizedBox(width: 8),
-                  Icon(Icons.chevron_right, size: 18, color: Colors.white.withOpacity(0.5)),
-                ],
+                ),
               ),
-              SizedBox(height: 6),
-              // Вторая строка: статистика и бейджи (центрировано)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '$ready/$total маг.',
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
-                      color: mainColor,
-                    ),
-                  ),
-                  if (isComplete) ...[
-                    SizedBox(width: 6),
-                    Icon(Icons.check_circle, size: 16, color: _greenGradient[0]),
-                  ],
-                  if (product.displayAccuracy != null) ...[
-                    SizedBox(width: 10),
-                    _buildAccuracyBadge(product.displayAccuracy!, product.displayAttempts),
-                  ],
-                ],
-              ),
+            ),
+            SizedBox(width: 6),
+            Text(
+              '$ready/$total',
+              style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600, color: mainColor),
+            ),
+            if (isComplete) ...[
+              SizedBox(width: 3),
+              Icon(Icons.check_circle, size: 12, color: _greenGradient[0]),
             ],
-          ),
+            if (product.displayAccuracy != null) ...[
+              SizedBox(width: 4),
+              _buildAccuracyBadge(product.displayAccuracy!, product.displayAttempts),
+            ],
+            SizedBox(width: 4),
+            Icon(Icons.chevron_right, size: 14, color: Colors.white.withOpacity(0.5)),
+          ],
         ),
       ),
     );
@@ -2236,62 +2154,42 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     final shopGradient = _getProgressGradient(shopStats.progress);
     final mainColor = isComplete ? _greenGradient[0] : shopGradient[0];
 
-    return Container(
-      padding: EdgeInsets.all(10.w),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(10.r),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 1.h),
+      child: Row(
         children: [
-          // Первая строка: иконка + прогресс-бар
-          Row(
-            children: [
-              Icon(Icons.grid_view, size: 20, color: mainColor),
-              SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4.r),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4.r),
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: progress.clamp(0.0, 1.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: isComplete ? _greenGradient : shopGradient),
-                        ),
-                      ),
+          Icon(Icons.grid_view, size: 14, color: mainColor),
+          SizedBox(width: 6),
+          Expanded(
+            child: Container(
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(3.r),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(3.r),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: progress.clamp(0.0, 1.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: isComplete ? _greenGradient : shopGradient),
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-          SizedBox(height: 6),
-          // Вторая строка: статистика (центрировано)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                '${shopStats.displayPhotosCount}/${shopStats.requiredDisplayPhotos}',
-                style: TextStyle(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
-                  color: mainColor,
-                ),
-              ),
-              if (isComplete) ...[
-                SizedBox(width: 6),
-                Icon(Icons.check_circle, size: 16, color: _greenGradient[0]),
-              ],
-            ],
+          SizedBox(width: 6),
+          Text(
+            '${shopStats.displayPhotosCount}/${shopStats.requiredDisplayPhotos}',
+            style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600, color: mainColor),
           ),
+          if (isComplete) ...[
+            SizedBox(width: 3),
+            Icon(Icons.check_circle, size: 12, color: _greenGradient[0]),
+          ],
         ],
       ),
     );
@@ -2300,41 +2198,22 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   /// Магазин не выбран
   /// Двухстрочный дизайн для единообразия
   Widget _buildNoShopSelectedRow() {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: _showShopSelectionDialog,
-        borderRadius: BorderRadius.circular(10.r),
-        child: Container(
-          padding: EdgeInsets.all(10.w),
-          decoration: BoxDecoration(
-            color: _orangeGradient[0].withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10.r),
-            border: Border.all(color: _orangeGradient[0].withOpacity(0.3)),
-          ),
-          child: Column(
-            children: [
-              // Первая строка: иконка и стрелка
-              Row(
-                children: [
-                  Icon(Icons.warning_amber, size: 20, color: _orangeGradient[0]),
-                  Spacer(),
-                  Icon(Icons.chevron_right, size: 18, color: _orangeGradient[0]),
-                ],
-              ),
-              SizedBox(height: 6),
-              // Вторая строка: текст (центрировано)
-              Text(
+    return InkWell(
+      onTap: _showShopSelectionDialog,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 1.h),
+        child: Row(
+          children: [
+            Icon(Icons.warning_amber, size: 14, color: _orangeGradient[0]),
+            SizedBox(width: 6),
+            Expanded(
+              child: Text(
                 'Выберите магазин',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
-                  color: _orangeGradient[0],
-                ),
+                style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600, color: _orangeGradient[0]),
               ),
-            ],
-          ),
+            ),
+            Icon(Icons.chevron_right, size: 14, color: _orangeGradient[0]),
+          ],
         ),
       ),
     );
@@ -2349,103 +2228,60 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     final hasPhotos = product.countingPhotosCount > 0 || hasPending;
     final mainColor = isComplete ? _greenGradient[0] : gradient[0];
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: hasPhotos ? () => _showCountingSamplesDialog(product) : null,
-        borderRadius: BorderRadius.circular(10.r),
-        child: Container(
-          padding: EdgeInsets.all(10.w),
-          decoration: BoxDecoration(
-            color: hasPhotos ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.02),
-            borderRadius: BorderRadius.circular(10.r),
-            border: hasPhotos ? Border.all(color: Colors.white.withOpacity(0.1)) : null,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Первая строка: иконка + прогресс-бар
-              Row(
-                children: [
-                  Icon(Icons.calculate, size: 20, color: mainColor),
-                  SizedBox(width: 8),
-                  Expanded(
+    return InkWell(
+      onTap: hasPhotos ? () => _showCountingSamplesDialog(product) : null,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 1.h),
+        child: Row(
+          children: [
+            Icon(Icons.calculate, size: 14, color: mainColor),
+            SizedBox(width: 6),
+            Expanded(
+              child: Container(
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(3.r),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(3.r),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: progress.clamp(0.0, 1.0),
                     child: Container(
-                      height: 8,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4.r),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4.r),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: progress.clamp(0.0, 1.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: isComplete ? _greenGradient : gradient),
-                            ),
-                          ),
-                        ),
+                        gradient: LinearGradient(colors: isComplete ? _greenGradient : gradient),
                       ),
                     ),
                   ),
-                  if (hasPhotos) ...[
-                    SizedBox(width: 8),
-                    Icon(Icons.chevron_right, size: 18, color: Colors.white.withOpacity(0.5)),
-                  ],
-                ],
+                ),
               ),
-              SizedBox(height: 6),
-              // Вторая строка: статистика и бейджи (центрировано)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '${product.countingPhotosCount}/${product.requiredCountingPhotos}',
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
-                      color: mainColor,
-                    ),
-                  ),
-                  if (isComplete) ...[
-                    SizedBox(width: 6),
-                    Icon(Icons.check_circle, size: 16, color: _greenGradient[0]),
-                  ],
-                  if (product.countingAccuracy != null) ...[
-                    SizedBox(width: 10),
-                    _buildAccuracyBadge(product.countingAccuracy!, product.countingAttempts),
-                  ],
-                  if (hasPending) ...[
-                    SizedBox(width: 10),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                      decoration: BoxDecoration(
-                        color: AppColors.amber.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(6.r),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.hourglass_empty, size: 12, color: AppColors.amberLight),
-                          SizedBox(width: 3),
-                          Text(
-                            '+${product.pendingCountingPhotosCount}',
-                            style: TextStyle(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.amberLight,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
+            ),
+            SizedBox(width: 6),
+            Text(
+              '${product.countingPhotosCount}/${product.requiredCountingPhotos}',
+              style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600, color: mainColor),
+            ),
+            if (isComplete) ...[
+              SizedBox(width: 3),
+              Icon(Icons.check_circle, size: 12, color: _greenGradient[0]),
+            ],
+            if (product.countingAccuracy != null) ...[
+              SizedBox(width: 4),
+              _buildAccuracyBadge(product.countingAccuracy!, product.countingAttempts),
+            ],
+            if (hasPending) ...[
+              SizedBox(width: 4),
+              Text(
+                '+${product.pendingCountingPhotosCount}',
+                style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: AppColors.amberLight),
               ),
             ],
-          ),
+            if (hasPhotos) ...[
+              SizedBox(width: 4),
+              Icon(Icons.chevron_right, size: 14, color: Colors.white.withOpacity(0.5)),
+            ],
+          ],
         ),
       ),
     );
@@ -2515,15 +2351,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   /// Вкладка со списком товаров, у которых собраны все фото для обучения
   Widget _buildTrainedProductsTab() {
-    final trainedProducts = _products
-        .where((p) => p.isCountingComplete)
-        .toList()
-      ..sort((a, b) {
-        // Сначала товары с низкой точностью (требуют внимания)
-        final aAcc = a.countingAccuracy ?? 101;
-        final bAcc = b.countingAccuracy ?? 101;
-        return aAcc.compareTo(bAcc);
-      });
+    // _trainedProducts already loaded from server with filter=counting-complete, sort=accuracy-asc
+    final trainedProducts = _trainedProducts;
 
     if (trainedProducts.isEmpty) {
       return Center(
@@ -3909,11 +3738,419 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   label: 'Управление фото (${product.trainingPhotosCount})',
                 ),
               ],
+
+              // Кнопка перемещения штрих-кодов (только админ)
+              if (_isAdmin) ...[
+                SizedBox(height: 12),
+                _buildGradientButton(
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (product.barcodes.length == 1) {
+                      // Один баркод — сразу к поиску цели
+                      _showMoveBarcodesSearch(product, product.barcodes);
+                    } else {
+                      _showMoveBarcodes(product);
+                    }
+                  },
+                  gradient: _orangeGradient,
+                  icon: Icons.swap_horiz,
+                  label: product.barcodes.length == 1
+                    ? 'Переместить в другую карточку'
+                    : 'Переместить штрих-коды (${product.barcodes.length})',
+                ),
+              ],
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// Шаг 1: Выбрать штрих-коды для перемещения
+  void _showMoveBarcodes(CigaretteProduct product) {
+    final selectedBarcodes = <String>{};
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          minChildSize: 0.3,
+          maxChildSize: 0.7,
+          expand: false,
+          builder: (context, scrollController) => Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [AppColors.darkNavy, AppColors.navy],
+              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+            ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40, height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(2.r),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(10.w),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: _orangeGradient),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            child: Icon(Icons.swap_horiz, color: Colors.white, size: 24),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Переместить штрих-коды',
+                                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.white)),
+                                Text(product.productName,
+                                  style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.6)),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    itemCount: product.barcodes.length,
+                    itemBuilder: (ctx, i) {
+                      final barcode = product.barcodes[i];
+                      final isSelected = selectedBarcodes.contains(barcode);
+                      return Container(
+                        margin: EdgeInsets.only(bottom: 8.h),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                            ? _orangeGradient[0].withOpacity(0.15)
+                            : Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: isSelected
+                            ? Border.all(color: _orangeGradient[0], width: 1)
+                            : null,
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              setDialogState(() {
+                                if (isSelected) {
+                                  selectedBarcodes.remove(barcode);
+                                } else {
+                                  selectedBarcodes.add(barcode);
+                                }
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(12.r),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                                    color: isSelected ? _orangeGradient[0] : Colors.white.withOpacity(0.5),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    barcode,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontFamily: 'monospace',
+                                      fontSize: 14.sp,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: selectedBarcodes.isEmpty ? null : () {
+                        Navigator.pop(context);
+                        _showMoveBarcodesSearch(product, selectedBarcodes.toList());
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _orangeGradient[0],
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.white.withOpacity(0.1),
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                      ),
+                      child: Text(
+                        selectedBarcodes.isEmpty
+                          ? 'Выберите штрих-коды'
+                          : 'Далее (${selectedBarcodes.length} выбрано)',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15.sp),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Шаг 2: Поиск целевой карточки для перемещения
+  void _showMoveBarcodesSearch(CigaretteProduct sourceProduct, List<String> barcodes) {
+    final searchController = TextEditingController();
+    List<AssignSearchProduct> results = [];
+    bool isSearching = false;
+    bool isMoving = false;
+    Timer? debounce;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) {
+          void onSearchChanged(String query) {
+            debounce?.cancel();
+            debounce = Timer(const Duration(milliseconds: 300), () async {
+              if (query.length < 2) {
+                setDialogState(() => results = []);
+                return;
+              }
+              setDialogState(() => isSearching = true);
+              final searchResults = await MasterCatalogService.searchForAssign(query);
+              searchResults.removeWhere((p) => p.name == sourceProduct.productName);
+              if (dialogCtx.mounted) {
+                setDialogState(() {
+                  results = searchResults;
+                  isSearching = false;
+                });
+              }
+            });
+          }
+
+          Future<void> onTargetSelected(AssignSearchProduct target) async {
+            final confirmed = await showDialog<bool>(
+              context: dialogCtx,
+              builder: (ctx) => AlertDialog(
+                backgroundColor: AppColors.darkNavy,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                title: Text('Подтвердите перемещение', style: TextStyle(color: Colors.white)),
+                content: Text(
+                  'Переместить ${barcodes.length} шт-код(ов)\nиз "${sourceProduct.productName}"\nв "${target.name}"?'
+                  '${barcodes.length >= sourceProduct.barcodes.length ? "\n\nКарточка \"${sourceProduct.productName}\" будет удалена." : ""}',
+                  style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _orangeGradient[0],
+                      foregroundColor: Colors.white,
+                    ),
+                    child: Text('Переместить'),
+                  ),
+                ],
+              ),
+            );
+
+            if (confirmed != true) return;
+
+            setDialogState(() => isMoving = true);
+
+            final success = await MasterCatalogService.moveBarcodes(
+              barcodes: barcodes,
+              targetProductId: target.id,
+            );
+
+            if (mounted) {
+              if (success) {
+                Navigator.pop(dialogCtx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${barcodes.length} шт-код(ов) перемещено в "${target.name}"'),
+                    backgroundColor: _greenGradient[0],
+                  ),
+                );
+                _loadData();
+              } else {
+                setDialogState(() => isMoving = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Ошибка перемещения'), backgroundColor: Colors.red),
+                );
+              }
+            }
+          }
+
+          return Dialog(
+            backgroundColor: AppColors.darkNavy,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+            insetPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 40.h),
+            child: Container(
+              constraints: BoxConstraints(maxHeight: 500),
+              padding: EdgeInsets.all(20.w),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(children: [
+                    Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: _orangeGradient),
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
+                      child: Icon(Icons.search, color: Colors.white, size: 22),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Выберите карточку', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: Colors.white)),
+                        Text('${barcodes.length} шт-код(ов) для перемещения', style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5))),
+                      ],
+                    )),
+                    IconButton(
+                      icon: Icon(Icons.close, color: Colors.white.withOpacity(0.5)),
+                      onPressed: () {
+                        debounce?.cancel();
+                        searchController.dispose();
+                        Navigator.pop(dialogCtx);
+                      },
+                    ),
+                  ]),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: searchController,
+                    autofocus: true,
+                    style: TextStyle(color: Colors.white),
+                    onChanged: onSearchChanged,
+                    decoration: InputDecoration(
+                      hintText: 'Введите название товара...',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                      prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.5)),
+                      suffixIcon: isSearching
+                        ? Padding(padding: EdgeInsets.all(12.w),
+                            child: SizedBox(width: 20, height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)))
+                        : searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(Icons.clear, color: Colors.white.withOpacity(0.5)),
+                              onPressed: () {
+                                searchController.clear();
+                                setDialogState(() => results = []);
+                              })
+                          : null,
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.05),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: BorderSide.none),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: BorderSide(color: _orangeGradient[0])),
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Flexible(
+                    child: isMoving
+                      ? Center(child: CircularProgressIndicator(color: Colors.white))
+                      : results.isEmpty
+                        ? Center(child: Text(
+                            searchController.text.length < 2 ? 'Введите минимум 2 символа' : 'Ничего не найдено',
+                            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13.sp)))
+                        : ListView.builder(
+                            itemCount: results.length,
+                            itemBuilder: (ctx, i) {
+                              final product = results[i];
+                              return Container(
+                                margin: EdgeInsets.only(bottom: 8.h),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () => onTargetSelected(product),
+                                    borderRadius: BorderRadius.circular(12.r),
+                                    child: Padding(
+                                      padding: EdgeInsets.all(12.w),
+                                      child: Row(children: [
+                                        Container(
+                                          width: 40, height: 40,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(10.r),
+                                          ),
+                                          clipBehavior: Clip.antiAlias,
+                                          child: product.productPhotoUrl != null
+                                            ? AppCachedImage(
+                                                imageUrl: '${ApiConstants.serverUrl}${product.productPhotoUrl}',
+                                                width: 40, height: 40, fit: BoxFit.cover,
+                                                errorWidget: (_, __, ___) => Icon(Icons.inventory_2, color: Colors.white54, size: 20))
+                                            : Icon(Icons.inventory_2, color: Colors.white54, size: 20),
+                                        ),
+                                        SizedBox(width: 12),
+                                        Expanded(child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(product.name, style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w500),
+                                              maxLines: 2, overflow: TextOverflow.ellipsis),
+                                            Row(children: [
+                                              if (product.group.isNotEmpty)
+                                                Text(product.group, style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5))),
+                                              if (product.barcodesCount > 1) ...[
+                                                if (product.group.isNotEmpty)
+                                                  Text(' \u2022 ', style: TextStyle(color: Colors.white.withOpacity(0.3))),
+                                                Text('${product.barcodesCount} шт-кодов', style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5))),
+                                              ],
+                                            ]),
+                                          ],
+                                        )),
+                                        Icon(Icons.arrow_forward_ios, color: Colors.white.withOpacity(0.3), size: 14),
+                                      ]),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    ).then((_) {
+      debounce?.cancel();
+    });
   }
 
   Widget _buildDetailProgressCard(CigaretteProduct product) {
@@ -4166,20 +4403,20 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         ? 'Шаблон ${sample.templateId ?? "?"}'
         : sample.shopAddress ?? 'Без магазина';
 
-    return GestureDetector(
-      onTap: () => _showPhotoPreview(sample, product),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: Colors.white.withOpacity(0.2)),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(11.r),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Фото
-              AppCachedImage(
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(11.r),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Фото (тап → превью)
+            GestureDetector(
+              onTap: () => _showPhotoPreview(sample, product),
+              child: AppCachedImage(
                 imageUrl: '${ApiConstants.serverUrl}${sample.imageUrl}',
                 fit: BoxFit.cover,
                 errorWidget: (_, __, ___) => Container(
@@ -4187,12 +4424,14 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   child: Icon(Icons.broken_image, color: Colors.grey),
                 ),
               ),
+            ),
 
-              // Градиент снизу
-              Positioned(
-                left: 0.w,
-                right: 0.w,
-                bottom: 0.h,
+            // Градиент снизу
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
                 child: Container(
                   padding: EdgeInsets.all(6.w),
                   decoration: BoxDecoration(
@@ -4217,15 +4456,18 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   ),
                 ),
               ),
+            ),
 
-              // Кнопка удаления
+            // Кнопка удаления
+            if (_isAdmin)
               Positioned(
                 top: 4.h,
                 right: 4.w,
                 child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onTap: () => _confirmDeletePhoto(sample, product),
                   child: Container(
-                    padding: EdgeInsets.all(4.w),
+                    padding: EdgeInsets.all(6.w),
                     decoration: BoxDecoration(
                       color: AppColors.error.withOpacity(0.9),
                       shape: BoxShape.circle,
@@ -4238,8 +4480,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   ),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -4454,78 +4695,55 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   /// Удалить фото и обновить данные
   Future<void> _deletePhoto(TrainingSample sample, CigaretteProduct product) async {
-    // Показать индикатор
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      ),
-    );
+    // Закрыть photos management bottom sheet
+    if (mounted) Navigator.of(context).pop();
+
+    // Показать индикатор загрузки на основной странице
+    if (mounted) setState(() => _isLoading = true);
 
     try {
+      debugPrint('[DELETE] === START === sample=${sample.id} product=${product.id}');
       final success = await CigaretteVisionService.deleteSample(sample.id);
+      debugPrint('[DELETE] === RESULT === success=$success mounted=$mounted');
 
       if (!mounted) return;
-      Navigator.pop(context); // Закрыть индикатор
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Expanded(child: Text('Фото удалено')),
-              ],
-            ),
+            content: Text('Фото удалено'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
 
-        // Закрыть диалог управления фото
-        Navigator.pop(context);
-
-        // Обновить данные
         await _loadData();
+        debugPrint('[DELETE] Data reloaded, products: ${_products.length}');
 
-        // Показать обновлённый диалог
+        if (!mounted) return;
         final updatedProduct = _products.firstWhere(
           (p) => p.id == product.id,
           orElse: () => product,
         );
-        if (mounted) {
-          _showPhotosManagementDialog(updatedProduct);
-        }
+        debugPrint('[DELETE] Updated photos: ${updatedProduct.trainingPhotosCount}');
+        _showPhotosManagementDialog(updatedProduct);
       } else {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error, color: Colors.white),
-                SizedBox(width: 8),
-                Expanded(child: Text('Ошибка удаления фото')),
-              ],
-            ),
+            content: Text('Сервер вернул ошибку при удалении'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
     } catch (e) {
+      debugPrint('[DELETE] === ERROR === $e');
       if (!mounted) return;
-      Navigator.pop(context);
-
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(child: Text('Ошибка: $e')),
-            ],
-          ),
+          content: Text('Ошибка сети: $e'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),

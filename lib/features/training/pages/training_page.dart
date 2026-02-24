@@ -8,6 +8,7 @@ import '../../employees/pages/employees_page.dart';
 import '../../employees/services/employee_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница обучения
 class TrainingPage extends StatefulWidget {
@@ -18,17 +19,19 @@ class TrainingPage extends StatefulWidget {
 }
 
 class _TrainingPageState extends State<TrainingPage> {
-  late Future<List<TrainingArticle>> _articlesFuture;
+  bool _isLoading = true;
   bool _isManager = false;
   List<TrainingArticle> _allArticles = [];
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
 
+  static const _cacheKey = 'training_articles_filtered';
+
   @override
   void initState() {
     super.initState();
-    _articlesFuture = _loadFilteredArticles();
+    _loadFilteredArticles();
   }
 
   @override
@@ -39,22 +42,40 @@ class _TrainingPageState extends State<TrainingPage> {
   }
 
   /// Загрузить статьи с фильтрацией по роли пользователя
-  Future<List<TrainingArticle>> _loadFilteredArticles() async {
-    _isManager = await _checkIsManager();
-    Logger.debug('👤 Пользователь является заведующим: $_isManager');
+  Future<void> _loadFilteredArticles() async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<TrainingArticle>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _allArticles = cached;
+        _isLoading = false;
+      });
+    }
 
-    final allArticles = await TrainingArticle.loadArticles();
+    if (_allArticles.isEmpty && mounted) setState(() => _isLoading = true);
 
-    final filteredArticles = allArticles.where((article) {
-      if (article.visibility == 'managers') {
-        return _isManager;
+    try {
+      _isManager = await _checkIsManager();
+
+      final allArticles = await TrainingArticle.loadArticles();
+
+      final filteredArticles = allArticles.where((article) {
+        if (article.visibility == 'managers') {
+          return _isManager;
+        }
+        return true;
+      }).toList();
+
+      _allArticles = filteredArticles;
+      if (mounted) {
+        setState(() => _isLoading = false);
+        // Step 3: Save to cache
+        CacheManager.set(_cacheKey, filteredArticles);
       }
-      return true;
-    }).toList();
-
-    Logger.debug('📚 Загружено статей: ${allArticles.length}, после фильтрации: ${filteredArticles.length}');
-    _allArticles = filteredArticles;
-    return filteredArticles;
+    } catch (e) {
+      Logger.error('Ошибка загрузки статей', e);
+      if (mounted && _allArticles.isEmpty) setState(() => _isLoading = false);
+    }
   }
 
   /// Проверить, является ли текущий пользователь заведующим
@@ -267,20 +288,16 @@ class _TrainingPageState extends State<TrainingPage> {
   }
 
   Widget _buildArticlesList() {
-    return FutureBuilder<List<TrainingArticle>>(
-      future: _articlesFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          );
-        }
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator(color: Colors.white));
+    }
 
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return _buildEmptyState();
-        }
+    if (_allArticles.isEmpty) {
+      return _buildEmptyState();
+    }
 
-        final articles = snapshot.data!;
+    {
+      final articles = _allArticles;
 
         // Группируем статьи по группам
         final Map<String, List<TrainingArticle>> grouped = {};
@@ -293,26 +310,25 @@ class _TrainingPageState extends State<TrainingPage> {
 
         final groups = grouped.keys.toList()..sort();
 
-        return ListView.builder(
-          padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 20.h),
-          itemCount: groups.length,
-          itemBuilder: (context, groupIndex) {
-            final group = groups[groupIndex];
-            final groupArticles = grouped[group]!;
+      return ListView.builder(
+        padding: EdgeInsets.fromLTRB(16.w, 0.h, 16.w, 20.h),
+        itemCount: groups.length,
+        itemBuilder: (context, groupIndex) {
+          final group = groups[groupIndex];
+          final groupArticles = grouped[group]!;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (groupIndex > 0) SizedBox(height: 16),
-                _buildGroupHeader(group, groupArticles.length),
-                SizedBox(height: 8),
-                ...groupArticles.map((article) => _buildArticleCard(article)),
-              ],
-            );
-          },
-        );
-      },
-    );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (groupIndex > 0) SizedBox(height: 16),
+              _buildGroupHeader(group, groupArticles.length),
+              SizedBox(height: 8),
+              ...groupArticles.map((article) => _buildArticleCard(article)),
+            ],
+          );
+        },
+      );
+    }
   }
 
   Widget _buildSearchResults() {

@@ -1,10 +1,48 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../models/cigarette_training_model.dart';
+
+// Параметры для изолята сжатия изображения
+class _CompressParams {
+  final Uint8List imageBytes;
+  final int maxWidth;
+  final int maxHeight;
+  final int quality;
+  const _CompressParams(this.imageBytes, this.maxWidth, this.maxHeight, this.quality);
+}
+
+// Топ-уровневая функция — только так работает compute()
+Uint8List _compressImageIsolate(_CompressParams p) {
+  try {
+    final image = img.decodeImage(p.imageBytes);
+    if (image == null) return p.imageBytes;
+
+    img.Image resized = image;
+    if (image.width > p.maxWidth || image.height > p.maxHeight) {
+      final aspectRatio = image.width / image.height;
+      int newWidth, newHeight;
+
+      if (aspectRatio > p.maxWidth / p.maxHeight) {
+        newWidth = p.maxWidth;
+        newHeight = (p.maxWidth / aspectRatio).round();
+      } else {
+        newHeight = p.maxHeight;
+        newWidth = (p.maxHeight * aspectRatio).round();
+      }
+
+      resized = img.copyResize(image, width: newWidth, height: newHeight);
+    }
+
+    final compressed = img.encodeJpg(resized, quality: p.quality);
+    return Uint8List.fromList(compressed);
+  } catch (_) {
+    return p.imageBytes;
+  }
+}
 
 /// Сервис для работы с ИИ распознавания сигарет
 class CigaretteVisionService {
@@ -47,6 +85,59 @@ class CigaretteVisionService {
     } catch (e) {
       Logger.error('Ошибка получения товаров', e);
       return [];
+    }
+  }
+
+  /// Paginated product list response from server
+  static Future<PaginatedProductsResponse> getProductsPaginated({
+    String? productGroup,
+    String? shopAddress,
+    String? search,
+    String? sort,
+    String? filter,
+    int page = 1,
+    int limit = 50,
+  }) async {
+    try {
+      var url = '${ApiConstants.serverUrl}${ApiConstants.cigaretteProductsEndpoint}';
+      final queryParams = <String>[
+        'page=$page',
+        'limit=$limit',
+      ];
+
+      if (productGroup != null && productGroup.isNotEmpty) {
+        queryParams.add('productGroup=${Uri.encodeComponent(productGroup)}');
+      }
+      if (shopAddress != null && shopAddress.isNotEmpty) {
+        queryParams.add('shopAddress=${Uri.encodeComponent(shopAddress)}');
+      }
+      if (search != null && search.isNotEmpty) {
+        queryParams.add('search=${Uri.encodeComponent(search)}');
+      }
+      if (sort != null && sort.isNotEmpty) {
+        queryParams.add('sort=${Uri.encodeComponent(sort)}');
+      }
+      if (filter != null && filter.isNotEmpty) {
+        queryParams.add('filter=${Uri.encodeComponent(filter)}');
+      }
+
+      url += '?${queryParams.join('&')}';
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return PaginatedProductsResponse.fromJson(data);
+      } else {
+        Logger.error('Ошибка получения товаров: ${response.statusCode}');
+        return PaginatedProductsResponse.empty();
+      }
+    } catch (e) {
+      Logger.error('Ошибка получения товаров (paginated)', e);
+      return PaginatedProductsResponse.empty();
     }
   }
 
@@ -150,9 +241,9 @@ class CigaretteVisionService {
     String? employeeName,
   }) async {
     try {
-      // Сжимаем изображение
+      // Сжимаем изображение (в isolate, не блокируя UI)
       final compressedImage = await compressImage(imageBytes);
-      final base64Image = base64Encode(compressedImage);
+      final base64Image = await compute(base64Encode, compressedImage);
 
       final body = {
         'imageBase64': base64Image,
@@ -212,14 +303,18 @@ class CigaretteVisionService {
 
   /// Удалить образец
   static Future<bool> deleteSample(String sampleId) async {
+    final url = '${ApiConstants.serverUrl}${ApiConstants.cigaretteTrainingSamplesEndpoint}/$sampleId';
+    debugPrint('[CigaretteVisionService] DELETE $url');
     try {
       final response = await http.delete(
-        Uri.parse('${ApiConstants.serverUrl}${ApiConstants.cigaretteTrainingSamplesEndpoint}/$sampleId'),
+        Uri.parse(url),
         headers: ApiConstants.jsonHeaders,
-      ).timeout(ApiConstants.defaultTimeout);
+      ).timeout(ApiConstants.longTimeout);
 
+      debugPrint('[CigaretteVisionService] DELETE response: ${response.statusCode} ${response.body}');
       return response.statusCode == 200;
     } catch (e) {
+      debugPrint('[CigaretteVisionService] DELETE error: $e');
       Logger.error('Ошибка удаления образца', e);
       return false;
     }
@@ -284,6 +379,27 @@ class CigaretteVisionService {
       return false;
     } catch (e) {
       Logger.error('Ошибка подтверждения pending sample', e);
+      return false;
+    }
+  }
+
+  /// Передать рамки (аннотации) к существующему pending образцу
+  /// Используется когда сотрудник обвёл пачки во время пересчёта
+  static Future<bool> submitRecountAnnotation(String pendingSampleId, List<AnnotationBox> boxes) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/counting-pending/$pendingSampleId/boxes'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({'boundingBoxes': boxes.map((b) => b.toJson()).toList()}),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error('Ошибка передачи аннотаций', e);
       return false;
     }
   }
@@ -392,9 +508,9 @@ class CigaretteVisionService {
     required String productId,
   }) async {
     try {
-      // Сжимаем изображение
+      // Сжимаем изображение (в isolate, не блокируя UI)
       final compressedImage = await compressImage(imageBytes);
-      final base64Image = base64Encode(compressedImage);
+      final base64Image = await compute(base64Encode, compressedImage);
 
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}${ApiConstants.cigaretteDetectEndpoint}'),
@@ -430,9 +546,9 @@ class CigaretteVisionService {
     Map<String, double>? selectedRegion,
   }) async {
     try {
-      // Сжимаем изображение
+      // Сжимаем изображение (в isolate, не блокируя UI)
       final compressedImage = await compressImage(imageBytes);
-      final base64Image = base64Encode(compressedImage);
+      final base64Image = await compute(base64Encode, compressedImage);
 
       final bodyMap = <String, dynamic>{
         'imageBase64': base64Image,
@@ -470,9 +586,9 @@ class CigaretteVisionService {
     String? shopAddress,
   }) async {
     try {
-      // Сжимаем изображение
+      // Сжимаем изображение (в isolate, не блокируя UI)
       final compressedImage = await compressImage(imageBytes);
-      final base64Image = base64Encode(compressedImage);
+      final base64Image = await compute(base64Encode, compressedImage);
 
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}${ApiConstants.cigaretteDisplayCheckEndpoint}'),
@@ -495,36 +611,19 @@ class CigaretteVisionService {
     }
   }
 
-  /// Сжатие изображения для отправки на сервер
+  /// Сжатие изображения для отправки на сервер (выполняется в отдельном isolate)
   static Future<Uint8List> compressImage(Uint8List imageBytes, {
     int maxWidth = 1200,
     int maxHeight = 1600,
     int quality = 75,
   }) async {
     try {
-      final image = img.decodeImage(imageBytes);
-      if (image == null) return imageBytes;
-
-      // Изменяем размер если нужно
-      img.Image resized = image;
-      if (image.width > maxWidth || image.height > maxHeight) {
-        final aspectRatio = image.width / image.height;
-        int newWidth, newHeight;
-
-        if (aspectRatio > maxWidth / maxHeight) {
-          newWidth = maxWidth;
-          newHeight = (maxWidth / aspectRatio).round();
-        } else {
-          newHeight = maxHeight;
-          newWidth = (maxHeight * aspectRatio).round();
-        }
-
-        resized = img.copyResize(image, width: newWidth, height: newHeight);
-      }
-
-      // Кодируем в JPEG
-      final compressed = img.encodeJpg(resized, quality: quality);
-      return Uint8List.fromList(compressed);
+      // compute() переносит тяжёлые sync-операции (decodeImage, copyResize, encodeJpg)
+      // в отдельный Dart isolate, не блокируя UI-поток
+      return await compute(
+        _compressImageIsolate,
+        _CompressParams(imageBytes, maxWidth, maxHeight, quality),
+      );
     } catch (e) {
       Logger.error('Ошибка сжатия изображения', e);
       return imageBytes;
@@ -638,7 +737,7 @@ class CigaretteVisionService {
       String? base64Image;
       if (imageBytes != null) {
         final compressed = await compressImage(imageBytes);
-        base64Image = base64Encode(compressed);
+        base64Image = await compute(base64Encode, compressed);
       }
 
       final response = await http.post(
@@ -772,7 +871,7 @@ class CigaretteVisionService {
       String? base64Image;
       if (imageBytes != null) {
         final compressed = await compressImage(imageBytes);
-        base64Image = base64Encode(compressed);
+        base64Image = await compute(base64Encode, compressed);
       }
 
       final response = await http.post(
@@ -1020,5 +1119,42 @@ class SamplesResponse {
     total: 0,
     offset: 0,
     limit: 50,
+  );
+}
+
+/// Paginated response for products list
+class PaginatedProductsResponse {
+  final List<CigaretteProduct> products;
+  final int total;
+  final int page;
+  final int totalPages;
+  final bool hasNextPage;
+
+  PaginatedProductsResponse({
+    required this.products,
+    required this.total,
+    required this.page,
+    required this.totalPages,
+    required this.hasNextPage,
+  });
+
+  factory PaginatedProductsResponse.fromJson(Map<String, dynamic> json) {
+    final pagination = json['pagination'] as Map<String, dynamic>? ?? {};
+    final list = json['products'] as List? ?? [];
+    return PaginatedProductsResponse(
+      products: list.map((j) => CigaretteProduct.fromJson(j)).toList(),
+      total: pagination['total'] as int? ?? list.length,
+      page: pagination['page'] as int? ?? 1,
+      totalPages: pagination['totalPages'] as int? ?? 1,
+      hasNextPage: pagination['hasNextPage'] as bool? ?? false,
+    );
+  }
+
+  factory PaginatedProductsResponse.empty() => PaginatedProductsResponse(
+    products: [],
+    total: 0,
+    page: 1,
+    totalPages: 0,
+    hasNextPage: false,
   );
 }

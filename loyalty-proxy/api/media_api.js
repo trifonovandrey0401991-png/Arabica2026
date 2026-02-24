@@ -9,6 +9,7 @@ const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { compressUpload } = require('../utils/image_compress');
 const { requireAuth } = require('../utils/session_middleware');
+const { getMoscowDateString } = require('../utils/moscow_time');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -124,7 +125,7 @@ function setupMediaAPI(app, uploadChatMedia) {
       const logData = req.body;
       console.log('POST /api/app-logs');
 
-      const date = new Date().toISOString().split('T')[0];
+      const date = getMoscowDateString();
       const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       const dateDir = path.join(APP_LOGS_DIR, date);
@@ -150,7 +151,7 @@ function setupMediaAPI(app, uploadChatMedia) {
       const { date, phone, level } = req.query;
       const logs = [];
 
-      const searchDate = sanitizeDate(date) || new Date().toISOString().split('T')[0];
+      const searchDate = sanitizeDate(date) || getMoscowDateString();
       const dateDir = path.join(APP_LOGS_DIR, searchDate);
 
       if (await fileExists(dateDir)) {

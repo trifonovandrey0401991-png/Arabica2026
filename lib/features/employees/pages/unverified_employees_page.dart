@@ -6,6 +6,7 @@ import 'employee_registration_view_page.dart';
 import '../models/employee_registration_model.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница не верифицированных сотрудников (у которых была снята верификация)
@@ -19,10 +20,14 @@ class UnverifiedEmployeesPage extends StatefulWidget {
 
 class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage>
     with SingleTickerProviderStateMixin {
-  late Future<List<Employee>> _employeesFuture;
+  List<Employee> _employees = [];
+  bool _isLoading = true;
+  String? _error;
   String _searchQuery = '';
   final Map<String, EmployeeRegistration?> _registrations = {};
   late AnimationController _animationController;
+
+  static const _cacheKey = 'unverified_employees';
 
   // Тёплые янтарные акценты для неверифицированных
   static const Color _primaryWarning = AppColors.warmAmber;
@@ -35,7 +40,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage>
       vsync: this,
       duration: Duration(milliseconds: 800),
     );
-    _employeesFuture = _loadUnverifiedEmployees();
+    _loadUnverifiedEmployees();
     _animationController.forward();
   }
 
@@ -45,7 +50,22 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage>
     super.dispose();
   }
 
-  Future<List<Employee>> _loadUnverifiedEmployees() async {
+  Future<void> _loadUnverifiedEmployees() async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _employees = cached['employees'] as List<Employee>;
+        _registrations.addAll(
+          (cached['registrations'] as Map<String, EmployeeRegistration?>),
+        );
+        _isLoading = false;
+        _error = null;
+      });
+    }
+
+    if (_employees.isEmpty && mounted) setState(() => _isLoading = true);
+
     try {
       final results = await Future.wait([
         EmployeeService.getEmployees(),
@@ -64,6 +84,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage>
       }
 
       final List<Employee> employees = [];
+      final Map<String, EmployeeRegistration?> regs = {};
 
       for (final employee in allEmployees) {
         if (employee.phone == null || employee.phone!.isEmpty) continue;
@@ -74,24 +95,40 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage>
         if (registration != null) {
           if (registration.verifiedAt != null && !registration.isVerified) {
             employees.add(employee);
-            _registrations[normalizedPhone] = registration;
+            regs[normalizedPhone] = registration;
           }
         }
       }
 
       employees.sort((a, b) => a.name.compareTo(b.name));
 
-      return employees;
+      if (mounted) {
+        setState(() {
+          _employees = employees;
+          _registrations.clear();
+          _registrations.addAll(regs);
+          _isLoading = false;
+          _error = null;
+        });
+        // Step 3: Save to cache
+        CacheManager.set(_cacheKey, {
+          'employees': employees,
+          'registrations': regs,
+        });
+      }
     } catch (e) {
       Logger.error('Ошибка загрузки не верифицированных сотрудников', e);
-      rethrow;
+      if (mounted && _employees.isEmpty) {
+        setState(() {
+          _isLoading = false;
+          _error = e.toString();
+        });
+      }
     }
   }
 
   void _refresh() {
-    if (mounted) setState(() {
-      _employeesFuture = _loadUnverifiedEmployees();
-    });
+    _loadUnverifiedEmployees();
     _animationController.reset();
     _animationController.forward();
   }
@@ -220,10 +257,9 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage>
           ),
           // Список
           Expanded(
-            child: FutureBuilder<List<Employee>>(
-              future: _employeesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: Builder(
+              builder: (context) {
+                if (_isLoading) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -239,7 +275,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage>
                   );
                 }
 
-                if (snapshot.hasError) {
+                if (_error != null && _employees.isEmpty) {
                   return Center(
                     child: Padding(
                       padding: EdgeInsets.all(24.w),
@@ -269,7 +305,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage>
                           ),
                           SizedBox(height: 8),
                           Text(
-                            '${snapshot.error}',
+                            '$_error',
                             style: TextStyle(color: Colors.white.withOpacity(0.5)),
                             textAlign: TextAlign.center,
                           ),
@@ -294,7 +330,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage>
                   );
                 }
 
-                final allEmployees = snapshot.data ?? [];
+                final allEmployees = _employees;
                 final filteredEmployees = allEmployees.where((employee) {
                   if (_searchQuery.isEmpty) return true;
                   final name = employee.name.toLowerCase();

@@ -141,10 +141,10 @@ async function checkTesting(employeeName, shopAddress, date) {
     if (USE_DB_TESTS && db) {
       let query, params;
       if (minimumScore > 0) {
-        query = `SELECT id FROM test_results WHERE data->>'employeeName' = $1 AND created_at::date = $2::date AND (data->>'score')::int >= $3 LIMIT 1`;
+        query = `SELECT id FROM test_results WHERE data->>'employeeName' = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date AND (data->>'score')::int >= $3 LIMIT 1`;
         params = [employeeName, date, minimumScore];
       } else {
-        query = `SELECT id FROM test_results WHERE data->>'employeeName' = $1 AND created_at::date = $2::date LIMIT 1`;
+        query = `SELECT id FROM test_results WHERE data->>'employeeName' = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date LIMIT 1`;
         params = [employeeName, date];
       }
       const result = await db.query(query, params);
@@ -186,7 +186,7 @@ async function checkShift(employeeName, shopAddress, date) {
     // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
     if (USE_DB_SHIFTS && db) {
       const result = await db.query(
-        `SELECT id FROM shift_reports WHERE employee_name = $1 AND created_at::date = $2::date LIMIT 1`,
+        `SELECT id FROM shift_reports WHERE employee_name = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date LIMIT 1`,
         [employeeName, date]
       );
       if (result.rows.length > 0) return true;
@@ -235,7 +235,7 @@ async function checkRecount(employeeName, shopAddress, date) {
     // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
     if (USE_DB_RECOUNT && db) {
       const result = await db.query(
-        `SELECT id FROM recount_reports WHERE employee_name = $1 AND created_at::date = $2::date LIMIT 1`,
+        `SELECT id FROM recount_reports WHERE employee_name = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date LIMIT 1`,
         [employeeName, date]
       );
       if (result.rows.length > 0) return true;
@@ -272,7 +272,7 @@ async function checkShiftHandover(employeeName, shopAddress, date) {
     // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
     if (USE_DB_SHIFT_HANDOVER && db) {
       const result = await db.query(
-        `SELECT id FROM shift_handover_reports WHERE employee_name = $1 AND created_at::date = $2::date LIMIT 1`,
+        `SELECT id FROM shift_handover_reports WHERE employee_name = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date LIMIT 1`,
         [employeeName, date]
       );
       if (result.rows.length > 0) return true;
@@ -346,7 +346,7 @@ async function checkEnvelope(employeeName, shopAddress, date) {
     // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
     if (USE_DB_ENVELOPE && db) {
       const result = await db.query(
-        `SELECT id FROM envelope_reports WHERE employee_name = $1 AND created_at::date = $2::date LIMIT 1`,
+        `SELECT id FROM envelope_reports WHERE employee_name = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date LIMIT 1`,
         [employeeName, date]
       );
       if (result.rows.length > 0) return true;

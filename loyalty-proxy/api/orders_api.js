@@ -11,6 +11,7 @@ const path = require('path');
 const { sanitizeId, fileExists } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const ordersModule = require('../modules/orders');
+const { notifyCounterUpdate } = require('./counters_websocket');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 
@@ -42,6 +43,7 @@ function setupOrdersAPI(app) {
       });
 
       console.log(`✅ Создан заказ #${order.orderNumber} от ${clientName}`);
+      notifyCounterUpdate('pendingOrders', { delta: 1 });
       res.json({ success: true, order });
     } catch (err) {
       console.error('❌ Ошибка создания заказа:', err);
@@ -156,6 +158,7 @@ function setupOrdersAPI(app) {
 
       const order = await ordersModule.updateOrderStatus(id, updates);
       console.log(`✅ Заказ #${order.orderNumber} обновлен: ${updates.status}`);
+      notifyCounterUpdate('pendingOrders', { delta: -1 });
       res.json({ success: true, order });
     } catch (err) {
       console.error('❌ Ошибка обновления заказа:', err);

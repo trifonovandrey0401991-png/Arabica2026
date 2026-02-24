@@ -4,6 +4,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/multitenancy_filter_service.dart';
 import '../../core/services/firebase_service.dart';
+import '../../core/services/counters_ws_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Отчёты
 import '../../features/rko/pages/rko_reports_page.dart';
@@ -29,6 +31,10 @@ import '../../features/fortune_wheel/pages/wheel_reports_page.dart';
 import '../../features/loyalty/pages/client_wheel_prizes_report_page.dart';
 import '../../features/orders/pages/orders_report_page.dart';
 import '../../features/ai_training/pages/ai_training_page.dart';
+
+// Мессенджер
+import '../../features/messenger/pages/messenger_shell_page.dart';
+import '../../features/messenger/services/messenger_service.dart';
 
 // Управление данными
 import '../../features/work_schedule/pages/work_schedule_page.dart';
@@ -56,7 +62,6 @@ import '../../features/shifts/services/shift_report_service.dart';
 import '../../features/recount/services/recount_service.dart';
 import '../../features/employees/services/user_role_service.dart';
 import '../../features/employees/models/user_role_model.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/job_application/services/job_application_service.dart';
 import '../../features/referrals/services/referral_service.dart';
 import '../../features/orders/services/order_service.dart';
@@ -100,7 +105,10 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
   int _referralsCount = 0;
   int _ordersCount = 0;
   int _myTasksCount = 0;
+  int _messengerUnreadCount = 0;
   Timer? _badgeTimer;
+  DateTime? _lastLifecycleReload;
+  StreamSubscription<CounterUpdateEvent>? _countersSub;
 
   // Роль текущего пользователя (для условного скрытия элементов)
   UserRoleData? _userRole;
@@ -121,11 +129,13 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
     _badgeTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _loadOrdersCount();
     });
+    _connectCountersWs();
   }
 
   @override
   void dispose() {
     _badgeTimer?.cancel();
+    _countersSub?.cancel();
     if (FirebaseService.onOrderPushReceived == _loadOrdersCount) {
       FirebaseService.onOrderPushReceived = null;
     }
@@ -135,9 +145,15 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Обновляем счётчики при возврате в приложение (после пуша)
+    // Обновляем счётчики при возврате в приложение (после пуша).
+    // Дебаунс 60 секунд — камера тоже вызывает resumed, не хотим лишних запросов.
     if (state == AppLifecycleState.resumed && mounted) {
-      _loadAllCounts();
+      final now = DateTime.now();
+      if (_lastLifecycleReload == null ||
+          now.difference(_lastLifecycleReload!) > const Duration(seconds: 60)) {
+        _lastLifecycleReload = now;
+        _loadAllCounts();
+      }
     }
   }
 
@@ -175,6 +191,76 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
     }
   }
 
+  /// Connect to counters WebSocket for live badge updates
+  Future<void> _connectCountersWs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('user_phone');
+      if (phone == null || phone.isEmpty) return;
+
+      final roleName = _userRole?.role.name ?? 'manager';
+      await CountersWsService.instance.connect(phone, role: roleName);
+
+      _countersSub?.cancel();
+      _countersSub = CountersWsService.instance.onCounterUpdate.listen((event) {
+        if (!mounted) return;
+        _handleCounterUpdate(event.counter);
+      });
+    } catch (e) {
+      Logger.warning('Counters WS connection error: $e');
+    }
+  }
+
+  /// Handle counter update from WebSocket — reload only the affected badge
+  void _handleCounterUpdate(String counter) {
+    switch (counter) {
+      case 'pendingShiftReports':
+      case 'pendingRecountReports':
+      case 'pendingHandoverReports':
+      case 'reportNotifications':
+        _loadReportCounts();
+        break;
+      case 'unconfirmedEnvelopes':
+        _loadEnvelopeCount();
+        break;
+      case 'coffeeMachineReports':
+        _loadCoffeeMachineCount();
+        break;
+      case 'shiftTransferRequests':
+        _loadShiftTransferCount();
+        break;
+      case 'unreadReviews':
+        _loadReviewsCount();
+        break;
+      case 'managementMessages':
+        _loadManagementCount();
+        break;
+      case 'unreadProductQuestions':
+        _loadProductQuestionsCount();
+        break;
+      case 'unconfirmedWithdrawals':
+        _loadWithdrawalsCount();
+        break;
+      case 'activeTaskAssignments':
+        _loadTasksExpiredCount();
+        _loadMyTasksCount();
+        break;
+      case 'jobApplications':
+        _loadJobApplicationsCount();
+        break;
+      case 'referrals':
+        _loadReferralsCount();
+        break;
+      case 'pendingOrders':
+        _loadOrdersCount();
+        break;
+      default:
+        // Unknown counter — reload all as fallback
+        _loadAllCounts();
+        break;
+    }
+  }
+
   Future<void> _loadAllCounts() async {
     // Загружаем роль для условного отображения элементов меню
     try {
@@ -197,6 +283,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
       _loadReferralsCount(),
       _loadOrdersCount(),
       _loadMyTasksCount(),
+      _loadMessengerUnreadCount(),
     ]);
   }
 
@@ -394,6 +481,17 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
 
       if (mounted) setState(() => _myTasksCount = count);
     } catch (e) { Logger.error('Ошибка загрузки счётчика моих задач', e); }
+  }
+
+  Future<void> _loadMessengerUnreadCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      if (normalizedPhone.isEmpty) return;
+      final count = await MessengerService.getUnreadCount(normalizedPhone);
+      if (mounted) setState(() => _messengerUnreadCount = count);
+    } catch (e) { Logger.error('Ошибка загрузки счётчика мессенджера', e); }
   }
 
   @override
@@ -1055,6 +1153,16 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
             'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeesEfficiencyPage())),
             'color': null,
             'badge': null,
+          },
+          {
+            'icon': Icons.chat_outlined,
+            'label': 'Чат',
+            'onTap': () async {
+              await Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage()));
+              _loadMessengerUnreadCount();
+            },
+            'color': null,
+            'badge': _messengerUnreadCount,
           },
         ],
       },

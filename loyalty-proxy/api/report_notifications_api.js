@@ -17,6 +17,7 @@ const { fileExists, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { requireAuth } = require('../utils/session_middleware');
 const pushService = require('../utils/push_service');
+const { notifyCounterUpdate } = require('./counters_websocket');
 
 // Директория хранения уведомлений
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -178,6 +179,7 @@ function setupReportNotificationsAPI(app) {
         reportId: reportId,
       });
 
+      notifyCounterUpdate('reportNotifications', { delta: 1 });
       res.json({ success: true, notification: newNotification });
     } catch (e) {
       console.error('Error creating notification:', e);

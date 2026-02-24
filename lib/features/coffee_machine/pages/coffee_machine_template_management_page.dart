@@ -6,6 +6,7 @@ import '../models/coffee_machine_template_model.dart';
 import '../services/coffee_machine_template_service.dart';
 import '../../shops/services/shop_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Управление шаблонами кофемашин (только для developer)
@@ -41,8 +42,22 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
     super.dispose();
   }
 
+  static const _cacheKey = 'coffee_templates';
+
   Future<void> _loadData() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _templates = cached['templates'] as List<CoffeeMachineTemplate>;
+        _shopConfigs = cached['configs'] as List<CoffeeMachineShopConfig>;
+        _shopAddresses = cached['addresses'] as List<String>;
+        _isLoading = false;
+      });
+    }
+
+    if (_templates.isEmpty && mounted) setState(() => _isLoading = true);
+
     try {
       final results = await Future.wait([
         CoffeeMachineTemplateService.getTemplates(),
@@ -51,15 +66,24 @@ class _CoffeeMachineTemplateManagementPageState extends State<CoffeeMachineTempl
       ]);
 
       if (!mounted) return;
+      final templates = results[0] as List<CoffeeMachineTemplate>;
+      final configs = results[1] as List<CoffeeMachineShopConfig>;
+      final addresses = results[2] as List<String>;
       setState(() {
-        _templates = results[0] as List<CoffeeMachineTemplate>;
-        _shopConfigs = results[1] as List<CoffeeMachineShopConfig>;
-        _shopAddresses = results[2] as List<String>;
+        _templates = templates;
+        _shopConfigs = configs;
+        _shopAddresses = addresses;
         _isLoading = false;
+      });
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, {
+        'templates': templates,
+        'configs': configs,
+        'addresses': addresses,
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      if (_templates.isEmpty) setState(() => _isLoading = false);
     }
   }
 

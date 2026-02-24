@@ -7,6 +7,7 @@ import '../../shops/models/shop_model.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления сетью магазинов
@@ -56,13 +57,27 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
     setState(() => _isLoading = false);
   }
 
+  static const _cacheKey = 'network_mgmt';
+
   Future<void> _loadAllData() async {
     if (_currentUserPhone == null) return;
 
-    if (mounted) setState(() => _isLoading = true);
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _developers = cached['developers'] as List<String>;
+        _managers = cached['managers'] as List<Map<String, dynamic>>;
+        _storeManagers = cached['storeManagers'] as List<Map<String, dynamic>>;
+        _allShops = cached['shops'] as List<Shop>;
+        _allEmployees = cached['employees'] as List<Employee>;
+        _isLoading = false;
+      });
+    }
+
+    if (_allShops.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
-      // Загружаем конфигурацию shop-managers
       final config = await NetworkManagementService.getShopManagersConfig(_currentUserPhone!);
       if (config != null) {
         _developers = (config['developers'] as List?)?.map((e) => e.toString()).toList() ?? [];
@@ -74,14 +89,19 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
             .toList() ?? [];
       }
 
-      // Загружаем все магазины
       _allShops = await ShopService.getShops();
-
-      // Загружаем всех сотрудников
       _allEmployees = await EmployeeService.getEmployees();
 
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, {
+        'developers': _developers,
+        'managers': _managers,
+        'storeManagers': _storeManagers,
+        'shops': _allShops,
+        'employees': _allEmployees,
+      });
     } catch (e) {
-      Logger.debug('❌ Ошибка загрузки данных: $e');
+      Logger.debug('Ошибка загрузки данных: $e');
     }
 
     if (!mounted) return;

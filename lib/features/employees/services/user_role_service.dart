@@ -201,12 +201,54 @@ class UserRoleService {
         return apiRole;
       }
 
-      // Не найден как сотрудник — значит клиент.
-      // Имя берём из SharedPreferences (сохранено при регистрации).
-      Logger.debug('ℹ️ Сотрудник не найден через API, назначаем роль клиента');
+      // Не найден как сотрудник — но может быть developer/admin/manager
+      // через мультитенантную роль (shop-managers.json)
+      Logger.debug('ℹ️ Сотрудник не найден через API, проверяем мультитенантную роль');
       final prefs = await SharedPreferences.getInstance();
       final cachedName = prefs.getString('user_name') ?? '';
 
+      // Проверяем мультитенантную роль даже без записи в employees
+      final multitenantRole = await getMultitenantRole(normalizedPhone);
+      if (multitenantRole != null) {
+        final mtRole = multitenantRole['role'] as String?;
+        if (mtRole == 'developer') {
+          Logger.debug('🔧 Пользователь не в employees, но developer по мультитенантной роли');
+          return UserRoleData(
+            role: UserRole.developer,
+            displayName: cachedName,
+            phone: normalizedPhone,
+          );
+        } else if (mtRole == 'admin') {
+          final managedShopIds = (multitenantRole['managedShopIds'] as List?)
+              ?.map((e) => e.toString()).toList() ?? [];
+          final managedEmployees = (multitenantRole['managedEmployees'] as List?)
+              ?.map((e) => e.toString()).toList() ?? [];
+          Logger.debug('👔 Пользователь не в employees, но admin по мультитенантной роли');
+          return UserRoleData(
+            role: UserRole.admin,
+            displayName: cachedName,
+            phone: normalizedPhone,
+            managedShopIds: managedShopIds,
+            managedEmployees: managedEmployees,
+          );
+        } else if (mtRole == 'manager') {
+          final primaryShopId = multitenantRole['primaryShopId'] as String?;
+          final managedShopIds = (multitenantRole['managedShopIds'] as List?)
+              ?.map((e) => e.toString()).toList() ?? [];
+          final canSeeAll = multitenantRole['canSeeAllManagerShops'] == true;
+          Logger.debug('🏪 Пользователь не в employees, но manager по мультитенантной роли');
+          return UserRoleData(
+            role: UserRole.manager,
+            displayName: cachedName,
+            phone: normalizedPhone,
+            primaryShopId: primaryShopId,
+            managedShopIds: managedShopIds,
+            canSeeAllManagerShops: canSeeAll,
+          );
+        }
+      }
+
+      Logger.debug('ℹ️ Назначаем роль клиента');
       return UserRoleData(
         role: UserRole.client,
         displayName: cachedName,

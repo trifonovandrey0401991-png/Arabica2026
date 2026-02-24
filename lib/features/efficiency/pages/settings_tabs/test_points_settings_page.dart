@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../widgets/points_settings_scaffold.dart';
 
 /// Page for configuring test points settings
 class TestPointsSettingsPage extends StatefulWidget {
@@ -12,9 +12,6 @@ class TestPointsSettingsPage extends StatefulWidget {
 }
 
 class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
-  bool _isLoading = true;
-  bool _isSaving = false;
-
   // Editable values
   double _minPoints = -2;
   int _zeroThreshold = 15;
@@ -22,76 +19,6 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
 
   // Gradient colors for this page
   static final _gradientColors = [Color(0xFF667eea), Color(0xFF764ba2)];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSettings();
-  }
-
-  Future<void> _loadSettings() async {
-    if (mounted) setState(() => _isLoading = true);
-
-    try {
-      final settings = await PointsSettingsService.getTestPointsSettings();
-      if (!mounted) return;
-      setState(() {
-        _minPoints = settings.minPoints;
-        _zeroThreshold = settings.zeroThreshold;
-        _maxPoints = settings.maxPoints;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка загрузки настроек: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _saveSettings() async {
-    if (mounted) setState(() => _isSaving = true);
-
-    try {
-      final result = await PointsSettingsService.saveTestPointsSettings(
-        minPoints: _minPoints,
-        zeroThreshold: _zeroThreshold,
-        maxPoints: _maxPoints,
-      );
-
-      if (result != null) {
-        if (!mounted) return;
-        setState(() {
-          _isSaving = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Настройки сохранены'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        throw Exception('Не удалось сохранить настройки');
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isSaving = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка сохранения: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   /// Calculate points using current settings (local calculation)
   double _calculatePoints(int score) {
@@ -111,111 +38,93 @@ class _TestPointsSettingsPageState extends State<TestPointsSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color(0xFFF5F7FA),
-      appBar: AppBar(
-        title: Text('Баллы за тестирование'),
-        backgroundColor: _gradientColors[1],
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: Color(0xFF667eea)))
-          : Column(
-              children: [
-                // Заголовок
-                SettingsHeaderCard(
-                  icon: Icons.quiz_outlined,
-                  title: 'Всего вопросов: 20',
-                  subtitle: 'Проходной балл: 16 правильных',
-                  gradientColors: _gradientColors,
-                ),
-                // Контент
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(16.w),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Min points slider
-                        SettingsSliderWidget(
-                          title: 'Минимальные баллы',
-                          subtitle: 'Штраф за 0-1 правильных ответов',
-                          value: _minPoints,
-                          min: -5,
-                          max: 0,
-                          divisions: 10,
-                          onChanged: (value) {
-                            if (mounted) setState(() => _minPoints = value);
-                          },
-                          valueLabel: _minPoints.toStringAsFixed(1),
-                          accentColor: Colors.red,
-                          icon: Icons.remove_circle_outline,
-                        ),
-                        SizedBox(height: 16),
+    return PointsSettingsScaffold(
+      title: 'Баллы за тестирование',
+      headerIcon: Icons.quiz_outlined,
+      headerTitle: 'Всего вопросов: 20',
+      headerSubtitle: 'Проходной балл: 16 правильных',
+      gradientColors: _gradientColors,
+      onLoad: () async {
+        final settings = await PointsSettingsService.getTestPointsSettings();
+        _minPoints = settings.minPoints;
+        _zeroThreshold = settings.zeroThreshold;
+        _maxPoints = settings.maxPoints;
+      },
+      onSave: () async {
+        final result = await PointsSettingsService.saveTestPointsSettings(
+          minPoints: _minPoints,
+          zeroThreshold: _zeroThreshold,
+          maxPoints: _maxPoints,
+        );
+        return result != null;
+      },
+      bodyBuilder: (context) => [
+        // Min points slider
+        SettingsSliderWidget(
+          title: 'Минимальные баллы',
+          subtitle: 'Штраф за 0-1 правильных ответов',
+          value: _minPoints,
+          min: -5,
+          max: 0,
+          divisions: 10,
+          onChanged: (value) {
+            if (mounted) setState(() => _minPoints = value);
+          },
+          valueLabel: _minPoints.toStringAsFixed(1),
+          accentColor: Colors.red,
+          icon: Icons.remove_circle_outline,
+        ),
+        SizedBox(height: 16),
 
-                        // Zero threshold slider
-                        SettingsSliderWidget(
-                          title: 'Порог нуля',
-                          subtitle: 'Количество правильных ответов для 0 баллов',
-                          value: _zeroThreshold.toDouble(),
-                          min: 5,
-                          max: 19,
-                          divisions: 14,
-                          onChanged: (value) {
-                            if (mounted) setState(() => _zeroThreshold = value.round());
-                          },
-                          valueLabel: _zeroThreshold.toString(),
-                          isInteger: true,
-                          accentColor: Colors.orange,
-                          icon: Icons.adjust,
-                        ),
-                        SizedBox(height: 16),
+        // Zero threshold slider
+        SettingsSliderWidget(
+          title: 'Порог нуля',
+          subtitle: 'Количество правильных ответов для 0 баллов',
+          value: _zeroThreshold.toDouble(),
+          min: 5,
+          max: 19,
+          divisions: 14,
+          onChanged: (value) {
+            if (mounted) setState(() => _zeroThreshold = value.round());
+          },
+          valueLabel: _zeroThreshold.toString(),
+          isInteger: true,
+          accentColor: Colors.orange,
+          icon: Icons.adjust,
+        ),
+        SizedBox(height: 16),
 
-                        // Max points slider
-                        SettingsSliderWidget(
-                          title: 'Максимальные баллы',
-                          subtitle: 'Награда за 20/20 правильных ответов',
-                          value: _maxPoints,
-                          min: 0,
-                          max: 5,
-                          divisions: 10,
-                          onChanged: (value) {
-                            if (mounted) setState(() => _maxPoints = value);
-                          },
-                          valueLabel: '+${_maxPoints.toStringAsFixed(1)}',
-                          accentColor: Colors.green,
-                          icon: Icons.add_circle_outline,
-                        ),
-                        SizedBox(height: 24),
+        // Max points slider
+        SettingsSliderWidget(
+          title: 'Максимальные баллы',
+          subtitle: 'Награда за 20/20 правильных ответов',
+          value: _maxPoints,
+          min: 0,
+          max: 5,
+          divisions: 10,
+          onChanged: (value) {
+            if (mounted) setState(() => _maxPoints = value);
+          },
+          valueLabel: '+${_maxPoints.toStringAsFixed(1)}',
+          accentColor: Colors.green,
+          icon: Icons.add_circle_outline,
+        ),
+        SizedBox(height: 24),
 
-                        // Preview section
-                        SettingsSectionTitle(
-                          title: 'Предпросмотр расчета баллов',
-                          gradientColors: _gradientColors,
-                        ),
-                        SizedBox(height: 12),
-                        RatingPreviewWidget(
-                          previewRatings: _previewScores,
-                          calculatePoints: _calculatePoints,
-                          gradientColors: _gradientColors,
-                          ratingColumnTitle: 'Ответов',
-                          ratingFormatter: (score) => '$score / 20',
-                        ),
-                        SizedBox(height: 24),
-
-                        // Save button
-                        SettingsSaveButton(
-                          isSaving: _isSaving,
-                          onPressed: _saveSettings,
-                          gradientColors: _gradientColors,
-                        ),
-                        SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        // Preview section
+        SettingsSectionTitle(
+          title: 'Предпросмотр расчета баллов',
+          gradientColors: _gradientColors,
+        ),
+        SizedBox(height: 12),
+        RatingPreviewWidget(
+          previewRatings: _previewScores,
+          calculatePoints: _calculatePoints,
+          gradientColors: _gradientColors,
+          ratingColumnTitle: 'Ответов',
+          ratingFormatter: (score) => '$score / 20',
+        ),
+      ],
     );
   }
 }

@@ -23,6 +23,7 @@ const { compressUpload } = require('../utils/image_compress');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
+const { notifyCounterUpdate } = require('./counters_websocket');
 
 const USE_DB = process.env.USE_DB_PRODUCT_QUESTIONS === 'true';
 
@@ -297,6 +298,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         console.error('❌ Ошибка отправки уведомлений:', e);
       }
 
+      notifyCounterUpdate('unreadProductQuestions', { delta: 1 });
       res.json({ success: true, questionId, question });
     } catch (error) {
       console.error('Error creating product question:', error);
@@ -508,6 +510,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         console.error('❌ Ошибка отправки уведомления клиенту:', e);
       }
 
+      notifyCounterUpdate('unreadProductQuestions', { delta: -1 });
       res.json({ success: true, message: newMessage });
     } catch (error) {
       console.error('Error adding answer to product question:', error);

@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Кнопка сохранения для страниц настроек
-///
-/// Переиспользуемая кнопка с градиентом и индикатором загрузки.
-/// Используется во всех settings pages.
 class SettingsSaveButton extends StatelessWidget {
   final bool isSaving;
   final VoidCallback? onPressed;
@@ -77,8 +75,6 @@ class SettingsSaveButton extends StatelessWidget {
 }
 
 /// Заголовок секции для страниц настроек
-///
-/// Полоска с градиентом и текстом заголовка.
 class SettingsSectionTitle extends StatelessWidget {
   final String title;
   final List<Color> gradientColors;
@@ -112,7 +108,7 @@ class SettingsSectionTitle extends StatelessWidget {
             style: TextStyle(
               fontSize: 18.sp,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF2D3436),
+              color: Colors.white,
             ),
           ),
         ),
@@ -122,8 +118,6 @@ class SettingsSectionTitle extends StatelessWidget {
 }
 
 /// Информационная карточка для заголовка страницы настроек
-///
-/// Отображает иконку, заголовок и подзаголовок на градиентном фоне.
 class SettingsHeaderCard extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -142,72 +136,64 @@ class SettingsHeaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
+      margin: EdgeInsets.symmetric(horizontal: 16.w),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: gradientColors,
         ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28.r),
-          bottomRight: Radius.circular(28.r),
-        ),
+        borderRadius: BorderRadius.circular(20.r),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors[0].withOpacity(0.3),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
-      padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 24.h),
-      child: Container(
-        padding: EdgeInsets.all(16.w),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(16.r),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: Icon(
-                icon,
-                color: Colors.white,
-                size: 26,
-              ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12.r),
             ),
-            SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
+            child: Icon(icon, color: Colors.white, size: 26),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.bold,
                   ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 13.sp,
-                    ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 13.sp,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
 /// Информационный блок с иконкой и текстом
-///
-/// Используется для отображения предупреждений и информации.
 class SettingsInfoBox extends StatelessWidget {
   final String text;
   final Color color;
@@ -238,20 +224,12 @@ class SettingsInfoBox extends StatelessWidget {
               text,
               style: TextStyle(
                 fontSize: 12.sp,
-                color: color.shade900,
+                color: color,
               ),
             ),
           ),
         ],
       ),
     );
-  }
-}
-
-extension on Color {
-  Color get shade900 {
-    // Создаём более тёмный оттенок цвета
-    final hsl = HSLColor.fromColor(this);
-    return hsl.withLightness((hsl.lightness * 0.3).clamp(0.0, 1.0)).toColor();
   }
 }

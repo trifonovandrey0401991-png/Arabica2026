@@ -13,6 +13,10 @@ class CigaretteAnnotationPage extends StatefulWidget {
   final int? templateId;
   final String? shopAddress;
   final String? employeeName;
+  /// Если true — страница открыта из пересчёта, меняем тексты
+  final bool fromRecount;
+  /// ID pending образца — аннотации уйдут к нему (не создаётся новый образец)
+  final String? pendingSampleId;
 
   const CigaretteAnnotationPage({
     super.key,
@@ -22,6 +26,8 @@ class CigaretteAnnotationPage extends StatefulWidget {
     this.templateId,
     this.shopAddress,
     this.employeeName,
+    this.fromRecount = false,
+    this.pendingSampleId,
   });
 
   @override
@@ -57,16 +63,25 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
           // Инструкция
           if (_showInstructions)
             Container(
-              color: Colors.blue.shade50,
+              color: widget.fromRecount ? Colors.green.shade50 : Colors.blue.shade50,
               padding: EdgeInsets.all(12.w),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  Icon(
+                    widget.fromRecount ? Icons.school_outlined : Icons.info_outline,
+                    color: widget.fromRecount ? Colors.green.shade700 : Colors.blue,
+                    size: 20,
+                  ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Обведите пальцем все пачки "${widget.product.productName}" на фото.\nДвойной тап на рамку — удалить.',
-                      style: TextStyle(fontSize: 13.sp, color: Colors.blue.shade800),
+                      widget.fromRecount
+                          ? 'Помогите ИИ научиться! Обведите все пачки "${widget.product.productName}" на фото. Двойной тап на рамку — удалить.'
+                          : 'Обведите пальцем все пачки "${widget.product.productName}" на фото.\nДвойной тап на рамку — удалить.',
+                      style: TextStyle(
+                        fontSize: 13.sp,
+                        color: widget.fromRecount ? Colors.green.shade800 : Colors.blue.shade800,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -160,7 +175,7 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : Text('Сохранить'),
+                              : Text(widget.fromRecount ? 'Отправить в ИИ' : 'Сохранить'),
                         ),
                       ),
                     ],
@@ -231,28 +246,40 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
         );
       }).toList();
 
-      final success = await CigaretteVisionService.uploadAnnotatedSample(
-        imageBytes: widget.imageBytes,
-        productId: widget.product.id,
-        barcode: widget.product.barcode,
-        productName: widget.product.productName,
-        type: widget.type,
-        boundingBoxes: annotations,
-        templateId: widget.templateId,
-        shopAddress: widget.shopAddress,
-        employeeName: widget.employeeName,
-      );
+      bool success;
+      if (widget.fromRecount && widget.pendingSampleId != null) {
+        // Из пересчёта: добавляем рамки к уже существующему pending образцу
+        success = await CigaretteVisionService.submitRecountAnnotation(
+          widget.pendingSampleId!,
+          annotations,
+        );
+      } else {
+        // Обычный режим: загружаем как новый аннотированный образец
+        success = await CigaretteVisionService.uploadAnnotatedSample(
+          imageBytes: widget.imageBytes,
+          productId: widget.product.id,
+          barcode: widget.product.barcode,
+          productName: widget.product.productName,
+          type: widget.type,
+          boundingBoxes: annotations,
+          templateId: widget.templateId,
+          shopAddress: widget.shopAddress,
+          employeeName: widget.employeeName,
+        );
+      }
 
       if (!mounted) return;
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Сохранено! Рамок: ${_boxes.length}'),
+            content: Text(widget.pendingSampleId != null
+                ? 'Рамки переданы на проверку! (${_boxes.length} шт.)'
+                : 'Сохранено! Рамок: ${_boxes.length}'),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true); // true = успешно сохранено
+        Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

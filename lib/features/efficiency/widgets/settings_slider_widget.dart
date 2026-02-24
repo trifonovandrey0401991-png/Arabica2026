@@ -1,14 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 
 /// Переиспользуемый виджет слайдера для настроек баллов
-///
-/// Используется во всех settings pages для настройки числовых параметров.
-/// Включает:
-/// - Иконку с цветовым оформлением
-/// - Заголовок и подзаголовок
-/// - Слайдер с кастомным стилем
-/// - Отображение текущего значения
 class SettingsSliderWidget extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -48,15 +42,9 @@ class SettingsSliderWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withOpacity(0.1),
-            blurRadius: 15,
-            offset: Offset(0, 5),
-          ),
-        ],
+        border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
       ),
       child: Padding(
         padding: EdgeInsets.all(20.w),
@@ -65,18 +53,16 @@ class SettingsSliderWidget extends StatelessWidget {
           children: [
             Row(
               children: [
-                // Icon container
                 Container(
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.1),
+                    color: accentColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                   child: Icon(icon, color: accentColor, size: 24),
                 ),
                 SizedBox(width: 14),
-                // Title and subtitle
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,20 +72,19 @@ class SettingsSliderWidget extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2D3436),
+                          color: Colors.white,
                         ),
                       ),
                       Text(
                         subtitle,
                         style: TextStyle(
                           fontSize: 12.sp,
-                          color: Colors.grey[500],
+                          color: Colors.white.withOpacity(0.5),
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Value badge
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                   decoration: BoxDecoration(
@@ -125,7 +110,6 @@ class SettingsSliderWidget extends StatelessWidget {
               ],
             ),
             SizedBox(height: 16),
-            // Slider
             SliderTheme(
               data: SliderThemeData(
                 activeTrackColor: accentColor,
@@ -143,7 +127,6 @@ class SettingsSliderWidget extends StatelessWidget {
                 onChanged: onChanged,
               ),
             ),
-            // Min/max labels
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 8.w),
               child: Row(
@@ -153,7 +136,7 @@ class SettingsSliderWidget extends StatelessWidget {
                     isInteger ? min.toInt().toString() : min.toString(),
                     style: TextStyle(
                       fontSize: 12.sp,
-                      color: Colors.grey[400],
+                      color: Colors.white.withOpacity(0.35),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -161,7 +144,7 @@ class SettingsSliderWidget extends StatelessWidget {
                     isInteger ? max.toInt().toString() : max.toString(),
                     style: TextStyle(
                       fontSize: 12.sp,
-                      color: Colors.grey[400],
+                      color: Colors.white.withOpacity(0.35),
                       fontWeight: FontWeight.w500,
                     ),
                   ),

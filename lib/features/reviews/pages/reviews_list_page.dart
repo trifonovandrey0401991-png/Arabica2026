@@ -5,6 +5,7 @@ import 'reviews_shop_detail_page.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../../clients/pages/management_dialogs_list_page.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../employees/models/user_role_model.dart';
@@ -43,11 +44,19 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
     }
   }
 
-  Future<void> _loadReviews() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-    });
+  static const _cacheKey = 'reviews_all';
 
+  Future<void> _loadReviews() async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<Map<String, ShopReviewStats>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _shopStats = cached;
+        _isLoading = false;
+      });
+    }
+
+    // Step 2: Fetch fresh data from server
     try {
       final allReviews = await ReviewService.getAllReviews();
 
@@ -73,18 +82,23 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
         _shopStats = stats;
         _isLoading = false;
       });
+
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, stats);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка загрузки: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (_shopStats.isEmpty) {
+        setState(() {
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка загрузки: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }

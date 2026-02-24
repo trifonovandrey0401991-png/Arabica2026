@@ -3,6 +3,7 @@ import 'create_task_page.dart';
 import 'create_recurring_task_page.dart';
 import '../models/recurring_task_model.dart';
 import '../services/recurring_task_service.dart';
+import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -238,22 +239,32 @@ class _RecurringTasksTabState extends State<_RecurringTasksTab> {
     _loadTasks();
   }
 
-  Future<void> _loadTasks() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  static const _cacheKey = 'recurring_task_templates';
 
+  Future<void> _loadTasks() async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<RecurringTask>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _tasks = cached;
+        _isLoading = false;
+      });
+    }
+
+    // Step 2: Fetch fresh data from server
     try {
       final tasks = await RecurringTaskService.getAllTemplates();
       if (mounted) {
         setState(() {
           _tasks = tasks;
           _isLoading = false;
+          _error = null;
         });
       }
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, tasks);
     } catch (e) {
-      if (mounted) {
+      if (mounted && _tasks.isEmpty) {
         setState(() {
           _error = e.toString();
           _isLoading = false;

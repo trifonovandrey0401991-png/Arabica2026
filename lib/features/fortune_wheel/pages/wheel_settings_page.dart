@@ -116,27 +116,30 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.night,
       appBar: AppBar(
-        title: Text('Настройка Колеса Удачи'),
-        backgroundColor: AppColors.primaryGreen,
+        title: Text('Настройка Колеса Удачи', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.emeraldDark,
+        elevation: 0,
+        iconTheme: IconThemeData(color: AppColors.gold),
         actions: [
           IconButton(
-            icon: Icon(Icons.save),
+            icon: Icon(Icons.save, color: AppColors.gold),
             onPressed: _isSaving ? null : _saveSettings,
           ),
         ],
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: AppColors.gold))
           : Column(
               children: [
                 // Настройка количества топ-сотрудников
                 Container(
                   padding: EdgeInsets.all(16.w),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withOpacity(0.1),
+                    color: AppColors.emeraldDark,
                     border: Border(
-                      bottom: BorderSide(color: Colors.grey.shade300),
+                      bottom: BorderSide(color: AppColors.emerald.withOpacity(0.3)),
                     ),
                   ),
                   child: Column(
@@ -145,172 +148,191 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                       // Заголовок
                       Row(
                         children: [
-                          Icon(Icons.emoji_events, color: AppColors.primaryGreen, size: 24),
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppColors.gold.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10.r),
+                            ),
+                            child: Icon(Icons.emoji_events, color: AppColors.gold, size: 22),
+                          ),
                           SizedBox(width: 12),
                           Text(
-                            'Количество призовых мест',
+                            'Призовые места',
                             style: TextStyle(
                               fontSize: 16.sp,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.primaryGreen,
+                              color: Colors.white,
                             ),
                           ),
                         ],
                       ),
                       SizedBox(height: 16),
 
-                      // Кнопки выбора количества
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        alignment: WrapAlignment.center,
-                        children: [
-                          for (int i = 1; i <= 10; i++)
-                            GestureDetector(
-                              onTap: () {
-                                if (mounted) setState(() {
-                                  _topEmployeesCount = i;
-                                });
-                              },
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  gradient: _topEmployeesCount == i
-                                      ? LinearGradient(
-                                          colors: [Color(0xFF00695C), AppColors.primaryGreen],
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                        )
-                                      : null,
-                                  color: _topEmployeesCount == i ? null : Colors.white,
-                                  borderRadius: BorderRadius.circular(10.r),
-                                  border: Border.all(
-                                    color: _topEmployeesCount == i
-                                        ? AppColors.primaryGreen
-                                        : Colors.grey.shade300,
-                                    width: _topEmployeesCount == i ? 2.5 : 1.5,
-                                  ),
-                                  boxShadow: [
-                                    if (_topEmployeesCount == i)
-                                      BoxShadow(
-                                        color: AppColors.primaryGreen.withOpacity(0.3),
-                                        blurRadius: 6,
-                                        offset: Offset(0, 3),
-                                      ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '$i',
-                                    style: TextStyle(
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.bold,
+                      // Кнопки выбора количества — горизонтальная полоса
+                      Container(
+                        padding: EdgeInsets.all(4.w),
+                        decoration: BoxDecoration(
+                          color: AppColors.night.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        child: Row(
+                          children: [
+                            for (int i = 1; i <= 10; i++)
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    if (mounted) setState(() {
+                                      _topEmployeesCount = i;
+                                    });
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: Duration(milliseconds: 200),
+                                    height: 36,
+                                    decoration: BoxDecoration(
                                       color: _topEmployeesCount == i
-                                          ? Colors.white
-                                          : Colors.grey.shade700,
+                                          ? AppColors.gold
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(9.r),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '$i',
+                                        style: TextStyle(
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: _topEmployeesCount == i
+                                              ? AppColors.night
+                                              : Colors.white.withOpacity(0.5),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
 
-                      SizedBox(height: 12),
+                      SizedBox(height: 16),
 
-                      // Предпросмотр распределения
+                      // Предпросмотр распределения — таблица
                       Container(
-                        padding: EdgeInsets.all(12.w),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8.r),
-                          border: Border.all(color: Colors.grey.shade300),
+                          color: AppColors.night.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: AppColors.emerald.withOpacity(0.2)),
                         ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Распределение прокруток:',
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey[700],
+                            // Шапка
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                              decoration: BoxDecoration(
+                                color: AppColors.emerald.withOpacity(0.15),
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(12.r)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text('Место', style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.6))),
+                                  ),
+                                  Expanded(
+                                    flex: 3,
+                                    child: Text('Прокрутки', style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.6))),
+                                  ),
+                                ],
                               ),
                             ),
-                            SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              alignment: WrapAlignment.center,
-                              children: [
-                                for (int i = 0; i < _topEmployeesCount; i++)
-                                  Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: i == 0
-                                            ? [Color(0xFFFFD700), Color(0xFFFFA500)] // Золото
-                                            : i == 1
-                                                ? [Color(0xFFE8E8E8), Color(0xFFC0C0C0)] // Серебро
-                                                : i == 2
-                                                    ? [Color(0xFFCD7F32), Color(0xFF8B4513)] // Бронза
-                                                    : [Color(0xFF64B5F6), AppColors.blue], // Синий
-                                      ),
-                                      borderRadius: BorderRadius.circular(18.r),
-                                      border: Border.all(
-                                        color: i == 0
-                                            ? Color(0xFFFFD700)
-                                            : i == 1
-                                                ? Color(0xFFC0C0C0)
-                                                : i == 2
-                                                    ? Color(0xFFCD7F32)
-                                                    : Color(0xFF1976D2),
-                                        width: 2,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: (i == 0
-                                                  ? Color(0xFFFFD700)
+                            // Строки мест
+                            for (int i = 0; i < _topEmployeesCount; i++)
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                                decoration: BoxDecoration(
+                                  border: i < _topEmployeesCount - 1
+                                      ? Border(bottom: BorderSide(color: AppColors.emerald.withOpacity(0.1)))
+                                      : null,
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Место (с медалью для топ-3)
+                                    Expanded(
+                                      flex: 2,
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 28,
+                                            height: 28,
+                                            decoration: BoxDecoration(
+                                              color: i == 0
+                                                  ? AppColors.gold.withOpacity(0.2)
                                                   : i == 1
-                                                      ? Color(0xFFC0C0C0)
+                                                      ? Color(0xFFC0C0C0).withOpacity(0.2)
                                                       : i == 2
-                                                          ? Color(0xFFCD7F32)
-                                                          : Color(0xFF1976D2))
-                                              .withOpacity(0.3),
-                                          blurRadius: 4,
-                                          offset: Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          i == 0 ? '🥇' : i == 1 ? '🥈' : i == 2 ? '🥉' : '${i + 1}',
-                                          style: TextStyle(fontSize: 14.sp),
-                                        ),
-                                        SizedBox(width: 5),
-                                        Text(
-                                          '${i == 0 ? 2 : 1} спин${i == 0 ? 'а' : ''}',
-                                          style: TextStyle(
-                                            fontSize: 11.sp,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                            shadows: [
-                                              Shadow(
-                                                color: Colors.black.withOpacity(0.25),
-                                                offset: Offset(0, 1),
-                                                blurRadius: 1,
+                                                          ? Color(0xFFCD7F32).withOpacity(0.2)
+                                                          : AppColors.emerald.withOpacity(0.2),
+                                              borderRadius: BorderRadius.circular(8.r),
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                '${i + 1}',
+                                                style: TextStyle(
+                                                  fontSize: 13.sp,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: i == 0
+                                                      ? AppColors.gold
+                                                      : i == 1
+                                                          ? Color(0xFFC0C0C0)
+                                                          : i == 2
+                                                              ? Color(0xFFCD7F32)
+                                                              : Colors.white.withOpacity(0.7),
+                                                ),
                                               ),
-                                            ],
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                          SizedBox(width: 8),
+                                          Text(
+                                            i == 0 ? 'место' : i == 1 ? 'место' : i == 2 ? 'место' : 'место',
+                                            style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.7)),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                              ],
-                            ),
+                                    // Количество спинов
+                                    Expanded(
+                                      flex: 3,
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                                            decoration: BoxDecoration(
+                                              color: i == 0
+                                                  ? AppColors.gold.withOpacity(0.15)
+                                                  : AppColors.emerald.withOpacity(0.15),
+                                              borderRadius: BorderRadius.circular(8.r),
+                                              border: Border.all(
+                                                color: i == 0
+                                                    ? AppColors.gold.withOpacity(0.3)
+                                                    : AppColors.emerald.withOpacity(0.3),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              '${i == 0 ? 2 : 1} спин${i == 0 ? 'а' : ''}',
+                                              style: TextStyle(
+                                                fontSize: 13.sp,
+                                                fontWeight: FontWeight.bold,
+                                                color: i == 0 ? AppColors.gold : Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -321,16 +343,21 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                 // Инфо
                 Container(
                   padding: EdgeInsets.all(16.w),
-                  color: Colors.amber[50],
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.1),
+                    border: Border(
+                      bottom: BorderSide(color: AppColors.emerald.withOpacity(0.3)),
+                    ),
+                  ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, color: Colors.amber[800]),
+                      Icon(Icons.info_outline, color: Colors.amber),
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Сумма вероятностей должна быть 100%.\n'
                           'Текущая сумма: ${_calculateTotalProbability().toStringAsFixed(1)}%',
-                          style: TextStyle(color: Colors.amber[900]),
+                          style: TextStyle(color: Colors.amber[300]),
                         ),
                       ),
                     ],
@@ -391,8 +418,13 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
   Widget _buildSectorCard(int index) {
     final sector = _sectors[index];
 
-    return Card(
+    return Container(
       margin: EdgeInsets.only(bottom: 12.h),
+      decoration: BoxDecoration(
+        color: AppColors.emeraldDark,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
+      ),
       child: Padding(
         padding: EdgeInsets.all(16.w),
         child: Column(
@@ -407,7 +439,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                   decoration: BoxDecoration(
                     color: sector.color,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+                    border: Border.all(color: AppColors.emerald.withOpacity(0.5), width: 2),
                     boxShadow: [
                       BoxShadow(
                         color: sector.color.withOpacity(0.3),
@@ -422,6 +454,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                   style: TextStyle(
                     fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
               ],
@@ -431,9 +464,16 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
             // Текст приза
             TextField(
               controller: _textControllers[index],
+              style: TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 labelText: 'Текст приза',
-                border: OutlineInputBorder(),
+                labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
+                ),
                 isDense: true,
               ),
             ),
@@ -446,9 +486,16 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                   child: TextField(
                     controller: _probControllers[index],
                     keyboardType: TextInputType.number,
+                    style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Вероятность (%)',
-                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      border: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
+                      ),
                       isDense: true,
                     ),
                     onChanged: (_) => setState(() {}),

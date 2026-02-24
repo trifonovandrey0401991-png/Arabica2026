@@ -272,6 +272,45 @@ class MessengerService {
     return [];
   }
 
+  // ==================== USER PROFILE ====================
+
+  static Future<Map<String, dynamic>?> getProfile(String phone) async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_base/profile?phone=$phone',
+      );
+      if (result != null && result['success'] == true && result['profile'] != null) {
+        return result['profile'] as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> updateProfile({
+    required String phone,
+    String? displayName,
+    String? avatarUrl,
+  }) async {
+    try {
+      final result = await BaseHttpService.putRaw(
+        endpoint: '$_base/profile',
+        body: {
+          'phone': phone,
+          if (displayName != null) 'displayName': displayName,
+          if (avatarUrl != null) 'avatarUrl': avatarUrl,
+        },
+      );
+      if (result != null && result['success'] == true && result['profile'] != null) {
+        return result['profile'] as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   // ==================== UNREAD COUNT ====================
 
   static Future<int> getUnreadCount(String phone) async {

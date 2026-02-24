@@ -207,6 +207,81 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
     );
   }
 
+  /// Отображение фото сотрудника с приоритетом серверного URL
+  Widget _buildEmployeePhoto(ShiftHandoverAnswer answer) {
+    // Приоритет 1: photoDriveId — серверный URL (работает на любом устройстве)
+    if (answer.photoDriveId != null) {
+      final photoUrl = answer.photoDriveId!.startsWith('http')
+          ? answer.photoDriveId!
+          : 'https://arabica26.ru/shift-photos/${answer.photoDriveId}';
+      return AppCachedImage(
+        imageUrl: photoUrl,
+        fit: BoxFit.cover,
+        errorWidget: (context, error, stackTrace) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error, size: 48, color: Colors.white.withOpacity(0.4)),
+                SizedBox(height: 8),
+                Text(
+                  'Ошибка загрузки фото',
+                  style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.4)),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    // Приоритет 2: photoUrl — серверный URL (legacy)
+    if (answer.photoUrl != null) {
+      return AppCachedImage(
+        imageUrl: answer.photoUrl!,
+        fit: BoxFit.cover,
+        errorWidget: (context, error, stackTrace) {
+          return Center(
+            child: Icon(Icons.error, size: 48, color: Colors.white.withOpacity(0.4)),
+          );
+        },
+      );
+    }
+
+    // Приоритет 3: photoPath — HTTP URL или data URL
+    if (answer.photoPath != null) {
+      if (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http')) {
+        return AppCachedImage(
+          imageUrl: answer.photoPath!,
+          fit: BoxFit.cover,
+          errorWidget: (context, error, stackTrace) {
+            return Center(
+              child: Icon(Icons.error, color: Colors.white.withOpacity(0.4)),
+            );
+          },
+        );
+      }
+      // Приоритет 4: photoPath — локальный файл (только на том же устройстве)
+      return Image.file(File(answer.photoPath!), fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.broken_image, size: 48, color: Colors.white.withOpacity(0.3)),
+                SizedBox(height: 8),
+                Text('Фото на другом устройстве',
+                  style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.4))),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    return Center(child: Icon(Icons.image, color: Colors.white.withOpacity(0.3)));
+  }
+
   Color _getRatingColor(int rating) {
     if (rating <= 3) return Colors.red;
     if (rating <= 5) return Colors.orange;
@@ -765,7 +840,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                               'Ответ: ${answer.numberAnswer}',
                               style: TextStyle(color: Colors.white.withOpacity(0.6)),
                             ),
-                          if (answer.photoPath != null || answer.photoUrl != null) ...[
+                          if (answer.photoPath != null || answer.photoUrl != null || answer.photoDriveId != null) ...[
                             SizedBox(height: 8),
                             // Если есть эталонное фото, показываем две фото рядом
                             Builder(
@@ -844,47 +919,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                               ),
                                               child: ClipRRect(
                                                 borderRadius: BorderRadius.circular(12.r),
-                                                child: answer.photoPath != null
-                                                    ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                                                        ? AppCachedImage(
-                                                            imageUrl: answer.photoPath!,
-                                                            fit: BoxFit.cover,
-                                                            errorWidget: (context, error, stackTrace) {
-                                                              return Center(
-                                                                child: Icon(Icons.error, color: Colors.white.withOpacity(0.4)),
-                                                              );
-                                                            },
-                                                          )
-                                                        : Image.file(
-                                                            File(answer.photoPath!),
-                                                            fit: BoxFit.cover,
-                                                          )
-                                                    : answer.photoUrl != null
-                                                        ? AppCachedImage(
-                                                            imageUrl: answer.photoUrl!,
-                                                            fit: BoxFit.cover,
-                                                            errorWidget: (context, error, stackTrace) {
-                                                              return Center(
-                                                                child: Column(
-                                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                                  children: [
-                                                                    Icon(Icons.error, size: 48, color: Colors.white.withOpacity(0.4)),
-                                                                    SizedBox(height: 8),
-                                                                    Text(
-                                                                      'Ошибка загрузки фото',
-                                                                      style: TextStyle(
-                                                                        fontSize: 12.sp,
-                                                                        color: Colors.white.withOpacity(0.4),
-                                                                      ),
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                              );
-                                                            },
-                                                          )
-                                                        : Center(
-                                                            child: Icon(Icons.image, color: Colors.white.withOpacity(0.4)),
-                                                          ),
+                                                child: _buildEmployeePhoto(answer),
                                               ),
                                             ),
                                           ],
@@ -907,47 +942,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(12.r),
-                                  child: answer.photoPath != null
-                                      ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                                          ? AppCachedImage(
-                                              imageUrl: answer.photoPath!,
-                                              fit: BoxFit.cover,
-                                              errorWidget: (context, error, stackTrace) {
-                                                return Center(
-                                                  child: Icon(Icons.error, color: Colors.white.withOpacity(0.4)),
-                                                );
-                                              },
-                                            )
-                                          : Image.file(
-                                              File(answer.photoPath!),
-                                              fit: BoxFit.cover,
-                                            )
-                                      : answer.photoUrl != null
-                                          ? AppCachedImage(
-                                              imageUrl: answer.photoUrl!,
-                                              fit: BoxFit.cover,
-                                              errorWidget: (context, error, stackTrace) {
-                                                return Center(
-                                                  child: Column(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
-                                                    children: [
-                                                      Icon(Icons.error, size: 48, color: Colors.white.withOpacity(0.4)),
-                                                      SizedBox(height: 8),
-                                                      Text(
-                                                        'Ошибка загрузки фото',
-                                                        style: TextStyle(
-                                                          fontSize: 12.sp,
-                                                          color: Colors.white.withOpacity(0.4),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                );
-                                              },
-                                            )
-                                          : Center(
-                                              child: Icon(Icons.image, color: Colors.white.withOpacity(0.4)),
-                                            ),
+                                  child: _buildEmployeePhoto(answer),
                                 ),
                               ),
                           ],

@@ -20,11 +20,13 @@ class CigarettePhotosManagementDialog {
     required CigaretteProduct product,
     required Widget Function(List<TrainingSample> samples, CigaretteProduct product, {required bool isRecount}) photosGridBuilder,
   }) async {
+    final navigator = Navigator.of(context);
+
     // Показать индикатор загрузки
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Center(
+      builder: (_) => Center(
         child: CircularProgressIndicator(color: Colors.white),
       ),
     );
@@ -32,8 +34,10 @@ class CigarettePhotosManagementDialog {
     // Загрузить samples
     final samples = await CigaretteVisionService.getSamplesForProduct(product.id);
 
+    // Закрыть индикатор (всегда, даже если context unmounted)
+    try { navigator.pop(); } catch (_) {}
+
     if (!context.mounted) return;
-    Navigator.pop(context); // Закрыть индикатор
 
     // Разделить на типы
     final recountSamples = samples

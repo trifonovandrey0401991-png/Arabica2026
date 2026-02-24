@@ -12,9 +12,9 @@ void main() {
   group('Создание заказа клиентом', () {
     testWidgets('Клиент добавляет товар в корзину и оформляет заказ',
         (WidgetTester tester) async {
-      // Запуск приложения
+      // Запуск приложения + авторизация PIN
       app.main();
-      await TestHelpers.waitForAppLoad(tester);
+      await TestHelpers.launchAndLogin(tester);
 
       // Шаг 1: Проверяем что главное меню загрузилось
       TestHelpers.debugScreenshot(tester, '1_main_menu');
@@ -107,7 +107,7 @@ void main() {
     testWidgets('Новый заказ отображается первым в списке',
         (WidgetTester tester) async {
       app.main();
-      await TestHelpers.waitForAppLoad(tester);
+      await TestHelpers.launchAndLogin(tester);
 
       // Переходим в "Мои заказы"
       await TestHelpers.tapMenuButton(tester, TestData.myOrdersButtonText);

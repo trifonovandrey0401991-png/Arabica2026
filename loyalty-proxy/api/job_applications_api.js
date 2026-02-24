@@ -11,6 +11,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { requireAuth } = require('../utils/session_middleware');
+const { notifyCounterUpdate } = require('./counters_websocket');
 
 const USE_DB = process.env.USE_DB_JOB_APPLICATIONS === 'true';
 
@@ -300,6 +301,7 @@ module.exports = function setupJobApplicationsAPI(app) {
         `${fullName} хочет работать (${shiftText})`
       );
 
+      notifyCounterUpdate('jobApplications', { delta: 1 });
       res.json({ success: true, application });
     } catch (error) {
       console.error('❌ Ошибка создания заявки:', error);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/efficiency_data_model.dart';
 import '../services/efficiency_data_service.dart';
+import '../../../core/utils/cache_manager.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -34,16 +35,22 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
   }
 
   /// Загрузить данные за последние 3 месяца
-  Future<void> _loadData() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  static const _cacheKey = 'efficiency_analytics';
 
+  Future<void> _loadData() async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<EfficiencyData>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _monthsData = cached;
+        _isLoading = false;
+      });
+    }
+
+    // Step 2: Fetch fresh data from server
     try {
       final now = DateTime.now();
 
-      // Вычисляем год и месяц для каждого из 3 месяцев
       final months = <Map<String, int>>[];
       for (int i = 2; i >= 0; i--) {
         var year = now.year;
@@ -55,7 +62,6 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
         months.add({'year': year, 'month': month});
       }
 
-      // Загружаем данные параллельно
       final data = await Future.wait(
         months.map((m) => EfficiencyDataService.loadMonthData(m['year']!, m['month']!)),
       );
@@ -64,13 +70,19 @@ class _EfficiencyAnalyticsPageState extends State<EfficiencyAnalyticsPage> {
       setState(() {
         _monthsData = data;
         _isLoading = false;
+        _error = null;
       });
+
+      // Step 3: Save to cache
+      CacheManager.set(_cacheKey, data);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (_monthsData.isEmpty) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 

@@ -43,6 +43,7 @@ import '../../features/employees/services/employee_registration_service.dart';
 import '../../features/orders/pages/employee_orders_page.dart';
 import '../../features/orders/services/order_service.dart';
 import '../../features/messenger/pages/messenger_shell_page.dart';
+import '../../features/messenger/services/messenger_service.dart';
 import '../../features/work_schedule/services/shift_transfer_service.dart';
 import '../../features/loyalty/pages/loyalty_scanner_page.dart';
 import '../../features/loyalty/pages/prize_scanner_page.dart';
@@ -62,6 +63,7 @@ import '../../features/ai_training/pages/ai_dashboard_page.dart';
 import '../../features/work_schedule/services/work_schedule_service.dart';
 import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../core/services/app_update_service.dart';
+import '../../core/services/counters_ws_service.dart';
 import '../../features/efficiency/services/efficiency_data_service.dart';
 import '../../features/network_management/pages/network_management_page.dart';
 import 'manager_grid_page.dart';
@@ -78,7 +80,7 @@ class MainMenuPage extends StatefulWidget {
   State<MainMenuPage> createState() => _MainMenuPageState();
 }
 
-class _MainMenuPageState extends State<MainMenuPage> {
+class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver {
   String? _userName;
   UserRoleData? _userRole;
   String? _employeeId;
@@ -93,6 +95,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
   int _activeTasksCount = 0;
   int _availableSpins = 0;
   int _shiftTransferUnreadCount = 0;
+  int _messengerUnreadCount = 0;
   int? _referralCode;
 
   // Флаг доступности обновления
@@ -105,11 +108,33 @@ class _MainMenuPageState extends State<MainMenuPage> {
   ExecutionChainStatus? _chainStatus;
   DateTime? _chainStatusLoadedAt;
 
+  // WebSocket live counters
+  StreamSubscription<CounterUpdateEvent>? _countersSub;
+  DateTime? _lastLifecycleReload;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadCachedRole(); // Мгновенно: из SharedPreferences
     _loadPhased();     // Фазовая загрузка данных
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Refresh all badges when app returns to foreground (e.g. after push)
+    // Debounce 60 seconds — camera also triggers resumed
+    if (state == AppLifecycleState.resumed && mounted) {
+      final now = DateTime.now();
+      if (_lastLifecycleReload == null ||
+          now.difference(_lastLifecycleReload!) > const Duration(seconds: 60)) {
+        _lastLifecycleReload = now;
+        _loadDashboardBatch();
+        _loadMyDialogsCount();
+        _loadMessengerUnreadCount();
+        _loadEmployeeCounters();
+      }
+    }
   }
 
   /// Фазовая загрузка: критичные данные сначала, фон потом.
@@ -122,6 +147,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     // ФАЗА 2: Бейджи (видны на кнопках меню)
     _loadDashboardBatch();
     _loadMyDialogsCount();
+    _loadMessengerUnreadCount();
     _loadEmployeeCounters();
 
     // ФАЗА 3: Фоновые данные (не видны сразу)
@@ -130,6 +156,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     _checkForUpdates();
     _loadEmployeeRating();
     _loadEfficiencyPoints();
+    _connectCountersWs();
   }
 
   Future<void> _checkForUpdates() async {
@@ -160,6 +187,64 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }
     } catch (e) {
       Logger.warning('Ошибка загрузки эффективности: $e');
+    }
+  }
+
+  /// Connect to counters WebSocket for live badge updates
+  Future<void> _connectCountersWs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('user_phone');
+      if (phone == null || phone.isEmpty) return;
+
+      final roleName = _userRole?.role.name ?? 'employee';
+      await CountersWsService.instance.connect(phone, role: roleName);
+
+      _countersSub?.cancel();
+      _countersSub = CountersWsService.instance.onCounterUpdate.listen((event) {
+        if (!mounted) return;
+        _handleCounterUpdate(event.counter);
+      });
+    } catch (e) {
+      Logger.warning('Counters WS connection error: $e');
+    }
+  }
+
+  /// Handle a counter update from WebSocket — reload only the affected badge
+  void _handleCounterUpdate(String counter) {
+    switch (counter) {
+      case 'pendingShiftReports':
+      case 'pendingRecountReports':
+      case 'pendingHandoverReports':
+      case 'unconfirmedWithdrawals':
+      case 'unconfirmedEnvelopes':
+      case 'reportNotifications':
+        _loadDashboardBatch();
+        break;
+      case 'pendingOrders':
+        _loadPendingOrdersCount();
+        break;
+      case 'activeTaskAssignments':
+        if (_employeeId != null) _loadActiveTasksCount(_employeeId);
+        break;
+      case 'unreadProductQuestions':
+        _loadUnreadProductQuestionsCount();
+        break;
+      case 'shiftTransferRequests':
+        if (_employeeId != null) _loadShiftTransferUnreadCount(_employeeId);
+        break;
+      case 'myDialogs':
+      case 'unreadReviews':
+      case 'managementMessages':
+        _loadMyDialogsCount();
+        break;
+      case 'availableSpins':
+        if (_employeeId != null) _loadAvailableSpins(_employeeId);
+        break;
+      default:
+        // Unknown counter — reload main badges as fallback
+        _loadDashboardBatch();
+        break;
     }
   }
 
@@ -203,6 +288,19 @@ class _MainMenuPageState extends State<MainMenuPage> {
       if (mounted) setState(() => _myDialogsUnreadCount = count);
     } catch (e) {
       Logger.error('Ошибка загрузки счетчика диалогов', e);
+    }
+  }
+
+  Future<void> _loadMessengerUnreadCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      if (normalizedPhone.isEmpty) return;
+      final count = await MessengerService.getUnreadCount(normalizedPhone);
+      if (mounted) setState(() => _messengerUnreadCount = count);
+    } catch (e) {
+      Logger.error('Ошибка загрузки счётчика мессенджера', e);
     }
   }
 
@@ -443,6 +541,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
   }
 
   @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _countersSub?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final role = _userRole?.role ?? UserRole.client;
 
@@ -502,28 +607,83 @@ class _MainMenuPageState extends State<MainMenuPage> {
     final rows = 4;
     final cols = 2;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 16.h),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final availableHeight = constraints.maxHeight;
-          final availableWidth = constraints.maxWidth;
-          final spacing = 12.0;
+    return Column(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 8.h),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final availableHeight = constraints.maxHeight;
+                final availableWidth = constraints.maxWidth;
+                final spacing = 12.0;
 
-          final tileWidth = (availableWidth - spacing) / cols;
-          final tileHeight = (availableHeight - spacing * (rows - 1)) / rows;
-          final aspectRatio = tileWidth / tileHeight;
+                final tileWidth = (availableWidth - spacing) / cols;
+                final tileHeight = (availableHeight - spacing * (rows - 1)) / rows;
+                final aspectRatio = tileWidth / tileHeight;
 
-          return GridView.count(
-            crossAxisCount: cols,
-            crossAxisSpacing: spacing,
-            mainAxisSpacing: spacing,
-            childAspectRatio: aspectRatio,
-            physics: NeverScrollableScrollPhysics(),
-            children: items,
-          );
-        },
-      ),
+                return GridView.count(
+                  crossAxisCount: cols,
+                  crossAxisSpacing: spacing,
+                  mainAxisSpacing: spacing,
+                  childAspectRatio: aspectRatio,
+                  physics: NeverScrollableScrollPhysics(),
+                  children: items,
+                );
+              },
+            ),
+          ),
+        ),
+        // Кнопка мессенджера под сеткой
+        Padding(
+          padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 16.h),
+          child: SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage()));
+                      _loadMessengerUnreadCount();
+                    },
+                    icon: const Icon(Icons.chat_rounded, size: 22),
+                    label: const Text('Чат', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.emerald,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 2,
+                    ),
+                  ),
+                ),
+                if (_messengerUnreadCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: -6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                      child: Text(
+                        _messengerUnreadCount > 99 ? '99+' : '$_messengerUnreadCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -628,8 +788,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 'Чат',
                 'Сообщения и обсуждения',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage())),
+                () async {
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage()));
+                  _loadMessengerUnreadCount();
+                },
                 isGold: true,
+                badge: _messengerUnreadCount,
               ),
               SizedBox(height: spacing),
               _buildAdminRow(
@@ -1090,14 +1254,17 @@ class _MainMenuPageState extends State<MainMenuPage> {
         (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer);
 
     final isEmployee = _userRole?.role == UserRole.employee;
+    final btnSize = isEmployee ? 32.0 : 38.0;
+    final iconSize = isEmployee ? 16.0 : 18.0;
+    final btnGap = isEmployee ? 8.0 : 10.0;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(24, isEmployee ? 8 : 16, 24, isEmployee ? 8 : 20),
       child: Column(
         children: [
-          // Рейтинг, Логотип и выход - Row layout без перекрытий
+          // Одна строка: бейджи | логотип | кнопки
           SizedBox(
-            height: isEmployee ? 36 : 44,
+            height: btnSize,
             child: Row(
               children: [
                 // Левая часть - бейджи
@@ -1105,18 +1272,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (showRating) _buildRatingBadge(),
+                      if (showRating) SizedBox(height: btnSize, child: _buildRatingBadge()),
                       if (showRating && showEfficiency) SizedBox(width: 4),
-                      if (showEfficiency) _buildEfficiencyBadge(),
+                      if (showEfficiency) SizedBox(height: btnSize, child: _buildEfficiencyBadge()),
                     ],
                   ),
 
-                // Центр - логотип (занимает всё доступное пространство, центрируется)
+                // Центр - логотип (занимает оставшееся пространство)
                 Expanded(
                   child: Center(
                     child: Image.asset(
                       'assets/images/arabica_logo.png',
-                      height: isEmployee ? 36 : 44,
+                      height: btnSize,
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -1124,45 +1291,44 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
                 // Правая часть - кнопки
                 Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Кнопка обновления (для сотрудников, админов и разработчиков)
-                      if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer)
-                        GestureDetector(
-                          onTap: () async {
-                            if (_isUpdateAvailable) {
-                              await AppUpdateService.performUpdate(context);
-                            } else {
-                              // Повторная проверка
-                              final hasUpdate = await AppUpdateService.checkUpdateAvailability();
-                              if (mounted) {
-                                setState(() => _isUpdateAvailable = hasUpdate);
-                                if (hasUpdate) {
-                                  await AppUpdateService.performUpdate(context);
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Установлена актуальная версия'),
-                                      duration: Duration(seconds: 2),
-                                    ),
-                                  );
-                                }
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Кнопка обновления
+                    if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer)
+                      GestureDetector(
+                        onTap: () async {
+                          if (_isUpdateAvailable) {
+                            await AppUpdateService.performUpdate(context);
+                          } else {
+                            final hasUpdate = await AppUpdateService.checkUpdateAvailability();
+                            if (mounted) {
+                              setState(() => _isUpdateAvailable = hasUpdate);
+                              if (hasUpdate) {
+                                await AppUpdateService.performUpdate(context);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Установлена актуальная версия'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
                               }
                             }
-                          },
-                          child: SizedBox(
-                            width: isEmployee ? 32 : 40,
-                            height: isEmployee ? 32 : 40,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Container(
-                                  width: isEmployee ? 32 : 40,
-                                  height: isEmployee ? 32 : 40,
+                          }
+                        },
+                        child: SizedBox(
+                          width: btnSize,
+                          height: btnSize,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                width: btnSize,
+                                height: btnSize,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: _isUpdateAvailable
-                                      ? AppColors.success // Зелёный если есть обновление
+                                      ? AppColors.success
                                       : Colors.white.withOpacity(0.1),
                                   border: Border.all(
                                     color: _isUpdateAvailable
@@ -1183,10 +1349,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
                                 child: Icon(
                                   Icons.system_update_rounded,
                                   color: _isUpdateAvailable ? Colors.white : Colors.white.withOpacity(0.7),
-                                  size: isEmployee ? 16 : 20,
+                                  size: iconSize,
                                 ),
                               ),
-                              // Badge с индикатором
                               if (_isUpdateAvailable)
                                 Positioned(
                                   right: 0.w,
@@ -1211,83 +1376,88 @@ class _MainMenuPageState extends State<MainMenuPage> {
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer)
-                        SizedBox(width: 12),
-                      // Жёлтая кнопка поиска товара (скрыта для клиентов)
-                      if (_userRole?.role != UserRole.client)
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => ProductSearchPage()));
-                          },
-                          child: Container(
-                            width: isEmployee ? 32 : 40,
-                            height: isEmployee ? 32 : 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.amber, // Жёлтый цвет
-                              border: Border.all(color: AppColors.amberLight, width: 2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.amber.withOpacity(0.4),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.search_rounded,
-                              color: Colors.black87,
-                              size: isEmployee ? 16 : 20,
-                            ),
-                          ),
-                        ),
-                      SizedBox(width: 12),
-                      // Кнопка выхода
-                      GestureDetector(
-                        onTap: _logout,
-                        child: Container(
-                          width: isEmployee ? 32 : 40,
-                          height: isEmployee ? 32 : 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white.withOpacity(0.3)),
-                          ),
-                          child: Icon(
-                            Icons.logout_rounded,
-                            color: Colors.white.withOpacity(0.7),
-                            size: isEmployee ? 16 : 20,
+                            ],
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer)
+                      SizedBox(width: btnGap),
+                    // Жёлтая кнопка поиска товара
+                    if (_userRole?.role != UserRole.client)
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => ProductSearchPage()));
+                        },
+                        child: Container(
+                          width: btnSize,
+                          height: btnSize,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.amber,
+                            border: Border.all(color: AppColors.amberLight, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.amber.withOpacity(0.4),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.search_rounded,
+                            color: Colors.black87,
+                            size: iconSize,
+                          ),
+                        ),
+                      ),
+                    if (_userRole?.role != UserRole.client)
+                      SizedBox(width: btnGap),
+                    // Кнопка выхода
+                    GestureDetector(
+                      onTap: _logout,
+                      child: Container(
+                        width: btnSize,
+                        height: btnSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withOpacity(0.3)),
+                        ),
+                        child: Icon(
+                          Icons.logout_rounded,
+                          color: Colors.white.withOpacity(0.7),
+                          size: iconSize,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
 
           SizedBox(height: isEmployee ? 8 : 20),
 
-          // Приветствие
+          // Приветствие — всегда строго по центру экрана
           if (_userName != null && _userName!.isNotEmpty) ...[
             // Линия
-            Container(
-              width: 40,
-              height: 1,
-              color: Colors.white.withOpacity(0.3),
+            Center(
+              child: Container(
+                width: 40,
+                height: 1,
+                color: Colors.white.withOpacity(0.3),
+              ),
             ),
             SizedBox(height: isEmployee ? 6 : 16),
 
-            Text(
-              _getFirstName(_userName),
-              style: TextStyle(
-                fontSize: isEmployee ? 20 : 24,
-                fontWeight: FontWeight.w300,
-                color: Colors.white,
-                letterSpacing: 3,
+            Center(
+              child: Text(
+                _getFirstName(_userName),
+                style: TextStyle(
+                  fontSize: isEmployee ? 20 : 24,
+                  fontWeight: FontWeight.w300,
+                  color: Colors.white,
+                  letterSpacing: 3,
+                ),
               ),
             ),
           ],
@@ -1428,9 +1598,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
       _buildCompactTile(Icons.work_outline_rounded, 'Работа', () {
         Navigator.push(context, MaterialPageRoute(builder: (_) => JobApplicationWelcomePage()));
       }),
-      _buildCompactTile(Icons.chat_outlined, 'Мессенджер', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage()));
-      }),
     ];
   }
 
@@ -1569,9 +1736,10 @@ class _MainMenuPageState extends State<MainMenuPage> {
         _loadAvailableSpins(employeeId);
       }, badge: _availableSpins),
       // 6. Чат
-      _buildCompactTile(Icons.chat_outlined, 'Чат', () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage()));
-      }),
+      _buildCompactTile(Icons.chat_outlined, 'Чат', () async {
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage()));
+        _loadMessengerUnreadCount();
+      }, badge: _messengerUnreadCount),
     ];
   }
 

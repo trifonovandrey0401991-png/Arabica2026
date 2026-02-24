@@ -3,6 +3,7 @@ import '../../models/points_settings_model.dart';
 import '../../services/points_settings_service.dart';
 import '../../widgets/settings_widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../../core/theme/app_colors.dart';
 
 /// Page for configuring manager points settings (Управляющие)
 ///
@@ -143,16 +144,19 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F7FA),
+      backgroundColor: AppColors.night,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('Баллы управляющих'),
-        backgroundColor: _gradientColors[0],
+        title: Text('Баллы управляющих', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: IconThemeData(color: AppColors.gold),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: _gradientColors[0]))
+          ? Center(child: CircularProgressIndicator(color: AppColors.gold))
           : Column(
               children: [
+                SizedBox(height: MediaQuery.of(context).padding.top + kToolbarHeight),
                 // Заголовок
                 SettingsHeaderCard(
                   icon: Icons.supervisor_account_outlined,
@@ -230,15 +234,9 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,7 +247,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: _gradientColors[0].withOpacity(0.1),
+                  color: _gradientColors[0].withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10.r),
                 ),
                 child: Icon(
@@ -264,7 +262,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                 style: TextStyle(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2D3436),
+                  color: Colors.white,
                 ),
               ),
             ],
@@ -310,7 +308,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                 subtitle,
                 style: TextStyle(
                   fontSize: 12.sp,
-                  color: Colors.grey[600],
+                  color: Colors.white.withOpacity(0.5),
                 ),
               ),
             ],
@@ -334,15 +332,9 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.emeraldDark,
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [
-          BoxShadow(
-            color: gradientColors[0].withOpacity(0.15),
-            blurRadius: 15,
-            offset: Offset(0, 5),
-          ),
-        ],
+        border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
       ),
       child: Column(
         children: [
@@ -397,7 +389,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                             style: TextStyle(
                               fontSize: 17.sp,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF2D3436),
+                              color: Colors.white,
                             ),
                           ),
                           SizedBox(height: 2),
@@ -405,7 +397,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                             '+${confirmedPoints.toStringAsFixed(1)} / ${rejectedPenalty.toStringAsFixed(1)}',
                             style: TextStyle(
                               fontSize: 13.sp,
-                              color: Colors.grey[600],
+                              color: Colors.white.withOpacity(0.5),
                             ),
                           ),
                         ],
@@ -419,12 +411,12 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
+                          color: AppColors.emerald.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(10.r),
                         ),
                         child: Icon(
                           Icons.keyboard_arrow_down_rounded,
-                          color: Colors.grey[600],
+                          color: Colors.white.withOpacity(0.7),
                           size: 24,
                         ),
                       ),
@@ -491,7 +483,7 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
     return Container(
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: AppColors.night.withOpacity(0.5),
         borderRadius: BorderRadius.circular(14.r),
       ),
       child: Column(
@@ -518,14 +510,14 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
                       style: TextStyle(
                         fontSize: 14.sp,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF2D3436),
+                        color: Colors.white,
                       ),
                     ),
                     Text(
                       subtitle,
                       style: TextStyle(
                         fontSize: 11.sp,
-                        color: Colors.grey[600],
+                        color: Colors.white.withOpacity(0.5),
                       ),
                     ),
                   ],
@@ -573,11 +565,11 @@ class _ManagerPointsSettingsPageState extends State<ManagerPointsSettingsPage> {
               children: [
                 Text(
                   min.toString(),
-                  style: TextStyle(fontSize: 11.sp, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.35)),
                 ),
                 Text(
                   max.toString(),
-                  style: TextStyle(fontSize: 11.sp, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.35)),
                 ),
               ],
             ),

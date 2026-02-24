@@ -6,11 +6,14 @@ class MessageInputBar extends StatefulWidget {
   final VoidCallback? onAttachmentTap;
   final VoidCallback? onEmojiTap;
   final VoidCallback? onVoiceStart;
-  final VoidCallback? onVoiceStop;
+  final VoidCallback? onVoiceSend;
+  final VoidCallback? onVoiceCancel;
   final Function(String)? onTyping;
   final String? replyToText;
   final VoidCallback? onCancelReply;
   final bool isRecording;
+  final int recordingSeconds;
+  final TextEditingController? textController;
 
   const MessageInputBar({
     super.key,
@@ -18,11 +21,14 @@ class MessageInputBar extends StatefulWidget {
     this.onAttachmentTap,
     this.onEmojiTap,
     this.onVoiceStart,
-    this.onVoiceStop,
+    this.onVoiceSend,
+    this.onVoiceCancel,
     this.onTyping,
     this.replyToText,
     this.onCancelReply,
     this.isRecording = false,
+    this.recordingSeconds = 0,
+    this.textController,
   });
 
   @override
@@ -30,24 +36,38 @@ class MessageInputBar extends StatefulWidget {
 }
 
 class _MessageInputBarState extends State<MessageInputBar> {
-  final _controller = TextEditingController();
+  TextEditingController? _ownController;
   bool _hasText = false;
+
+  TextEditingController get _controller =>
+      widget.textController ?? (_ownController ??= TextEditingController());
 
   @override
   void initState() {
     super.initState();
-    _controller.addListener(() {
-      final hasText = _controller.text.trim().isNotEmpty;
-      if (hasText != _hasText) {
-        setState(() => _hasText = hasText);
-      }
-      if (hasText) widget.onTyping?.call(_controller.text);
-    });
+    _controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void didUpdateWidget(MessageInputBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.textController != widget.textController) {
+      oldWidget.textController?.removeListener(_onTextChanged);
+      _controller.addListener(_onTextChanged);
+    }
+  }
+
+  void _onTextChanged() {
+    final hasText = _controller.text.trim().isNotEmpty;
+    if (hasText != _hasText) {
+      setState(() => _hasText = hasText);
+    }
+    if (hasText) widget.onTyping?.call(_controller.text);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _ownController?.dispose();
     super.dispose();
   }
 
@@ -59,34 +79,43 @@ class _MessageInputBarState extends State<MessageInputBar> {
     setState(() => _hasText = false);
   }
 
+  String _formatDuration(int seconds) {
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         // Reply preview
-        if (widget.replyToText != null)
+        if (widget.replyToText != null && !widget.isRecording)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
-              border: const Border(top: BorderSide(color: Colors.black12)),
+              color: Colors.white.withOpacity(0.05),
+              border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
             ),
             child: Row(
               children: [
-                Container(width: 3, height: 30, color: AppColors.emerald),
+                Container(width: 3, height: 30, decoration: BoxDecoration(
+                  color: AppColors.turquoise,
+                  borderRadius: BorderRadius.circular(2),
+                )),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     widget.replyToText!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.5)),
                   ),
                 ),
                 GestureDetector(
                   onTap: widget.onCancelReply,
-                  child: const Icon(Icons.close, size: 18, color: Colors.grey),
+                  child: Icon(Icons.close, size: 18, color: Colors.white.withOpacity(0.4)),
                 ),
               ],
             ),
@@ -94,92 +123,231 @@ class _MessageInputBarState extends State<MessageInputBar> {
 
         // Input bar
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: Colors.black12)),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.night,
+            border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
           ),
           child: SafeArea(
+            child: widget.isRecording ? _buildRecordingRow() : _buildNormalRow(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Обычный режим: [emoji] [attach] [текст] [send/mic]
+  Widget _buildNormalRow() {
+    return Row(
+      children: [
+        _buildIconButton(Icons.emoji_emotions_outlined, widget.onEmojiTap),
+        _buildIconButton(Icons.attach_file_rounded, widget.onAttachmentTap),
+        const SizedBox(width: 4),
+
+        // Text input
+        Expanded(
+          child: Container(
+            constraints: const BoxConstraints(maxHeight: 120),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: TextField(
+              controller: _controller,
+              maxLines: null,
+              textInputAction: TextInputAction.newline,
+              style: TextStyle(fontSize: 15, color: Colors.white.withOpacity(0.9), height: 1.4),
+              decoration: InputDecoration(
+                hintText: 'Сообщение...',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                isDense: true,
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(width: 6),
+
+        // Send text or start voice
+        if (_hasText)
+          _buildSendButton()
+        else
+          _buildMicButton(),
+      ],
+    );
+  }
+
+  /// Режим записи: [X отмена] [индикатор записи] [✓ отправить]
+  Widget _buildRecordingRow() {
+    return Row(
+      children: [
+        // Кнопка отмены
+        GestureDetector(
+          onTap: widget.onVoiceCancel,
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.08),
+              border: Border.all(color: Colors.white.withOpacity(0.15)),
+            ),
+            child: Icon(Icons.close, color: Colors.white.withOpacity(0.6), size: 22),
+          ),
+        ),
+
+        const SizedBox(width: 8),
+
+        // Индикатор записи
+        Expanded(
+          child: Container(
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.error.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppColors.error.withOpacity(0.3)),
+            ),
             child: Row(
               children: [
-                // Emoji button
-                IconButton(
-                  icon: const Icon(Icons.emoji_emotions_outlined),
-                  color: Colors.grey[600],
-                  iconSize: 24,
-                  onPressed: widget.onEmojiTap,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                const _PulsingDot(),
+                const SizedBox(width: 10),
+                Text(
+                  'Запись',
+                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
                 ),
-
-                // Attachment button
-                IconButton(
-                  icon: const Icon(Icons.attach_file),
-                  color: Colors.grey[600],
-                  iconSize: 24,
-                  onPressed: widget.onAttachmentTap,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                ),
-
-                // Text input
-                Expanded(
-                  child: Container(
-                    constraints: const BoxConstraints(maxHeight: 120),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: TextField(
-                      controller: _controller,
-                      maxLines: null,
-                      textInputAction: TextInputAction.newline,
-                      decoration: const InputDecoration(
-                        hintText: 'Сообщение...',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        isDense: true,
-                      ),
-                      style: const TextStyle(fontSize: 15),
-                    ),
+                const Spacer(),
+                Text(
+                  _formatDuration(widget.recordingSeconds),
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
-
-                const SizedBox(width: 4),
-
-                // Send or voice button
-                if (_hasText)
-                  IconButton(
-                    icon: const Icon(Icons.send),
-                    color: AppColors.emerald,
-                    iconSize: 24,
-                    onPressed: _handleSend,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  )
-                else
-                  GestureDetector(
-                    onLongPressStart: (_) => widget.onVoiceStart?.call(),
-                    onLongPressEnd: (_) => widget.onVoiceStop?.call(),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: widget.isRecording ? AppColors.error : AppColors.emerald,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        widget.isRecording ? Icons.stop : Icons.mic,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
         ),
+
+        const SizedBox(width: 8),
+
+        // Кнопка отправки
+        GestureDetector(
+          onTap: widget.onVoiceSend,
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [AppColors.turquoise, AppColors.emerald],
+              ),
+              boxShadow: [
+                BoxShadow(color: AppColors.turquoise.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2)),
+              ],
+            ),
+            child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildSendButton() {
+    return GestureDetector(
+      onTap: _handleSend,
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+            colors: [AppColors.turquoise, AppColors.emerald],
+          ),
+          boxShadow: [
+            BoxShadow(color: AppColors.turquoise.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+      ),
+    );
+  }
+
+  Widget _buildMicButton() {
+    return GestureDetector(
+      onTap: widget.onVoiceStart,
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.emerald,
+          border: Border.all(color: Colors.white.withOpacity(0.15)),
+        ),
+        child: const Icon(Icons.mic_rounded, color: Colors.white, size: 20),
+      ),
+    );
+  }
+
+  Widget _buildIconButton(IconData icon, VoidCallback? onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.06),
+        ),
+        child: Icon(icon, color: Colors.white.withOpacity(0.45), size: 20),
+      ),
+    );
+  }
+}
+
+/// Пульсирующая красная точка для индикатора записи
+class _PulsingDot extends StatefulWidget {
+  const _PulsingDot();
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) => Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.error.withOpacity(0.5 + _controller.value * 0.5),
+        ),
+      ),
     );
   }
 }

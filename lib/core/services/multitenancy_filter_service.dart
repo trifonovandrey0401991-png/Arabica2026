@@ -11,7 +11,7 @@ class MultitenancyFilterService {
   /// Кэш разрешённых адресов магазинов для текущего пользователя
   static List<String>? _cachedAllowedShopAddresses;
   static DateTime? _cacheTime;
-  static const Duration _cacheDuration = Duration(minutes: 2);
+  static const Duration _cacheDuration = Duration(minutes: 10);
 
   /// Очистить кэш (вызывать при смене пользователя или обновлении привязок)
   static void clearCache() {

@@ -13,6 +13,13 @@ const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const cigaretteVision = require('../modules/cigarette-vision');
+const { clearTrainingCache } = require('./master_catalog_api');
+let yoloWrapper = null;
+try {
+  yoloWrapper = require('../ml/yolo-wrapper');
+} catch (e) {
+  console.warn('[Cigarette Vision API] YOLO wrapper not available:', e.message);
+}
 
 // Директория с вопросами пересчёта (та же что в index.js)
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -137,15 +144,41 @@ async function setupCigaretteVisionAPI(app) {
   // Получить товары с информацией об обучении
   app.get('/api/cigarette-vision/products', requireAuth, async (req, res) => {
     try {
-      const { productGroup } = req.query;
+      const { productGroup, shopAddress, search, sort, filter } = req.query;
 
       // Перезагружаем вопросы для актуальности
       await loadRecountQuestions();
 
-      const products = await cigaretteVision.getProductsWithTrainingInfo(
+      let products = await cigaretteVision.getProductsWithTrainingInfo(
         recountQuestionsCache,
-        productGroup || null
+        productGroup || null,
+        shopAddress || null
       );
+
+      // Server-side search by name/barcode (case-insensitive substring)
+      if (search && search.trim()) {
+        const q = search.trim().toLowerCase();
+        products = products.filter(p =>
+          (p.productName || '').toLowerCase().includes(q) ||
+          (p.barcode || '').includes(q)
+        );
+      }
+
+      // Server-side filter
+      if (filter === 'counting-complete') {
+        products = products.filter(p => p.isRecountComplete);
+      } else if (filter === 'has-photos') {
+        products = products.filter(p => p.trainingPhotosCount > 0);
+      }
+
+      // Server-side sort
+      if (sort === 'accuracy-asc') {
+        products.sort((a, b) => (a.countingAccuracy ?? 101) - (b.countingAccuracy ?? 101));
+      } else if (sort === 'accuracy-desc') {
+        products.sort((a, b) => (b.countingAccuracy ?? -1) - (a.countingAccuracy ?? -1));
+      } else if (sort === 'progress-asc') {
+        products.sort((a, b) => a.trainingPhotosCount - b.trainingPhotosCount);
+      }
 
       if (isPaginationRequested(req.query)) {
         return res.json(createPaginatedResponse(products, req.query, 'products'));
@@ -257,9 +290,11 @@ async function setupCigaretteVisionAPI(app) {
   // Удалить образец
   app.delete('/api/cigarette-vision/samples/:id', requireAdmin, async (req, res) => {
     try {
+      console.log(`[Cigarette Vision API] DELETE sample ${req.params.id} by ${req.user?.phone}`);
       const result = await cigaretteVision.deleteSample(req.params.id);
 
       if (result.success) {
+        clearTrainingCache();
         res.json({ success: true });
       } else {
         res.status(404).json({ success: false, error: result.error });
@@ -272,8 +307,8 @@ async function setupCigaretteVisionAPI(app) {
 
   // ============ ИЗОБРАЖЕНИЯ ============
 
-  // Получить изображение образца
-  app.get('/api/cigarette-vision/images/:fileName', requireAuth, async (req, res) => {
+  // Получить изображение образца (публичный — фото пачек не конфиденциальные)
+  app.get('/api/cigarette-vision/images/:fileName', async (req, res) => {
     try {
       const imagePath = cigaretteVision.getImagePath(sanitizeFileName(req.params.fileName));
 
@@ -450,6 +485,8 @@ async function setupCigaretteVisionAPI(app) {
         positiveSampleRate,
         maxPositiveSamplesPerProduct,
         positiveSamplesMaxAgeDays,
+        // Embedding recognition toggle
+        useEmbeddingRecognition,
       } = req.body;
 
       const newSettings = {};
@@ -481,6 +518,11 @@ async function setupCigaretteVisionAPI(app) {
       }
       if (positiveSamplesMaxAgeDays !== undefined) {
         newSettings.positiveSamplesMaxAgeDays = Math.max(30, Math.min(365, parseInt(positiveSamplesMaxAgeDays) || 180));
+      }
+
+      // Embedding recognition toggle
+      if (useEmbeddingRecognition !== undefined) {
+        newSettings.useEmbeddingRecognition = Boolean(useEmbeddingRecognition);
       }
 
       const updated = await cigaretteVision.updateSettings(newSettings);
@@ -640,6 +682,7 @@ async function setupCigaretteVisionAPI(app) {
     try {
       const { sampleId } = req.params;
       const result = await cigaretteVision.deleteCountingSample(sampleId);
+      if (result.success) clearTrainingCache();
       res.json(result);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка удаления counting sample:', error);
@@ -773,6 +816,7 @@ async function setupCigaretteVisionAPI(app) {
     try {
       const { sampleId } = req.params;
       const result = await cigaretteVision.rejectCountingPendingSample(sampleId);
+      if (result.success) clearTrainingCache();
       _resetPendingNotification(); // сброс: при следующем накоплении уведомим снова
       res.json(result);
     } catch (error) {
@@ -906,8 +950,16 @@ async function setupCigaretteVisionAPI(app) {
   const AUTO_TRAIN_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 часов
   let _lastAutoTrainCount = 0;         // сколько образцов было при последнем обучении
   let _isAutoTraining = false;         // блокировка двойного запуска
+  let _autoTrainingStartedAt = null;   // время начала обучения (для таймаута)
+  const AUTO_TRAIN_TIMEOUT_MS = 60 * 60 * 1000; // 60 минут максимум
 
   async function _checkAndAutoTrain() {
+    // Если обучение зависло дольше 60 минут — сбросить флаг
+    if (_isAutoTraining && _autoTrainingStartedAt && (Date.now() - _autoTrainingStartedAt > AUTO_TRAIN_TIMEOUT_MS)) {
+      console.warn(`[Auto-Train] ⚠️ Обучение зависло (>${AUTO_TRAIN_TIMEOUT_MS / 60000} мин), сбрасываю флаг`);
+      _isAutoTraining = false;
+      _autoTrainingStartedAt = null;
+    }
     if (_isAutoTraining) return;
     try {
       const stats = await cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.COUNTING);
@@ -916,6 +968,7 @@ async function setupCigaretteVisionAPI(app) {
       // Достаточно образцов + появились новые с момента последнего обучения
       if (annotated >= AUTO_TRAIN_THRESHOLD && annotated > _lastAutoTrainCount) {
         _isAutoTraining = true;
+        _autoTrainingStartedAt = Date.now();
         console.log(`[Auto-Train] ${annotated} аннотированных образцов >= ${AUTO_TRAIN_THRESHOLD}, запускаем обучение...`);
         const result = await cigaretteVision.triggerFullTraining(30);
         if (result.success) {
@@ -925,11 +978,13 @@ async function setupCigaretteVisionAPI(app) {
           console.warn(`[Auto-Train] ⚠️ Ошибка обучения на шаге "${result.step}": ${result.error}`);
         }
         _isAutoTraining = false;
+        _autoTrainingStartedAt = null;
       } else {
         console.log(`[Auto-Train] Образцов: ${annotated}/${AUTO_TRAIN_THRESHOLD} (последнее обучение при ${_lastAutoTrainCount})`);
       }
     } catch (err) {
       _isAutoTraining = false;
+      _autoTrainingStartedAt = null;
       console.error('[Auto-Train] Ошибка проверки:', err.message);
     }
   }
@@ -938,6 +993,11 @@ async function setupCigaretteVisionAPI(app) {
   setTimeout(_checkAndAutoTrain, 10 * 60 * 1000);
   // Затем каждые 6 часов
   setInterval(_checkAndAutoTrain, AUTO_TRAIN_INTERVAL_MS);
+
+  // Авто-включение ИИ для товаров (7+ дней без ошибок) — каждые 6 часов
+  setInterval(() => cigaretteVision.checkAndReenableProducts(), 6 * 60 * 60 * 1000);
+  // Первая проверка через 5 минут после старта
+  setTimeout(() => cigaretteVision.checkAndReenableProducts(), 5 * 60 * 1000);
 
   // ============ СИСТЕМА ОБРАТНОЙ СВЯЗИ И АВТООТКЛЮЧЕНИЯ ИИ ============
 
@@ -1091,6 +1151,93 @@ async function setupCigaretteVisionAPI(app) {
       }
 
       res.sendFile(filePath);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ EMBEDDING CATALOG (1000+ products) ============
+
+  // Get embedding catalog stats
+  app.get('/api/cigarette-vision/embedding-catalog/stats', requireAuth, async (req, res) => {
+    try {
+      if (!yoloWrapper || !yoloWrapper.getCatalogStats) {
+        return res.json({ loaded: false, productCount: 0, totalEmbeddings: 0, error: 'YOLO wrapper not available' });
+      }
+      const stats = await yoloWrapper.getCatalogStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Add image to embedding catalog
+  app.post('/api/cigarette-vision/embedding-catalog/add', requireAdmin, async (req, res) => {
+    try {
+      if (!yoloWrapper || !yoloWrapper.addToCatalog) {
+        return res.status(500).json({ success: false, error: 'YOLO wrapper not available' });
+      }
+      const { productId, imageBase64, name } = req.body;
+      if (!productId || !imageBase64) {
+        return res.status(400).json({ success: false, error: 'productId and imageBase64 required' });
+      }
+      const result = await yoloWrapper.addToCatalog(productId, imageBase64, name || '');
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Build catalog from existing training data
+  app.post('/api/cigarette-vision/build-catalog', requireAdmin, async (req, res) => {
+    try {
+      if (!yoloWrapper || !yoloWrapper.addToCatalog) {
+        return res.status(500).json({ success: false, error: 'YOLO wrapper not available' });
+      }
+
+      // Read training samples with images and add to catalog
+      const classMapping = await cigaretteVision.getClassMapping();
+      const invertedMapping = {};
+      for (const [productId, classId] of Object.entries(classMapping)) {
+        invertedMapping[classId] = productId;
+      }
+
+      let addedCount = 0;
+      let errorCount = 0;
+
+      // Process typed samples (display + counting)
+      for (const type of ['display', 'counting']) {
+        const samples = await cigaretteVision.loadTypedSamples(type);
+        const paths = await cigaretteVision.getTrainingPaths(type);
+
+        for (const sample of samples) {
+          try {
+            const imgPath = path.join(paths.imagesDir, sample.imageFileName);
+            if (!(await fileExists(imgPath))) continue;
+
+            const imgBuffer = await fsp.readFile(imgPath);
+            const imageBase64 = imgBuffer.toString('base64');
+            const productId = sample.productId || sample.barcode;
+            const name = sample.productName || '';
+
+            if (!productId) continue;
+
+            const result = await yoloWrapper.addToCatalog(productId, imageBase64, name);
+            if (result.success) addedCount++;
+            else errorCount++;
+          } catch (e) {
+            errorCount++;
+          }
+        }
+      }
+
+      const stats = await yoloWrapper.getCatalogStats();
+      res.json({
+        success: true,
+        addedCount,
+        errorCount,
+        catalogStats: stats,
+      });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }

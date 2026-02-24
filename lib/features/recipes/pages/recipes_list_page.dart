@@ -8,6 +8,7 @@ import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 class RecipesListPage extends StatefulWidget {
   const RecipesListPage({super.key});
@@ -18,23 +19,52 @@ class RecipesListPage extends StatefulWidget {
 
 class _RecipesListPageState extends State<RecipesListPage> with TickerProviderStateMixin {
   TabController? _tabController;
-  late Future<List<Recipe>> _recipesFuture;
+  List<Recipe> _recipes = [];
+  bool _isLoadingRecipes = true;
   String _searchQuery = '';
   String? _selectedCategory;
   UserRole? _userRole;
   bool _isLoadingRole = true;
 
+  static const _cacheKey = 'recipes_list';
+
   @override
   void initState() {
     super.initState();
-    _recipesFuture = Recipe.loadRecipesFromServer();
+    _loadRecipes();
     _loadUserRole();
   }
 
   void _refreshRecipes() {
-    if (mounted) setState(() {
-      _recipesFuture = Recipe.loadRecipesFromServer();
-    });
+    _loadRecipes();
+  }
+
+  Future<void> _loadRecipes() async {
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<Recipe>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _recipes = cached;
+        _isLoadingRecipes = false;
+      });
+    }
+
+    if (_recipes.isEmpty && mounted) setState(() => _isLoadingRecipes = true);
+
+    try {
+      final recipes = await Recipe.loadRecipesFromServer();
+      if (mounted) {
+        setState(() {
+          _recipes = recipes;
+          _isLoadingRecipes = false;
+        });
+        // Step 3: Save to cache
+        CacheManager.set(_cacheKey, recipes);
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки рецептов', e);
+      if (mounted && _recipes.isEmpty) setState(() => _isLoadingRecipes = false);
+    }
   }
 
   Future<void> _loadUserRole() async {
@@ -238,10 +268,9 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
         ),
         // Список рецептов
         Expanded(
-          child: FutureBuilder<List<Recipe>>(
-            future: _recipesFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+          child: Builder(
+            builder: (context) {
+              if (_isLoadingRecipes) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -259,7 +288,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                 );
               }
 
-              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              if (_recipes.isEmpty) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -276,7 +305,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
               }
 
               // Фильтрация
-              var recipes = snapshot.data!;
+              var recipes = _recipes;
 
               if (_searchQuery.isNotEmpty) {
                 recipes = recipes

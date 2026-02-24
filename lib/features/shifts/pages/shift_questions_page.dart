@@ -451,8 +451,10 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
   /// Запустить AI верификацию товаров
   Future<bool> _runAiVerification() async {
+    Logger.info('[AI-Verify] START _runAiVerification, mounted=$mounted, shopAddress=${widget.shopAddress}');
     // Проверяем есть ли активные AI товары
     final hasAiProducts = await _hasActiveAiProducts();
+    Logger.info('[AI-Verify] hasActiveAiProducts=$hasAiProducts');
     if (!hasAiProducts) {
       Logger.debug('Нет активных AI товаров - пропускаем AI верификацию');
       return true; // Нет AI товаров - пропускаем
@@ -460,12 +462,14 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
     // Собираем фото
     final photos = await _collectPhotosForAiVerification();
+    Logger.info('[AI-Verify] collected ${photos.length} photos');
     if (photos.isEmpty) {
       Logger.debug('Нет фото для AI верификации');
       return true; // Нет фото - пропускаем
     }
 
     // Открываем страницу AI верификации
+    Logger.info('[AI-Verify] mounted=$mounted, opening ShiftAiVerificationPage');
     if (!mounted) return true;
 
     final result = await Navigator.push<Map<String, dynamic>?>(
@@ -558,7 +562,9 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       }
 
       // Запускаем AI верификацию товаров
+      Logger.info('[AI-Verify] About to call _runAiVerification, questions=${_questions?.length}, answers=${_answers.length}');
       await _runAiVerification();
+      Logger.info('[AI-Verify] _runAiVerification completed');
 
       final report = ShiftReport(
         id: reportId,

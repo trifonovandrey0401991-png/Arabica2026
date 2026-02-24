@@ -115,7 +115,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 12),
-                Text('Вопрос успешно добавлен'),
+                Expanded(child: Text('Вопрос успешно добавлен')),
               ],
             ),
             backgroundColor: Colors.green[600],
@@ -143,7 +143,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 12),
-                Text('Вопрос успешно обновлен'),
+                Expanded(child: Text('Вопрос успешно обновлен')),
               ],
             ),
             backgroundColor: Colors.green[600],
@@ -311,7 +311,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 12),
-                  Text('Вопрос успешно удален'),
+                  Expanded(child: Text('Вопрос успешно удален')),
                 ],
               ),
               backgroundColor: Colors.green[600],
@@ -329,7 +329,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                 children: [
                   Icon(Icons.error_outline, color: Colors.white),
                   SizedBox(width: 12),
-                  Text('Ошибка удаления вопроса'),
+                  Expanded(child: Text('Ошибка удаления вопроса')),
                 ],
               ),
               backgroundColor: Colors.red[600],
@@ -386,12 +386,15 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                   ),
                 ),
                 SizedBox(width: 12),
-                Text(
-                  'Фильтр по типу ответа',
-                  style: TextStyle(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                Flexible(
+                  child: Text(
+                    'Фильтр по типу ответа',
+                    style: TextStyle(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Spacer(),
@@ -487,15 +490,17 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                   child: Icon(icon, color: color, size: 22),
                 ),
                 SizedBox(width: 14),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected ? color : Colors.white.withOpacity(0.8),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected ? color : Colors.white.withOpacity(0.8),
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Spacer(),
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                   decoration: BoxDecoration(
@@ -1314,7 +1319,9 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                       bottomRight: Radius.circular(14.r),
                     ),
                   ),
-                  child: Row(
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
                     children: [
                       // Магазины
                       if (question.shops != null && question.shops!.isNotEmpty)
@@ -1324,9 +1331,6 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                           color: Colors.amber[700]!,
                           bgColor: Colors.amber.withOpacity(0.12),
                         ),
-                      if (question.shops != null && question.shops!.isNotEmpty &&
-                          question.isPhotoOnly && question.referencePhotos != null && question.referencePhotos!.isNotEmpty)
-                        SizedBox(width: 10),
                       // Эталонные фото
                       if (question.isPhotoOnly && question.referencePhotos != null && question.referencePhotos!.isNotEmpty)
                         _buildMetadataBadge(

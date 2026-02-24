@@ -12,8 +12,11 @@ import '../../shops/services/shop_products_service.dart';
 class RecountQuestionService {
   static const String baseEndpoint = ApiConstants.recountQuestionsEndpoint;
 
+  /// Публичная версия для использования в других виджетах
+  static Future<Map<String, bool>> loadMasterCatalogAiStatus() => _loadMasterCatalogAiStatus();
+
   /// Загрузить статусы isAiActive из мастер-каталога
-  /// Возвращает Map<barcode, isAiActive>
+  /// Возвращает Map<kod_or_barcode, isAiActive> — включая shopCodes для каждого магазина
   static Future<Map<String, bool>> _loadMasterCatalogAiStatus() async {
     try {
       final response = await http.get(
@@ -28,8 +31,33 @@ class RecountQuestionService {
         final Map<String, bool> result = {};
         for (final p in products) {
           final barcode = p['barcode']?.toString();
+          final isAiActive = p['isAiActive'] as bool? ?? false;
+
+          // Индексируем по основному barcode
           if (barcode != null && barcode.isNotEmpty) {
-            result[barcode] = p['isAiActive'] ?? false;
+            result[barcode] = isAiActive;
+          }
+
+          // Также индексируем по всем shopCodes (локальные коды магазинов)
+          final shopCodes = p['shopCodes'] as Map<String, dynamic>?;
+          if (shopCodes != null) {
+            for (final shopKod in shopCodes.values) {
+              final kod = shopKod?.toString();
+              if (kod != null && kod.isNotEmpty) {
+                result[kod] = isAiActive;
+              }
+            }
+          }
+
+          // Также индексируем по additionalBarcodes
+          final additionalBarcodes = p['additionalBarcodes'] as List?;
+          if (additionalBarcodes != null) {
+            for (final ab in additionalBarcodes) {
+              final abStr = ab?.toString();
+              if (abStr != null && abStr.isNotEmpty) {
+                result[abStr] = isAiActive;
+              }
+            }
           }
         }
         return result;
@@ -273,6 +301,24 @@ class RecountQuestionService {
       Logger.error('❌ Ошибка загрузки эталонного фото', e);
       return null;
     }
+  }
+
+  /// Включить/выключить ИИ для товара по баркоду
+  static Future<bool> setAiActive(String barcode, {required bool isAiActive}) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/by-barcode/$barcode/ai-status'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({'isAiActive': isAiActive}),
+      ).timeout(ApiConstants.defaultTimeout);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+    } catch (e) {
+      Logger.error('Ошибка обновления AI статуса для $barcode', e);
+    }
+    return false;
   }
 
   /// Удалить вопрос

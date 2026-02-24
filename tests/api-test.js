@@ -210,6 +210,195 @@ const TESTS = [
   // EXECUTION CHAIN
   // =============================================
   { path: '/api/execution-chain/config', name: 'Execution chain config', expectedType: 'object' },
+
+  // =============================================================================
+  // ==================== РАСШИРЕННЫЕ ТЕСТЫ (75+ эндпоинтов) ====================
+  // =============================================================================
+
+  // =============================================
+  // HEALTH & SYSTEM — Здоровье сервера
+  // =============================================
+  // /health — доступен только внутри сервера (nginx не проксирует)
+  { path: '/api/app-version', name: 'App version', expectedType: 'object' },
+  { path: '/api/admin/data-stats', name: 'Admin data stats', expectedType: 'object' },
+  { path: '/api/admin/disk-info', name: 'Admin disk info', expectedType: 'object' },
+
+  // =============================================
+  // SHOP MANAGERS — Управление магазинами
+  // =============================================
+  // /api/shop-managers/store-managers — требует роль developer (403 с тестовым токеном)
+
+  // =============================================
+  // MESSENGER — Мессенджер
+  // =============================================
+  { path: '/api/messenger/conversations?phone=79001234567', name: 'Messenger conversations', expectedType: 'object' },
+  { path: '/api/messenger/contacts/search?query=test', name: 'Messenger contact search', expectedType: 'object' },
+  { path: '/api/messenger/unread?phone=79001234567', name: 'Messenger unread count', expectedType: 'object' },
+  // /api/messenger/profile — возвращает 404 если профиль не существует (ожидаемо для тестового телефона)
+
+  // =============================================
+  // EMPLOYEE CHAT — Чат сотрудников
+  // =============================================
+  { path: '/api/employee-chats?phone=79001234567', name: 'Employee chats list', expectedType: 'object' },
+  { path: '/api/clients/list', name: 'Clients list (for chats)', expectedType: 'object' },
+
+  // =============================================
+  // SHIFT TRANSFERS — Подмена смен
+  // =============================================
+  { path: '/api/shift-transfers', name: 'Shift transfers all', expectedType: 'object' },
+  { path: '/api/shift-transfers/admin', name: 'Shift transfers admin', expectedType: 'object' },
+  { path: '/api/shift-transfers/admin/unread-count', name: 'Shift transfers admin unread', expectedType: 'object' },
+  { path: '/api/shift-transfers/employee/test-emp', name: 'Shift transfers employee', expectedType: 'object' },
+  { path: '/api/shift-transfers/employee/test-emp/outgoing', name: 'Shift transfers outgoing', expectedType: 'object' },
+  { path: '/api/shift-transfers/employee/test-emp/unread-count', name: 'Shift transfers emp unread', expectedType: 'object' },
+
+  // =============================================
+  // PRODUCT QUESTIONS — Вопросы по товарам (доп.)
+  // =============================================
+  { path: '/api/product-questions/unanswered-count', name: 'Product questions unanswered', expectedType: 'object' },
+  { path: '/api/product-question-dialogs/all', name: 'Product question dialogs all', expectedType: 'object' },
+  { path: '/api/product-question-dialogs/unviewed-counts', name: 'Product question unviewed', expectedType: 'object' },
+
+  // =============================================
+  // SHOP PRODUCTS — Товары в магазинах
+  // =============================================
+  { path: '/api/shop-products/shops/list', name: 'Shop products shops list', expectedType: 'object' },
+  { path: '/api/shop-products/stats', name: 'Shop products stats', expectedType: 'object' },
+  { path: '/api/shop-products/api-keys', name: 'Shop products API keys', expectedType: 'object' },
+  { path: '/api/shop-products-search?q=%D0%BA%D0%BE%D1%84%D0%B5', name: 'Shop products search', expectedType: 'object' },
+
+  // =============================================
+  // CIGARETTE VISION / AI — Распознавание товаров
+  // =============================================
+  { path: '/api/cigarette-vision/products', name: 'CV products list', expectedType: 'object' },
+  { path: '/api/cigarette-vision/products/groups', name: 'CV product groups', expectedType: 'object' },
+  { path: '/api/cigarette-vision/stats', name: 'CV training stats', expectedType: 'object' },
+  { path: '/api/cigarette-vision/typed-stats', name: 'CV typed stats', expectedType: 'object' },
+  { path: '/api/cigarette-vision/typed-stats/counting', name: 'CV typed stats counting', expectedType: 'object' },
+  { path: '/api/cigarette-vision/model-status', name: 'CV model status', expectedType: 'object' },
+  { path: '/api/cigarette-vision/settings', name: 'CV settings', expectedType: 'object' },
+  { path: '/api/cigarette-vision/dataset-version', name: 'CV dataset version', expectedType: 'object' },
+  { path: '/api/cigarette-vision/embedding-catalog/stats', name: 'CV embedding catalog stats', expectedType: 'object' },
+
+  // =============================================
+  // AI DASHBOARD — Панель AI
+  // =============================================
+  { path: '/api/ai-dashboard/metrics', name: 'AI dashboard metrics', expectedType: 'object' },
+  { path: '/api/ai-dashboard/retrain-status', name: 'AI retrain status', expectedType: 'object' },
+  { path: '/api/ai-dashboard/recount-train-status', name: 'AI recount train status', expectedType: 'object' },
+  { path: '/api/ai-dashboard/recount-train-schedule', name: 'AI recount train schedule', expectedType: 'object' },
+
+  // =============================================
+  // SHIFT AI — AI верификация пересменок
+  // =============================================
+  { path: '/api/shift-ai/products', name: 'Shift AI products', expectedType: 'object' },
+  { path: '/api/shift-ai/product-groups', name: 'Shift AI product groups', expectedType: 'object' },
+  { path: '/api/shift-ai/model-status', name: 'Shift AI model status', expectedType: 'object' },
+  { path: '/api/shift-ai/stats', name: 'Shift AI stats', expectedType: 'object' },
+
+  // =============================================
+  // REPORT NOTIFICATIONS — Уведомления об отчётах
+  // =============================================
+  { path: '/api/report-notifications', name: 'Report notifications', expectedType: 'object' },
+  { path: '/api/report-notifications/unviewed-counts', name: 'Report notif unviewed', expectedType: 'object' },
+
+  // =============================================
+  // CLIENT DIALOGS — Диалоги с клиентами
+  // =============================================
+  { path: '/api/management-dialogs', name: 'Management dialogs', expectedType: 'object' },
+
+  // =============================================
+  // LOYALTY GAMIFICATION — Программа лояльности
+  // =============================================
+  { path: '/api/loyalty-gamification/settings', name: 'Loyalty gamification settings', expectedType: 'object' },
+  { path: '/api/loyalty-gamification/wheel-history', name: 'Loyalty wheel history', expectedType: 'object' },
+  { path: '/api/loyalty-gamification/client-prizes-report', name: 'Loyalty prizes report', expectedType: 'object' },
+
+  // =============================================
+  // COFFEE MACHINE — Кофемашины (доп.)
+  // =============================================
+  { path: '/api/coffee-machine/failed', name: 'Coffee machine failed', expectedType: 'array' },
+  { path: '/api/coffee-machine/intelligence', name: 'Coffee machine intelligence', expectedType: 'object' },
+  { path: '/api/coffee-machine/training', name: 'Coffee machine training', expectedType: 'object' },
+  { path: '/api/coffee-machine/training/stats', name: 'Coffee machine train stats', expectedType: 'object' },
+
+  // =============================================
+  // RECOUNT POINTS & SETTINGS — Баллы за пересчёт
+  // =============================================
+  { path: '/api/recount-points', name: 'Recount points', expectedType: 'object' },
+  { path: '/api/recount-settings', name: 'Recount settings', expectedType: 'object' },
+
+  // =============================================
+  // MANAGER EFFICIENCY — Эффективность менеджера
+  // =============================================
+  // /api/manager-efficiency — требует реальный телефон менеджера (404 с тестовым)
+
+  // =============================================
+  // POINTS SETTINGS — Настройки баллов (доп.)
+  // =============================================
+  { path: '/api/points-settings/envelope', name: 'Points settings (envelope)', expectedType: 'object' },
+  { path: '/api/points-settings/coffee-machine', name: 'Points settings (coffee)', expectedType: 'object' },
+  { path: '/api/points-settings/orders', name: 'Points settings (orders)', expectedType: 'object' },
+  { path: '/api/points-settings/product-search', name: 'Points settings (product-search)', expectedType: 'object' },
+  { path: '/api/points-settings/recurring-tasks', name: 'Points settings (recurring)', expectedType: 'object' },
+  { path: '/api/points-settings/referrals', name: 'Points settings (referrals)', expectedType: 'object' },
+  { path: '/api/points-settings/regular-tasks', name: 'Points settings (regular)', expectedType: 'object' },
+  { path: '/api/points-settings/reviews', name: 'Points settings (reviews)', expectedType: 'object' },
+  { path: '/api/points-settings/rko', name: 'Points settings (rko)', expectedType: 'object' },
+  { path: '/api/points-settings/shift-handover', name: 'Points settings (handover)', expectedType: 'object' },
+  { path: '/api/points-settings/test', name: 'Points settings (test)', expectedType: 'object' },
+  { path: '/api/points-settings/manager', name: 'Points settings (manager)', expectedType: 'object' },
+  { path: '/api/points-settings/tasks', name: 'Points settings (tasks)', expectedType: 'object' },
+
+  // =============================================
+  // Z-REPORT — Z-отчёты (доп.)
+  // =============================================
+  { path: '/api/z-report/training-samples', name: 'Z-report training samples', expectedType: 'object' },
+  { path: '/api/z-report/training-stats', name: 'Z-report training stats', expectedType: 'object' },
+  { path: '/api/z-report/intelligence', name: 'Z-report intelligence', expectedType: 'object' },
+
+  // =============================================
+  // REFERRALS — Рефералы (доп.)
+  // =============================================
+  { path: '/api/referrals/unviewed-count', name: 'Referrals unviewed count', expectedType: 'object' },
+  { path: '/api/referrals/unassigned', name: 'Referrals unassigned', expectedType: 'object' },
+
+  // =============================================
+  // MASTER CATALOG — Каталог товаров (доп.)
+  // =============================================
+  { path: '/api/master-catalog', name: 'Master catalog full', expectedType: 'object' },
+  { path: '/api/master-catalog/groups/list', name: 'Master catalog groups', expectedType: 'object' },
+  { path: '/api/master-catalog/stats', name: 'Master catalog stats', expectedType: 'object' },
+  { path: '/api/master-catalog/pending-codes', name: 'Master catalog pending', expectedType: 'object' },
+
+  // =============================================
+  // RKO — РКО (доп.)
+  // =============================================
+  { path: '/api/rko/pending', name: 'RKO pending', expectedType: 'object' },
+  { path: '/api/rko/failed', name: 'RKO failed', expectedType: 'object' },
+
+  // =============================================
+  // ENVELOPE — Конверты (доп.)
+  // =============================================
+  { path: '/api/envelope-pending', name: 'Envelope pending', expectedType: 'array' },
+  { path: '/api/envelope-failed', name: 'Envelope failed', expectedType: 'array' },
+
+  // =============================================
+  // ATTENDANCE — Посещаемость (доп.)
+  // =============================================
+  { path: '/api/attendance/pending', name: 'Attendance pending', expectedType: 'object' },
+  { path: '/api/attendance/failed', name: 'Attendance failed', expectedType: 'object' },
+
+  // =============================================
+  // SHIFT HANDOVER — Передача смены (доп.)
+  // =============================================
+  { path: '/api/shift-handover/pending', name: 'Shift handover pending', expectedType: 'object' },
+  { path: '/api/shift-handover/failed', name: 'Shift handover failed', expectedType: 'object' },
+
+  // =============================================
+  // JOB APPLICATIONS — Заявки (доп.)
+  // =============================================
+  { path: '/api/job-applications/unviewed-count', name: 'Job apps unviewed count', expectedType: 'object' },
 ];
 
 

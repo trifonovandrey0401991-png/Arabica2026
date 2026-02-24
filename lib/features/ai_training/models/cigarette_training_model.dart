@@ -359,6 +359,7 @@ class TrainingSample {
   final String imageUrl;
   final String? shopAddress;
   final String? employeeName;
+  final String? employeeAnswer; // Ответ сотрудника при пересчёте (кол-во пачек)
   final DateTime createdAt;
   final TrainingSampleType type;
   final int? templateId; // ID шаблона (1-10) для крупного плана
@@ -372,6 +373,7 @@ class TrainingSample {
     required this.imageUrl,
     this.shopAddress,
     this.employeeName,
+    this.employeeAnswer,
     required this.createdAt,
     required this.type,
     this.templateId,
@@ -387,6 +389,7 @@ class TrainingSample {
       imageUrl: json['imageUrl'] ?? '',
       shopAddress: json['shopAddress'],
       employeeName: json['employeeName'],
+      employeeAnswer: json['employeeAnswer']?.toString(),
       createdAt: json['createdAt'] != null
         ? DateTime.parse(json['createdAt'])
         : DateTime.now(),
@@ -493,6 +496,7 @@ class DetectionResult {
   final double confidence;          // Уверенность модели (0-1)
   final String? annotatedImageUrl;  // Фото с выделенными объектами
   final List<BoundingBox> boxes;    // Координаты найденных пачек
+  final String? pendingSampleId;    // ID pending образца для добавления аннотаций
 
   DetectionResult({
     required this.success,
@@ -503,6 +507,7 @@ class DetectionResult {
     this.confidence = 0,
     this.annotatedImageUrl,
     this.boxes = const [],
+    this.pendingSampleId,
   });
 
   factory DetectionResult.fromJson(Map<String, dynamic> json) {
@@ -517,6 +522,7 @@ class DetectionResult {
       boxes: (json['boxes'] as List?)
           ?.map((b) => BoundingBox.fromJson(b))
           .toList() ?? [],
+      pendingSampleId: json['pendingSampleId'],
     );
   }
 

@@ -44,13 +44,23 @@ class MessageBubble extends StatelessWidget {
               Container(
                 padding: _getPadding(),
                 decoration: BoxDecoration(
-                  color: isMine ? AppColors.emerald : Colors.grey[200],
+                  gradient: isMine
+                      ? const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [AppColors.emeraldLight, AppColors.emerald],
+                        )
+                      : null,
+                  color: isMine ? null : Colors.white.withOpacity(0.08),
                   borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(16),
-                    topRight: const Radius.circular(16),
-                    bottomLeft: Radius.circular(isMine ? 16 : 4),
-                    bottomRight: Radius.circular(isMine ? 4 : 16),
+                    topLeft: const Radius.circular(18),
+                    topRight: const Radius.circular(18),
+                    bottomLeft: Radius.circular(isMine ? 18 : 4),
+                    bottomRight: Radius.circular(isMine ? 4 : 18),
                   ),
+                  border: isMine
+                      ? null
+                      : Border.all(color: Colors.white.withOpacity(0.08)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,10 +70,10 @@ class MessageBubble extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
                           message.senderName ?? message.senderPhone,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: isMine ? Colors.white70 : AppColors.emerald,
+                            color: AppColors.turquoise,
                           ),
                         ),
                       ),
@@ -73,7 +83,9 @@ class MessageBubble extends StatelessWidget {
                       message.formattedTime,
                       style: TextStyle(
                         fontSize: 10,
-                        color: isMine ? Colors.white54 : Colors.grey[500],
+                        color: isMine
+                            ? Colors.white.withOpacity(0.6)
+                            : Colors.white.withOpacity(0.35),
                       ),
                     ),
                   ],
@@ -109,7 +121,9 @@ class MessageBubble extends StatelessWidget {
           message.content ?? '',
           style: TextStyle(
             fontSize: 15,
-            color: isMine ? Colors.white : Colors.black87,
+            color: isMine
+                ? Colors.white.withOpacity(0.95)
+                : Colors.white.withOpacity(0.85),
           ),
         );
 
@@ -121,7 +135,7 @@ class MessageBubble extends StatelessWidget {
 
       case MessageType.image:
         return ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 250, maxHeight: 300),
             child: message.mediaUrl != null
@@ -131,14 +145,19 @@ class MessageBubble extends StatelessWidget {
                     placeholder: (_, __) => Container(
                       width: 200,
                       height: 150,
-                      color: Colors.grey[300],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      color: Colors.white.withOpacity(0.06),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.turquoise,
+                        ),
+                      ),
                     ),
                     errorWidget: (_, __, ___) => Container(
                       width: 200,
                       height: 150,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.broken_image, size: 40),
+                      color: Colors.white.withOpacity(0.06),
+                      child: Icon(Icons.broken_image, size: 40, color: Colors.white.withOpacity(0.3)),
                     ),
                   )
                 : const SizedBox(width: 200, height: 150),
@@ -150,8 +169,8 @@ class MessageBubble extends StatelessWidget {
           width: 220,
           height: 160,
           decoration: BoxDecoration(
-            color: Colors.black26,
-            borderRadius: BorderRadius.circular(12),
+            color: Colors.black.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: const Center(
             child: Icon(Icons.play_circle_outline, size: 50, color: Colors.white),
@@ -168,19 +187,20 @@ class MessageBubble extends StatelessWidget {
               onTap: onPlayVoice,
               child: Icon(
                 isPlayingVoice ? Icons.pause_circle_filled : Icons.play_circle_filled,
-                color: isMine ? Colors.white : AppColors.emerald,
+                color: isMine ? Colors.white : AppColors.turquoise,
                 size: 36,
               ),
             ),
             const SizedBox(width: 8),
-            // Simple waveform placeholder
             Flexible(
               child: Container(
                 height: 30,
                 constraints: const BoxConstraints(minWidth: 80, maxWidth: 150),
                 child: CustomPaint(
                   painter: _WaveformPainter(
-                    color: isMine ? Colors.white54 : AppColors.emeraldLight,
+                    color: isMine
+                        ? Colors.white.withOpacity(0.5)
+                        : AppColors.turquoise.withOpacity(0.5),
                   ),
                   size: const Size(double.infinity, 30),
                 ),
@@ -191,7 +211,9 @@ class MessageBubble extends StatelessWidget {
               durationStr,
               style: TextStyle(
                 fontSize: 12,
-                color: isMine ? Colors.white70 : Colors.grey[600],
+                color: isMine
+                    ? Colors.white.withOpacity(0.7)
+                    : Colors.white.withOpacity(0.5),
               ),
             ),
           ],
@@ -211,18 +233,22 @@ class MessageBubble extends StatelessWidget {
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[300]!),
+          color: Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.block, size: 14, color: Colors.grey[400]),
+            Icon(Icons.block, size: 14, color: Colors.white.withOpacity(0.3)),
             const SizedBox(width: 4),
             Text(
               'Сообщение удалено',
-              style: TextStyle(fontSize: 13, color: Colors.grey[500], fontStyle: FontStyle.italic),
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.white.withOpacity(0.35),
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
         ),
@@ -237,12 +263,13 @@ class MessageBubble extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: Colors.white.withOpacity(0.08),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.06)),
           ),
           child: Text(
             '${entry.key} ${entry.value.length}',
-            style: const TextStyle(fontSize: 12),
+            style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8)),
           ),
         );
       }).toList(),
@@ -266,7 +293,6 @@ class _WaveformPainter extends CustomPainter {
 
     for (int i = 0; i < barCount; i++) {
       final x = barWidth + i * (size.width / barCount);
-      // Pseudo-random heights based on index
       final height = (size.height * 0.3) + (size.height * 0.7 * ((i * 7 + 3) % 11) / 11);
       final y1 = (size.height - height) / 2;
       final y2 = y1 + height;

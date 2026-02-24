@@ -20,9 +20,6 @@ class EmployeeOrderDetailPage extends StatefulWidget {
 class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
   bool _isProcessing = false;
 
-  static final _primaryColor = AppColors.primaryGreen;
-  static final _primaryColorLight = Color(0xFF00695C);
-
   String _formatPrice(dynamic price) {
     if (price == null) return '0';
     if (price is num) {
@@ -35,7 +32,6 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
   Widget _buildItemImage(String? photoId, String? imageUrl) {
     double size = 70;
 
-    // Если есть URL сетевого изображения
     if (imageUrl != null && imageUrl.isNotEmpty) {
       return AppCachedImage(
         imageUrl: imageUrl,
@@ -46,7 +42,6 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
       );
     }
 
-    // Если есть photoId для локального изображения
     if (photoId != null && photoId.isNotEmpty) {
       return Image.asset(
         'assets/images/$photoId.jpg',
@@ -57,7 +52,6 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
       );
     }
 
-    // Заглушка если нет фото
     return _buildPlaceholderImage(size);
   }
 
@@ -66,28 +60,20 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.grey[300]!,
-            Colors.grey[200]!,
-          ],
-        ),
+        color: Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Icon(
         Icons.local_cafe_rounded,
         size: 32,
-        color: Colors.grey[400],
+        color: Colors.white.withOpacity(0.25),
       ),
     );
   }
 
   Future<void> _acceptOrder() async {
-    if (mounted) setState(() {
-      _isProcessing = true;
-    });
+    if (mounted) setState(() => _isProcessing = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -108,7 +94,7 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
                   ? 'Заказ $orderNumber принят'
                   : 'Заказ принят',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
         Navigator.pop(context, true);
@@ -116,7 +102,7 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка при принятии заказа'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -125,16 +111,12 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -144,30 +126,45 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
     final reason = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: AppColors.emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         title: Row(
           children: [
             Container(
               padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
-                color: Colors.red[50],
+                color: AppColors.error.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10.r),
               ),
-              child: Icon(Icons.cancel_outlined, color: Colors.red[700], size: 24),
+              child: Icon(Icons.cancel_outlined, color: AppColors.error, size: 24),
             ),
             SizedBox(width: 12),
-            Text('Причина отказа'),
+            Text(
+              'Причина отказа',
+              style: TextStyle(color: Colors.white),
+            ),
           ],
         ),
         content: TextField(
           controller: reasonController,
+          style: TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: 'Укажите причину отказа',
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.35)),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide(color: AppColors.gold),
             ),
             filled: true,
-            fillColor: Colors.grey[50],
+            fillColor: Colors.white.withOpacity(0.06),
           ),
           maxLines: 3,
           autofocus: true,
@@ -175,7 +172,7 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Отмена', style: TextStyle(color: Colors.grey[600])),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -191,7 +188,7 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
               Navigator.pop(context, reasonController.text.trim());
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
               padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
@@ -205,9 +202,7 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
     if (reason == null || reason.isEmpty) return;
 
     if (!mounted) return;
-    setState(() {
-      _isProcessing = true;
-    });
+    setState(() => _isProcessing = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -237,7 +232,7 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка при отклонении заказа'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -246,25 +241,392 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+      if (mounted) setState(() => _isProcessing = false);
     }
+  }
+
+  Widget _buildHeader(String? orderNumber) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 16.h),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.1),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+              ),
+              child: Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white.withOpacity(0.8),
+                size: 18,
+              ),
+            ),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Text(
+              orderNumber != null
+                  ? 'Заказ #$orderNumber'
+                  : 'Детали заказа',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(String shopAddress, String clientName, String clientPhone) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      padding: EdgeInsets.all(16.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.gold.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                child: Icon(Icons.receipt_long_rounded, color: AppColors.gold, size: 22),
+              ),
+              SizedBox(width: 12.w),
+              Text(
+                'Информация о заказе',
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withOpacity(0.9),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16.h),
+          _buildInfoRow(Icons.store_rounded, 'Магазин', shopAddress),
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 10.h),
+            child: Container(height: 1, color: Colors.white.withOpacity(0.06)),
+          ),
+          _buildInfoRow(Icons.person_rounded, 'Клиент', clientName),
+          if (clientPhone.isNotEmpty) ...[
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 10.h),
+              child: Container(height: 1, color: Colors.white.withOpacity(0.06)),
+            ),
+            _buildInfoRow(Icons.phone_rounded, 'Телефон', clientPhone),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: Colors.white.withOpacity(0.35)),
+        SizedBox(width: 10.w),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  color: Colors.white.withOpacity(0.35),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withOpacity(0.85),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(IconData icon, String title) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.gold),
+        SizedBox(width: 8.w),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withOpacity(0.9),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildItemCard(Map<String, dynamic> item) {
+    final name = item['name'] ?? 'Товар';
+    final price = _formatPrice(item['price']);
+    final quantity = item['quantity'] ?? 1;
+    final total = _formatPrice(item['total']);
+    final photoId = item['photoId'] as String?;
+    final imageUrl = item['imageUrl'] as String?;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 10.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      padding: EdgeInsets.all(12.w),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12.r),
+            child: _buildItemImage(photoId, imageUrl),
+          ),
+          SizedBox(width: 14.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15.sp,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+                SizedBox(height: 6.h),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(6.r),
+                  ),
+                  child: Text(
+                    '$price \u20BD \u00D7 $quantity',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.45),
+                      fontSize: 12.sp,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+            decoration: BoxDecoration(
+              color: AppColors.gold.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: Text(
+              '$total \u20BD',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14.sp,
+                color: AppColors.gold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommentSection(String comment) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: AppColors.gold.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: AppColors.gold.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.timer_rounded, color: AppColors.gold, size: 20),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              comment,
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: AppColors.gold,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTotalSection(dynamic totalPrice) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(18.w),
+      decoration: BoxDecoration(
+        color: AppColors.gold.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: AppColors.gold.withOpacity(0.25)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Итого к оплате:',
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withOpacity(0.7),
+            ),
+          ),
+          Text(
+            '${_formatPrice(totalPrice)} \u20BD',
+            style: TextStyle(
+              fontSize: 24.sp,
+              fontWeight: FontWeight.bold,
+              color: AppColors.gold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomButtons() {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: AppColors.night,
+        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: _isProcessing ? null : _rejectOrder,
+                child: Container(
+                  height: 52.h,
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(14.r),
+                    border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                  ),
+                  child: Center(
+                    child: _isProcessing
+                        ? SizedBox(
+                            height: 20, width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.error),
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.close_rounded, color: AppColors.error, size: 20),
+                              SizedBox(width: 8.w),
+                              Text(
+                                'Отказать',
+                                style: TextStyle(
+                                  color: AppColors.error,
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: GestureDetector(
+                onTap: _isProcessing ? null : _acceptOrder,
+                child: Container(
+                  height: 52.h,
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(14.r),
+                    border: Border.all(color: AppColors.gold.withOpacity(0.4)),
+                  ),
+                  child: Center(
+                    child: _isProcessing
+                        ? SizedBox(
+                            height: 20, width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_rounded, color: AppColors.gold, size: 20),
+                              SizedBox(width: 8.w),
+                              Text(
+                                'Принять',
+                                style: TextStyle(
+                                  color: AppColors.gold,
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final orderNumber = widget.orderData['orderNumber'];
-    final shopAddress = widget.orderData['shopAddress'] ?? 'Неизвестный магазин';
-    final clientName = widget.orderData['clientName'] ?? 'Клиент';
-    final clientPhone = widget.orderData['clientPhone'] ?? '';
+    final orderNumber = widget.orderData['orderNumber']?.toString();
+    final shopAddress = (widget.orderData['shopAddress'] ?? 'Неизвестный магазин').toString();
+    final clientName = (widget.orderData['clientName'] ?? 'Клиент').toString();
+    final clientPhone = (widget.orderData['clientPhone'] ?? '').toString();
     final items = widget.orderData['items'] as List<dynamic>? ?? [];
     final totalPrice = widget.orderData['totalPrice'];
     final comment = widget.orderData['comment'];
@@ -275,434 +637,65 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              _primaryColor,
-              _primaryColorLight,
-            ],
-            stops: [0.0, 0.3],
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
+            stops: const [0.0, 0.3, 1.0],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              // Кастомный AppBar
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-                    ),
-                    Expanded(
-                      child: Text(
-                        orderNumber != null
-                            ? 'Заказ $orderNumber'
-                            : 'Заказ ${widget.orderData['id'].toString().substring(0, 6)}',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    SizedBox(width: 48), // Для баланса
-                  ],
-                ),
-              ),
-              // Основной контент
+              _buildHeader(orderNumber),
               Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30.r),
-                      topRight: Radius.circular(30.r),
-                    ),
-                  ),
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(20.w),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Информация о заказе
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20.r),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          padding: EdgeInsets.all(20.w),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.all(10.w),
-                                    decoration: BoxDecoration(
-                                      color: _primaryColor.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12.r),
-                                    ),
-                                    child: Icon(Icons.receipt_long_rounded, color: _primaryColor, size: 24),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    'Информация о заказе',
-                                    style: TextStyle(
-                                      fontSize: 18.sp,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 20),
-                              _buildInfoRow(Icons.store_rounded, 'Магазин', shopAddress, Colors.blue),
-                              Divider(height: 24),
-                              _buildInfoRow(Icons.person_rounded, 'Клиент', clientName, Colors.green),
-                              if (clientPhone.isNotEmpty) ...[
-                                Divider(height: 24),
-                                _buildInfoRow(Icons.phone_rounded, 'Телефон', clientPhone, Colors.orange),
-                              ],
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                        // Состав заказа
-                        Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(8.w),
-                              decoration: BoxDecoration(
-                                color: _primaryColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10.r),
-                              ),
-                              child: Icon(Icons.shopping_bag_rounded, color: _primaryColor, size: 20),
-                            ),
-                            SizedBox(width: 10),
-                            Text(
-                              'Состав заказа',
-                              style: TextStyle(
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 12),
-                        if (items.isEmpty)
-                          Container(
-                            padding: EdgeInsets.all(20.w),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16.r),
-                            ),
-                            child: Center(child: Text('Нет товаров')),
-                          )
-                        else
-                          ...items.map((item) {
-                            final name = item['name'] ?? 'Товар';
-                            final price = _formatPrice(item['price']);
-                            final quantity = item['quantity'] ?? 1;
-                            final total = _formatPrice(item['total']);
-                            final photoId = item['photoId'] as String?;
-                            final imageUrl = item['imageUrl'] as String?;
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Info card
+                      _buildInfoCard(shopAddress, clientName, clientPhone),
+                      SizedBox(height: 20.h),
 
-                            return Container(
-                              margin: EdgeInsets.only(bottom: 12.h),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16.r),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.04),
-                                    blurRadius: 8,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Padding(
-                                padding: EdgeInsets.all(12.w),
-                                child: Row(
-                                  children: [
-                                    // Фото товара
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(12.r),
-                                      child: _buildItemImage(photoId, imageUrl),
-                                    ),
-                                    SizedBox(width: 14),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            name,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 16.sp,
-                                            ),
-                                          ),
-                                          SizedBox(height: 6),
-                                          Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                                            decoration: BoxDecoration(
-                                              color: Colors.grey[100],
-                                              borderRadius: BorderRadius.circular(8.r),
-                                            ),
-                                            child: Text(
-                                              '$price руб. × $quantity',
-                                              style: TextStyle(
-                                                color: Colors.grey[600],
-                                                fontSize: 13.sp,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                                      decoration: BoxDecoration(
-                                        color: _primaryColor.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(10.r),
-                                      ),
-                                      child: Text(
-                                        '$total руб.',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15.sp,
-                                          color: _primaryColor,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }),
-                        // Комментарий
-                        if (comment != null && comment.toString().isNotEmpty) ...[
-                          SizedBox(height: 20),
-                          Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(8.w),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(10.r),
-                                ),
-                                child: Icon(Icons.comment_rounded, color: Colors.blue, size: 20),
-                              ),
-                              SizedBox(width: 10),
-                              Text(
-                                'Комментарий',
-                                style: TextStyle(
-                                  fontSize: 18.sp,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 12),
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(16.w),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[50],
-                              borderRadius: BorderRadius.circular(16.r),
-                              border: Border.all(color: Colors.blue[100]!),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.schedule_rounded, color: Colors.blue[700], size: 20),
-                                SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    comment.toString(),
-                                    style: TextStyle(
-                                      fontSize: 15.sp,
-                                      color: Colors.blue[800],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                        SizedBox(height: 20),
-                        // Итого
+                      // Items section
+                      _buildSectionTitle(Icons.shopping_bag_rounded, 'Состав заказа'),
+                      SizedBox(height: 12.h),
+                      if (items.isEmpty)
                         Container(
-                          width: double.infinity,
                           padding: EdgeInsets.all(20.w),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                _primaryColor,
-                                _primaryColorLight,
-                              ],
+                            color: Colors.white.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(14.r),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Нет товаров',
+                              style: TextStyle(color: Colors.white.withOpacity(0.4)),
                             ),
-                            borderRadius: BorderRadius.circular(20.r),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _primaryColor.withOpacity(0.3),
-                                blurRadius: 12,
-                                offset: Offset(0, 6),
-                              ),
-                            ],
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Итого к оплате:',
-                                style: TextStyle(
-                                  fontSize: 18.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                              Text(
-                                '${_formatPrice(totalPrice)} руб.',
-                                style: TextStyle(
-                                  fontSize: 26.sp,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 100), // Место для кнопок
+                        )
+                      else
+                        ...items.map((item) => _buildItemCard(item as Map<String, dynamic>)),
+
+                      // Comment
+                      if (comment != null && comment.toString().isNotEmpty) ...[
+                        SizedBox(height: 20.h),
+                        _buildSectionTitle(Icons.comment_rounded, 'Комментарий'),
+                        SizedBox(height: 12.h),
+                        _buildCommentSection(comment.toString()),
                       ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      // Кнопки внизу
-      bottomNavigationBar: Container(
-        padding: EdgeInsets.all(16.w),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: Offset(0, -4),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _isProcessing ? null : _rejectOrder,
-                  icon: _isProcessing
-                      ? SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Icon(Icons.close_rounded),
-                  label: Text('Отказать'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[400],
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 16.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14.r),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _isProcessing ? null : _acceptOrder,
-                  icon: _isProcessing
-                      ? SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Icon(Icons.check_rounded),
-                  label: Text('Принять'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[500],
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 16.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14.r),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildInfoRow(IconData icon, String label, String value, Color color) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: EdgeInsets.all(8.w),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-          child: Icon(icon, size: 20, color: color),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12.sp,
-                  color: Colors.grey[500],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              SizedBox(height: 2),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.w600,
+                      // Total
+                      SizedBox(height: 20.h),
+                      _buildTotalSection(totalPrice),
+                      SizedBox(height: 100.h),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
         ),
-      ],
+      ),
+      bottomNavigationBar: _buildBottomButtons(),
     );
   }
 }

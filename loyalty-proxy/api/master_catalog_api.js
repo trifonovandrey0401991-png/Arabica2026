@@ -1633,6 +1633,123 @@ function setupMasterCatalogAPI(app) {
     }
   });
 
+  // ============ МАССОВЫЕ ОПЕРАЦИИ С PENDING CODES ============
+
+  /**
+   * POST /api/master-catalog/batch-approve-codes
+   * Массовое подтверждение кодов — каждый создаётся как новый товар в каталоге
+   *
+   * Body: { codes: [{ kod, name, group }, ...] }
+   * Response: { success, approved, errors }
+   */
+  app.post('/api/master-catalog/batch-approve-codes', requireAdmin, async (req, res) => {
+    try {
+      const { codes } = req.body;
+
+      if (!Array.isArray(codes) || codes.length === 0) {
+        return res.status(400).json({ success: false, error: 'codes должен быть непустым массивом' });
+      }
+
+      const products = await loadProducts();
+      const pending = await loadPendingCodes();
+      const errors = [];
+      let approved = 0;
+
+      for (const item of codes) {
+        const { kod, name, group } = item;
+        if (!kod || !name) {
+          errors.push({ kod, error: 'kod и name обязательны' });
+          continue;
+        }
+
+        const pendingIndex = pending.findIndex(p => p.kod === kod);
+        if (pendingIndex === -1) {
+          errors.push({ kod, error: 'Код не найден в pending' });
+          continue;
+        }
+
+        // Check if already in master catalog
+        const existing = products.find(p => p.barcode === kod);
+        if (existing) {
+          pending.splice(pendingIndex, 1);
+          errors.push({ kod, error: 'Уже в каталоге', product: existing.name });
+          continue;
+        }
+
+        const pendingCode = pending[pendingIndex];
+
+        // Collect shopCodes from sources
+        const shopCodes = {};
+        pendingCode.sources.forEach(source => {
+          shopCodes[source.shopId] = source.kod || kod;
+        });
+
+        const newProduct = {
+          id: generateId(),
+          name: name.trim(),
+          group: group?.trim() || pendingCode.sources[0]?.group || '',
+          barcode: kod,
+          shopCodes,
+          isAiActive: false,
+          createdAt: new Date().toISOString(),
+          createdBy: 'admin',
+          updatedAt: new Date().toISOString(),
+        };
+
+        products.push(newProduct);
+        await updateMappingsForProduct(newProduct);
+
+        // Remove from pending
+        pending.splice(pendingIndex, 1);
+        approved++;
+      }
+
+      // Save once at the end
+      await saveProducts(products);
+      await savePendingCodes(pending);
+
+      console.log(`[Master Catalog API] Batch approve: ${approved} подтверждено, ${errors.length} ошибок`);
+
+      res.json({ success: true, approved, errors, total: codes.length });
+    } catch (error) {
+      console.error('[Master Catalog API] Ошибка batch approve:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * POST /api/master-catalog/batch-reject-codes
+   * Массовое отклонение кодов — удаление из pending
+   *
+   * Body: { kods: ["kod1", "kod2", ...] }
+   * Response: { success, rejected }
+   */
+  app.post('/api/master-catalog/batch-reject-codes', requireAdmin, async (req, res) => {
+    try {
+      const { kods } = req.body;
+
+      if (!Array.isArray(kods) || kods.length === 0) {
+        return res.status(400).json({ success: false, error: 'kods должен быть непустым массивом' });
+      }
+
+      const pending = await loadPendingCodes();
+      const kodsSet = new Set(kods);
+      const before = pending.length;
+
+      const remaining = pending.filter(p => !kodsSet.has(p.kod));
+      const rejected = before - remaining.length;
+
+      await savePendingCodes(remaining);
+
+      console.log(`[Master Catalog API] Batch reject: ${rejected} отклонено из ${kods.length} запрошенных`);
+
+      res.json({ success: true, rejected, total: kods.length });
+    } catch (error) {
+      console.error('[Master Catalog API] Ошибка batch reject:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ============ ПАРАМЕТРИЗОВАННЫЕ МАРШРУТЫ (ДОЛЖНЫ БЫТЬ В КОНЦЕ!) ============
 
   /**

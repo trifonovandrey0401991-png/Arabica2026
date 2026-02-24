@@ -6,6 +6,7 @@ import 'rko_pdf_viewer_page.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница отчетов по магазинам
 class RKOShopReportsPage extends StatefulWidget {
@@ -98,10 +99,19 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
     _loadShops();
   }
 
+  static const _shopsCacheKey = 'rko_shops_list';
+
   Future<void> _loadShops() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-    });
+    // Step 1: Show cached data instantly
+    final cached = CacheManager.get<List<Shop>>(_shopsCacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _shops = cached;
+        _isLoading = false;
+      });
+    }
+
+    if (_shops.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
       final shops = await ShopService.getShopsForCurrentUser();
@@ -110,19 +120,31 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
         _shops = shops;
         _isLoading = false;
       });
+      // Step 3: Save to cache
+      CacheManager.set(_shopsCacheKey, shops);
     } catch (e) {
       Logger.error('Ошибка загрузки магазинов', e);
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+      if (_shops.isEmpty) setState(() => _isLoading = false);
     }
   }
 
+  String _rkosCacheKey(String addr) => 'rko_shop_${addr.hashCode}';
+
   Future<void> _loadShopRKOs(String shopAddress) async {
-    if (mounted) setState(() {
-      _isLoading = true;
-    });
+    // Step 1: Show cached data instantly
+    final cacheKey = _rkosCacheKey(shopAddress);
+    final cached = CacheManager.get<Map<String, dynamic>>(cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _currentMonthRKOs = cached['currentMonth'] as List<dynamic>;
+        _months = cached['months'] as List<dynamic>;
+        _buildHierarchy();
+        _isLoading = false;
+      });
+    }
+
+    if (cached == null && mounted) setState(() => _isLoading = true);
 
     try {
       final data = await RKOReportsService.getShopRKOs(shopAddress);
@@ -134,17 +156,18 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
           _buildHierarchy();
           _isLoading = false;
         });
-      } else {
-        if (mounted) setState(() {
-          _isLoading = false;
+        // Step 3: Save to cache
+        CacheManager.set(cacheKey, {
+          'currentMonth': data['currentMonth'] ?? [],
+          'months': data['months'] ?? [],
         });
+      } else {
+        if (mounted && cached == null) setState(() => _isLoading = false);
       }
     } catch (e) {
       Logger.error('Ошибка загрузки РКО магазина', e);
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+      if (cached == null) setState(() => _isLoading = false);
     }
   }
 
