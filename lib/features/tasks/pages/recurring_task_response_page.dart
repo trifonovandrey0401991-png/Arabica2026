@@ -457,7 +457,7 @@ class _RecurringTaskResponsePageState extends State<RecurringTaskResponsePage> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: _canSubmit && !_isSubmitting && !instance.isExpired
+                          onPressed: _canSubmit && !_isSubmitting
                               ? _completeTask
                               : null,
                           style: ElevatedButton.styleFrom(

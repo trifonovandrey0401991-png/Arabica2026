@@ -739,6 +739,18 @@ function setupRecurringTasksAPI(app) {
 
       await saveInstances(foundMonth, instances);
       console.log('Completed recurring task instance:', instanceId);
+
+      // Notify admins about completion
+      try {
+        await sendPushNotification(
+          'Задача выполнена',
+          `${instances[index].assigneeName} выполнил(а) задачу "${instances[index].title}"`,
+          { type: 'recurring_task_completed', instanceId: instanceId, recurringTaskId: instances[index].recurringTaskId }
+        );
+      } catch (pushErr) {
+        console.error('Failed to send completion push:', pushErr.message);
+      }
+
       res.json({ success: true, instance: instances[index] });
     } catch (e) {
       console.error('Error completing instance:', e);
