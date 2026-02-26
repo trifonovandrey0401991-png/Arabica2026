@@ -11,6 +11,9 @@ const { maskPhone, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { requireAuth } = require('../utils/session_middleware');
 const { notifyCounterUpdate } = require('./counters_websocket');
+const db = require('../utils/db');
+
+const USE_DB_WORK_SCHEDULE = process.env.USE_DB_WORK_SCHEDULE === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -114,6 +117,20 @@ async function updateWorkSchedule(transfer, newEmployeeId, newEmployeeName) {
     scheduleData.updatedAt = new Date().toISOString();
 
     await writeJsonFile(scheduleFile, scheduleData);
+
+    // DB dual-write: update work_schedule_entries in PostgreSQL
+    if (USE_DB_WORK_SCHEDULE) {
+      try {
+        await db.query(
+          'UPDATE work_schedule_entries SET employee_id = $1, employee_name = $2 WHERE id = $3',
+          [newEmployeeId, newEmployeeName, oldEntry.id]
+        );
+        console.log(`[ShiftTransfer] DB schedule entry updated: ${oldEntry.id}`);
+      } catch (dbErr) {
+        console.error('[ShiftTransfer] DB schedule update error:', dbErr.message);
+      }
+    }
+
     console.log(`[ShiftTransfer] Schedule updated: ${transfer.fromEmployeeName} → ${newEmployeeName}`);
     return true;
   } catch (e) {
