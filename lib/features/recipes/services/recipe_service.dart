@@ -17,8 +17,8 @@ class RecipeService {
 
   /// Получить все рецепты (с кешированием)
   static Future<List<Recipe>> getRecipes({bool forceRefresh = false}) async {
-    // Отдаём из кеша если свежий
-    if (!forceRefresh && _cache != null && _cacheTime != null &&
+    // Отдаём из кеша если свежий и непустой
+    if (!forceRefresh && _cache != null && _cache!.isNotEmpty && _cacheTime != null &&
         DateTime.now().difference(_cacheTime!) < _cacheTtl) {
       Logger.debug('📥 Рецепты из кеша (${_cache!.length} шт)');
       return _cache!;
@@ -31,8 +31,11 @@ class RecipeService {
       listKey: 'recipes',
     );
 
-    _cache = recipes;
-    _cacheTime = DateTime.now();
+    // Don't cache empty results — likely a network error, not real empty catalog
+    if (recipes.isNotEmpty) {
+      _cache = recipes;
+      _cacheTime = DateTime.now();
+    }
     return recipes;
   }
 
@@ -58,6 +61,7 @@ class RecipeService {
     required String name,
     required String category,
     String? price,
+    int? pointsPrice,
     String? ingredients,
     String? steps,
   }) async {
@@ -71,6 +75,9 @@ class RecipeService {
     };
     if (price != null && price.isNotEmpty) {
       requestBody['price'] = price;
+    }
+    if (pointsPrice != null) {
+      requestBody['pointsPrice'] = pointsPrice;
     }
 
     final result = await BaseHttpService.post<Recipe>(
@@ -89,6 +96,7 @@ class RecipeService {
     String? name,
     String? category,
     String? price,
+    int? pointsPrice,
     String? ingredients,
     String? steps,
     String? photoUrl,
@@ -99,6 +107,7 @@ class RecipeService {
     if (name != null) body['name'] = name;
     if (category != null) body['category'] = category;
     if (price != null) body['price'] = price;
+    if (pointsPrice != null) body['pointsPrice'] = pointsPrice;
     if (ingredients != null) body['ingredients'] = ingredients;
     if (steps != null) body['steps'] = steps;
     if (photoUrl != null) body['photoUrl'] = photoUrl;

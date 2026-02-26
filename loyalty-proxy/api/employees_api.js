@@ -11,7 +11,10 @@ const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const dataCache = require('../utils/data_cache');
 const db = require('../utils/db');
+const { createDbPaginatedResponse } = require('../utils/pagination');
 const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+
+const { loadShopManagers, saveShopManagers, normalizePhone: normPhone } = require('./shop_managers_api');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
@@ -73,6 +76,27 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
       let employees;
 
       if (USE_DB) {
+        // SQL-level pagination with search
+        if (isPaginationRequested && isPaginationRequested(req.query)) {
+          const { search } = req.query;
+          let where;
+          let whereParams;
+          if (search) {
+            where = '(name ILIKE $1 OR phone LIKE $2 OR position ILIKE $3)';
+            const pattern = `%${search}%`;
+            whereParams = [pattern, pattern, pattern];
+          }
+          const result = await db.findAllPaginated('employees', {
+            where,
+            whereParams,
+            orderBy: 'created_at',
+            orderDir: 'DESC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(result, 'employees', dbEmployeeToCamel));
+        }
+
         const rows = await db.findAll('employees', { orderBy: 'created_at', orderDir: 'DESC' });
         employees = rows.map(dbEmployeeToCamel);
       } else {
@@ -326,6 +350,24 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
       }
 
       console.log('✅ Сотрудник обновлен:', id);
+
+      // Sync: если isManager сняли — удалить из storeManagers
+      if (req.body.isManager !== undefined && !parseBool(req.body.isManager) && employee.phone) {
+        try {
+          const smData = await loadShopManagers();
+          const phoneCleaned = normPhone(employee.phone);
+          const before = smData.storeManagers.length;
+          smData.storeManagers = smData.storeManagers.filter(
+            sm => normPhone(sm.phone) !== phoneCleaned
+          );
+          if (smData.storeManagers.length < before) {
+            await saveShopManagers(smData);
+            console.log(`✅ Удалена из storeManagers: ${phoneCleaned}`);
+          }
+        } catch (smErr) {
+          console.error('Ошибка синхронизации storeManagers:', smErr.message);
+        }
+      }
 
       // SCALABILITY: Инвалидируем кэши при изменении сотрудника
       if (invalidateCache) {

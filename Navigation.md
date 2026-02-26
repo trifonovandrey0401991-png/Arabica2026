@@ -1,11 +1,11 @@
 # Navigation — Quick Reference Index
 > **Цель**: найти нужную информацию в ARCHITECTURE_COMPLETE.md (ARCH) и PROJECT_MAP.md (MAP) без чтения всего файла.
 > Указывай `offset` и `limit` при чтении: `Read(file, offset=LINE, limit=50)`
-> Дата: 2026-02-24 | Версия: 2.7.2 | 36 модулей | 72 API | 11 schedulers
+> Дата: 2026-02-25 | Версия: 2.7.3 | 37 модулей | 74 API | 11 schedulers
 
 ---
 
-## По модулю Flutter (36 штук)
+## По модулю Flutter (37 штук)
 
 | Модуль | ARCH (строка) | MAP (строка) | Файлов | Риск |
 |--------|--------------|-------------|--------|------|
@@ -64,7 +64,7 @@
 | Регистрация flow | 383 | Пошаговый flow с кодом |
 | Вход по PIN flow | 453 | Пошаговый flow с кодом |
 | Сброс PIN flow | 478 | Через Telegram OTP |
-| Модули Flutter (обзор) | 587 | Таблица 36 модулей |
+| Модули Flutter (обзор) | 587 | Таблица 37 модулей |
 | Модули Flutter (детально) | 632 | Описание каждого модуля |
 | Структура сервера (дерево) | 1129 | Полное дерево loyalty-proxy/ |
 | Все API endpoints (таблицы) | 1274 | 240+ endpoints с описаниями |
@@ -97,18 +97,18 @@
 | Core: BaseHttpService | 54 | Центральный сервис, влияние |
 | Core: BaseReportService | 68 | 5 отчётных модулей |
 | Core: ApiConstants | 82 | Эндпоинты |
-| Core сервисы (15 файлов) | 101 | Таблица: кто использует + влияние |
+| Core сервисы (16 файлов) | 101 | Таблица: кто использует + влияние |
 | Core утилиты (5 файлов) | 121 | CacheManager, Logger, PhoneNormalizer |
-| Модули по категориям | 139 | Группировка 36 модулей |
+| Модули по категориям | 139 | Группировка 37 модулей |
 | Зависимости каждого модуля | 219 | Файлы, API, зависимости, "ЕСЛИ ИЗМЕНИТЬ" |
 | Матрица влияния изменений | 1375 | Высший/Высокий/Средний/Низкий риск |
-| index.js (роутер) | 1431 | 71 API, middleware, WebSocket |
+| index.js (роутер) | 1431 | 74 API, middleware, WebSocket |
 | Schedulers (11 штук) | 1442 | Таблица с файлами |
 | Modules бэкенда (9 файлов) | 1458 | OCR, vision, orders, intelligence |
 | ML система (5 файлов) | 1472 | YOLO wrapper, inference, server, embeddings |
 | Utils бэкенда (15 файлов) | 1482 | db.js, async_fs, push_service и др. |
 | Admin Bot (Telegram) | 1502 | /ai_status, /ai_train, /ai_train_status |
-| Список API файлов (71) | 1519 | По категориям |
+| Список API файлов (74) | 1519 | По категориям |
 | PostgreSQL | 1539 | DB, dual-write, feature flags |
 | Хранилище /var/www | 1561 | 110+ директорий по категориям |
 | Общие модели данных | 1730 | Модели shared между модулями |
@@ -151,7 +151,7 @@
 
 | Файл | Риск | Влияние | Где подробности |
 |------|------|---------|-----------------|
-| `core/services/base_http_service.dart` | ВЫСШИЙ | ВСЕ 36 модулей | MAP:54 |
+| `core/services/base_http_service.dart` | ВЫСШИЙ | ВСЕ 37 модулей | MAP:54 |
 | `core/constants/api_constants.dart` | ВЫСШИЙ | Все с эндпоинтом | MAP:82 |
 | `features/auth/services/auth_service.dart` | ВЫСШИЙ | ВСЕ модули | MAP:221 |
 | `loyalty-proxy/index.js` | ВЫСШИЙ | ВСЕ API | MAP:1431 |

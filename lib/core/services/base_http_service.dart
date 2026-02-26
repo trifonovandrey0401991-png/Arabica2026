@@ -170,6 +170,68 @@ class BaseHttpService {
     }
   }
 
+  /// Получить список с метаданными пагинации.
+  ///
+  /// Возвращает [PaginatedResult<T>] с items + pagination info (total, hasNextPage, etc.).
+  /// Используется для страниц с кнопкой «Загрузить ещё».
+  static Future<PaginatedResult<T>> getListPaginated<T>({
+    required String endpoint,
+    required T Function(Map<String, dynamic>) fromJson,
+    required String listKey,
+    Map<String, String>? queryParams,
+    int page = 1,
+    int limit = 50,
+    Duration? timeout,
+  }) async {
+    await _acquireSlot();
+    try {
+      final mergedParams = <String, String>{
+        'page': '$page',
+        'limit': '$limit',
+      };
+      if (queryParams != null) mergedParams.addAll(queryParams);
+
+      final uri = Uri.parse('${ApiConstants.serverUrl}$endpoint')
+          .replace(queryParameters: mergedParams);
+
+      Logger.debug('📥 GET $endpoint (page=$page, limit=$limit)');
+
+      final response = await http
+          .get(uri, headers: ApiConstants.headersWithApiKey)
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final rawItems = result[listKey];
+          if (rawItems == null || rawItems is! List) {
+            return PaginatedResult.empty();
+          }
+          final list = rawItems
+              .map((json) => fromJson(json as Map<String, dynamic>))
+              .toList();
+
+          final pagination = result['pagination'] as Map<String, dynamic>?;
+          return PaginatedResult<T>(
+            items: list,
+            total: pagination?['total'] as int? ?? list.length,
+            page: pagination?['page'] as int? ?? page,
+            totalPages: pagination?['totalPages'] as int? ?? 1,
+            hasNextPage: pagination?['hasNextPage'] as bool? ?? false,
+          );
+        }
+      } else {
+        _logHttpError(response.statusCode, endpoint, response.body);
+      }
+      return PaginatedResult.empty();
+    } catch (e) {
+      Logger.error('❌ Paginated request failed for $endpoint', e);
+      return PaginatedResult.empty();
+    } finally {
+      _releaseSlot();
+    }
+  }
+
   /// Получить один элемент с сервера.
   ///
   /// [endpoint] - путь API с ID (например, '/api/tasks/123')
@@ -837,4 +899,30 @@ class HttpResult {
     this.error,
     this.data,
   });
+}
+
+/// Paginated result wrapper.
+/// Parses the `pagination` object from server response alongside the data list.
+class PaginatedResult<T> {
+  final List<T> items;
+  final int total;
+  final int page;
+  final int totalPages;
+  final bool hasNextPage;
+
+  const PaginatedResult({
+    required this.items,
+    required this.total,
+    required this.page,
+    required this.totalPages,
+    required this.hasNextPage,
+  });
+
+  factory PaginatedResult.empty() => PaginatedResult<T>(
+    items: [],
+    total: 0,
+    page: 1,
+    totalPages: 0,
+    hasNextPage: false,
+  );
 }

@@ -8,7 +8,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
 const { requireAuth, requireAdmin } = require('../utils/session_middleware');
@@ -140,11 +140,16 @@ function setupTestsAPI(app) {
   app.get('/api/test-questions', requireAuth, async (req, res) => {
     try {
       if (USE_DB) {
+        if (isPaginationRequested(req.query)) {
+          const result = await db.findAllPaginated('test_questions', {
+            orderBy: 'created_at', orderDir: 'ASC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(result, 'questions', r => r.data));
+        }
         const rows = await db.findAll('test_questions', { orderBy: 'created_at', orderDir: 'ASC' });
         const questions = rows.map(r => r.data);
-        if (isPaginationRequested(req.query)) {
-          return res.json(createPaginatedResponse(questions, req.query, 'questions'));
-        }
         return res.json({ success: true, questions });
       }
 

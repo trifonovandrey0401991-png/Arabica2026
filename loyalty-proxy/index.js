@@ -110,6 +110,8 @@ const { setupExecutionChainAPI } = require("./api/execution_chain_api");
 const { setupShopsAPI } = require('./api/shops_api');
 const { setupMenuAPI } = require('./api/menu_api');
 const { setupLoyaltyPromoAPI } = require('./api/loyalty_promo_api');
+const { setupLoyaltyWalletAPI } = require('./api/loyalty_wallet_api');
+const { setupShopCatalogAPI } = require('./api/shop_catalog_api');
 const { setupShopSettingsAPI } = require('./api/shop_settings_api');
 const { setupEfficiencyPenaltiesAPI } = require('./api/efficiency_penalties_api');
 const { setupDashboardBatchAPI } = require('./api/dashboard_batch_api');
@@ -668,6 +670,7 @@ app.use('/shift-photos', express.static(`${DATA_DIR}/shift-photos`));
 app.use('/product-question-photos', express.static(`${DATA_DIR}/product-question-photos`));
 app.use('/coffee-machine-photos', express.static(`${DATA_DIR}/coffee-machine-photos`));
 app.use('/messenger-media', express.static(`${DATA_DIR}/messenger-media`));
+app.use('/shop-product-photos', express.static(`${DATA_DIR}/shop-product-photos`));
 
 // Настройка multer для загрузки фото сотрудников
 const employeePhotoStorage = multer.diskStorage({
@@ -873,6 +876,8 @@ setupExecutionChainAPI(app);
 setupShopsAPI(app);
 setupMenuAPI(app);
 setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals });
+setupLoyaltyWalletAPI(app);
+setupShopCatalogAPI(app);
 setupShopSettingsAPI(app);
 setupEfficiencyPenaltiesAPI(app);
 setupDashboardBatchAPI(app);

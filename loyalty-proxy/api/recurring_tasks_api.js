@@ -12,7 +12,7 @@ const { getTaskPointsConfig } = require('./task_points_settings_api');
 const { sendPushToPhone, sendPushNotification } = require('./report_notifications_api');
 const { dbInsertPenalties } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_RECURRING_TASKS === 'true';
@@ -627,9 +627,56 @@ function setupRecurringTasksAPI(app) {
 
       // Определяем месяц для загрузки
       const month = yearMonth || getYearMonth(date || getToday());
+
+      // SQL-level pagination when DB is active
+      if (USE_DB && isPaginationRequested(req.query)) {
+        const conditions = [];
+        const params = [];
+        let idx = 1;
+
+        // Month range filter
+        conditions.push(`date >= ($${idx} || '-01')::date`);
+        params.push(month);
+        idx++;
+        conditions.push(`date < (($${idx} || '-01')::date + interval '1 month')`);
+        params.push(month);
+        idx++;
+
+        if (assigneeId) {
+          conditions.push(`assignee_id = $${idx}`);
+          params.push(assigneeId);
+          idx++;
+        }
+        if (assigneePhone) {
+          conditions.push(`assignee_phone = $${idx}`);
+          params.push(assigneePhone);
+          idx++;
+        }
+        if (date) {
+          conditions.push(`date = $${idx}::date`);
+          params.push(date);
+          idx++;
+        }
+        if (status) {
+          conditions.push(`status = $${idx}`);
+          params.push(status);
+          idx++;
+        }
+
+        const result = await db.findAllPaginated('recurring_task_instances', {
+          where: conditions.join(' AND '),
+          whereParams: params,
+          orderBy: 'created_at',
+          orderDir: 'DESC',
+          page: parseInt(req.query.page) || 1,
+          pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+        });
+        return res.json(createDbPaginatedResponse(result, 'instances', dbInstanceToCamel));
+      }
+
+      // Fallback: load all instances for month, filter in memory
       let instances = await loadInstances(month);
 
-      // Фильтрация
       if (assigneeId) {
         instances = instances.filter(i => i.assigneeId === assigneeId);
       }

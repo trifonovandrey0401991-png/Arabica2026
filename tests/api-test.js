@@ -315,6 +315,19 @@ const TESTS = [
   { path: '/api/loyalty-gamification/client-prizes-report', name: 'Loyalty prizes report', expectedType: 'object' },
 
   // =============================================
+  // LOYALTY WALLET — Кошелёк баллов (Фаза 1)
+  // =============================================
+  { path: '/api/loyalty/balance/79001234567', name: 'Loyalty wallet balance', expectedType: 'object' },
+  { path: '/api/loyalty/transactions/79001234567', name: 'Loyalty wallet transactions', expectedType: 'object' },
+
+  // =============================================
+  // SHOP CATALOG — Каталог товаров магазина
+  // =============================================
+  { path: '/api/shop-catalog/groups', name: 'Shop catalog groups', expectedType: 'object' },
+  { path: '/api/shop-catalog/products', name: 'Shop catalog products', expectedType: 'object' },
+  { path: '/api/shop-catalog/authorized-employees', name: 'Shop catalog authorized employees', expectedType: 'object' },
+
+  // =============================================
   // COFFEE MACHINE — Кофемашины (доп.)
   // =============================================
   { path: '/api/coffee-machine/failed', name: 'Coffee machine failed', expectedType: 'array' },

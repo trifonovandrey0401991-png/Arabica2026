@@ -9,7 +9,7 @@ const path = require('path');
 const multer = require('multer');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 const { compressUpload } = require('../utils/image_compress');
@@ -91,12 +91,18 @@ function setupRecipesAPI(app) {
       console.log('GET /api/recipes');
 
       if (USE_DB) {
+        if (isPaginationRequested(req.query)) {
+          const result = await db.findAllPaginated('recipes', {
+            orderBy: 'created_at', orderDir: 'DESC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          console.log(`✅ Найдено рецептов: ${result.total} (DB paginated)`);
+          return res.json(createDbPaginatedResponse(result, 'recipes', r => r.data));
+        }
         const rows = await db.findAll('recipes', { orderBy: 'created_at', orderDir: 'DESC' });
         const recipes = rows.map(r => r.data);
         console.log(`✅ Найдено рецептов: ${recipes.length} (DB)`);
-        if (isPaginationRequested(req.query)) {
-          return res.json(createPaginatedResponse(recipes, req.query, 'recipes'));
-        }
         return res.json({ success: true, recipes });
       }
 
@@ -177,7 +183,7 @@ function setupRecipesAPI(app) {
   // POST /api/recipes - создать новый рецепт
   app.post('/api/recipes', requireAuth, async (req, res) => {
     try {
-      const { name, category, price, ingredients, steps } = req.body;
+      const { name, category, price, pointsPrice, ingredients, steps } = req.body;
       console.log('POST /api/recipes:', name);
 
       if (!name || !category) {
@@ -190,6 +196,7 @@ function setupRecipesAPI(app) {
         name,
         category,
         price: price || '',
+        pointsPrice: pointsPrice != null ? parseInt(pointsPrice, 10) || 0 : null,
         ingredients: ingredients || '',
         steps: steps || '',
         createdAt: new Date().toISOString(),
@@ -233,6 +240,7 @@ function setupRecipesAPI(app) {
       if (updates.price !== undefined) recipe.price = updates.price;
       if (updates.ingredients !== undefined) recipe.ingredients = updates.ingredients;
       if (updates.steps !== undefined) recipe.steps = updates.steps;
+      if (updates.pointsPrice !== undefined) recipe.pointsPrice = updates.pointsPrice != null ? parseInt(updates.pointsPrice, 10) || 0 : null;
       if (updates.photoUrl !== undefined) recipe.photoUrl = updates.photoUrl;
       recipe.updatedAt = new Date().toISOString();
 

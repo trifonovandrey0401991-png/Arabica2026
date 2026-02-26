@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/client_model.dart';
 import '../services/client_service.dart';
@@ -6,6 +7,7 @@ import 'client_chat_page.dart';
 import 'admin_management_dialog_page.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/cache_manager.dart';
+import '../../../shared/widgets/load_more_button.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления клиентами
@@ -18,32 +20,58 @@ class ClientsManagementPage extends StatefulWidget {
 
 class _ClientsManagementPageState extends State<ClientsManagementPage> {
   List<Client> _clients = [];
-  List<Client> _filteredClients = [];
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  int _currentPage = 1;
+  int _totalClients = 0;
+  bool _hasMore = false;
+  String _searchQuery = '';
+  Timer? _searchDebounce;
   final TextEditingController _searchController = TextEditingController();
+
+  static const int _pageSize = 50;
 
   @override
   void initState() {
     super.initState();
     _loadClients();
-    _searchController.addListener(_filterClients);
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   static const _cacheKey = 'clients_list';
 
+  /// Sort clients: unread first, then by recent message, then alphabetically
+  void _sortClients(List<Client> clients) {
+    clients.sort((a, b) {
+      final aHasUnread = a.hasUnreadFromClient || a.hasUnreadManagement;
+      final bHasUnread = b.hasUnreadFromClient || b.hasUnreadManagement;
+      if (aHasUnread && !bHasUnread) return -1;
+      if (!aHasUnread && bHasUnread) return 1;
+      if (a.hasUnreadManagement && !b.hasUnreadManagement) return -1;
+      if (!a.hasUnreadManagement && b.hasUnreadManagement) return 1;
+      if (a.lastClientMessageTime != null && b.lastClientMessageTime != null) {
+        return b.lastClientMessageTime!.compareTo(a.lastClientMessageTime!);
+      }
+      if (a.lastClientMessageTime != null) return -1;
+      if (b.lastClientMessageTime != null) return 1;
+      return a.name.compareTo(b.name);
+    });
+  }
+
   Future<void> _loadClients() async {
-    // Step 1: Show cached data instantly
+    // Show cached data instantly
     final cached = CacheManager.get<List<Client>>(_cacheKey);
     if (cached != null && mounted) {
       setState(() {
         _clients = cached;
-        _filteredClients = cached;
+        _totalClients = cached.length;
         _isLoading = false;
       });
     }
@@ -51,30 +79,23 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
     if (_clients.isEmpty && mounted) setState(() => _isLoading = true);
 
     try {
-      final clients = await ClientService.getClients();
-      // Сортируем: клиенты с непрочитанными сообщениями сверху
-      clients.sort((a, b) {
-        final aHasUnread = a.hasUnreadFromClient || a.hasUnreadManagement;
-        final bHasUnread = b.hasUnreadFromClient || b.hasUnreadManagement;
-        if (aHasUnread && !bHasUnread) return -1;
-        if (!aHasUnread && bHasUnread) return 1;
-        if (a.hasUnreadManagement && !b.hasUnreadManagement) return -1;
-        if (!a.hasUnreadManagement && b.hasUnreadManagement) return 1;
-        if (a.lastClientMessageTime != null && b.lastClientMessageTime != null) {
-          return b.lastClientMessageTime!.compareTo(a.lastClientMessageTime!);
-        }
-        if (a.lastClientMessageTime != null) return -1;
-        if (b.lastClientMessageTime != null) return 1;
-        return a.name.compareTo(b.name);
-      });
+      _currentPage = 1;
+      final result = await ClientService.getClientsPaginated(
+        page: 1,
+        limit: _pageSize,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+      );
       if (!mounted) return;
+      _sortClients(result.items);
       setState(() {
-        _clients = clients;
-        _filteredClients = clients;
+        _clients = result.items;
+        _totalClients = result.total;
+        _hasMore = result.hasNextPage;
         _isLoading = false;
       });
-      // Step 3: Save to cache
-      CacheManager.set(_cacheKey, clients);
+      if (_searchQuery.isEmpty) {
+        CacheManager.set(_cacheKey, result.items);
+      }
     } catch (e) {
       if (!mounted) return;
       if (_clients.isEmpty) setState(() => _isLoading = false);
@@ -89,21 +110,37 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
     }
   }
 
-  void _filterClients() {
-    final query = _searchController.text.toLowerCase().trim();
-    if (query.isEmpty) {
-      if (mounted) setState(() {
-        _filteredClients = _clients;
-      });
-      return;
-    }
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasMore) return;
+    if (mounted) setState(() => _isLoadingMore = true);
 
-    if (mounted) setState(() {
-      _filteredClients = _clients.where((client) {
-        final nameMatch = client.name.toLowerCase().contains(query);
-        final phoneMatch = client.phone.toLowerCase().contains(query);
-        return nameMatch || phoneMatch;
-      }).toList();
+    try {
+      final nextPage = _currentPage + 1;
+      final result = await ClientService.getClientsPaginated(
+        page: nextPage,
+        limit: _pageSize,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+      );
+      if (!mounted) return;
+      setState(() {
+        _currentPage = nextPage;
+        _clients.addAll(result.items);
+        _hasMore = result.hasNextPage;
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingMore = false);
+    }
+  }
+
+  void _onSearchChanged() {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      final query = _searchController.text.trim();
+      if (query == _searchQuery) return;
+      _searchQuery = query;
+      _loadClients();
     });
   }
 
@@ -196,6 +233,13 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                       badge: client.hasUnreadManagement ? 'NEW' : null,
                       onTap: () => Navigator.pop(context, 'management'),
                     ),
+                    Divider(color: Colors.white.withOpacity(0.08), height: 1),
+                    _buildActionTile(
+                      icon: Icons.storefront,
+                      color: client.isWholesale ? Colors.orange : Colors.white54,
+                      title: client.isWholesale ? 'Убрать флаг «Опт»' : 'Сделать оптовым',
+                      onTap: () => Navigator.pop(context, 'toggle_wholesale'),
+                    ),
                   ],
                 ),
               ),
@@ -211,6 +255,8 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
       await _openChat(client);
     } else if (action == 'management') {
       await _openManagementChat(client);
+    } else if (action == 'toggle_wholesale') {
+      await _toggleWholesale(client);
     }
   }
 
@@ -285,6 +331,37 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
     );
     // После возврата обновляем список
     _loadClients();
+  }
+
+  Future<void> _toggleWholesale(Client client) async {
+    final newValue = !client.isWholesale;
+    final ok = await ClientService.updateWholesaleStatus(phone: client.phone, isWholesale: newValue);
+    if (ok) {
+      // Update local list
+      final idx = _clients.indexWhere((c) => c.phone == client.phone);
+      if (idx >= 0 && mounted) {
+        setState(() {
+          _clients[idx] = Client(
+            phone: client.phone,
+            name: client.name,
+            fcmToken: client.fcmToken,
+            hasUnreadFromClient: client.hasUnreadFromClient,
+            hasUnreadManagement: client.hasUnreadManagement,
+            lastClientMessageTime: client.lastClientMessageTime,
+            lastManagementMessageTime: client.lastManagementMessageTime,
+            freeDrinksGiven: client.freeDrinksGiven,
+            loyaltyPoints: client.loyaltyPoints,
+            totalPointsEarned: client.totalPointsEarned,
+            isWholesale: newValue,
+          );
+        });
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(newValue ? 'Клиент отмечен как оптовый' : 'Флаг «Опт» снят')),
+        );
+      }
+    }
   }
 
   Future<void> _showSendMessageDialog(Client? client) async {
@@ -418,7 +495,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                         border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                       ),
                       child: Text(
-                        '${_filteredClients.length}',
+                        '$_totalClients',
                         style: TextStyle(
                           color: AppColors.gold,
                           fontSize: 13.sp,
@@ -447,7 +524,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                           strokeWidth: 2,
                         ),
                       )
-                    : _filteredClients.isEmpty
+                    : _clients.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -467,16 +544,16 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                 ),
                                 SizedBox(height: 16),
                                 Text(
-                                  _clients.isEmpty
-                                      ? 'Нет клиентов'
-                                      : 'Клиенты не найдены',
+                                  _searchQuery.isNotEmpty
+                                      ? 'Клиенты не найдены'
+                                      : 'Нет клиентов',
                                   style: TextStyle(
                                     fontSize: 18.sp,
                                     color: Colors.white.withOpacity(0.7),
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                if (_clients.isEmpty) ...[
+                                if (_searchQuery.isEmpty) ...[
                                   SizedBox(height: 8),
                                   Text(
                                     'Клиенты появятся после регистрации',
@@ -491,9 +568,17 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                           )
                         : ListView.builder(
                             padding: EdgeInsets.symmetric(horizontal: 16.w),
-                            itemCount: _filteredClients.length,
+                            itemCount: _clients.length + (_hasMore ? 1 : 0),
                             itemBuilder: (context, index) {
-                              final client = _filteredClients[index];
+                              if (index == _clients.length) {
+                                return LoadMoreButton(
+                                  currentCount: _clients.length,
+                                  totalCount: _totalClients,
+                                  isLoading: _isLoadingMore,
+                                  onLoadMore: _loadMore,
+                                );
+                              }
+                              final client = _clients[index];
                               final hasUnread = client.hasUnreadFromClient || client.hasUnreadManagement;
 
                               return Container(
@@ -679,6 +764,32 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                         ],
                                                       ),
                                                     ),
+                                                    if (client.isWholesale) ...[
+                                                      SizedBox(width: 6),
+                                                      Container(
+                                                        padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.orange.withOpacity(0.15),
+                                                          borderRadius: BorderRadius.circular(8.r),
+                                                          border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                                                        ),
+                                                        child: Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            Icon(Icons.storefront, size: 11, color: Colors.orange),
+                                                            SizedBox(width: 3),
+                                                            Text(
+                                                              'Опт',
+                                                              style: TextStyle(
+                                                                color: Colors.orange,
+                                                                fontSize: 11.sp,
+                                                                fontWeight: FontWeight.bold,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ],
                                                 ),
                                                 if (hasUnread) ...[

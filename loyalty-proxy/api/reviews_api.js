@@ -9,7 +9,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { writeJsonFile } = require('../utils/async_fs');
 const { notifyCounterUpdate } = require('./counters_websocket');
 const db = require('../utils/db');
@@ -57,6 +57,21 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
       let reviews;
 
       if (USE_DB) {
+        // SQL-level pagination
+        if (isPaginationRequested(req.query)) {
+          const where = phone ? 'client_phone = $1' : undefined;
+          const whereParams = phone ? [phone] : undefined;
+          const result = await db.findAllPaginated('reviews', {
+            where,
+            whereParams,
+            orderBy: 'created_at',
+            orderDir: 'DESC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(result, 'reviews', dbReviewToCamel));
+        }
+
         let query = 'SELECT * FROM reviews';
         const params = [];
 

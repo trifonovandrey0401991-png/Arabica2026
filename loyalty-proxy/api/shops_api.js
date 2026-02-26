@@ -8,7 +8,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const dataCache = require('../utils/data_cache');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
@@ -43,8 +43,15 @@ function setupShopsAPI(app) {
       let shops;
 
       if (USE_DB) {
+        if (isPaginationRequested(req.query)) {
+          const result = await db.findAllPaginated('shops', {
+            orderBy: 'created_at', orderDir: 'ASC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(result, 'shops', dbShopToCamel));
+        }
         shops = await db.findAll('shops', { orderBy: 'created_at', orderDir: 'ASC' });
-        // Преобразуем snake_case → camelCase для совместимости с Flutter
         shops = shops.map(dbShopToCamel);
       } else {
         // SCALABILITY: Используем кэш если доступен

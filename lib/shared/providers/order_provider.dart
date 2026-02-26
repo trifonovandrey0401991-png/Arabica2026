@@ -20,6 +20,7 @@ class Order {
   final String? clientPhone; // Телефон клиента
   final String? clientName; // Имя клиента
   final String? shopAddress; // Адрес магазина
+  final bool isWholesaleOrder; // Оптовый заказ
 
   Order({
     required this.id,
@@ -36,16 +37,19 @@ class Order {
     this.clientPhone,
     this.clientName,
     this.shopAddress,
+    this.isWholesaleOrder = false,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'items': items.map((item) => {
-        'name': item.menuItem.name,
-        'price': item.menuItem.price,
+        'name': item.name,
+        'price': item.unitPrice.toString(),
         'quantity': item.quantity,
         'total': item.totalPrice,
+        'type': item.type.name,
+        'paymentMethod': item.paymentMethod.name,
       }).toList(),
       'totalPrice': totalPrice,
       'createdAt': createdAt.toIso8601String(),
@@ -58,6 +62,7 @@ class Order {
       'clientPhone': clientPhone,
       'clientName': clientName,
       'shopAddress': shopAddress,
+      'isWholesaleOrder': isWholesaleOrder,
     };
   }
 
@@ -82,6 +87,7 @@ class Order {
       clientPhone: json['clientPhone'] as String?,
       clientName: json['clientName'] as String?,
       shopAddress: json['shopAddress'] as String?,
+      isWholesaleOrder: json['isWholesaleOrder'] == true,
     );
   }
 }
@@ -115,8 +121,8 @@ class OrderProvider with ChangeNotifier {
   Future<void> createOrder(List<CartItem> items, double totalPrice, {String? comment, String? shopAddress}) async {
     if (items.isEmpty) return;
 
-    // Используем переданный shopAddress, иначе пытаемся взять из первого товара
-    final effectiveShopAddress = shopAddress ?? items.first.menuItem.shop;
+    // Используем переданный shopAddress, иначе пытаемся взять из первого напитка
+    final effectiveShopAddress = shopAddress ?? items.first.menuItem?.shop ?? '';
     
     // Получаем данные клиента
     final prefs = await SharedPreferences.getInstance();
@@ -172,6 +178,7 @@ class OrderProvider with ChangeNotifier {
         clientPhone: order.clientPhone,
         clientName: order.clientName,
         shopAddress: order.shopAddress,
+        isWholesaleOrder: order.isWholesaleOrder,
       );
       notifyListeners();
     }
@@ -197,6 +204,7 @@ class OrderProvider with ChangeNotifier {
         clientPhone: order.clientPhone,
         clientName: order.clientName,
         shopAddress: order.shopAddress,
+        isWholesaleOrder: order.isWholesaleOrder,
       );
       notifyListeners();
     }
@@ -222,6 +230,7 @@ class OrderProvider with ChangeNotifier {
         clientPhone: order.clientPhone,
         clientName: order.clientName,
         shopAddress: order.shopAddress,
+        isWholesaleOrder: order.isWholesaleOrder,
       );
       notifyListeners();
     }
@@ -247,6 +256,7 @@ class OrderProvider with ChangeNotifier {
         clientPhone: order.clientPhone,
         clientName: order.clientName,
         shopAddress: order.shopAddress,
+        isWholesaleOrder: order.isWholesaleOrder,
       );
       notifyListeners();
     }

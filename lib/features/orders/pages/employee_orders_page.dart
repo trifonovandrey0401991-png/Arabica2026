@@ -174,6 +174,7 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
     final comment = order['comment'] as String?;
     final createdAt = order['createdAt'];
     final timeAgo = _formatTime(createdAt);
+    final isWholesale = order['isWholesaleOrder'] == true;
 
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
@@ -224,19 +225,43 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Номер заказа + цена
+                      // Номер заказа + бейдж Опт + цена
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            orderNumber != null
-                                ? 'Заказ #$orderNumber'
-                                : 'Заказ',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16.sp,
-                              color: Colors.white.withOpacity(0.9),
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                orderNumber != null
+                                    ? 'Заказ #$orderNumber'
+                                    : 'Заказ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16.sp,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                              ),
+                              if (isWholesale) ...[
+                                SizedBox(width: 8.w),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(6.r),
+                                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                                  ),
+                                  child: Text(
+                                    'Опт',
+                                    style: TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 11.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                           Text(
                             '${_formatPrice(totalPrice)} \u20BD',

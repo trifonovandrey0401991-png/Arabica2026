@@ -9,7 +9,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 
@@ -84,7 +84,30 @@ function setupBonusPenaltiesAPI(app, { sendPushToPhone } = {}) {
             params.push(employeeId);
           }
 
-          const sql = `SELECT * FROM bonus_penalties WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC`;
+          const where = conditions.join(' AND ');
+
+          // SQL-level pagination
+          if (isPaginationRequested(req.query)) {
+            const [paginatedResult, totalResult] = await Promise.all([
+              db.findAllPaginated('bonus_penalties', {
+                where,
+                whereParams: params,
+                orderBy: 'created_at',
+                orderDir: 'DESC',
+                page: parseInt(req.query.page) || 1,
+                pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+              }),
+              db.query(
+                `SELECT COALESCE(SUM(CASE WHEN type = 'bonus' THEN amount ELSE -amount END), 0) AS total FROM bonus_penalties WHERE ${where}`,
+                params
+              ),
+            ]);
+            const response = createDbPaginatedResponse(paginatedResult, 'records', dbToCamel);
+            response.total = parseFloat(totalResult.rows[0].total);
+            return res.json(response);
+          }
+
+          const sql = `SELECT * FROM bonus_penalties WHERE ${where} ORDER BY created_at DESC`;
           const result = await db.query(sql, params);
           const records = result.rows.map(dbToCamel);
 
@@ -97,11 +120,6 @@ function setupBonusPenaltiesAPI(app, { sendPushToPhone } = {}) {
             }
           });
 
-          if (isPaginationRequested(req.query)) {
-            const paginated = createPaginatedResponse(records, req.query, 'records');
-            paginated.total = total;
-            return res.json(paginated);
-          }
           return res.json({ success: true, records, total });
         } catch (dbErr) {
           console.error('DB bonus-penalties read error:', dbErr.message);

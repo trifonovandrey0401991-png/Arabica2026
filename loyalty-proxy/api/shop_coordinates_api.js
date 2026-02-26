@@ -9,7 +9,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 
@@ -38,11 +38,16 @@ function setupShopCoordinatesAPI(app) {
       console.log('GET /api/shop-coordinates');
 
       if (USE_DB) {
+        if (isPaginationRequested(req.query)) {
+          const result = await db.findAllPaginated('shop_coordinates', {
+            orderBy: 'created_at', orderDir: 'ASC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(result, 'coordinates', r => r.data));
+        }
         const rows = await db.findAll('shop_coordinates', { orderBy: 'created_at', orderDir: 'ASC' });
         const coordinates = rows.map(r => r.data);
-        if (isPaginationRequested(req.query)) {
-          return res.json(createPaginatedResponse(coordinates, req.query, 'coordinates'));
-        }
         return res.json({ success: true, coordinates });
       }
 

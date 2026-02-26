@@ -72,9 +72,15 @@ import '../../features/execution_chain/services/execution_chain_service.dart';
 import '../../features/execution_chain/models/execution_chain_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../core/theme/app_colors.dart';
+import '../../features/shop_catalog/pages/shop_catalog_page.dart';
+import '../../features/shop_catalog/services/shop_catalog_service.dart';
+import '../../features/orders/pages/wholesale_orders_page.dart';
 
 class MainMenuPage extends StatefulWidget {
-  const MainMenuPage({super.key});
+  /// Если передан forceRole — страница отображается в режиме этой роли (для предпросмотра)
+  final UserRole? forceRole;
+
+  const MainMenuPage({super.key, this.forceRole});
 
   @override
   State<MainMenuPage> createState() => _MainMenuPageState();
@@ -91,6 +97,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
 
   // Поля для бейджей сотрудника
   int _pendingOrdersCount = 0;
+  int _wholesalePendingCount = 0;
   int _unreadProductQuestionsCount = 0;
   int _activeTasksCount = 0;
   int _availableSpins = 0;
@@ -107,6 +114,10 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
   // Кэш цепочки выполнений (обновляется каждые 30 секунд)
   ExecutionChainStatus? _chainStatus;
   DateTime? _chainStatusLoadedAt;
+
+  // Авторизация для опт-заказов
+  bool _isWholesaleAuthorized = false;
+  String? _phone;
 
   // WebSocket live counters
   StreamSubscription<CounterUpdateEvent>? _countersSub;
@@ -149,6 +160,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
     _loadMyDialogsCount();
     _loadMessengerUnreadCount();
     _loadEmployeeCounters();
+    _loadWholesaleAuth();
 
     // ФАЗА 3: Фоновые данные (не видны сразу)
     await Future.delayed(Duration(milliseconds: 300));
@@ -224,6 +236,9 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
       case 'pendingOrders':
         _loadPendingOrdersCount();
         break;
+      case 'wholesaleOrders':
+        _loadWholesalePendingCount();
+        break;
       case 'activeTaskAssignments':
         if (_employeeId != null) _loadActiveTasksCount(_employeeId);
         break;
@@ -262,6 +277,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         if (mounted) setState(() {
           _totalReportsCount = counters.totalPendingReports;
           _pendingOrdersCount = counters.pendingOrders;
+          _wholesalePendingCount = counters.wholesalePendingOrders;
           _activeTasksCount = counters.activeTaskAssignments;
         });
       }
@@ -322,6 +338,16 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
       if (mounted) setState(() => _pendingOrdersCount = orders.length);
     } catch (e) {
       Logger.error('Ошибка загрузки счётчика заказов', e);
+    }
+  }
+
+  Future<void> _loadWholesalePendingCount() async {
+    try {
+      final orders = await OrderService.getAllOrders(status: 'pending');
+      final count = orders.where((o) => o['isWholesaleOrder'] == true).length;
+      if (mounted) setState(() => _wholesalePendingCount = count);
+    } catch (e) {
+      Logger.error('Ошибка загрузки счётчика опт-заказов', e);
     }
   }
 
@@ -495,6 +521,22 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
     }
   }
 
+  /// Проверить, авторизован ли текущий сотрудник для просмотра опт-заказов
+  Future<void> _loadWholesaleAuth() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('user_phone');
+      if (phone == null || phone.isEmpty) return;
+      if (mounted) setState(() => _phone = phone);
+
+      final employees = await ShopCatalogService.getAuthorizedEmployees();
+      final authorized = employees.any((e) => e['phone'] == phone);
+      if (mounted) setState(() => _isWholesaleAuthorized = authorized);
+    } catch (e) {
+      Logger.warning('Ошибка проверки опт-авторизации: $e');
+    }
+  }
+
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -549,10 +591,11 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
 
   @override
   Widget build(BuildContext context) {
-    final role = _userRole?.role ?? UserRole.client;
+    // forceRole позволяет девелоперу открыть экран в режиме другой роли
+    final role = widget.forceRole ?? (_userRole?.role ?? UserRole.client);
 
-    // Админ и управляющий сразу видят ManagerGridPage
-    if (role == UserRole.admin || role == UserRole.manager) {
+    // Админ и управляющий сразу видят ManagerGridPage (только если не forceRole)
+    if (widget.forceRole == null && (role == UserRole.admin || role == UserRole.manager)) {
       return ManagerGridPage(
         isHomePage: true,
         userName: _userName,
@@ -634,51 +677,77 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
             ),
           ),
         ),
-        // Кнопка мессенджера под сеткой
+        // Чат + Магазин — одна строка, фирменный изумрудный
         Padding(
           padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 16.h),
           child: SizedBox(
-            width: double.infinity,
             height: 48,
-            child: Stack(
-              clipBehavior: Clip.none,
+            child: Row(
               children: [
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      await Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage()));
-                      _loadMessengerUnreadCount();
-                    },
-                    icon: const Icon(Icons.chat_rounded, size: 22),
-                    label: const Text('Чат', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.emerald,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      elevation: 2,
+                // Чат (с бейджем непрочитанных)
+                Expanded(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            await Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage()));
+                            _loadMessengerUnreadCount();
+                          },
+                          icon: const Icon(Icons.chat_rounded, size: 20),
+                          label: const Text('Чат', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.emerald,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            elevation: 2,
+                          ),
+                        ),
+                      ),
+                      if (_messengerUnreadCount > 0)
+                        Positioned(
+                          right: 4,
+                          top: -6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                            child: Text(
+                              _messengerUnreadCount > 99 ? '99+' : '$_messengerUnreadCount',
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                // Магазин
+                Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => ShopCatalogPage()));
+                      },
+                      icon: const Icon(Icons.storefront_rounded, size: 20),
+                      label: const Text('Магазин', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.emeraldLight,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 2,
+                      ),
                     ),
                   ),
                 ),
-                if (_messengerUnreadCount > 0)
-                  Positioned(
-                    right: 8,
-                    top: -6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                      child: Text(
-                        _messengerUnreadCount > 99 ? '99+' : '$_messengerUnreadCount',
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -720,7 +789,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                 'Панель сотрудника',
                 'Функции сотрудника',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeePanelPage())),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => MainMenuPage(forceRole: UserRole.employee))),
               ),
               SizedBox(height: spacing),
               _buildAdminRow(
@@ -728,7 +797,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                 'Клиент',
                 'Клиентские функции',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientFunctionsPage())),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => MainMenuPage(forceRole: UserRole.client))),
               ),
             ],
           );
@@ -809,7 +878,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                 'Панель сотрудника',
                 'Функции сотрудника',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeePanelPage())),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => MainMenuPage(forceRole: UserRole.employee))),
               ),
               SizedBox(height: spacing),
               _buildAdminRow(
@@ -817,7 +886,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                 'Клиент',
                 'Клиентские функции',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientFunctionsPage())),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => MainMenuPage(forceRole: UserRole.client))),
               ),
               SizedBox(height: spacing),
               _buildAdminRow(
@@ -988,6 +1057,8 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
               SizedBox(height: aiButtonTopMargin),
               if (showMainCash)
                 _buildAITrainingWithCashRow(aiButtonHeight)
+              else if (_isWholesaleAuthorized)
+                _buildAITrainingWithWholesaleRow(aiButtonHeight)
               else
                 _buildAITrainingButton(aiButtonHeight),
             ],
@@ -1044,79 +1115,97 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
 
   /// Кнопка для Обучения ИИ - выделяется, но вписывается в дизайн
   Widget _buildAITrainingButton([double height = 52]) {
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.emeraldLight.withOpacity(0.8),
-            AppColors.emerald,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(
-          color: AppColors.turquoise.withOpacity(0.6), // Бирюзовый акцент
-          width: 1.5,
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16.r),
-        child: InkWell(
-          onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => AITrainingPage()));
-          },
+    final borderColor = AppColors.turquoise.withOpacity(0.35);
+
+    Widget buildBtn({
+      required IconData icon,
+      required String label,
+      String? badge,
+      Color badgeColor = AppColors.turquoise,
+      required VoidCallback onTap,
+      List<Color>? gradientColors,
+    }) {
+      final gradient = gradientColors ??
+          [AppColors.emeraldLight.withOpacity(0.85), AppColors.emerald];
+      return Container(
+        height: height,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(16.r),
-          splashColor: Colors.white.withOpacity(0.2),
-          highlightColor: Colors.white.withOpacity(0.1),
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
+          border: Border.all(color: borderColor, width: 1.5),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16.r),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16.r),
+            splashColor: Colors.white.withOpacity(0.15),
+            highlightColor: Colors.white.withOpacity(0.08),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.smart_toy_outlined,
-                  color: Colors.white.withOpacity(0.9),
-                  size: 24,
-                ),
-                SizedBox(width: 10),
+                Icon(icon, color: Colors.white.withOpacity(0.9), size: 20),
+                SizedBox(width: 6),
                 Text(
-                  'Обучение ИИ',
+                  label,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.95),
-                    fontSize: 15.sp,
+                    fontSize: 14.sp,
                     fontWeight: FontWeight.w500,
-                    letterSpacing: 0.5,
                   ),
                 ),
-                SizedBox(width: 8),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                  decoration: BoxDecoration(
-                    color: AppColors.turquoise.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(6.r),
-                    border: Border.all(
-                      color: AppColors.turquoise.withOpacity(0.5),
-                      width: 1,
+                if (badge != null) ...[
+                  SizedBox(width: 5),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
+                    decoration: BoxDecoration(
+                      color: badgeColor.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(5.r),
+                      border: Border.all(color: badgeColor.withOpacity(0.5), width: 1),
+                    ),
+                    child: Text(
+                      badge,
+                      style: TextStyle(
+                        color: badgeColor,
+                        fontSize: 9.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                  child: Text(
-                    'AI',
-                    style: TextStyle(
-                      color: AppColors.turquoise,
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
+                ],
               ],
             ),
           ),
         ),
-      ),
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: buildBtn(
+            icon: Icons.smart_toy_outlined,
+            label: 'ИИ',
+            badge: 'AI',
+            badgeColor: AppColors.turquoise,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AITrainingPage())),
+          ),
+        ),
+        SizedBox(width: 8),
+        Expanded(
+          child: buildBtn(
+            icon: Icons.storefront_outlined,
+            label: 'Магазин',
+            gradientColors: [AppColors.emerald, AppColors.emeraldDark],
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ShopCatalogPage())),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1245,6 +1334,156 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
     );
   }
 
+  /// Строка: ИИ + Магазин + Опт — три кнопки в фирменном изумрудном цвете
+  Widget _buildAITrainingWithWholesaleRow(double height) {
+    const borderRadius = 14.0;
+    final borderColor = AppColors.turquoise.withOpacity(0.35);
+
+    Widget buildBtn({
+      required IconData icon,
+      required String label,
+      String? badge,
+      Color badgeColor = AppColors.turquoise,
+      required VoidCallback onTap,
+      List<Color>? gradientColors,
+      Widget? counter,
+    }) {
+      final gradient = gradientColors ??
+          [AppColors.emeraldLight.withOpacity(0.85), AppColors.emerald];
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            height: height,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: gradient,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(borderRadius.r),
+              border: Border.all(color: borderColor, width: 1.5),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(borderRadius.r),
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(borderRadius.r),
+                splashColor: Colors.white.withOpacity(0.15),
+                highlightColor: Colors.white.withOpacity(0.08),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, color: Colors.white.withOpacity(0.9), size: 18),
+                    SizedBox(width: 5),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.95),
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (badge != null) ...[
+                      SizedBox(width: 4),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(5.r),
+                          border: Border.all(color: badgeColor.withOpacity(0.5), width: 1),
+                        ),
+                        child: Text(
+                          badge,
+                          style: TextStyle(
+                            color: badgeColor,
+                            fontSize: 9.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (counter != null) counter,
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        // ИИ
+        Expanded(
+          child: buildBtn(
+            icon: Icons.smart_toy_outlined,
+            label: 'ИИ',
+            badge: 'AI',
+            badgeColor: AppColors.turquoise,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AITrainingPage())),
+          ),
+        ),
+        SizedBox(width: 6),
+        // Магазин
+        Expanded(
+          child: buildBtn(
+            icon: Icons.storefront_outlined,
+            label: 'Магазин',
+            gradientColors: [AppColors.emerald, AppColors.emeraldDark],
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ShopCatalogPage(isWholesale: true)),
+            ),
+          ),
+        ),
+        SizedBox(width: 6),
+        // Опт (с живым счётчиком)
+        Expanded(
+          child: buildBtn(
+            icon: Icons.inventory_2_outlined,
+            label: 'Опт',
+            badge: 'ОПТ',
+            badgeColor: AppColors.gold,
+            gradientColors: [AppColors.emeraldLight.withOpacity(0.7), AppColors.deepEmerald],
+            onTap: () async {
+              if (mounted) setState(() => _wholesalePendingCount = 0);
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => WholesaleOrdersPage(employeePhone: _phone ?? '')),
+              );
+              _loadWholesalePendingCount();
+            },
+            counter: _wholesalePendingCount > 0
+                ? Positioned(
+                    top: -6,
+                    right: -6,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10.r),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                      child: Text(
+                        _wholesalePendingCount > 99 ? '99+' : '$_wholesalePendingCount',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildHeader() {
     final showRating = _employeeRating != null &&
         _employeeRating!.position > 0 &&
@@ -1262,36 +1501,55 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
       padding: EdgeInsets.fromLTRB(24, isEmployee ? 8 : 16, 24, isEmployee ? 8 : 20),
       child: Column(
         children: [
-          // Одна строка: бейджи | логотип | кнопки
+          // Строка шапки: логотип ВСЕГДА строго по центру, бейджи и кнопки по краям
           SizedBox(
             height: btnSize,
-            child: Row(
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                // Левая часть - бейджи
-                if (showRating || showEfficiency)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (showRating) SizedBox(height: btnSize, child: _buildRatingBadge()),
-                      if (showRating && showEfficiency) SizedBox(width: 4),
-                      if (showEfficiency) SizedBox(height: btnSize, child: _buildEfficiencyBadge()),
-                    ],
-                  ),
-
-                // Центр - логотип (занимает оставшееся пространство)
-                Expanded(
-                  child: Center(
-                    child: Image.asset(
-                      'assets/images/arabica_logo.png',
-                      height: btnSize,
-                      fit: BoxFit.contain,
-                    ),
+                // Логотип — абсолютный центр, независимо от ширины бейджей и кнопок
+                Center(
+                  child: Image.asset(
+                    'assets/images/arabica_logo.png',
+                    height: btnSize,
+                    fit: BoxFit.contain,
                   ),
                 ),
 
-                // Правая часть - кнопки
+                // Бейджи (левый край) и кнопки (правый край) поверх логотипа
                 Row(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Левая часть — кнопка назад (режим предпросмотра) или бейджи
+                    if (widget.forceRole != null)
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: btnSize,
+                          height: btnSize,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.1),
+                            border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+                          ),
+                          child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white.withOpacity(0.9), size: iconSize),
+                        ),
+                      )
+                    else if (showRating || showEfficiency)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (showRating) SizedBox(height: btnSize, child: _buildRatingBadge()),
+                          if (showRating && showEfficiency) SizedBox(width: 4),
+                          if (showEfficiency) SizedBox(height: btnSize, child: _buildEfficiencyBadge()),
+                        ],
+                      )
+                    else
+                      SizedBox.shrink(),
+
+                    // Правая часть - кнопки
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
                   children: [
                     // Кнопка обновления
                     if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer)
@@ -1429,11 +1687,13 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
           ),
+        ),
 
           SizedBox(height: isEmployee ? 8 : 20),
 

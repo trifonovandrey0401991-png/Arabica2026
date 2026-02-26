@@ -776,5 +776,61 @@ CREATE INDEX IF NOT EXISTS idx_cigarette_samples_type ON cigarette_samples(type)
 CREATE INDEX IF NOT EXISTS idx_cigarette_samples_shop ON cigarette_samples(shop_address);
 
 -- ============================================
--- Готово. Таблицы: ~50
+-- ВОЛНА 8: Кошелёк лояльности + Магазин
+-- ============================================
+
+-- Добавляем поля кошелька и опт-флаг в clients
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS loyalty_points INTEGER DEFAULT 0;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS total_points_earned INTEGER DEFAULT 0;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS is_wholesale BOOLEAN DEFAULT false;
+
+-- Таблица транзакций лояльности (история начислений/списаний)
+CREATE TABLE IF NOT EXISTS loyalty_transactions (
+  id TEXT PRIMARY KEY,
+  client_phone TEXT NOT NULL,
+  type TEXT NOT NULL,         -- 'earn', 'spend', 'bonus'
+  amount INTEGER NOT NULL,    -- positive = earn, negative = spend
+  balance_after INTEGER NOT NULL,
+  description TEXT,
+  source_type TEXT,           -- 'qr_scan', 'drink_redemption', 'shop_purchase', 'wheel_prize'
+  source_id TEXT,
+  employee_phone TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_loyalty_tx_phone ON loyalty_transactions(client_phone);
+CREATE INDEX IF NOT EXISTS idx_loyalty_tx_date ON loyalty_transactions(created_at);
+
+-- Таблица товаров магазина
+CREATE TABLE IF NOT EXISTS shop_products (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  group_id TEXT,
+  price_retail NUMERIC,
+  price_wholesale NUMERIC,
+  price_points INTEGER,
+  photos JSONB DEFAULT '[]',
+  is_active BOOLEAN DEFAULT true,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_shop_products_group ON shop_products(group_id);
+CREATE INDEX IF NOT EXISTS idx_shop_products_active ON shop_products(is_active);
+
+-- Таблица групп товаров магазина
+CREATE TABLE IF NOT EXISTS shop_product_groups (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  visibility TEXT DEFAULT 'all',     -- 'all' | 'wholesale_only'
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Флаг оптового заказа в orders
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_wholesale_order BOOLEAN DEFAULT false;
+
+-- ============================================
+-- Готово. Таблицы: ~53
 -- ============================================

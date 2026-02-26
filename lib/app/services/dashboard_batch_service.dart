@@ -6,12 +6,14 @@ import '../../core/utils/logger.dart';
 class DashboardCounters {
   final int totalPendingReports;
   final int pendingOrders;
+  final int wholesalePendingOrders;
   final int activeTaskAssignments;
   final int unreadReviews;
 
   const DashboardCounters({
     this.totalPendingReports = 0,
     this.pendingOrders = 0,
+    this.wholesalePendingOrders = 0,
     this.activeTaskAssignments = 0,
     this.unreadReviews = 0,
   });
@@ -43,6 +45,7 @@ class DashboardBatchService {
       return DashboardCounters(
         totalPendingReports: (counters['totalPendingReports'] as num?)?.toInt() ?? 0,
         pendingOrders: (counters['pendingOrders'] as num?)?.toInt() ?? 0,
+        wholesalePendingOrders: (counters['wholesalePendingOrders'] as num?)?.toInt() ?? 0,
         activeTaskAssignments: (counters['activeTaskAssignments'] as num?)?.toInt() ?? 0,
         unreadReviews: (counters['unreadReviews'] as num?)?.toInt() ?? 0,
       );

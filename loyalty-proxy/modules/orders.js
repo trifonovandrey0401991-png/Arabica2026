@@ -13,6 +13,9 @@ const { sendPushNotification } = require('../api/report_notifications_api');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile, withLock } = require('../utils/async_fs');
 const db = require('../utils/db');
+const { spendPoints, getBalance } = require('../api/loyalty_wallet_api');
+const { loadAuthorizedEmployees } = require('../api/shop_catalog_api');
+const { loadShopManagers } = require('../api/shop_managers_api');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const USE_DB = process.env.USE_DB_ORDERS === 'true';
@@ -46,6 +49,7 @@ function dbOrderToCamel(row) {
     rejectionReason: row.rejection_reason,
     rejectedAt: row.rejected_at,
     expiredAt: row.expired_at,
+    isWholesaleOrder: row.is_wholesale_order || false,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -199,6 +203,17 @@ async function createOrder(orderData) {
   const orderId = uuidv4();
   const now = new Date().toISOString();
 
+  // Check if client is wholesale
+  let isWholesaleOrder = false;
+  if (orderData.clientPhone) {
+    try {
+      const balance = await getBalance(orderData.clientPhone);
+      isWholesaleOrder = balance.isWholesale || false;
+    } catch (e) {
+      console.error('⚠️ Could not check wholesale status:', e.message);
+    }
+  }
+
   let order;
 
   if (USE_DB) {
@@ -212,6 +227,7 @@ async function createOrder(orderData) {
       total_price: orderData.totalPrice,
       comment: orderData.comment || null,
       status: 'pending',
+      is_wholesale_order: isWholesaleOrder,
       created_at: now,
       updated_at: now
     });
@@ -227,6 +243,7 @@ async function createOrder(orderData) {
       totalPrice: orderData.totalPrice,
       comment: orderData.comment || null,
       status: 'pending',
+      isWholesaleOrder,
       createdAt: now,
       updatedAt: now,
       acceptedBy: null,
@@ -239,6 +256,20 @@ async function createOrder(orderData) {
   }
 
   await addOrderToDialog(order);
+
+  // Списание баллов за товары, оплаченные баллами
+  if (orderData.totalPointsPrice > 0 && orderData.clientPhone) {
+    try {
+      await spendPoints(orderData.clientPhone, orderData.totalPointsPrice, {
+        sourceType: 'shop_purchase',
+        sourceId: orderId,
+        description: `Заказ #${orderNumber} — оплата баллами`,
+      });
+      console.log(`💰 Списано ${orderData.totalPointsPrice} баллов с ${orderData.clientPhone} за заказ #${orderNumber}`);
+    } catch (e) {
+      console.error(`⚠️ Ошибка списания баллов за заказ #${orderNumber}:`, e.message);
+    }
+  }
 
   // Отправляем push уведомления всем сотрудникам о новом заказе
   await sendNewOrderNotificationToEmployees(order);
@@ -330,7 +361,7 @@ async function updateOrderStatus(orderId, updates) {
       }
 
       // Boy Scout: fsp.writeFile → writeJsonFile
-      await writeJsonFile(orderFile, data);
+      await writeJsonFile(orderFile, data, { useLock: false }); // already inside withLock
       return data;
     });
   }
@@ -381,39 +412,77 @@ async function sendOrderNotification(order, type) {
   }, 'orders_channel');
 }
 
-// Отправка push уведомления всем верифицированным сотрудникам о новом заказе
+// Отправка push уведомления о новом заказе
+// Обычные заказы → всем верифицированным сотрудникам
+// Оптовые заказы → только уполномоченным сотрудникам + разработчикам
 async function sendNewOrderNotificationToEmployees(order) {
   try {
+    const isWholesale = order.isWholesaleOrder || false;
+
     // Получаем верифицированных из employee_registrations
     const registrations = await db.findAll('employee_registrations');
-    const verifiedPhones = new Set();
-    for (const reg of registrations) {
-      const data = reg.data || {};
-      if (data.isVerified === true) {
+    let targetPhones = new Set();
+
+    if (isWholesale) {
+      // Оптовый заказ: push только уполномоченным + разработчикам
+      const authorizedEmployees = await loadAuthorizedEmployees();
+      const authorizedPhones = new Set(authorizedEmployees.map(e => e.phone));
+
+      // Добавить разработчиков из shop-managers напрямую (на случай если не в registrations)
+      try {
+        const smData = await loadShopManagers();
+        for (const devPhone of (smData.developers || [])) {
+          const cleaned = (devPhone || '').replace(/[^\d]/g, '');
+          if (cleaned) targetPhones.add(cleaned);
+        }
+      } catch (e) {
+        console.error('Ошибка загрузки разработчиков для push:', e.message);
+      }
+
+      for (const reg of registrations) {
+        const data = reg.data || {};
+        if (data.isVerified !== true) continue;
         const phone = (data.phone || '').replace(/[^\d]/g, '');
-        if (phone) verifiedPhones.add(phone);
+        if (!phone) continue;
+
+        // Уполномоченный или разработчик
+        if (authorizedPhones.has(phone) || data.role === 'developer') {
+          targetPhones.add(phone);
+        }
+      }
+    } else {
+      // Обычный заказ: push всем верифицированным
+      for (const reg of registrations) {
+        const data = reg.data || {};
+        if (data.isVerified === true) {
+          const phone = (data.phone || '').replace(/[^\d]/g, '');
+          if (phone) targetPhones.add(phone);
+        }
       }
     }
 
-    const title = 'Новый заказ ' + order.orderNumber;
+    const wholesaleLabel = isWholesale ? ' (ОПТ)' : '';
+    const title = 'Новый заказ ' + order.orderNumber + wholesaleLabel;
     const body = order.clientName + ' - ' + order.shopAddress;
-    const data = {
+    const pushData = {
       type: 'new_order',
       orderId: order.id,
       orderNumber: String(order.orderNumber),
       shopAddress: order.shopAddress,
       clientName: order.clientName,
-      totalPrice: String(order.totalPrice)
+      totalPrice: String(order.totalPrice),
+      isWholesaleOrder: String(isWholesale)
     };
 
     let sentCount = 0;
-    for (const phone of verifiedPhones) {
-      const success = await pushService.sendPushToPhone(phone, title, body, data, 'orders_channel');
+    for (const phone of targetPhones) {
+      const success = await pushService.sendPushToPhone(phone, title, body, pushData, 'orders_channel');
       if (success) sentCount++;
     }
 
     if (sentCount > 0) {
-      console.log('Push о новом заказе #' + order.orderNumber + ' отправлен ' + sentCount + ' сотрудникам');
+      const scope = isWholesale ? 'уполномоченным' : 'сотрудникам';
+      console.log(`Push о новом заказе #${order.orderNumber}${wholesaleLabel} отправлен ${sentCount} ${scope}`);
     }
   } catch (err) {
     console.error('Ошибка отправки push сотрудникам:', err.message);

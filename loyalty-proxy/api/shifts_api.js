@@ -11,7 +11,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { getMoscowTime } = require('../utils/moscow_time');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { withLock } = require('../utils/file_lock');
 const { writeJsonFile } = require('../utils/async_fs');
 const { notifyCounterUpdate } = require('./counters_websocket');
@@ -249,40 +249,52 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
       if (USE_DB_SHIFTS) {
         try {
-          let sql = 'SELECT * FROM shift_reports WHERE 1=1';
-          const params = [];
+          // Build WHERE conditions for filters
+          const conditions = [];
+          const whereParams = [];
           let paramIdx = 1;
 
           if (employeeName) {
-            sql += ` AND employee_name = $${paramIdx++}`;
-            params.push(employeeName);
+            conditions.push(`employee_name = $${paramIdx++}`);
+            whereParams.push(employeeName);
           }
           if (shopAddress) {
-            sql += ` AND shop_address = $${paramIdx++}`;
-            params.push(shopAddress);
+            conditions.push(`shop_address = $${paramIdx++}`);
+            whereParams.push(shopAddress);
           }
           if (date) {
-            sql += ` AND (date = $${paramIdx} OR (created_at AT TIME ZONE 'Europe/Moscow')::date = $${paramIdx}::date)`;
-            params.push(date);
+            conditions.push(`(date = $${paramIdx} OR (created_at AT TIME ZONE 'Europe/Moscow')::date = $${paramIdx}::date)`);
+            whereParams.push(date);
             paramIdx++;
           }
           if (status) {
-            sql += ` AND status = $${paramIdx++}`;
-            params.push(status);
+            conditions.push(`status = $${paramIdx++}`);
+            whereParams.push(status);
           }
           if (shiftType) {
-            sql += ` AND shift_type = $${paramIdx++}`;
-            params.push(shiftType);
+            conditions.push(`shift_type = $${paramIdx++}`);
+            whereParams.push(shiftType);
           }
 
-          sql += ' ORDER BY created_at DESC';
+          const where = conditions.length > 0 ? conditions.join(' AND ') : undefined;
 
-          const result = await db.query(sql, params);
-          const reports = result.rows.map(dbShiftReportToCamel);
-
+          // SQL-level pagination
           if (isPaginationRequested(req.query)) {
-            return res.json(createPaginatedResponse(reports, req.query, 'reports'));
+            const result = await db.findAllPaginated('shift_reports', {
+              where,
+              whereParams: whereParams.length > 0 ? whereParams : undefined,
+              orderBy: 'created_at',
+              orderDir: 'DESC',
+              page: parseInt(req.query.page) || 1,
+              pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+            });
+            return res.json(createDbPaginatedResponse(result, 'reports', dbShiftReportToCamel));
           }
+
+          // Non-paginated: return all matching
+          const sql = 'SELECT * FROM shift_reports' + (where ? ` WHERE ${where}` : '') + ' ORDER BY created_at DESC';
+          const result = await db.query(sql, whereParams);
+          const reports = result.rows.map(dbShiftReportToCamel);
           return res.json({ success: true, reports });
         } catch (dbErr) {
           console.error('[Shifts] DB read error, falling back to files:', dbErr.message);
@@ -440,7 +452,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
             ...(req.body.aiVerificationPassed !== undefined && { aiVerificationPassed: req.body.aiVerificationPassed }),
           };
           result = reports[pendingIndex];
-          await saveTodayReports(reports);
+          await writeJsonFile(todayFile, reports, { useLock: false }); // already inside withLock
 
           // DB dual-write
           if (USE_DB_SHIFTS) {
@@ -474,7 +486,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
             ...(req.body.aiVerificationPassed !== undefined && { aiVerificationPassed: req.body.aiVerificationPassed }),
           };
           reports.push(report);
-          await saveTodayReports(reports);
+          await writeJsonFile(todayFile, reports, { useLock: false }); // already inside withLock
           result = report;
 
           // DB dual-write
@@ -766,26 +778,42 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       let reports;
 
       if (USE_DB_HANDOVER) {
-        let query = 'SELECT * FROM shift_handover_reports WHERE 1=1';
+        const whereParts = ['1=1'];
         const params = [];
         let paramIdx = 1;
 
         if (req.query.employeeName) {
-          query += ` AND employee_name = $${paramIdx++}`;
+          whereParts.push(`employee_name = $${paramIdx++}`);
           params.push(req.query.employeeName);
         }
         if (req.query.shopAddress) {
-          query += ` AND shop_address = $${paramIdx++}`;
+          whereParts.push(`shop_address = $${paramIdx++}`);
           params.push(req.query.shopAddress);
         }
         if (req.query.date) {
-          query += ` AND date = $${paramIdx++}`;
+          whereParts.push(`date = $${paramIdx++}`);
           params.push(req.query.date);
         }
 
-        query += ' ORDER BY created_at DESC';
+        const whereClause = whereParts.join(' AND ');
 
-        const result = await db.query(query, params);
+        // SQL-level pagination when requested
+        if (isPaginationRequested(req.query)) {
+          const countResult = await db.query(`SELECT COUNT(*) FROM shift_handover_reports WHERE ${whereClause}`, params);
+          const total = parseInt(countResult.rows[0].count);
+          const page = parseInt(req.query.page) || 1;
+          const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+          const offset = (page - 1) * limit;
+          const result = await db.query(`SELECT * FROM shift_handover_reports WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`, params);
+          const totalPages = Math.ceil(total / limit);
+          return res.json({
+            success: true,
+            reports: result.rows.map(dbHandoverReportToCamel),
+            pagination: { page, limit, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 }
+          });
+        }
+
+        const result = await db.query(`SELECT * FROM shift_handover_reports WHERE ${whereClause} ORDER BY created_at DESC`, params);
         reports = result.rows.map(dbHandoverReportToCamel);
       } else {
         reports = [];
@@ -833,6 +861,9 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
         });
       }
 
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(reports, req.query, 'reports'));
+      }
       res.json({ success: true, reports });
     } catch (error) {
       console.error('Ошибка получения отчетов сдачи смены:', error);

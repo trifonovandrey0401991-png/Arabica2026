@@ -10,7 +10,7 @@ const path = require('path');
 const multer = require('multer');
 const express = require('express');
 const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
@@ -69,11 +69,16 @@ function setupTrainingAPI(app) {
   app.get('/api/training-articles', requireAuth, async (req, res) => {
     try {
       if (USE_DB) {
+        if (isPaginationRequested(req.query)) {
+          const result = await db.findAllPaginated('training_articles', {
+            orderBy: 'created_at', orderDir: 'DESC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(result, 'articles', r => r.data));
+        }
         const rows = await db.findAll('training_articles', { orderBy: 'created_at', orderDir: 'DESC' });
         const articles = rows.map(r => r.data);
-        if (isPaginationRequested(req.query)) {
-          return res.json(createPaginatedResponse(articles, req.query, 'articles'));
-        }
         return res.json({ success: true, articles });
       }
 

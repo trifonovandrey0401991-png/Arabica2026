@@ -9,7 +9,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, sanitizeId, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 const { notifyCounterUpdate } = require('./counters_websocket');
@@ -197,15 +197,32 @@ function setupWithdrawalsAPI(app) {
       const { shopAddress, type, fromDate, toDate } = req.query;
 
       if (USE_DB) {
+        // SQL-level pagination with filters
+        if (isPaginationRequested(req.query)) {
+          const conditions = [];
+          const params = [];
+          let idx = 1;
+          if (shopAddress) { conditions.push(`data->>'shopAddress' = $${idx++}`); params.push(shopAddress); }
+          if (type) { conditions.push(`data->>'type' = $${idx++}`); params.push(type); }
+          if (fromDate) { conditions.push(`created_at >= $${idx++}::timestamptz`); params.push(fromDate); }
+          if (toDate) { conditions.push(`created_at <= $${idx++}::timestamptz`); params.push(toDate); }
+
+          const result = await db.findAllPaginated('withdrawals', {
+            where: conditions.length > 0 ? conditions.join(' AND ') : undefined,
+            whereParams: params.length > 0 ? params : undefined,
+            orderBy: 'created_at', orderDir: 'DESC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(result, 'withdrawals', r => r.data));
+        }
+
         const rows = await db.findAll('withdrawals', { orderBy: 'created_at', orderDir: 'DESC' });
         let withdrawals = rows.map(r => r.data);
         if (shopAddress) withdrawals = withdrawals.filter(w => w.shopAddress === shopAddress);
         if (type) withdrawals = withdrawals.filter(w => w.type === type);
         if (fromDate) { const from = new Date(fromDate); withdrawals = withdrawals.filter(w => new Date(w.createdAt) >= from); }
         if (toDate) { const to = new Date(toDate); withdrawals = withdrawals.filter(w => new Date(w.createdAt) <= to); }
-        if (isPaginationRequested(req.query)) {
-          return res.json(createPaginatedResponse(withdrawals, req.query, 'withdrawals'));
-        }
         return res.json({ success: true, withdrawals });
       }
 

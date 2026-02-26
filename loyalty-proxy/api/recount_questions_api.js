@@ -10,7 +10,7 @@ const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_RECOUNT_QUESTIONS === 'true';
@@ -32,11 +32,16 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
       console.log('GET /api/recount-questions:', req.query);
 
       if (USE_DB) {
+        if (isPaginationRequested(req.query)) {
+          const result = await db.findAllPaginated('recount_questions', {
+            orderBy: 'created_at', orderDir: 'ASC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(result, 'questions', r => r.data));
+        }
         const rows = await db.findAll('recount_questions', { orderBy: 'created_at', orderDir: 'ASC' });
         const questions = rows.map(r => r.data);
-        if (isPaginationRequested(req.query)) {
-          return res.json(createPaginatedResponse(questions, req.query, 'questions'));
-        }
         return res.json({ success: true, questions });
       }
 

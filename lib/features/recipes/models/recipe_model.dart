@@ -11,6 +11,7 @@ class Recipe {
   final String steps;       // Последовательность приготовления
   final String? recipe;     // Старое поле (рецепт) для обратной совместимости
   final String? price;      // Цена напитка
+  final int? pointsPrice;   // Цена в баллах лояльности
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -24,6 +25,7 @@ class Recipe {
     required this.steps,
     this.recipe,
     this.price,
+    this.pointsPrice,
     this.createdAt,
     this.updatedAt,
   });
@@ -40,6 +42,7 @@ class Recipe {
       steps: json['steps'] ?? '',
       recipe: json['recipe'], // Для обратной совместимости
       price: json['price'],
+      pointsPrice: json['pointsPrice'] != null ? (json['pointsPrice'] is int ? json['pointsPrice'] : int.tryParse(json['pointsPrice'].toString())) : null,
       createdAt: json['createdAt'] != null 
           ? DateTime.parse(json['createdAt']) 
           : null,
@@ -59,6 +62,7 @@ class Recipe {
       'ingredients': ingredients,
       'steps': steps,
       'price': price,
+      if (pointsPrice != null) 'pointsPrice': pointsPrice,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };

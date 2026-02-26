@@ -13,6 +13,8 @@ import 'loyalty_promo_management_page.dart';
 import 'client_wheel_page.dart';
 import 'pending_prize_page.dart';
 import '../../employees/services/user_role_service.dart';
+import 'drink_redemption_page.dart';
+import '../../shop_catalog/pages/shop_catalog_page.dart';
 import '../../employees/models/user_role_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -186,6 +188,12 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   _qrCard(info),
+                                  // Баланс кошелька
+                                  SizedBox(height: 16),
+                                  _walletBalanceCard(info),
+                                  // Две кнопки: Бесплатный напиток + В магазин
+                                  SizedBox(height: 16),
+                                  _actionButtonsRow(),
                                   // Уровень клиента
                                   if (_gamificationData != null) ...[
                                     SizedBox(height: 16),
@@ -202,10 +210,6 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                                     else
                                       _wheelCard(),
                                   ],
-                                  SizedBox(height: 16),
-                                  _pointsCard(info),
-                                  SizedBox(height: 16),
-                                  _freeDrinksCard(info),
                                   if (info.promoText.isNotEmpty) ...[
                                     SizedBox(height: 16),
                                     _promoCard(info.promoText),
@@ -401,193 +405,190 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     );
   }
 
-  Widget _pointsCard(LoyaltyInfo info) {
-    final pointsRequired = info.pointsRequired;
-    final drinksToGive = info.drinksToGive;
-
+  Widget _walletBalanceCard(LoyaltyInfo info) {
     return Container(
       padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: Colors.white.withOpacity(0.15)),
+        border: Border.all(color: Color(0xFFD4AF37).withOpacity(0.4)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFD4AF37).withOpacity(0.15),
+            Color(0xFFD4AF37).withOpacity(0.05),
+          ],
+        ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Баллы',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white.withOpacity(0.9),
-                ),
-              ),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFD4AF37), Color(0xFFB8960C)],
+                  ),
                   borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
                 ),
-                child: Text(
-                  '$pointsRequired + $drinksToGive',
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
+                child: Icon(Icons.account_balance_wallet, color: Colors.white, size: 28),
               ),
-            ],
-          ),
-          SizedBox(height: 12),
-          Text(
-            'Собрано: ${info.points}/$pointsRequired',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: Colors.white.withOpacity(0.7),
-            ),
-          ),
-          SizedBox(height: 8),
-          Container(
-            height: 6,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(3.r),
-              color: Colors.white.withOpacity(0.1),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: pointsRequired > 0
-                  ? (info.points.clamp(0, pointsRequired)) / pointsRequired
-                  : 0.0,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(3.r),
-                  color: info.readyForRedeem
-                      ? Color(0xFFFF9800)
-                      : Colors.white.withOpacity(0.7),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: 16),
-          if (pointsRequired > 0)
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: List.generate(pointsRequired, (index) {
-                final active = index < info.points;
-                return Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: active
-                        ? Colors.white.withOpacity(0.8)
-                        : Colors.white.withOpacity(0.1),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(active ? 0.9 : 0.2),
-                    ),
-                  ),
-                  child: active
-                      ? Icon(
-                          Icons.star_rounded,
-                          size: 14,
-                          color: AppColors.emerald,
-                        )
-                      : null,
-                );
-              }),
-            ),
-          if (info.readyForRedeem)
-            Padding(
-              padding: EdgeInsets.only(top: 16.h),
-              child: Container(
-                padding: EdgeInsets.all(12.w),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12.r),
-                  color: Color(0xFFFF9800).withOpacity(0.15),
-                  border: Border.all(
-                    color: Color(0xFFFF9800).withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.card_giftcard_outlined,
-                      color: Color(0xFFFF9800),
-                      size: 22,
+                    Text(
+                      'Ваши баллы',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
                     ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Баллов достаточно для $drinksToGive бесплатн${drinksToGive > 1 ? "ых напитков" : "ого напитка"}. Покажите код сотруднику.',
-                        style: TextStyle(
-                          color: Color(0xFFFF9800),
-                          fontSize: 13.sp,
-                        ),
+                    SizedBox(height: 2),
+                    Text(
+                      '${info.loyaltyPoints}',
+                      style: TextStyle(
+                        fontSize: 32.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFD4AF37),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Всего накоплено',
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                  Text(
+                    '${info.totalPointsEarned}',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _freeDrinksCard(LoyaltyInfo info) {
-    return Container(
-      padding: EdgeInsets.all(20.w),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: Colors.white.withOpacity(0.15)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12.r),
-              color: Colors.white.withOpacity(0.1),
-            ),
-            child: Icon(
-              Icons.local_cafe_outlined,
-              color: Colors.white.withOpacity(0.8),
-              size: 24,
+  Widget _actionButtonsRow() {
+    return Row(
+      children: [
+        // Кнопка «Бесплатный напиток»
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const DrinkRedemptionPage()));
+            },
+            child: Container(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16.r),
+                border: Border.all(color: Color(0xFFFF9800).withOpacity(0.4)),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFFFF9800).withOpacity(0.15),
+                    Color(0xFFFF9800).withOpacity(0.05),
+                  ],
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFFFF9800), Color(0xFFE65100)],
+                      ),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Icon(Icons.local_cafe, color: Colors.white, size: 28),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'Бесплатный\nнапиток',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withOpacity(0.9),
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Бесплатные напитки',
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
+        ),
+        SizedBox(width: 12),
+        // Кнопка «В магазин»
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => ShopCatalogPage()));
+            },
+            child: Container(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16.r),
+                border: Border.all(color: Color(0xFF4CAF50).withOpacity(0.4)),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF4CAF50).withOpacity(0.15),
+                    Color(0xFF4CAF50).withOpacity(0.05),
+                  ],
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Выдано: ${info.freeDrinks}',
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    color: Colors.white.withOpacity(0.6),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                      ),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Icon(Icons.storefront, color: Colors.white, size: 28),
                   ),
-                ),
-              ],
+                  SizedBox(height: 10),
+                  Text(
+                    'В магазин',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withOpacity(0.9),
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -688,9 +689,9 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                   ),
                 ),
                 SizedBox(height: 4),
-                if (data.drinksToNextLevel != null && data.nextLevel != null)
+                if (data.pointsToNextLevel != null && data.nextLevel != null)
                   Text(
-                    'До "${data.nextLevel!.name}": ${data.drinksToNextLevel} напитков',
+                    'До "${data.nextLevel!.name}": ${data.pointsToNextLevel} баллов',
                     style: TextStyle(
                       fontSize: 13.sp,
                       color: Colors.white.withOpacity(0.7),
@@ -717,8 +718,9 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     final data = _gamificationData!;
     final settings = _gamificationSettings!;
 
-    // Прогресс: сколько напитков собрано к следующей прокрутке
-    final currentProgress = settings.wheel.freeDrinksPerSpin - data.drinksToNextSpin;
+    // Прогресс: сколько баллов собрано к следующей прокрутке
+    final pointsPerSpin = settings.wheel.freeDrinksPerSpin * 10;
+    final currentProgressPoints = pointsPerSpin - data.pointsToNextSpin;
 
     return GestureDetector(
       onTap: _openWheelPage,
@@ -770,7 +772,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                   Text(
                     data.wheelSpinsAvailable > 0
                         ? 'Доступно прокруток: ${data.wheelSpinsAvailable}'
-                        : 'До прокрутки: ${data.drinksToNextSpin} напитков ($currentProgress/${settings.wheel.freeDrinksPerSpin})',
+                        : 'До прокрутки: ${data.pointsToNextSpin} баллов ($currentProgressPoints/$pointsPerSpin)',
                     style: TextStyle(
                       fontSize: 13.sp,
                       color: data.wheelSpinsAvailable > 0

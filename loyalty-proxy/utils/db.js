@@ -196,6 +196,94 @@ async function count(table, filters = {}) {
 }
 
 /**
+ * Получить записи с пагинацией + общее число записей
+ * Выполняет COUNT(*) и SELECT LIMIT/OFFSET параллельно
+ *
+ * @param {string} table
+ * @param {Object} options - все опции findAll + page/pageSize
+ * @param {number} options.page - номер страницы (1-based, default 1)
+ * @param {number} options.pageSize - записей на страницу (default 50, max 200)
+ * @returns {Promise<{rows, total, page, pageSize, totalPages, hasNextPage, hasPrevPage}>}
+ */
+async function findAllPaginated(table, options = {}) {
+  const {
+    page = 1,
+    pageSize = 50,
+    ...findOptions
+  } = options;
+
+  const safePage = Math.max(page, 1);
+  const safePageSize = Math.min(Math.max(pageSize, 1), 200);
+  const offset = (safePage - 1) * safePageSize;
+
+  // Parallel: count total + fetch one page
+  const [total, rows] = await Promise.all([
+    _countWithWhere(table, findOptions),
+    findAll(table, { ...findOptions, limit: safePageSize, offset }),
+  ]);
+
+  const totalPages = Math.ceil(total / safePageSize);
+
+  return {
+    rows,
+    total,
+    page: safePage,
+    pageSize: safePageSize,
+    totalPages,
+    hasNextPage: safePage < totalPages,
+    hasPrevPage: safePage > 1,
+  };
+}
+
+/**
+ * Подсчёт записей с поддержкой where/whereParams (для findAllPaginated)
+ * @private
+ */
+async function _countWithWhere(table, options = {}) {
+  const { filters = {}, where = null, whereParams = [] } = options;
+
+  const conditions = [];
+  const params = [];
+  let paramIndex = 1;
+
+  for (const [col, val] of Object.entries(filters)) {
+    if (val === null) {
+      conditions.push(`${escapeColumn(col)} IS NULL`);
+    } else if (Array.isArray(val)) {
+      conditions.push(`${escapeColumn(col)} = ANY($${paramIndex})`);
+      params.push(val);
+      paramIndex++;
+    } else {
+      conditions.push(`${escapeColumn(col)} = $${paramIndex}`);
+      params.push(val);
+      paramIndex++;
+    }
+  }
+
+  if (where) {
+    let adjustedWhere = where;
+    for (let i = whereParams.length; i >= 1; i--) {
+      adjustedWhere = adjustedWhere.replace(
+        new RegExp(`\\$${i}`, 'g'),
+        `$${paramIndex + i - 1}`
+      );
+    }
+    conditions.push(`(${adjustedWhere})`);
+    params.push(...whereParams);
+  }
+
+  const whereClause = conditions.length > 0
+    ? 'WHERE ' + conditions.join(' AND ')
+    : '';
+
+  const result = await query(
+    `SELECT COUNT(*) as cnt FROM ${escapeTable(table)} ${whereClause}`,
+    params
+  );
+  return parseInt(result.rows[0].cnt, 10);
+}
+
+/**
  * Вставить или обновить запись (UPSERT)
  * Аналог: writeJsonFile(path.join(dir, id + '.json'), data)
  *
@@ -426,6 +514,7 @@ module.exports = {
   query,
   findById,
   findAll,
+  findAllPaginated,
   count,
   upsert,
   insert,

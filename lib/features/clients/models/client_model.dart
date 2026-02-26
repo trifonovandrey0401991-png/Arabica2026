@@ -8,6 +8,9 @@ class Client {
   final String? lastClientMessageTime;
   final String? lastManagementMessageTime;
   final int freeDrinksGiven;  // Количество выданных бесплатных напитков
+  final int loyaltyPoints;    // Баланс кошелька баллов
+  final int totalPointsEarned; // Всего заработано баллов
+  final bool isWholesale;     // Оптовый клиент
 
   Client({
     required this.phone,
@@ -18,6 +21,9 @@ class Client {
     this.lastClientMessageTime,
     this.lastManagementMessageTime,
     this.freeDrinksGiven = 0,
+    this.loyaltyPoints = 0,
+    this.totalPointsEarned = 0,
+    this.isWholesale = false,
   });
 
   /// Создать Client из JSON
@@ -31,6 +37,9 @@ class Client {
       lastClientMessageTime: json['lastClientMessageTime'],
       lastManagementMessageTime: json['lastManagementMessageTime'],
       freeDrinksGiven: json['freeDrinksGiven'] ?? 0,
+      loyaltyPoints: json['loyaltyPoints'] ?? 0,
+      totalPointsEarned: json['totalPointsEarned'] ?? 0,
+      isWholesale: json['isWholesale'] ?? false,
     );
   }
 
@@ -45,8 +54,9 @@ class Client {
       if (lastClientMessageTime != null) 'lastClientMessageTime': lastClientMessageTime,
       if (lastManagementMessageTime != null) 'lastManagementMessageTime': lastManagementMessageTime,
       'freeDrinksGiven': freeDrinksGiven,
+      'loyaltyPoints': loyaltyPoints,
+      'totalPointsEarned': totalPointsEarned,
+      'isWholesale': isWholesale,
     };
   }
 }
-
-

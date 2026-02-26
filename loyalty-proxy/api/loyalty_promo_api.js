@@ -21,9 +21,10 @@ function setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals } = {}) {
   app.get('/api/loyalty-promo', requireAuth, async (req, res) => {
     try {
       let settings = {
-        promoText: 'При покупке 9 напитков 10-й бесплатно',
+        promoText: 'Копите баллы и обменивайте на напитки и товары!',
         pointsRequired: 9,
         drinksToGive: 1,
+        pointsPerScan: 10,  // New: how many loyalty points per QR scan
         success: true
       };
 
@@ -46,7 +47,7 @@ function setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals } = {}) {
   // POST /api/loyalty-promo - сохранить настройки акции (только админ)
   app.post('/api/loyalty-promo', requireAuth, async (req, res) => {
     try {
-      const { promoText, pointsRequired, drinksToGive, employeePhone } = req.body;
+      const { promoText, pointsRequired, drinksToGive, pointsPerScan, employeePhone } = req.body;
 
       // Проверка на админа или разработчика
       const normalizedPhone = (employeePhone || '').replace(/[^\d]/g, '');
@@ -62,6 +63,7 @@ function setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals } = {}) {
         promoText: promoText || '',
         pointsRequired: parseInt(pointsRequired) || 9,
         drinksToGive: parseInt(drinksToGive) || 1,
+        pointsPerScan: parseInt(pointsPerScan) || 10,
         updatedAt: new Date().toISOString(),
         updatedBy: normalizedPhone
       };

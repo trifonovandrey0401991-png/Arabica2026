@@ -584,7 +584,7 @@ class AuthCredentials {
 
 # 4. FLUTTER МОДУЛИ
 
-## 4.1 Обзор модулей (36 штук)
+## 4.1 Обзор модулей (37 штук)
 
 | # | Модуль | Директория | Роли | Статус | Описание |
 |---|--------|------------|------|--------|----------|
@@ -1132,7 +1132,7 @@ messenger/
 loyalty-proxy/
 ├── index.js                              # Точка входа (middleware, schedulers, routes, PUBLIC_WRITE_PATHS)
 │
-├── api/                                  # 71 API модулей (включая schedulers и notifications)
+├── api/                                  # 74 API модуля (включая schedulers и notifications)
 │   │
 │   │── CORE API ──────────────────────────────────────────────────
 │   ├── auth_api.js                       # Авторизация

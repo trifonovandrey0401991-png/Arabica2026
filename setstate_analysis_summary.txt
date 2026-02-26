@@ -1,0 +1,119 @@
+====================================================================================================
+UNGUARDED setState() CALLS - SUMMARY BY MODULE
+====================================================================================================
+
+MODULE                                   FILES      CALLS      AVG/FILE  
+----------------------------------------------------------------------------------------------------
+app                                      6          45         7.5       
+features/ai_training                     13         92         7.1       
+features/attendance                      3          8          2.7       
+features/auth                            7          28         4.0       
+features/bonuses                         1          5          5.0       
+features/clients                         9          32         3.6       
+features/coffee_machine                  7          30         4.3       
+features/data_cleanup                    2          6          3.0       
+features/efficiency                      22         100        4.5       
+features/employee_chat                   6          57         9.5       
+features/employees                       6          23         3.8       
+features/envelope                        5          31         6.2       
+features/execution_chain                 1          8          8.0       
+features/fortune_wheel                   3          15         5.0       
+features/job_application                 2          5          2.5       
+features/kpi                             5          15         3.0       
+features/loyalty                         8          39         4.9       
+features/main_cash                       7          40         5.7       
+features/menu                            1          1          1.0       
+features/network_management              1          1          1.0       
+features/orders                          5          6          1.2       
+features/product_questions               11         53         4.8       
+features/rating                          1          1          1.0       
+features/recipes                         3          9          3.0       
+features/recount                         6          44         7.3       
+features/referrals                       3          17         5.7       
+features/reviews                         5          6          1.2       
+features/rko                             6          37         6.2       
+features/shift_handover                  3          37         12.3      
+features/shifts                          5          43         8.6       
+features/shops                           2          20         10.0      
+features/suppliers                       1          2          2.0       
+features/tasks                           11         43         3.9       
+features/tests                           4          33         8.2       
+features/training                        3          20         6.7       
+features/work_schedule                   5          23         4.6       
+shared                                   5          23         4.6       
+----------------------------------------------------------------------------------------------------
+TOTAL                                    194        998        5.1       
+====================================================================================================
+
+====================================================================================================
+TOP 20 FILES WITH MOST UNGUARDED setState CALLS
+====================================================================================================
+
+FILE                                                                   CALLS     
+----------------------------------------------------------------------------------------------------
+features\employee_chat\pages\group_info_page.dart                      23        
+features\shift_handover\pages\shift_handover_questions_management_page.dart 22        
+features\shifts\pages\shift_questions_management_page.dart             21        
+features\employee_chat\pages\employee_chat_page.dart                   18        
+features\envelope\pages\envelope_form_page.dart                        17        
+features\rko\pages\rko_shop_reports_page.dart                          17        
+features\recount\pages\recount_questions_page.dart                     16        
+app\pages\reports_page.dart                                            15        
+features\ai_training\widgets\region_selector_widget.dart               14        
+features\main_cash\pages\revenue_analytics_page.dart                   14        
+features\tests\pages\test_questions_management_page.dart               14        
+app\pages\manager_grid_page.dart                                       13        
+features\loyalty\pages\loyalty_gamification_settings_page.dart         13        
+features\ai_training\pages\pending_codes_page.dart                     12        
+features\tests\pages\test_notifications_page.dart                      12        
+features\ai_training\widgets\bounding_box_painter.dart                 11        
+features\recount\pages\recount_reports_list_page.dart                  11        
+features\shops\pages\shops_management_page.dart                        11        
+features\training\pages\training_article_editor_page.dart              11        
+app\pages\main_menu_page.dart                                          10        
+====================================================================================================
+
+====================================================================================================
+MODULES BY SEVERITY (avg unguarded setState per file)
+====================================================================================================
+
+MODULE                                   AVG/FILE     FILES      TOTAL CALLS
+----------------------------------------------------------------------------------------------------
+features/shift_handover                  12.3         3          37        
+features/shops                           10.0         2          20        
+features/employee_chat                   9.5          6          57        
+features/shifts                          8.6          5          43        
+features/tests                           8.2          4          33        
+features/execution_chain                 8.0          1          8         
+app                                      7.5          6          45        
+features/recount                         7.3          6          44        
+features/ai_training                     7.1          13         92        
+features/training                        6.7          3          20        
+features/envelope                        6.2          5          31        
+features/rko                             6.2          6          37        
+features/main_cash                       5.7          7          40        
+features/referrals                       5.7          3          17        
+features/bonuses                         5.0          1          5         
+features/fortune_wheel                   5.0          3          15        
+features/loyalty                         4.9          8          39        
+features/product_questions               4.8          11         53        
+features/work_schedule                   4.6          5          23        
+shared                                   4.6          5          23        
+features/efficiency                      4.5          22         100       
+features/coffee_machine                  4.3          7          30        
+features/auth                            4.0          7          28        
+features/tasks                           3.9          11         43        
+features/employees                       3.8          6          23        
+features/clients                         3.6          9          32        
+features/data_cleanup                    3.0          2          6         
+features/kpi                             3.0          5          15        
+features/recipes                         3.0          3          9         
+features/attendance                      2.7          3          8         
+features/job_application                 2.5          2          5         
+features/suppliers                       2.0          1          2         
+features/orders                          1.2          5          6         
+features/reviews                         1.2          5          6         
+features/menu                            1.0          1          1         
+features/network_management              1.0          1          1         
+features/rating                          1.0          1          1         
+====================================================================================================

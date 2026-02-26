@@ -19,21 +19,40 @@ class OrderService {
     try {
       Logger.debug('📤 Создание заказа: $clientName, магазин: $shopAddress');
 
-      final itemsJson = items.map((item) => {
-        'name': item.menuItem.name,
-        'price': item.menuItem.price,
-        'quantity': item.quantity,
-        'total': item.totalPrice,
-        'photoId': item.menuItem.photoId,
-        'imageUrl': item.menuItem.imageUrl,
+      final itemsJson = items.map((item) {
+        final map = <String, dynamic>{
+          'name': item.name,
+          'quantity': item.quantity,
+          'total': item.totalPrice,
+          'type': item.type.name,
+          'paymentMethod': item.paymentMethod.name,
+        };
+        if (item.type == CartItemType.drink) {
+          map['price'] = item.menuItem?.price ?? '0';
+          map['photoId'] = item.menuItem?.photoId ?? '';
+          map['imageUrl'] = item.menuItem?.imageUrl;
+        } else {
+          map['price'] = (item.shopProduct?.priceRetail ?? 0).toString();
+          map['shopProductId'] = item.shopProduct?.id;
+          map['pricePoints'] = item.unitPointsPrice;
+          map['totalPoints'] = item.totalPointsPrice;
+          if (item.shopProduct?.firstPhotoUrl != null) {
+            map['imageUrl'] = item.shopProduct!.firstPhotoUrl;
+          }
+        }
+        return map;
       }).toList();
 
-      final requestBody = {
+      // Calculate total points price
+      final totalPointsPrice = items.fold(0, (sum, item) => sum + item.totalPointsPrice);
+
+      final requestBody = <String, dynamic>{
         'clientPhone': clientPhone,
         'clientName': clientName,
         'shopAddress': shopAddress,
         'items': itemsJson,
         'totalPrice': totalPrice,
+        if (totalPointsPrice > 0) 'totalPointsPrice': totalPointsPrice,
         if (comment != null && comment.isNotEmpty) 'comment': comment,
       };
 
@@ -64,6 +83,7 @@ class OrderService {
           clientPhone: orderData['clientPhone'] as String?,
           clientName: orderData['clientName'] as String?,
           shopAddress: orderData['shopAddress'] as String?,
+          isWholesaleOrder: orderData['isWholesaleOrder'] == true,
         );
       }
       return null;

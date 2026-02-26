@@ -25,6 +25,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
   final _nameController = TextEditingController();
   final _categoryController = TextEditingController();
   final _priceController = TextEditingController();
+  final _pointsPriceController = TextEditingController();
   final _ingredientsController = TextEditingController();
   final _stepsController = TextEditingController();
 
@@ -39,6 +40,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
       _nameController.text = widget.recipe!.name;
       _categoryController.text = widget.recipe!.category;
       _priceController.text = widget.recipe!.price ?? '';
+      _pointsPriceController.text = widget.recipe!.pointsPrice?.toString() ?? '';
       _ingredientsController.text = widget.recipe!.ingredients;
       _stepsController.text = widget.recipe!.steps;
       _photoUrl = widget.recipe!.photoUrl;
@@ -50,6 +52,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     _nameController.dispose();
     _categoryController.dispose();
     _priceController.dispose();
+    _pointsPriceController.dispose();
     _ingredientsController.dispose();
     _stepsController.dispose();
     super.dispose();
@@ -238,6 +241,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
           name: _nameController.text.trim(),
           category: _categoryController.text.trim(),
           price: _priceController.text.trim().isNotEmpty ? _priceController.text.trim() : null,
+          pointsPrice: _pointsPriceController.text.trim().isNotEmpty ? int.tryParse(_pointsPriceController.text.trim()) : null,
           ingredients: _ingredientsController.text.trim(),
           steps: _stepsController.text.trim(),
         );
@@ -278,6 +282,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
           name: _nameController.text.trim(),
           category: _categoryController.text.trim(),
           price: _priceController.text.trim().isNotEmpty ? _priceController.text.trim() : null,
+          pointsPrice: _pointsPriceController.text.trim().isNotEmpty ? int.tryParse(_pointsPriceController.text.trim()) : null,
           ingredients: _ingredientsController.text.trim(),
           steps: _stepsController.text.trim(),
         );
@@ -416,6 +421,15 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                       icon: Icons.payments_rounded,
                       keyboardType: TextInputType.number,
                       suffix: 'руб.',
+                    ),
+                    Divider(height: 24),
+                    _buildTextField(
+                      controller: _pointsPriceController,
+                      label: 'Цена в баллах',
+                      hint: 'Например: 500',
+                      icon: Icons.monetization_on_rounded,
+                      keyboardType: TextInputType.number,
+                      suffix: 'баллов',
                     ),
                   ],
                 ),

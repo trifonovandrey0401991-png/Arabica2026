@@ -13,6 +13,12 @@ const { maskPhone, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
+// Lazy-loaded to avoid circular dependency
+let walletApi = null;
+function getWalletApi() {
+  if (!walletApi) walletApi = require('./loyalty_wallet_api');
+  return walletApi;
+}
 
 const USE_DB = process.env.USE_DB_LOYALTY_GAMIFICATION === 'true';
 
@@ -280,11 +286,13 @@ async function saveSettings(settings) {
   }
 }
 
-// Calculate client's level based on freeDrinksGiven
-function calculateLevel(freeDrinksGiven, levels) {
+// Calculate client's level based on totalPointsEarned (or freeDrinksGiven for backward compat)
+function calculateLevel(totalPointsEarned, levels) {
   let currentLevel = levels[0];
   for (const level of levels) {
-    if (freeDrinksGiven >= level.minFreeDrinks) {
+    // Support both new (minTotalPoints) and old (minFreeDrinks) thresholds
+    const threshold = level.minTotalPoints || (level.minFreeDrinks * 10);
+    if (totalPointsEarned >= threshold) {
       currentLevel = level;
     }
   }
@@ -292,10 +300,11 @@ function calculateLevel(freeDrinksGiven, levels) {
 }
 
 // Calculate earned badges (all levels up to current)
-function calculateEarnedBadges(freeDrinksGiven, levels) {
+function calculateEarnedBadges(totalPointsEarned, levels) {
   const badges = [];
   for (const level of levels) {
-    if (freeDrinksGiven >= level.minFreeDrinks) {
+    const threshold = level.minTotalPoints || (level.minFreeDrinks * 10);
+    if (totalPointsEarned >= threshold) {
       badges.push(level.id);
     }
   }
@@ -434,24 +443,27 @@ function setupLoyaltyGamificationAPI(app) {
         client = { ...client, ...clientData };
       }
 
-      // Calculate current level and badges
+      // Use totalPointsEarned for levels/badges (backward compat: fallback to freeDrinksGiven * 10)
       const freeDrinksGiven = client.freeDrinksGiven || 0;
-      const currentLevel = calculateLevel(freeDrinksGiven, settings.levels);
-      const earnedBadges = calculateEarnedBadges(freeDrinksGiven, settings.levels);
+      const totalPointsEarned = client.totalPointsEarned || (freeDrinksGiven * 10);
+      const currentLevel = calculateLevel(totalPointsEarned, settings.levels);
+      const earnedBadges = calculateEarnedBadges(totalPointsEarned, settings.levels);
 
-      // Calculate wheel progress
+      // Calculate wheel progress (based on totalPointsEarned)
       const wheelSpinsUsed = client.wheelSpinsUsed || 0;
-      const totalSpinsEarned = Math.floor(freeDrinksGiven / settings.wheel.freeDrinksPerSpin);
+      const pointsPerSpin = (settings.wheel.freeDrinksPerSpin || 5) * 10; // Convert to points scale
+      const totalSpinsEarned = Math.floor(totalPointsEarned / pointsPerSpin);
       const wheelSpinsAvailable = Math.max(0, totalSpinsEarned - wheelSpinsUsed);
-      const drinksToNextSpin = settings.wheel.freeDrinksPerSpin - (freeDrinksGiven % settings.wheel.freeDrinksPerSpin);
+      const pointsToNextSpin = pointsPerSpin - (totalPointsEarned % pointsPerSpin);
 
       // Find next level
       let nextLevel = null;
-      let drinksToNextLevel = null;
+      let pointsToNextLevel = null;
       for (const level of settings.levels) {
-        if (level.minFreeDrinks > freeDrinksGiven) {
+        const threshold = level.minTotalPoints || (level.minFreeDrinks * 10);
+        if (threshold > totalPointsEarned) {
           nextLevel = level;
-          drinksToNextLevel = level.minFreeDrinks - freeDrinksGiven;
+          pointsToNextLevel = threshold - totalPointsEarned;
           break;
         }
       }
@@ -462,13 +474,17 @@ function setupLoyaltyGamificationAPI(app) {
           phone: client.phone,
           name: client.name,
           freeDrinksGiven,
+          totalPointsEarned,
+          loyaltyPoints: client.loyaltyPoints || 0,
           currentLevel,
           earnedBadges,
           wheelSpinsAvailable,
           wheelSpinsUsed,
-          drinksToNextSpin,
+          drinksToNextSpin: pointsToNextSpin, // Keep field name for backward compat
+          pointsToNextSpin,
           nextLevel,
-          drinksToNextLevel
+          drinksToNextLevel: pointsToNextLevel, // Keep field name for backward compat
+          pointsToNextLevel
         },
         settings: {
           levels: settings.levels,
@@ -522,8 +538,10 @@ function setupLoyaltyGamificationAPI(app) {
       const client = JSON.parse(content);
 
       const freeDrinksGiven = client.freeDrinksGiven || 0;
+      const totalPointsEarned = client.totalPointsEarned || (freeDrinksGiven * 10);
       const wheelSpinsUsed = client.wheelSpinsUsed || 0;
-      const totalSpinsEarned = Math.floor(freeDrinksGiven / settings.wheel.freeDrinksPerSpin);
+      const pointsPerSpin = (settings.wheel.freeDrinksPerSpin || 5) * 10;
+      const totalSpinsEarned = Math.floor(totalPointsEarned / pointsPerSpin);
       const wheelSpinsAvailable = Math.max(0, totalSpinsEarned - wheelSpinsUsed);
 
       if (wheelSpinsAvailable <= 0) {
@@ -884,7 +902,14 @@ function setupLoyaltyGamificationAPI(app) {
           const client = JSON.parse(content);
 
           if (prize.prizeType === 'bonus_points') {
-            client.points = (client.points || 0) + prize.prizeValue;
+            // Add points via wallet API
+            try {
+              const wallet = getWalletApi();
+              await wallet.addPoints(prize.clientPhone, prize.prizeValue, 'Приз колеса удачи: ' + prize.prize, 'wheel_prize', prize.id);
+            } catch (walletErr) {
+              console.error('Wallet addPoints error, fallback to legacy:', walletErr.message);
+              client.points = (client.points || 0) + prize.prizeValue;
+            }
           } else if (prize.prizeType === 'free_drink') {
             client.freeDrinks = (client.freeDrinks || 0) + prize.prizeValue;
           }

@@ -81,10 +81,36 @@ function isPaginationRequested(query) {
   return query.page !== undefined || query.limit !== undefined;
 }
 
+/**
+ * Формирование ответа из результата db.findAllPaginated()
+ * SQL-level pagination — данные уже отрезаны на уровне БД
+ *
+ * @param {Object} dbResult - результат db.findAllPaginated()
+ * @param {string} itemsKey - ключ для массива в ответе
+ * @param {Function} [mapFn] - опциональная трансформация (напр. snake_case → camelCase)
+ * @returns {Object} - готовый объект для res.json()
+ */
+function createDbPaginatedResponse(dbResult, itemsKey = 'items', mapFn = null) {
+  const items = mapFn ? dbResult.rows.map(mapFn) : dbResult.rows;
+  return {
+    success: true,
+    [itemsKey]: items,
+    pagination: {
+      page: dbResult.page,
+      limit: dbResult.pageSize,
+      total: dbResult.total,
+      totalPages: dbResult.totalPages,
+      hasNextPage: dbResult.hasNextPage,
+      hasPrevPage: dbResult.hasPrevPage,
+    }
+  };
+}
+
 module.exports = {
   parsePaginationParams,
   paginateArray,
   createPaginatedResponse,
+  createDbPaginatedResponse,
   isPaginationRequested,
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE

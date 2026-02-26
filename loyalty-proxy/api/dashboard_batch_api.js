@@ -10,6 +10,8 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
 const { requireAuth } = require('../utils/session_middleware');
+const db = require('../utils/db');
+const USE_DB_ORDERS = process.env.USE_DB_ORDERS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -66,6 +68,7 @@ function setupDashboardBatchAPI(app) {
         unconfirmedWithdrawals,
         unconfirmedEnvelopes,
         pendingOrders,
+        wholesalePendingOrders,
         unreadReviews,
         activeTaskAssignments,
       ] = await Promise.all([
@@ -80,7 +83,13 @@ function setupDashboardBatchAPI(app) {
         // Unconfirmed envelopes
         countJsonFiles(`${DATA_DIR}/envelope-reports`, d => d.status === 'pending' || d.status === 'review'),
         // Pending orders
-        countJsonFiles(`${DATA_DIR}/orders`, d => d.status === 'pending'),
+        USE_DB_ORDERS
+          ? db.query('SELECT COUNT(*)::int AS cnt FROM orders WHERE status = $1', ['pending']).then(r => r.rows[0]?.cnt || 0).catch(() => 0)
+          : countJsonFiles(`${DATA_DIR}/orders`, d => d.status === 'pending'),
+        // Wholesale pending orders
+        USE_DB_ORDERS
+          ? db.query('SELECT COUNT(*)::int AS cnt FROM orders WHERE status = $1 AND is_wholesale_order = true', ['pending']).then(r => r.rows[0]?.cnt || 0).catch(() => 0)
+          : countJsonFiles(`${DATA_DIR}/orders`, d => d.status === 'pending' && d.isWholesaleOrder === true),
         // Unread reviews
         countJsonFiles(`${DATA_DIR}/reviews`, d => !d.isRead),
         // Active task assignments for employee
@@ -103,6 +112,7 @@ function setupDashboardBatchAPI(app) {
           unconfirmedWithdrawals,
           unconfirmedEnvelopes,
           pendingOrders,
+          wholesalePendingOrders,
           unreadReviews,
           activeTaskAssignments,
           // Суммарный счётчик для бейджа "Отчёты"

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/providers/order_provider.dart';
 import '../../menu/pages/menu_page.dart';
@@ -11,7 +12,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
 
-  Widget _buildNoPhotoPlaceholder() {
+  Widget _buildNoPhotoPlaceholder({bool isShopProduct = false}) {
     return Container(
       width: 60,
       height: 60,
@@ -20,15 +21,30 @@ class CartPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(12.r),
       ),
       child: Icon(
-        Icons.local_cafe_rounded,
+        isShopProduct ? Icons.storefront_rounded : Icons.local_cafe_rounded,
         size: 28,
         color: AppColors.gold,
       ),
     );
   }
 
-  Widget _buildCartItemImage(MenuItem item) {
-    if (item.hasNetworkPhoto) {
+  Widget _buildCartItemImage(CartItem cartItem) {
+    if (cartItem.type == CartItemType.shopProduct) {
+      final photoUrl = cartItem.shopProduct?.firstPhotoUrl;
+      if (photoUrl != null) {
+        return AppCachedImage(
+          imageUrl: photoUrl,
+          width: 60,
+          height: 60,
+          fit: BoxFit.cover,
+          errorWidget: (_, __, ___) => _buildNoPhotoPlaceholder(isShopProduct: true),
+        );
+      }
+      return _buildNoPhotoPlaceholder(isShopProduct: true);
+    }
+    // Drink
+    final item = cartItem.menuItem;
+    if (item != null && item.hasNetworkPhoto) {
       return AppCachedImage(
         imageUrl: item.imageUrl!,
         width: 60,
@@ -36,7 +52,7 @@ class CartPage extends StatelessWidget {
         fit: BoxFit.cover,
         errorWidget: (_, __, ___) => _buildNoPhotoPlaceholder(),
       );
-    } else if (item.photoId.isNotEmpty) {
+    } else if (item != null && item.photoId.isNotEmpty) {
       final imagePath = 'assets/images/${item.photoId}.jpg';
       return Image.asset(
         imagePath,
@@ -188,7 +204,7 @@ class CartPage extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            'Добавьте напитки из меню',
+            'Добавьте напитки из меню или товары из магазина',
             style: TextStyle(
               fontSize: 15.sp,
               color: Colors.white.withOpacity(0.5),
@@ -270,7 +286,7 @@ class CartPage extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12.r),
-              child: _buildCartItemImage(cartItem.menuItem),
+              child: _buildCartItemImage(cartItem),
             ),
             SizedBox(width: 12),
             Expanded(
@@ -278,7 +294,7 @@ class CartPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    cartItem.menuItem.name,
+                    cartItem.name,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 15.sp,
@@ -288,15 +304,26 @@ class CartPage extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: 6),
-                  Text(
-                    '${cartItem.menuItem.price} × ${cartItem.quantity} = ${cartItem.totalPrice.toStringAsFixed(0)} руб.',
-                    style: TextStyle(
-                      color: AppColors.gold,
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
+                  if (cartItem.paymentMethod == PaymentMethod.points)
+                    Text(
+                      '${cartItem.unitPointsPrice} б. × ${cartItem.quantity} = ${cartItem.totalPointsPrice} баллов',
+                      style: TextStyle(
+                        color: Color(0xFFD4AF37),
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  else
+                    Text(
+                      '${cartItem.unitPrice.toStringAsFixed(0)} × ${cartItem.quantity} = ${cartItem.totalPrice.toStringAsFixed(0)} руб.',
+                      style: TextStyle(
+                        color: AppColors.gold,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
                 ],
               ),
             ),
@@ -389,21 +416,53 @@ class CartPage extends StatelessWidget {
                   color: Colors.white.withOpacity(0.7),
                 ),
               ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                decoration: BoxDecoration(
-                  color: AppColors.gold.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: AppColors.gold.withOpacity(0.3)),
-                ),
-                child: Text(
-                  '${cart.totalPrice.toStringAsFixed(0)} руб.',
-                  style: TextStyle(
-                    fontSize: 22.sp,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.gold,
-                  ),
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (cart.totalPrice > 0)
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                      decoration: BoxDecoration(
+                        color: AppColors.gold.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        '${cart.totalPrice.toStringAsFixed(0)} руб.',
+                        style: TextStyle(
+                          fontSize: 22.sp,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.gold,
+                        ),
+                      ),
+                    ),
+                  if (cart.totalPointsPrice > 0) ...[
+                    SizedBox(height: 6),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFD4AF37).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10.r),
+                        border: Border.all(color: Color(0xFFD4AF37).withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.star_rounded, color: Color(0xFFD4AF37), size: 16),
+                          SizedBox(width: 4),
+                          Text(
+                            '+ ${cart.totalPointsPrice} баллов',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFD4AF37),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),

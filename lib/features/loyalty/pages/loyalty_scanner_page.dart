@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/logger.dart';
 import '../services/loyalty_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -18,6 +20,12 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
   bool _isProcessing = false;
   String? _errorMessage;
   String? _lastQr;
+  int? _pointsAdded; // How many points were added on last scan
+  int? _newBalance; // New balance after adding points
+
+  // Drink redemption state
+  Map<String, dynamic>? _redemptionInfo;
+  bool _redemptionConfirmed = false;
 
   // Градиенты и цвета
   static final _primaryColor = AppColors.primaryGreen;
@@ -39,19 +47,48 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
       return;
     }
     _lastQr = code;
-    _processScan(code);
+
+    // Check if this is a drink redemption QR
+    if (code.startsWith('redemption_')) {
+      _processRedemptionScan(code);
+    } else {
+      _processScan(code);
+    }
   }
 
   Future<void> _processScan(String qr) async {
     if (mounted) setState(() {
       _isProcessing = true;
       _errorMessage = null;
+      _pointsAdded = null;
+      _newBalance = null;
     });
     try {
-      final client = await LoyaltyService.addPoint(qr);
+      // Step 1: Fetch client by QR to get their info
+      final client = await LoyaltyService.fetchByQr(qr);
+
+      // Step 2: Get employee phone for the wallet call
+      final prefs = await SharedPreferences.getInstance();
+      final employeePhone = prefs.getString('user_phone') ?? '';
+
+      // Step 3: Load promo settings to know how many points per scan
+      final settings = await LoyaltyService.fetchPromoSettings();
+      final pointsToAdd = settings.pointsPerScan;
+
+      // Step 4: Add points via wallet API
+      final walletResult = await LoyaltyService.walletAddPoints(
+        clientPhone: client.phone,
+        amount: pointsToAdd,
+        employeePhone: employeePhone,
+        description: 'QR-сканирование',
+        sourceType: 'qr_scan',
+      );
+
       if (mounted) {
         setState(() {
           _client = client;
+          _pointsAdded = pointsToAdd;
+          _newBalance = walletResult['balance'] ?? 0;
         });
       }
     } catch (e) {
@@ -85,7 +122,72 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
     }
   }
 
-  Future<void> _redeem() async {
+  /// Process a drink redemption QR (prefix: redemption_)
+  Future<void> _processRedemptionScan(String qrToken) async {
+    if (mounted) setState(() {
+      _isProcessing = true;
+      _errorMessage = null;
+      _pointsAdded = null;
+      _newBalance = null;
+      _redemptionInfo = null;
+      _redemptionConfirmed = false;
+    });
+    try {
+      final result = await LoyaltyService.scanRedemption(qrToken: qrToken);
+      final redemption = result['redemption'] as Map<String, dynamic>?;
+      if (redemption == null) throw Exception('Данные выкупа не получены');
+
+      if (mounted) setState(() {
+        _redemptionInfo = redemption;
+      });
+    } catch (e) {
+      String errorMessage = 'Ошибка при сканировании';
+      final s = e.toString().toLowerCase();
+      if (s.contains('not found') || s.contains('не найден')) {
+        errorMessage = 'Заявка не найдена или QR недействителен';
+      } else if (s.contains('already confirmed') || s.contains('уже подтверждён')) {
+        errorMessage = 'Этот напиток уже был выдан';
+      }
+      if (mounted) setState(() { _errorMessage = errorMessage; });
+    } finally {
+      if (mounted) setState(() { _isProcessing = false; });
+    }
+  }
+
+  /// Confirm drink delivery — deducts points from client
+  Future<void> _confirmRedemption() async {
+    if (_redemptionInfo == null) return;
+    final redemptionId = _redemptionInfo!['id'] as String?;
+    if (redemptionId == null) return;
+
+    if (mounted) setState(() { _isProcessing = true; });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final employeePhone = prefs.getString('user_phone');
+
+      final result = await LoyaltyService.confirmRedemption(
+        redemptionId: redemptionId,
+        employeePhone: employeePhone,
+      );
+
+      if (mounted) setState(() {
+        _redemptionConfirmed = true;
+        _newBalance = result['newBalance'] as int?;
+      });
+    } catch (e) {
+      String errorMessage = 'Ошибка подтверждения';
+      final s = e.toString().toLowerCase();
+      if (s.contains('insufficient') || s.contains('недостаточно')) {
+        errorMessage = 'У клиента недостаточно баллов';
+      }
+      if (mounted) setState(() { _errorMessage = errorMessage; });
+    } finally {
+      if (mounted) setState(() { _isProcessing = false; });
+    }
+  }
+
+  // _redeem removed — points spend via DrinkRedemptionPage (Phase 2)
+  Future<void> _redeemLegacy() async {
     final qr = _client?.qr;
     if (qr == null) return;
 
@@ -177,6 +279,10 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
       _client = null;
       _lastQr = null;
       _errorMessage = null;
+      _pointsAdded = null;
+      _newBalance = null;
+      _redemptionInfo = null;
+      _redemptionConfirmed = false;
     });
   }
 
@@ -717,157 +823,174 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
 
           SizedBox(height: 16),
 
-          // Карточка баллов
-          Container(
-            padding: EdgeInsets.all(20.w),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  _primaryColor.withOpacity(0.05),
-                  _accentColor.withOpacity(0.02),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(20.r),
-              border: Border.all(color: _primaryColor.withOpacity(0.1)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(10.w),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: _bonusGradient),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          child: Icon(Icons.stars, color: Colors.white, size: 20),
-                        ),
-                        SizedBox(width: 12),
-                        Text(
-                          'Баллы',
-                          style: TextStyle(
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF2D3436),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: _bonusGradient),
-                        borderRadius: BorderRadius.circular(12.r),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _bonusGradient[0].withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        '${client.points}/${client.pointsRequired}',
-                        style: TextStyle(
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 20),
-                // Прогресс-бар
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10.r),
-                  child: LinearProgressIndicator(
-                    value: (client.points.clamp(0, client.pointsRequired)) / client.pointsRequired,
-                    backgroundColor: Colors.grey[200],
-                    minHeight: 12,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      client.readyForRedeem ? _bonusGradient[0] : _accentColor,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 16),
-                // Бесплатные напитки и акция
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildInfoChip(
-                        icon: Icons.local_cafe,
-                        label: 'Бесплатных',
-                        value: '${client.freeDrinks}',
-                        color: _successGradient[0],
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: _buildInfoChip(
-                        icon: Icons.card_giftcard,
-                        label: 'Акция',
-                        value: '${client.pointsRequired}+${client.drinksToGive}',
-                        color: _bonusGradient[0],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          SizedBox(height: 24),
-
-          // Кнопка действия
-          if (client.readyForRedeem)
+          // Карточка начисленных баллов
+          if (_pointsAdded != null && _newBalance != null)
             Container(
+              padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: _bonusGradient),
-                borderRadius: BorderRadius.circular(16.r),
-                boxShadow: [
-                  BoxShadow(
-                    color: _bonusGradient[0].withOpacity(0.4),
-                    blurRadius: 15,
-                    offset: Offset(0, 8),
+                color: _successGradient[0].withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20.r),
+                border: Border.all(color: _successGradient[0].withOpacity(0.3)),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.check_circle, color: _successGradient[0], size: 48),
+                  SizedBox(height: 12),
+                  Text(
+                    '+$_pointsAdded баллов',
+                    style: TextStyle(
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.bold,
+                      color: _successGradient[0],
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Баланс: $_newBalance',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      color: Color(0xFF2D3436),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
-              ),
-              child: ElevatedButton(
-                onPressed: _isProcessing ? null : _redeem,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  padding: EdgeInsets.symmetric(vertical: 18.h),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16.r),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.card_giftcard, color: Colors.white, size: 24),
-                    SizedBox(width: 12),
-                    Text(
-                      'Списать баллы и выдать ${client.drinksToGive} напиток${client.drinksToGive > 1 ? "а" : ""}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16.sp,
-                      ),
-                    ),
-                  ],
-                ),
               ),
             )
           else
+            // Баланс клиента (если баллы ещё не начислены — fallback)
             Container(
+              padding: EdgeInsets.all(20.w),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    _primaryColor.withOpacity(0.05),
+                    _accentColor.withOpacity(0.02),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20.r),
+                border: Border.all(color: _primaryColor.withOpacity(0.1)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(10.w),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: _bonusGradient),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Icon(Icons.account_balance_wallet, color: Colors.white, size: 20),
+                  ),
+                  SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Баланс',
+                        style: TextStyle(fontSize: 13.sp, color: Colors.grey[600]),
+                      ),
+                      Text(
+                        '${client.loyaltyPoints} баллов',
+                        style: TextStyle(
+                          fontSize: 20.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2D3436),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+          // Drink redemption info (when employee scans client's redemption QR)
+          if (_redemptionInfo != null && !_redemptionConfirmed)
+            Container(
+              padding: EdgeInsets.all(20.w),
+              decoration: BoxDecoration(
+                color: Color(0xFFD4AF37).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20.r),
+                border: Border.all(color: Color(0xFFD4AF37).withOpacity(0.4)),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.local_cafe_rounded, color: Color(0xFFD4AF37), size: 48),
+                  SizedBox(height: 12),
+                  Text(
+                    'Выдача напитка',
+                    style: TextStyle(fontSize: 14.sp, color: Colors.grey[600]),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    _redemptionInfo!['recipeName'] ?? 'Напиток',
+                    style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: Color(0xFF2D3436)),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.star_rounded, color: Color(0xFFD4AF37), size: 18),
+                      SizedBox(width: 4),
+                      Text(
+                        '${_redemptionInfo!['pointsPrice'] ?? 0} баллов',
+                        style: TextStyle(fontSize: 16.sp, color: Color(0xFFD4AF37), fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isProcessing ? null : _confirmRedemption,
+                      icon: Icon(Icons.check_circle, color: Colors.white),
+                      label: Text('Подтвердить выдачу', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16.sp)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _successGradient[0],
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Redemption confirmed
+          if (_redemptionConfirmed)
+            Container(
+              padding: EdgeInsets.all(20.w),
+              decoration: BoxDecoration(
+                color: _successGradient[0].withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20.r),
+                border: Border.all(color: _successGradient[0].withOpacity(0.3)),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.check_circle, color: _successGradient[0], size: 48),
+                  SizedBox(height: 12),
+                  Text(
+                    'Напиток выдан!',
+                    style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: _successGradient[0]),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    _redemptionInfo?['recipeName'] ?? '',
+                    style: TextStyle(fontSize: 16.sp, color: Color(0xFF2D3436)),
+                  ),
+                  if (_newBalance != null) ...[
+                    SizedBox(height: 8),
+                    Text('Баланс клиента: $_newBalance', style: TextStyle(fontSize: 14.sp, color: Colors.grey[600])),
+                  ],
+                ],
+              ),
+            ),
+
+          SizedBox(height: 24),
+
+          // Кнопка "Сканировать следующий"
+          Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: _gradientColors),
                 borderRadius: BorderRadius.circular(16.r),

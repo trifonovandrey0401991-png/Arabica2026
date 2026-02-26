@@ -9,6 +9,7 @@ import '../../employees/pages/employees_page.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../shop_catalog/pages/shop_catalog_admin_page.dart';
 
 /// Страница управления сетью магазинов
 /// Доступна только для developer
@@ -24,6 +25,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   late TabController _tabController;
   String? _currentUserPhone;
   bool _isLoading = true;
+  int _selectedTab = 0;
 
   static final Color _accent = Color(0xFF2DD4BF);
 
@@ -37,12 +39,18 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadCurrentUser();
+  }
+
+  void _onTabChanged() {
+    if (mounted) setState(() => _selectedTab = _tabController.index);
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -137,6 +145,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                           _buildShopsTab(),
                           _buildEmployeesTab(),
                           _buildStoreManagersTab(),
+                          const ShopCatalogAdminPage(),
                         ],
                       ),
               ),
@@ -177,28 +186,75 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   }
 
   Widget _buildTabBar() {
+    const tabDefs = [
+      (icon: Icons.code, text: 'Разработчики'),
+      (icon: Icons.business_center, text: 'Управляющие'),
+      (icon: Icons.store, text: 'Магазины'),
+      (icon: Icons.people, text: 'Сотрудники'),
+      (icon: Icons.supervisor_account, text: 'Заведующие'),
+      (icon: Icons.storefront, text: 'Магазин(опт)'),
+    ];
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 16.w),
+      padding: EdgeInsets.all(4.r),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12.r),
       ),
-      child: TabBar(
-        controller: _tabController,
-        isScrollable: true,
-        indicatorColor: _accent,
-        indicatorWeight: 3,
-        labelColor: _accent,
-        unselectedLabelColor: Colors.white60,
-        labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp),
-        unselectedLabelStyle: TextStyle(fontSize: 12.sp),
-        tabs: [
-          Tab(icon: Icon(Icons.code, size: 20), text: 'Разработчики'),
-          Tab(icon: Icon(Icons.business_center, size: 20), text: 'Управляющие'),
-          Tab(icon: Icon(Icons.store, size: 20), text: 'Магазины'),
-          Tab(icon: Icon(Icons.people, size: 20), text: 'Сотрудники'),
-          Tab(icon: Icon(Icons.supervisor_account, size: 20), text: 'Заведующие'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: List.generate(
+              3,
+              (i) => Expanded(
+                child: _buildTabButton(i, tabDefs[i].icon, tabDefs[i].text),
+              ),
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Row(
+            children: List.generate(
+              3,
+              (i) => Expanded(
+                child: _buildTabButton(i + 3, tabDefs[i + 3].icon, tabDefs[i + 3].text),
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTabButton(int index, IconData icon, String text) {
+    final isSelected = _selectedTab == index;
+    return GestureDetector(
+      onTap: () => _tabController.animateTo(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 2.w),
+        decoration: BoxDecoration(
+          color: isSelected ? _accent.withOpacity(0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8.r),
+          border: isSelected ? Border.all(color: _accent, width: 1.5) : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: isSelected ? _accent : Colors.white60),
+            SizedBox(height: 2.h),
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 10.sp,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? _accent : Colors.white60,
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }

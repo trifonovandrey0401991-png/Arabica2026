@@ -490,7 +490,7 @@ async function saveLearnedPatterns(data) {
   // withLock: предотвращает потерю данных при параллельных записях
   await withLock('z-report-learned-patterns', async () => {
     await ensureDataDir();
-    await writeJsonFile(LEARNED_PATTERNS_FILE, data);
+    await writeJsonFile(LEARNED_PATTERNS_FILE, data, { useLock: false }); // already inside withLock
 
     if (USE_DB) {
       try {
@@ -1050,7 +1050,7 @@ async function saveLearnedRegions(data) {
   // withLock: предотвращает потерю данных при параллельных записях
   await withLock('z-report-learned-regions', async () => {
     await ensureDataDir();
-    await writeJsonFile(LEARNED_REGIONS_FILE, data);
+    await writeJsonFile(LEARNED_REGIONS_FILE, data, { useLock: false }); // already inside withLock
 
     if (USE_DB) {
       try {

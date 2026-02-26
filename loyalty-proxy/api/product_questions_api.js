@@ -16,7 +16,7 @@ const {
   notifyPersonalDialogEmployeeMessage
 } = require('./product_questions_notifications');
 
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { compressUpload } = require('../utils/image_compress');
@@ -116,6 +116,16 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       const { shopAddress } = req.query;
 
       if (USE_DB) {
+        // SQL-level pagination (when no shopAddress filter — JSONB filter too complex for SQL)
+        if (!shopAddress && isPaginationRequested(req.query)) {
+          const result = await db.findAllPaginated('product_questions', {
+            orderBy: 'created_at', orderDir: 'DESC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(result, 'questions', r => r.data));
+        }
+
         const rows = await db.findAll('product_questions', { orderBy: 'created_at', orderDir: 'DESC' });
         let questions = rows.map(r => r.data);
         if (shopAddress) {
@@ -784,6 +794,20 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       console.log('GET /api/product-question-dialogs/all');
 
       if (USE_DB) {
+        // SQL-level pagination when requested
+        if (isPaginationRequested(req.query)) {
+          const result = await db.findAllPaginated('product_question_dialogs', {
+            orderBy: 'created_at',
+            orderDir: 'DESC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          const dialogs = result.rows.map(r => r.data);
+          dialogs.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+          console.log(`✅ Found ${dialogs.length} of ${result.total} total dialogs (DB, paginated)`);
+          return res.json(createDbPaginatedResponse({ ...result, rows: dialogs }, 'dialogs'));
+        }
+
         const rows = await db.findAll('product_question_dialogs', { orderBy: 'created_at', orderDir: 'DESC' });
         const dialogs = rows.map(r => r.data);
         dialogs.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
@@ -811,6 +835,9 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       dialogs.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
 
       console.log(`✅ Found ${dialogs.length} total dialogs`);
+      if (isPaginationRequested(req.query)) {
+        return res.json(createPaginatedResponse(dialogs, req.query, 'dialogs'));
+      }
       res.json({ success: true, dialogs });
     } catch (error) {
       console.error('Error getting all dialogs:', error);

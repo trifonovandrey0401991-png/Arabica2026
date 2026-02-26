@@ -10,7 +10,7 @@ const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { requireAuth } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -25,6 +25,14 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
       let suppliers;
 
       if (USE_DB) {
+        if (isPaginationRequested(req.query)) {
+          const result = await db.findAllPaginated('suppliers', {
+            orderBy: 'created_at', orderDir: 'DESC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(result, 'suppliers', dbSupplierToCamel));
+        }
         const rows = await db.findAll('suppliers', { orderBy: 'created_at', orderDir: 'DESC' });
         suppliers = rows.map(dbSupplierToCamel);
       } else {

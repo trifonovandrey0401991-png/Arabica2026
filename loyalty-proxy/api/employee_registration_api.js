@@ -10,7 +10,7 @@ const path = require('path');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_EMPLOYEE_REGISTRATION === 'true';
@@ -200,11 +200,16 @@ function setupEmployeeRegistrationAPI(app, { sendPushToPhone } = {}) {
       console.log('GET /api/employee-registrations');
 
       if (USE_DB) {
+        if (isPaginationRequested(req.query)) {
+          const result = await db.findAllPaginated('employee_registrations', {
+            orderBy: 'created_at', orderDir: 'DESC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(result, 'registrations', r => r.data));
+        }
         const rows = await db.findAll('employee_registrations', { orderBy: 'created_at', orderDir: 'DESC' });
         const dbRegistrations = rows.map(r => r.data);
-        if (isPaginationRequested(req.query)) {
-          return res.json(createPaginatedResponse(dbRegistrations, req.query, 'registrations'));
-        }
         return res.json({ success: true, registrations: dbRegistrations });
       }
 

@@ -9,7 +9,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
 const { getMoscowDateString } = require('../utils/moscow_time');
@@ -595,32 +595,41 @@ function setupAttendanceAPI(app, {
       // DB path
       if (USE_DB) {
         try {
-          const conditions = [];
-          const params = [];
-          let paramIdx = 1;
-
+          // Build WHERE conditions for filters
+          const whereParts = [];
+          const whereParams = [];
           if (req.query.employeeName) {
-            conditions.push(`employee_name ILIKE $${paramIdx++}`);
-            params.push(`%${req.query.employeeName}%`);
+            whereParts.push(`employee_name ILIKE $${whereParts.length + 1}`);
+            whereParams.push(`%${req.query.employeeName}%`);
           }
           if (req.query.shopAddress) {
-            conditions.push(`shop_address ILIKE $${paramIdx++}`);
-            params.push(`%${req.query.shopAddress}%`);
+            whereParts.push(`shop_address ILIKE $${whereParts.length + 1}`);
+            whereParams.push(`%${req.query.shopAddress}%`);
           }
           if (req.query.date) {
-            conditions.push(`timestamp::date = $${paramIdx++}::date`);
-            params.push(req.query.date);
+            whereParts.push(`timestamp::date = $${whereParts.length + 1}::date`);
+            whereParams.push(req.query.date);
           }
 
-          const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-          const sql = `SELECT * FROM attendance ${where} ORDER BY COALESCE(timestamp, created_at) DESC`;
-          const result = await db.query(sql, params);
-          const records = result.rows.map(dbAttendanceToCamel);
+          const dbOpts = {
+            orderBy: 'created_at',
+            orderDir: 'DESC',
+            ...(whereParts.length > 0 ? { where: whereParts.join(' AND '), whereParams } : {}),
+          };
 
+          // SQL-level pagination when requested
           if (isPaginationRequested(req.query)) {
-            return res.json(createPaginatedResponse(records, req.query, 'records'));
+            const result = await db.findAllPaginated('attendance', {
+              ...dbOpts,
+              page: parseInt(req.query.page) || 1,
+              pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+            });
+            return res.json(createDbPaginatedResponse(result, 'records', dbAttendanceToCamel));
           }
-          return res.json({ success: true, records });
+
+          // No pagination: return all
+          const rows = await db.findAll('attendance', dbOpts);
+          return res.json({ success: true, records: rows.map(dbAttendanceToCamel) });
         } catch (dbErr) {
           console.error('DB attendance list error:', dbErr.message);
         }

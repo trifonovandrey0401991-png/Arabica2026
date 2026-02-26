@@ -1,0 +1,1702 @@
+====================================================================================================
+CRITICAL UNGUARDED setState() CALLS (after await/async)
+====================================================================================================
+
+These setState calls are in async contexts and MUST have 'if (mounted)' guards.
+They can cause 'setState called after dispose' runtime errors.
+
+====================================================================================================
+
+SUMMARY BY MODULE:
+----------------------------------------------------------------------------------------------------
+MODULE                                   FILES      CRITICAL CALLS 
+----------------------------------------------------------------------------------------------------
+app                                      5          40             
+features/ai_training                     10         23             
+features/attendance                      3          3              
+features/auth                            6          14             
+features/bonuses                         1          1              
+features/clients                         9          22             
+features/coffee_machine                  5          7              
+features/data_cleanup                    2          2              
+features/efficiency                      10         14             
+features/employee_chat                   6          22             
+features/employees                       3          4              
+features/envelope                        4          12             
+features/execution_chain                 1          3              
+features/fortune_wheel                   3          7              
+features/job_application                 2          2              
+features/kpi                             5          6              
+features/loyalty                         8          17             
+features/main_cash                       7          14             
+features/network_management              1          1              
+features/orders                          4          4              
+features/product_questions               10         33             
+features/rating                          1          1              
+features/recipes                         3          4              
+features/recount                         6          11             
+features/referrals                       3          5              
+features/reviews                         4          5              
+features/rko                             6          16             
+features/shift_handover                  3          13             
+features/shifts                          3          9              
+features/shops                           2          8              
+features/suppliers                       1          1              
+features/tasks                           10         17             
+features/tests                           4          8              
+features/training                        2          4              
+features/work_schedule                   3          9              
+shared                                   4          9              
+----------------------------------------------------------------------------------------------------
+TOTAL                                    160        371            
+====================================================================================================
+
+
+DETAILED LIST OF CRITICAL ISSUES:
+====================================================================================================
+
+====================================================================================================
+MODULE: app
+====================================================================================================
+
+  File: app\pages\client_functions_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [1] Line 39: if (mounted) setState(() => _myDialogsUnreadCount = count);
+  Context (last 5 lines):
+      Future<void> _loadMyDialogsCount() async {
+        try {
+          final count = await MyDialogsCounterService.getTotalUnreadCount();
+          if (mounted) setState(() => _myDialogsUnreadCount = count);
+
+
+  File: app\pages\main_menu_page.dart
+  Critical issues: 9
+  ------------------------------------------------------------------------------------------------
+
+  [2] Line 176: setState(() {
+  Context (last 5 lines):
+            phone: phone,
+            employeeId: _employeeId,
+          );
+          if (counters != null && mounted) {
+            setState(() {
+
+
+  [3] Line 193: if (mounted) setState(() => _totalReportsCount = count);
+  Context (last 5 lines):
+      /// Загрузка общего счётчика для бейджа "Отчёты" (fallback)
+      Future<void> _loadTotalReportsCount() async {
+        try {
+          final count = await ReportsCounterService.getTotalUnreadCount();
+          if (mounted) setState(() => _totalReportsCount = count);
+
+
+  [4] Line 202: if (mounted) setState(() => _myDialogsUnreadCount = count);
+  Context (last 5 lines):
+      Future<void> _loadMyDialogsCount() async {
+        try {
+          final count = await MyDialogsCounterService.getTotalUnreadCount();
+          if (mounted) setState(() => _myDialogsUnreadCount = count);
+
+
+  [5] Line 223: if (mounted) setState(() => _pendingOrdersCount = orders.length);
+  Context (last 5 lines):
+      Future<void> _loadPendingOrdersCount() async {
+        try {
+          final orders = await OrderService.getAllOrders(status: 'pending');
+          if (mounted) setState(() => _pendingOrdersCount = orders.length);
+
+
+  [6] Line 235: if (mounted) setState(() => _unreadProductQuestionsCount = totalCount);
+  Context (last 5 lines):
+          final dialogs = await ProductQuestionService.getAllPersonalDialogs();
+          final unreadDialogsCount = dialogs.where((d) => d.hasUnreadFromClient).length;
+          final unansweredQuestionsCount = await ProductQuestionService.getUnansweredQuestionsCount();
+          final totalCount = unreadDialogsCount + unansweredQuestionsCount;
+          if (mounted) setState(() => _unreadProductQuestionsCount = totalCount);
+
+
+  [7] Line 248: if (mounted) setState(() => _activeTasksCount = activeCount);
+  Context (last 5 lines):
+          final assignments = await TaskService.getMyAssignments(employeeId);
+          final activeCount = assignments.where((a) =>
+            a.status == TaskStatus.pending || a.status == TaskStatus.submitted
+          ).length;
+          if (mounted) setState(() => _activeTasksCount = activeCount);
+
+
+  [8] Line 258: if (mounted) setState(() => _availableSpins = spins.availableSpins);
+  Context (last 5 lines):
+      Future<void> _loadAvailableSpins(String? employeeId) async {
+        if (employeeId == null) return;
+        try {
+          final spins = await FortuneWheelService.getAvailableSpins(employeeId);
+          if (mounted) setState(() => _availableSpins = spins.availableSpins);
+
+
+  [9] Line 268: if (mounted) setState(() => _shiftTransferUnreadCount = count);
+  Context (last 5 lines):
+      Future<void> _loadShiftTransferUnreadCount(String? employeeId) async {
+        if (employeeId == null) return;
+        try {
+          final count = await ShiftTransferService.getUnreadCount(employeeId);
+          if (mounted) setState(() => _shiftTransferUnreadCount = count);
+
+
+  [10] Line 298: if (mounted) setState(() => _employeeRating = rating);
+  Context (last 5 lines):
+          if (_employeeId == null) return;
+        }
+        try {
+          final rating = await RatingService.getCurrentEmployeeRating(_employeeId!);
+          if (mounted) setState(() => _employeeRating = rating);
+
+
+  File: app\pages\manager_grid_page.dart
+  Critical issues: 13
+  ------------------------------------------------------------------------------------------------
+
+  [11] Line 144: if (mounted) setState(() => _reportCounts = counts);
+  Context (last 5 lines):
+      Future<void> _loadReportCounts() async {
+        try {
+          final counts = await ReportNotificationService.getUnviewedCounts();
+          if (mounted) setState(() => _reportCounts = counts);
+
+
+  [12] Line 152: if (mounted) setState(() => _envelopeCount = count);
+  Context (last 5 lines):
+      Future<void> _loadEnvelopeCount() async {
+        try {
+          final reports = await EnvelopeReportService.getReportsForCurrentUser();
+          final count = reports.where((r) => r.status != 'confirmed').length;
+          if (mounted) setState(() => _envelopeCount = count);
+
+
+  [13] Line 159: if (mounted) setState(() => _coffeeMachineCount = count);
+  Context (last 5 lines):
+      Future<void> _loadCoffeeMachineCount() async {
+        try {
+          final count = await CoffeeMachineReportService.getUnconfirmedCountForCurrentUser();
+          if (mounted) setState(() => _coffeeMachineCount = count);
+
+
+  [14] Line 167: if (mounted) setState(() => _shiftTransferCount = count);
+  Context (last 5 lines):
+      Future<void> _loadShiftTransferCount() async {
+        try {
+          final requests = await ShiftTransferService.getAdminRequests();
+          final count = requests.where((r) => !r.isReadByAdmin).length;
+          if (mounted) setState(() => _shiftTransferCount = count);
+
+
+  [15] Line 179: if (mounted) setState(() => _reviewsCount = count);
+  Context (last 5 lines):
+            allReviews,
+            (review) => review.shopAddress,
+          );
+          final count = reviews.where((r) => r.hasUnreadFromClient).length;
+          if (mounted) setState(() => _reviewsCount = count);
+
+
+  [16] Line 190: setState(() => _managementCount = result['totalUnread'] ?? 0);
+  Context (last 5 lines):
+            endpoint: '/api/management-dialogs',
+            timeout: ApiConstants.longTimeout,
+          );
+          if (result != null && result['success'] == true && mounted) {
+            setState(() => _managementCount = result['totalUnread'] ?? 0);
+
+
+  [17] Line 207: if (mounted) setState(() => _productQuestionsCount = total);
+  Context (last 5 lines):
+            total = counts.entries
+                .where((e) => allowedAddresses.contains(e.key))
+                .fold<int>(0, (a, e) => a + e.value);
+          }
+          if (mounted) setState(() => _productQuestionsCount = total);
+
+
+  [18] Line 220: if (mounted) setState(() => _withdrawalsCount = count);
+  Context (last 5 lines):
+          );
+          if (result != null && result['success'] == true) {
+            final withdrawals = result['withdrawals'] as List<dynamic>? ?? [];
+            final count = withdrawals.where((w) => w['confirmed'] != true).length;
+            if (mounted) setState(() => _withdrawalsCount = count);
+
+
+  [19] Line 228: if (mounted) setState(() => _tasksExpiredCount = count);
+  Context (last 5 lines):
+      Future<void> _loadTasksExpiredCount() async {
+        try {
+          final count = await TaskService.getUnviewedExpiredCount();
+          if (mounted) setState(() => _tasksExpiredCount = count);
+
+
+  [20] Line 235: if (mounted) setState(() => _jobApplicationsCount = count);
+  Context (last 5 lines):
+      Future<void> _loadJobApplicationsCount() async {
+        try {
+          final count = await JobApplicationService.getUnviewedCount();
+          if (mounted) setState(() => _jobApplicationsCount = count);
+
+
+  [21] Line 242: if (mounted) setState(() => _referralsCount = count);
+  Context (last 5 lines):
+      Future<void> _loadReferralsCount() async {
+        try {
+          final count = await ReferralService.getUnviewedCount();
+          if (mounted) setState(() => _referralsCount = count);
+
+
+  [22] Line 252: if (mounted) setState(() => _ordersCount = total);
+  Context (last 5 lines):
+          // Считаем pending (новые) + unviewed (rejected/unconfirmed)
+          final pending = await OrderService.getAllOrders(status: 'pending');
+          final unviewed = await OrderService.getUnviewedCounts();
+          final total = pending.length + (unviewed['total'] ?? 0);
+          if (mounted) setState(() => _ordersCount = total);
+
+
+  [23] Line 333: if (mounted) setState(() => _myTasksCount = count);
+  Context (last 5 lines):
+              } catch (_) {}
+            }(),
+          ]);
+          if (mounted) setState(() => _myTasksCount = count);
+
+
+  File: app\pages\my_dialogs_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [24] Line 82: if (mounted) setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadDialogs();
+      }
+      Future<void> _loadDialogs() async {
+        if (mounted) setState(() => _isLoading = true);
+
+
+  [25] Line 89: if (mounted) setState(() => _isLoading = false);
+  Context (last 5 lines):
+        final phone = prefs.getString('user_phone') ?? '';
+        final userName = prefs.getString('user_name') ?? phone;
+        if (phone.isEmpty) {
+          if (mounted) setState(() => _isLoading = false);
+
+
+  File: app\pages\reports_page.dart
+  Critical issues: 15
+  ------------------------------------------------------------------------------------------------
+
+  [26] Line 90: if (mounted) setState(() => _unreadReviewsCount = unreadCount);
+  Context (last 5 lines):
+      Future<void> _loadUnreadReviewsCount() async {
+        try {
+          final reviews = await ReviewService.getAllReviews();
+          final unreadCount = reviews.where((r) => r.hasUnreadFromClient).length;
+          if (mounted) setState(() => _unreadReviewsCount = unreadCount);
+
+
+  [27] Line 103: setState(() => _managementUnreadCount = result['totalUnread'] ?? 0);
+  Context (last 5 lines):
+            endpoint: '/api/management-dialogs',
+            timeout: ApiConstants.longTimeout,
+          );
+          if (result != null && result['success'] == true && mounted) {
+            setState(() => _managementUnreadCount = result['totalUnread'] ?? 0);
+
+
+  [28] Line 119: if (mounted) setState(() => _unconfirmedWithdrawalsCount = unconfirmedCount);
+  Context (last 5 lines):
+          );
+          if (result != null && result['success'] == true) {
+            final withdrawals = result['withdrawals'] as List<dynamic>? ?? [];
+            final unconfirmedCount = withdrawals.where((w) => w['confirmed'] != true).length;
+            if (mounted) setState(() => _unconfirmedWithdrawalsCount = unconfirmedCount);
+
+
+  [29] Line 129: if (mounted) setState(() => _productQuestionsUnreadCount = count);
+  Context (last 5 lines):
+      Future<void> _loadProductQuestionsUnreadCount() async {
+        try {
+          final count = await ProductQuestionService.getTotalUnviewedByAdminCount();
+          if (mounted) setState(() => _productQuestionsUnreadCount = count);
+
+
+  [30] Line 138: if (mounted) setState(() => _unviewedExpiredTasksCount = count);
+  Context (last 5 lines):
+      Future<void> _loadUnviewedExpiredTasksCount() async {
+        try {
+          final count = await TaskService.getUnviewedExpiredCount();
+          if (mounted) setState(() => _unviewedExpiredTasksCount = count);
+
+
+  [31] Line 147: if (mounted) setState(() => _referralsUnviewedCount = count);
+  Context (last 5 lines):
+      Future<void> _loadReferralsUnviewedCount() async {
+        try {
+          final count = await ReferralService.getUnviewedCount();
+          if (mounted) setState(() => _referralsUnviewedCount = count);
+
+
+  [32] Line 156: if (mounted) setState(() => _ordersUnviewedCount = counts['total'] ?? 0);
+  Context (last 5 lines):
+      Future<void> _loadOrdersUnviewedCount() async {
+        try {
+          final counts = await OrderService.getUnviewedCounts();
+          if (mounted) setState(() => _ordersUnviewedCount = counts['total'] ?? 0);
+
+
+  [33] Line 166: if (mounted) setState(() => _shiftTransferRequestsUnreadCount = unreadCount);
+  Context (last 5 lines):
+      Future<void> _loadShiftTransferRequestsCount() async {
+        try {
+          final requests = await ShiftTransferService.getAdminRequests();
+          final unreadCount = requests.where((r) => !r.isReadByAdmin).length;
+          if (mounted) setState(() => _shiftTransferRequestsUnreadCount = unreadCount);
+
+
+  [34] Line 176: if (mounted) setState(() => _envelopeUnconfirmedCount = unconfirmedCount);
+  Context (last 5 lines):
+      Future<void> _loadEnvelopeCount() async {
+        try {
+          final reports = await EnvelopeReportService.getReportsForCurrentUser();
+          final unconfirmedCount = reports.where((r) => r.status != 'confirmed').length;
+          if (mounted) setState(() => _envelopeUnconfirmedCount = unconfirmedCount);
+
+
+  [35] Line 185: if (mounted) setState(() => _coffeeMachineUnconfirmedCount = count);
+  Context (last 5 lines):
+      Future<void> _loadCoffeeMachineCount() async {
+        try {
+          final count = await CoffeeMachineReportService.getUnconfirmedCountForCurrentUser();
+          if (mounted) setState(() => _coffeeMachineUnconfirmedCount = count);
+
+
+  [36] Line 193: if (mounted) setState(() => _reportCounts = counts);
+  Context (last 5 lines):
+      }
+      Future<void> _loadReportCounts() async {
+        final counts = await ReportNotificationService.getUnviewedCounts();
+        if (mounted) setState(() => _reportCounts = counts);
+
+
+  [37] Line 198: if (mounted) setState(() => _jobApplicationsUnviewedCount = count);
+  Context (last 5 lines):
+      }
+      Future<void> _loadJobApplicationsCount() async {
+        final count = await JobApplicationService.getUnviewedCount();
+        if (mounted) setState(() => _jobApplicationsUnviewedCount = count);
+
+
+  [38] Line 215: if (mounted) setState(() => _userRole = roleData?.role);
+  Context (last 5 lines):
+              await UserRoleService.saveUserRole(roleData);
+            }
+          }
+          if (mounted) setState(() => _userRole = roleData?.role);
+
+
+  [39] Line 223: if (mounted) setState(() => _isVerified = registration?.isVerified ?? false);
+  Context (last 5 lines):
+            final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
+            if (phone != null && phone.isNotEmpty) {
+              final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+              final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
+              if (mounted) setState(() => _isVerified = registration?.isVerified ?? false);
+
+
+  [40] Line 229: if (mounted) setState(() => _isLoading = false);
+  Context (last 5 lines):
+          }
+        } catch (e) {
+          Logger.error('Ошибка загрузки роли', e);
+        } finally {
+          if (mounted) setState(() => _isLoading = false);
+
+
+====================================================================================================
+MODULE: features/ai_training
+====================================================================================================
+
+  File: features\ai_training\pages\cigarette_annotation_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [41] Line 215: setState(() => _isUploading = true);
+  Context (last 5 lines):
+          );
+          return;
+        }
+        setState(() => _isUploading = true);
+
+
+  File: features\ai_training\pages\cigarette_training_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [42] Line 116: setState(() {
+  Context (last 5 lines):
+        super.dispose();
+      }
+      Future<void> _loadData() async {
+        setState(() {
+
+
+  File: features\ai_training\pages\pending_codes_page.dart
+  Critical issues: 3
+  ------------------------------------------------------------------------------------------------
+
+  [43] Line 39: setState(() {
+  Context (last 5 lines):
+        _loadData();
+      }
+      Future<void> _loadData() async {
+        setState(() {
+
+
+  [44] Line 959: setState(() => _results = []);
+  Context (last 5 lines):
+      void _onSearchChanged(String query) {
+        _debounce?.cancel();
+        _debounce = Timer(Duration(milliseconds: 300), () async {
+          if (query.length < 2) {
+            setState(() => _results = []);
+
+
+  [45] Line 962: setState(() => _isSearching = true);
+  Context (last 5 lines):
+          if (query.length < 2) {
+            setState(() => _results = []);
+            return;
+          }
+          setState(() => _isSearching = true);
+
+
+  File: features\ai_training\pages\shift_ai_verification_page.dart
+  Critical issues: 3
+  ------------------------------------------------------------------------------------------------
+
+  [46] Line 47: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        super.dispose();
+      }
+      Future<void> _runVerification() async {
+        setState(() => _isLoading = true);
+
+
+  [47] Line 1230: if (mounted) setState(() => _isVerifying = true);
+  Context (last 5 lines):
+      Future<void> _verifyAndSave() async {
+        if (_boundingBox == null) return;
+        if (mounted) setState(() => _isVerifying = true);
+
+
+  [48] Line 1260: if (mounted) setState(() => _isVerifying = false);
+  Context (last 5 lines):
+          shopAddress: widget.shopAddress,
+          employeeName: widget.employeeName,
+        );
+        if (mounted) setState(() => _isVerifying = false);
+
+
+  File: features\ai_training\pages\shift_training_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [49] Line 30: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadData();
+      }
+      Future<void> _loadData() async {
+        setState(() => _isLoading = true);
+
+
+  [50] Line 63: setState(() {
+  Context (last 5 lines):
+      Future<void> _toggleProductAi(ShiftTrainingProduct product) async {
+        final newValue = !product.isAiActive;
+        // Оптимистичное обновление
+        setState(() {
+
+
+  File: features\ai_training\pages\template_camera_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [51] Line 88: setState(() {
+  Context (last 5 lines):
+        if (_controller == null || !_controller!.value.isInitialized || _isTakingPhoto) {
+          return;
+        }
+        setState(() {
+
+
+  File: features\ai_training\pages\template_editor_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [52] Line 82: setState(() => _isLoading = true);
+  Context (last 5 lines):
+            widget.existingTemplate!.id.isEmpty) {
+          return;
+        }
+        setState(() => _isLoading = true);
+
+
+  [53] Line 93: setState(() {
+  Context (last 5 lines):
+              regionSet.id,
+            );
+            if (imageBytes != null && mounted) {
+              setState(() {
+
+
+  File: features\ai_training\pages\training_settings_page.dart
+  Critical issues: 3
+  ------------------------------------------------------------------------------------------------
+
+  [54] Line 40: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadSettings();
+      }
+      Future<void> _loadSettings() async {
+        setState(() => _isLoading = true);
+
+
+  [55] Line 57: setState(() => _isSaving = true);
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _saveSettings() async {
+        setState(() => _isSaving = true);
+
+
+  [56] Line 687: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadSamples();
+      }
+      Future<void> _loadSamples() async {
+        setState(() => _isLoading = true);
+
+
+  File: features\ai_training\pages\z_report_training_page.dart
+  Critical issues: 5
+  ------------------------------------------------------------------------------------------------
+
+  [57] Line 305: setState(() => _isParsing = true);
+  Context (last 5 lines):
+      Future<void> _parseImage() async {
+        if (_imageBase64 == null) return;
+        setState(() => _isParsing = true);
+
+
+  [58] Line 1039: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadTemplates();
+      }
+      Future<void> _loadTemplates() async {
+        setState(() => _isLoading = true);
+
+
+  [59] Line 1049: if (mounted) setState(() => _isLoading = false);
+  Context (last 5 lines):
+              _isLoading = false;
+            });
+          }
+        } catch (e) {
+          if (mounted) setState(() => _isLoading = false);
+
+
+  [60] Line 1386: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadStats();
+      }
+      Future<void> _loadStats() async {
+        setState(() => _isLoading = true);
+
+
+  [61] Line 1396: if (mounted) setState(() => _isLoading = false);
+  Context (last 5 lines):
+              _isLoading = false;
+            });
+          }
+        } catch (e) {
+          if (mounted) setState(() => _isLoading = false);
+
+
+  File: features\ai_training\widgets\z_report_recognition_dialog.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [62] Line 115: setState(() => _isSaving = true);
+  Context (last 5 lines):
+        final resourceKeys = int.tryParse(_resourceKeysController.text) ?? 0;
+        // Если данные были отредактированы - сохраняем как образец для обучения
+        if (_isEditing) {
+          setState(() => _isSaving = true);
+
+
+  [63] Line 127: if (mounted) setState(() => _isSaving = false);
+  Context (last 5 lines):
+            shopAddress: widget.shopAddress,
+            employeeName: widget.employeeName,
+          );
+          if (mounted) setState(() => _isSaving = false);
+
+
+====================================================================================================
+MODULE: features/attendance
+====================================================================================================
+
+  File: features\attendance\pages\attendance_employee_detail_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [64] Line 35: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadData();
+      }
+      Future<void> _loadData() async {
+        setState(() => _isLoading = true);
+
+
+  File: features\attendance\pages\attendance_reports_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [65] Line 50: setState(() {
+  Context (last 5 lines):
+        super.dispose();
+      }
+      Future<void> _loadAllData() async {
+        setState(() {
+
+
+  File: features\attendance\pages\attendance_shop_selection_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [66] Line 288: setState(() => _isMarking = true);
+  Context (last 5 lines):
+              if (result.needsShiftSelection && result.recordId != null) {
+                // Показываем диалог выбора смены
+                final selectedShift = await _showShiftSelectionDialog();
+                if (selectedShift != null && mounted) {
+                  setState(() => _isMarking = true);
+
+
+====================================================================================================
+MODULE: features/auth
+====================================================================================================
+
+  File: features\auth\pages\forgot_pin_page.dart
+  Critical issues: 4
+  ------------------------------------------------------------------------------------------------
+
+  [67] Line 89: setState(() {
+  Context (last 5 lines):
+      Future<void> _requestCode() async {
+        if (!_isPhoneValid) return;
+        setState(() {
+
+
+  [68] Line 105: setState(() {
+  Context (last 5 lines):
+        });
+        if (result.success) {
+          _telegramBotLink = result.message;
+          setState(() {
+
+
+  [69] Line 118: setState(() {
+  Context (last 5 lines):
+      }
+      void _openTelegram() async {
+        // Переходим к вводу кода
+        setState(() {
+
+
+  [70] Line 128: setState(() {
+  Context (last 5 lines):
+        await launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);
+      }
+      Future<void> _verifyCode(String code) async {
+        setState(() {
+
+
+  File: features\auth\pages\otp_verification_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [71] Line 42: setState(() {
+  Context (last 5 lines):
+      String? _errorMessage;
+      String? _registrationToken;
+      Future<void> _verifyCode(String code) async {
+        setState(() {
+
+
+  [72] Line 79: setState(() {
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _resendCode() async {
+        setState(() {
+
+
+  File: features\auth\pages\pin_entry_page.dart
+  Critical issues: 5
+  ------------------------------------------------------------------------------------------------
+
+  [73] Line 75: setState(() {
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _onPinEntered(String pin) async {
+        setState(() {
+
+
+  [74] Line 96: setState(() {
+  Context (last 5 lines):
+            await _offerEnableBiometric();
+          }
+          widget.onSuccess?.call();
+        } else {
+          setState(() {
+
+
+  [75] Line 138: setState(() {
+  Context (last 5 lines):
+        );
+        if (enable == true && mounted) {
+          await _authService.enableBiometric();
+          setState(() {
+
+
+  [76] Line 179: setState(() {
+  Context (last 5 lines):
+            );
+            if (authenticated && mounted) {
+              await _authService.enableBiometric();
+              setState(() {
+
+
+  [77] Line 195: setState(() {
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _authenticateWithBiometric() async {
+        setState(() {
+
+
+  File: features\auth\pages\pin_setup_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [78] Line 96: setState(() {
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _completeSetup(String pin) async {
+        setState(() {
+
+
+  File: features\auth\widgets\otp_input_widget.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [79] Line 115: setState(() {
+  Context (last 5 lines):
+      void _startResendTimer() {
+        _remainingSeconds = widget.resendTimeout;
+        _resendTimer?.cancel();
+        _resendTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+          setState(() {
+
+
+  File: features\auth\widgets\pin_input_widget.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [80] Line 109: setState(() {
+  Context (last 5 lines):
+        });
+      }
+      void _clearPin() {
+        setState(() {
+
+
+====================================================================================================
+MODULE: features/bonuses
+====================================================================================================
+
+  File: features\bonuses\pages\bonus_penalty_management_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [81] Line 352: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        });
+      }
+      Future<void> _createRecord(Employee employee, double amount, String comment) async {
+        setState(() => _isLoading = true);
+
+
+====================================================================================================
+MODULE: features/clients
+====================================================================================================
+
+  File: features\clients\pages\admin_management_dialog_page.dart
+  Critical issues: 4
+  ------------------------------------------------------------------------------------------------
+
+  [82] Line 78: setState(() => _isLoading = false);
+  Context (last 5 lines):
+      Future<void> _loadMessages() async {
+        // Guard against empty phone
+        if (widget.client.phone.isEmpty) {
+          Logger.debug('Cannot load messages: empty phone number');
+          setState(() => _isLoading = false);
+
+
+  [83] Line 183: setState(() {
+  Context (last 5 lines):
+        if (!mounted) return;
+        setState(() => _isUploading = false);
+        if (mediaUrl != null) {
+          setState(() {
+
+
+  [84] Line 212: setState(() => _isSending = true);
+  Context (last 5 lines):
+        final hasMedia = _pendingMediaUrl != null;
+        if (text.isEmpty && !hasMedia) return;
+        setState(() => _isSending = true);
+
+
+  [85] Line 216: setState(() => _isSending = false);
+  Context (last 5 lines):
+        setState(() => _isSending = true);
+        // SECURITY: Проверяем что adminPhone загружен
+        if (_adminPhone == null || _adminPhone!.isEmpty) {
+          setState(() => _isSending = false);
+
+
+  File: features\clients\pages\broadcast_messages_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [86] Line 36: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        super.dispose();
+      }
+      Future<void> _loadMessages() async {
+        setState(() => _isLoading = true);
+
+
+  [87] Line 43: if (mounted) setState(() => _isLoading = false);
+  Context (last 5 lines):
+          final prefs = await SharedPreferences.getInstance();
+          _userPhone = prefs.getString('user_phone') ?? prefs.getString('userPhone') ?? '';
+          if (_userPhone!.isEmpty) {
+            if (mounted) setState(() => _isLoading = false);
+
+
+  File: features\clients\pages\clients_management_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [88] Line 38: setState(() {
+  Context (last 5 lines):
+        super.dispose();
+      }
+      Future<void> _loadClients() async {
+        setState(() {
+
+
+  File: features\clients\pages\client_chat_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [89] Line 171: setState(() {
+  Context (last 5 lines):
+        if (!mounted) return;
+        setState(() => _isUploading = false);
+        if (mediaUrl != null) {
+          setState(() {
+
+
+  [90] Line 223: setState(() {
+  Context (last 5 lines):
+        }
+        if (_isSending) return;
+        setState(() {
+
+
+  File: features\clients\pages\client_dialog_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [91] Line 55: setState(() {
+  Context (last 5 lines):
+          final prefs = await SharedPreferences.getInstance();
+          final clientPhone = prefs.getString('user_phone') ?? '';
+          if (clientPhone.isEmpty) {
+            setState(() {
+
+
+  File: features\clients\pages\management_dialogs_list_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [92] Line 31: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadDialogs();
+      }
+      Future<void> _loadDialogs() async {
+        setState(() => _isLoading = true);
+
+
+  File: features\clients\pages\management_dialog_page.dart
+  Critical issues: 4
+  ------------------------------------------------------------------------------------------------
+
+  [93] Line 47: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        super.dispose();
+      }
+      Future<void> _loadMessages() async {
+        setState(() => _isLoading = true);
+
+
+  [94] Line 55: if (mounted) setState(() => _isLoading = false);
+  Context (last 5 lines):
+          _userPhone = prefs.getString('user_phone') ?? prefs.getString('userPhone') ?? '';
+          _userName = prefs.getString('user_name') ?? prefs.getString('userName');
+          if (_userPhone!.isEmpty) {
+            if (mounted) setState(() => _isLoading = false);
+
+
+  [95] Line 170: setState(() {
+  Context (last 5 lines):
+        if (!mounted) return;
+        setState(() => _isUploading = false);
+        if (mediaUrl != null) {
+          setState(() {
+
+
+  [96] Line 200: setState(() => _isSending = true);
+  Context (last 5 lines):
+        if (text.isEmpty && !hasMedia) return;
+        if (_userPhone == null || _userPhone!.isEmpty) return;
+        setState(() => _isSending = true);
+
+
+  File: features\clients\pages\network_dialog_page.dart
+  Critical issues: 4
+  ------------------------------------------------------------------------------------------------
+
+  [97] Line 40: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        super.dispose();
+      }
+      Future<void> _loadMessages() async {
+        setState(() => _isLoading = true);
+
+
+  [98] Line 48: if (mounted) setState(() => _isLoading = false);
+  Context (last 5 lines):
+          _userPhone = prefs.getString('user_phone') ?? prefs.getString('userPhone') ?? '';
+          _userName = prefs.getString('user_name') ?? prefs.getString('userName');
+          if (_userPhone!.isEmpty) {
+            if (mounted) setState(() => _isLoading = false);
+
+
+  [99] Line 90: setState(() => _isSending = true);
+  Context (last 5 lines):
+      Future<void> _sendMessage() async {
+        final text = _messageController.text.trim();
+        if (text.isEmpty || _userPhone == null || _userPhone!.isEmpty) return;
+        setState(() => _isSending = true);
+
+
+  [100] Line 102: setState(() {
+  Context (last 5 lines):
+        if (!mounted) return;
+        setState(() => _isSending = false);
+        if (message != null) {
+          setState(() {
+
+
+  File: features\clients\pages\registration_page.dart
+  Critical issues: 3
+  ------------------------------------------------------------------------------------------------
+
+  [101] Line 49: setState(() {
+  Context (last 5 lines):
+      }
+      Future<void> _validateReferralCode(String value) async {
+        if (value.isEmpty) {
+          setState(() {
+
+
+  [102] Line 73: setState(() {
+  Context (last 5 lines):
+            _referralValidationMessage = 'Сотрудник: ${result['employee']?['name'] ?? 'Найден'}';
+            _isReferralValid = true;
+          });
+        } else {
+          setState(() {
+
+
+  [103] Line 85: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        if (!_formKey.currentState!.validate()) {
+          return;
+        }
+        setState(() => _isLoading = true);
+
+
+====================================================================================================
+MODULE: features/coffee_machine
+====================================================================================================
+
+  File: features\coffee_machine\pages\coffee_machine_questions_management_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [104] Line 39: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadData();
+      }
+      Future<void> _loadData() async {
+        setState(() => _isLoading = true);
+
+
+  File: features\coffee_machine\pages\coffee_machine_reports_list_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [105] Line 49: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        super.dispose();
+      }
+      Future<void> _loadData() async {
+        setState(() => _isLoading = true);
+
+
+  [106] Line 299: if (date != null) setState(() => _selectedDate = date);
+  Context (last 5 lines):
+                    initialDate: _selectedDate ?? DateTime.now(),
+                    firstDate: DateTime(2024),
+                    lastDate: DateTime.now(),
+                  );
+                  if (date != null) setState(() => _selectedDate = date);
+
+
+  File: features\coffee_machine\pages\coffee_machine_report_view_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [107] Line 600: setState(() => _isConfirming = true);
+  Context (last 5 lines):
+        );
+      }
+      Future<void> _confirmReport() async {
+        setState(() => _isConfirming = true);
+
+
+  [108] Line 642: setState(() => _isConfirming = true);
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _rejectReport() async {
+        setState(() => _isConfirming = true);
+
+
+  File: features\coffee_machine\pages\coffee_machine_template_management_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [109] Line 45: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        super.dispose();
+      }
+      Future<void> _loadData() async {
+        setState(() => _isLoading = true);
+
+
+  File: features\coffee_machine\pages\coffee_machine_training_photos_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [110] Line 35: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadSamples();
+      }
+      Future<void> _loadSamples() async {
+        setState(() => _isLoading = true);
+
+
+====================================================================================================
+MODULE: features/data_cleanup
+====================================================================================================
+
+  File: features\data_cleanup\pages\data_cleanup_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [111] Line 34: setState(() {
+  Context (last 5 lines):
+        _loadStats();
+      }
+      Future<void> _loadStats() async {
+        setState(() {
+
+
+  File: features\data_cleanup\widgets\cleanup_period_dialog.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [112] Line 37: setState(() => _isLoadingPreview = true);
+  Context (last 5 lines):
+        _loadPreview();
+      }
+      Future<void> _loadPreview() async {
+        setState(() => _isLoadingPreview = true);
+
+
+====================================================================================================
+MODULE: features/efficiency
+====================================================================================================
+
+  File: features\efficiency\pages\efficiency_analytics_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [113] Line 38: setState(() {
+  Context (last 5 lines):
+      }
+      /// Загрузить данные за последние 3 месяца
+      Future<void> _loadData() async {
+        setState(() {
+
+
+  File: features\efficiency\pages\efficiency_by_employee_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [114] Line 40: setState(() {
+  Context (last 5 lines):
+        _loadData();
+      }
+      Future<void> _loadData({bool forceRefresh = false}) async {
+        setState(() {
+
+
+  File: features\efficiency\pages\efficiency_by_shop_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [115] Line 33: setState(() {
+  Context (last 5 lines):
+        _loadData();
+      }
+      Future<void> _loadData({bool forceRefresh = false}) async {
+        setState(() {
+
+
+  File: features\efficiency\pages\employee_efficiency_detail_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [116] Line 41: setState(() => _isLoadingReferrals = true);
+  Context (last 5 lines):
+        _loadReferralPoints();
+      }
+      Future<void> _loadReferralPoints() async {
+        setState(() => _isLoadingReferrals = true);
+
+
+  File: features\efficiency\pages\my_efficiency_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [117] Line 91: setState(() {
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _loadData({bool forceRefresh = false}) async {
+        setState(() {
+
+
+  File: features\efficiency\pages\settings_tabs\generic_points_settings_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [118] Line 91: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadSettings();
+      }
+      Future<void> _loadSettings() async {
+        setState(() => _isLoading = true);
+
+
+  [119] Line 117: setState(() => _isSaving = true);
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _saveSettings() async {
+        setState(() => _isSaving = true);
+
+
+  File: features\efficiency\pages\settings_tabs\manager_points_settings_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [120] Line 55: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadSettings();
+      }
+      Future<void> _loadSettings() async {
+        setState(() => _isLoading = true);
+
+
+  [121] Line 87: setState(() => _isSaving = true);
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _saveSettings() async {
+        setState(() => _isSaving = true);
+
+
+  File: features\efficiency\pages\settings_tabs\orders_points_settings_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [122] Line 37: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadSettings();
+      }
+      Future<void> _loadSettings() async {
+        setState(() => _isLoading = true);
+
+
+  [123] Line 65: setState(() => _isSaving = true);
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _saveSettings() async {
+        setState(() => _isSaving = true);
+
+
+  File: features\efficiency\pages\settings_tabs\test_points_settings_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [124] Line 33: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadSettings();
+      }
+      Future<void> _loadSettings() async {
+        setState(() => _isLoading = true);
+
+
+  [125] Line 59: setState(() => _isSaving = true);
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _saveSettings() async {
+        setState(() => _isSaving = true);
+
+
+  File: features\efficiency\widgets\points_settings_scaffold.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [126] Line 96: setState(() => _isSaving = true);
+  Context (last 5 lines):
+        if (mounted) setState(() => _isLoading = false);
+      }
+      Future<void> _save() async {
+        setState(() => _isSaving = true);
+
+
+====================================================================================================
+MODULE: features/employee_chat
+====================================================================================================
+
+  File: features\employee_chat\pages\create_group_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [127] Line 51: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        super.dispose();
+      }
+      Future<void> _loadParticipants() async {
+        setState(() => _isLoading = true);
+
+
+  [128] Line 92: setState(() {
+  Context (last 5 lines):
+          imageQuality: 80,
+        );
+        if (pickedFile != null && mounted) {
+          setState(() {
+
+
+  File: features\employee_chat\pages\employee_chats_list_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [129] Line 75: setState(() => _isLoading = true);
+  Context (last 5 lines):
+      }
+      Future<void> _loadChats({bool silent = false}) async {
+        if (!silent) {
+          setState(() => _isLoading = true);
+
+
+  [130] Line 79: setState(() => _isLoading = false);
+  Context (last 5 lines):
+          setState(() => _isLoading = true);
+        }
+        if (_userPhone == null || _userPhone!.isEmpty) {
+          setState(() => _isLoading = false);
+
+
+  File: features\employee_chat\pages\employee_chat_page.dart
+  Critical issues: 7
+  ------------------------------------------------------------------------------------------------
+
+  [131] Line 206: setState(() => _isLoading = true);
+  Context (last 5 lines):
+      }
+      Future<void> _loadMessages({bool silent = false}) async {
+        if (!silent) {
+          setState(() => _isLoading = true);
+
+
+  [132] Line 265: setState(() => _isLoadingMore = true);
+  Context (last 5 lines):
+      Future<void> _loadMoreMessages() async {
+        if (_messages.isEmpty || !_hasMore || _isLoadingMore) return;
+        setState(() => _isLoadingMore = true);
+
+
+  [133] Line 321: setState(() => _isSending = true);
+  Context (last 5 lines):
+      Future<void> _sendMessage({String? imageUrl}) async {
+        final text = _messageController.text.trim();
+        if (text.isEmpty && imageUrl == null) return;
+        setState(() => _isSending = true);
+
+
+  [134] Line 335: setState(() {
+  Context (last 5 lines):
+            imageUrl: imageUrl,
+          );
+          if (message != null && mounted) {
+            setState(() {
+
+
+  [135] Line 399: setState(() => _isSending = true);
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _uploadAndSendImage(File imageFile) async {
+        setState(() => _isSending = true);
+
+
+  [136] Line 686: setState(() {
+  Context (last 5 lines):
+      }
+      Future<void> _searchMessages(String query) async {
+        if (query.length < 2) {
+          setState(() {
+
+
+  [137] Line 693: setState(() => _isSearchLoading = true);
+  Context (last 5 lines):
+          });
+          return;
+        }
+        setState(() => _isSearchLoading = true);
+
+
+  File: features\employee_chat\pages\group_info_page.dart
+  Critical issues: 7
+  ------------------------------------------------------------------------------------------------
+
+  [138] Line 50: setState(() => _isEditing = false);
+  Context (last 5 lines):
+      Future<void> _updateGroupName() async {
+        final newName = _nameController.text.trim();
+        if (newName.isEmpty || newName == _chat.name) {
+          setState(() => _isEditing = false);
+
+
+  [139] Line 54: setState(() => _isLoading = true);
+  Context (last 5 lines):
+          setState(() => _isEditing = false);
+          return;
+        }
+        setState(() => _isLoading = true);
+
+
+  [140] Line 62: setState(() {
+  Context (last 5 lines):
+            requesterPhone: widget.currentUserPhone,
+            name: newName,
+          );
+          if (updated != null && mounted) {
+            setState(() {
+
+
+  [141] Line 97: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        );
+        if (pickedFile == null) return;
+        setState(() => _isLoading = true);
+
+
+  [142] Line 109: setState(() => _chat = updated);
+  Context (last 5 lines):
+            imageUrl: imageUrl,
+          );
+          if (updated != null && mounted) {
+            setState(() => _chat = updated);
+
+
+  [143] Line 153: setState(() => _chat = updated);
+  Context (last 5 lines):
+          if (success && mounted) {
+            final updated = await EmployeeChatService.getGroupInfo(_chat.id);
+            if (updated != null) {
+              setState(() => _chat = updated);
+
+
+  [144] Line 213: setState(() => _chat = updated);
+  Context (last 5 lines):
+          if (success && mounted) {
+            final updated = await EmployeeChatService.getGroupInfo(_chat.id);
+            if (updated != null) {
+              setState(() => _chat = updated);
+
+
+  File: features\employee_chat\pages\new_chat_page.dart
+  Critical issues: 3
+  ------------------------------------------------------------------------------------------------
+
+  [145] Line 55: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        super.dispose();
+      }
+      Future<void> _loadData() async {
+        setState(() => _isLoading = true);
+
+
+  [146] Line 104: setState(() => _isLoading = true);
+  Context (last 5 lines):
+      }
+      Future<void> _openPrivateChat(Employee employee) async {
+        HapticFeedback.selectionClick();
+        setState(() => _isLoading = true);
+
+
+  [147] Line 156: setState(() => _isLoading = true);
+  Context (last 5 lines):
+      }
+      Future<void> _openShopChat(Shop shop) async {
+        HapticFeedback.selectionClick();
+        setState(() => _isLoading = true);
+
+
+  File: features\employee_chat\pages\shop_chat_members_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [148] Line 35: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadData();
+      }
+      Future<void> _loadData() async {
+        setState(() => _isLoading = true);
+
+
+====================================================================================================
+MODULE: features/employees
+====================================================================================================
+
+  File: features\employees\pages\employees_page.dart
+  Critical issues: 2
+  ------------------------------------------------------------------------------------------------
+
+  [149] Line 303: setState(() {
+  Context (last 5 lines):
+      Future<void> _loadVerificationStatuses() async {
+        if (_isLoadingVerification) return;
+        setState(() {
+
+
+  [150] Line 695: setState(() {
+  Context (last 5 lines):
+                    }
+                    return RefreshIndicator(
+                      onRefresh: () async {
+                        setState(() {
+
+
+  File: features\employees\pages\employee_preferences_dialog.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [151] Line 96: setState(() {
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _savePreferences() async {
+        setState(() {
+
+
+  File: features\employees\pages\employee_schedule_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [152] Line 62: setState(() {
+  Context (last 5 lines):
+        _initializeData();
+      }
+      Future<void> _initializeData() async {
+        setState(() {
+
+
+====================================================================================================
+MODULE: features/envelope
+====================================================================================================
+
+  File: features\envelope\pages\envelope_form_page.dart
+  Critical issues: 7
+  ------------------------------------------------------------------------------------------------
+
+  [153] Line 162: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        }
+      }
+      Future<void> _loadData() async {
+        setState(() => _isLoading = true);
+
+
+  [154] Line 313: setState(() {
+  Context (last 5 lines):
+          );
+          if (dialogResult != null && mounted) {
+            // Заполняем поля распознанными/исправленными данными
+            setState(() {
+
+
+  [155] Line 446: setState(() => _oooExpenses.add(result));
+  Context (last 5 lines):
+          context: context,
+          builder: (context) => AddExpenseDialog(suppliers: oooSuppliers),
+        );
+        if (result != null) {
+          setState(() => _oooExpenses.add(result));
+
+
+  [156] Line 451: setState(() => _oooExpenses.removeAt(index));
+  Context (last 5 lines):
+        }
+      }
+      void _removeOooExpense(int index) {
+        setState(() => _oooExpenses.removeAt(index));
+
+
+  [157] Line 463: setState(() => _expenses.add(result));
+  Context (last 5 lines):
+          context: context,
+          builder: (context) => AddExpenseDialog(suppliers: ipSuppliers),
+        );
+        if (result != null) {
+          setState(() => _expenses.add(result));
+
+
+  [158] Line 468: setState(() => _expenses.removeAt(index));
+  Context (last 5 lines):
+        }
+      }
+      void _removeExpense(int index) {
+        setState(() => _expenses.removeAt(index));
+
+
+  [159] Line 474: setState(() => _isSaving = true);
+  Context (last 5 lines):
+      Future<void> _submitReport() async {
+        if (_isSaving) return;
+        setState(() => _isSaving = true);
+
+
+  File: features\envelope\pages\envelope_questions_management_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [160] Line 31: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        _loadQuestions();
+      }
+      Future<void> _loadQuestions() async {
+        setState(() => _isLoading = true);
+
+
+  File: features\envelope\pages\envelope_reports_list_page.dart
+  Critical issues: 3
+  ------------------------------------------------------------------------------------------------
+
+  [161] Line 45: setState(() {
+  Context (last 5 lines):
+      Future<void> _detectRole() async {
+        final roleData = await UserRoleService.loadUserRole();
+        if (roleData != null && mounted) {
+          setState(() {
+
+
+  [162] Line 59: setState(() => _isLoading = true);
+  Context (last 5 lines):
+        super.dispose();
+      }
+      Future<void> _loadData() async {
+        setState(() => _isLoading = true);
+
+
+  [163] Line 170: setState(() {
+  Context (last 5 lines):
+          firstDate: DateTime.now().subtract(Duration(days: 90)),
+          lastDate: DateTime.now(),
+        );
+        if (picked != null) {
+          setState(() {
+
+
+  File: features\envelope\pages\envelope_report_view_page.dart
+  Critical issues: 1
+  ------------------------------------------------------------------------------------------------
+
+  [164] Line 138: setState(() => _report = updated);
+  Context (last 5 lines):
+              _selectedRating,
+            );
+Traceback (most recent call last):
+  File "C:\Users\Admin\arabica2026\find_critical_setstate.py", line 161, in <module>
+    main()
+  File "C:\Users\Admin\arabica2026\find_critical_setstate.py", line 153, in main
+    print(f"    {ctx_line.rstrip()}")
+  File "C:\Users\Admin\AppData\Local\Programs\Python\Python310\lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f4dd' in position 26: character maps to <undefined>

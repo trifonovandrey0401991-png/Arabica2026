@@ -736,7 +736,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
           };
 
           penalties.push(penalty);
-          await writeJsonFile(penaltiesFile, penalties);
+          await writeJsonFile(penaltiesFile, penalties, { useLock: false }); // already inside withLock
           // DB dual-write
           await dbInsertPenalty(penalty);
           console.log(`✅ Баллы эффективности сохранены: ${efficiencyPoints} для ${report.employeeName}`);

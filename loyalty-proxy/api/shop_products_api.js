@@ -129,8 +129,8 @@ async function saveShopProducts(shopId, products) {
     shopProductsCache.set(shopId, data);
 
     if (USE_DB) {
-      try { await db.upsert('shop_products', { id: shopId, data: data, updated_at: data.lastSync }); }
-      catch (dbErr) { console.error('DB save shop_products error:', dbErr.message); }
+      try { await db.upsert('dbf_shop_products', { id: shopId, data: data, updated_at: data.lastSync }); }
+      catch (dbErr) { console.error('DB save dbf_shop_products error:', dbErr.message); }
     }
 
     console.log(`[Shop Products API] Сохранено ${products.length} товаров для магазина ${shopId}`);

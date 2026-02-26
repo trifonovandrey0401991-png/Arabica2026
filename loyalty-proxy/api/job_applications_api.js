@@ -9,7 +9,7 @@ const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { requireAuth } = require('../utils/session_middleware');
 const { notifyCounterUpdate } = require('./counters_websocket');
 
@@ -182,12 +182,22 @@ module.exports = function setupJobApplicationsAPI(app) {
       console.log('📥 GET /api/job-applications');
 
       if (USE_DB) {
+        if (isPaginationRequested(req.query)) {
+          const [result, countResult] = await Promise.all([
+            db.findAllPaginated('job_applications', {
+              orderBy: 'created_at', orderDir: 'DESC',
+              page: parseInt(req.query.page) || 1,
+              pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+            }),
+            db.query("SELECT COUNT(*) AS cnt FROM job_applications WHERE is_viewed = false"),
+          ]);
+          const response = createDbPaginatedResponse(result, 'applications', dbToJobApp);
+          response.unviewedCount = parseInt(countResult.rows[0].cnt);
+          return res.json(response);
+        }
         const rows = await db.findAll('job_applications', { orderBy: 'created_at', orderDir: 'DESC' });
         const applications = rows.map(dbToJobApp);
         const unviewedCount = rows.filter(r => !r.is_viewed).length;
-        if (isPaginationRequested(req.query)) {
-          return res.json({ ...createPaginatedResponse(applications, req.query, 'applications'), unviewedCount });
-        }
         return res.json({ success: true, applications, unviewedCount });
       }
 

@@ -10,7 +10,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { sendPushNotification, sendPushToPhone } = require('./report_notifications_api');
 const { isAdminPhone } = require('../utils/admin_cache');
-const { createPaginatedResponse, isPaginationRequested } = require('../utils/pagination');
+const { createPaginatedResponse, createDbPaginatedResponse, isPaginationRequested } = require('../utils/pagination');
 const { fileExists, maskPhone, sanitizePhone } = require('../utils/file_helpers');
 const { writeJsonFile, withLock } = require('../utils/async_fs');
 const db = require('../utils/db');
@@ -97,6 +97,25 @@ function setupClientsAPI(app) {
   app.get('/api/clients', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/clients');
+      const { search } = req.query;
+
+      // SQL-level pagination: COUNT + LIMIT/OFFSET at DB level
+      if (USE_DB && isPaginationRequested(req.query)) {
+        const paginationOpts = {
+          orderBy: 'updated_at',
+          orderDir: 'DESC',
+          page: parseInt(req.query.page) || 1,
+          pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+        };
+        if (search) {
+          paginationOpts.where = 'name ILIKE $1 OR phone ILIKE $1';
+          paginationOpts.whereParams = [`%${search}%`];
+        }
+        const result = await db.findAllPaginated('clients', paginationOpts);
+        return res.json(createDbPaginatedResponse(result, 'clients', dbClientToCamel));
+      }
+
+      // Fallback: load all (backward compat for old clients or JSON mode)
       let clients;
 
       if (USE_DB) {
@@ -119,7 +138,6 @@ function setupClientsAPI(app) {
           }
         }
 
-        // Сортировка по дате обновления (новые сверху)
         clients.sort((a, b) => {
           const dateA = new Date(a.updatedAt || a.createdAt || 0);
           const dateB = new Date(b.updatedAt || b.createdAt || 0);
@@ -127,8 +145,6 @@ function setupClientsAPI(app) {
         });
       }
 
-      // Поддержка поиска по имени/телефону
-      const { search } = req.query;
       if (search) {
         const searchLower = search.toLowerCase();
         clients = clients.filter(c =>
@@ -137,7 +153,6 @@ function setupClientsAPI(app) {
         );
       }
 
-      // Пагинация если запрошена
       if (isPaginationRequested(req.query)) {
         res.json(createPaginatedResponse(clients, req.query, 'clients'));
       } else {
@@ -170,6 +185,7 @@ function setupClientsAPI(app) {
           referred_at: client.referredAt !== undefined ? client.referredAt : null,
           is_admin: false, // SECURITY: isAdmin нельзя устанавливать через API
           employee_name: client.employeeName !== undefined ? client.employeeName : null,
+          is_wholesale: client.isWholesale !== undefined ? client.isWholesale : false,
           updated_at: now
         };
         // Upsert — если клиент существует, обновляем только переданные поля
@@ -183,6 +199,7 @@ function setupClientsAPI(app) {
           if (client.referredAt !== undefined) updateData.referred_at = client.referredAt;
           // SECURITY: isAdmin игнорируется — нельзя менять через API
           if (client.employeeName !== undefined) updateData.employee_name = client.employeeName;
+          if (client.isWholesale !== undefined) updateData.is_wholesale = client.isWholesale;
           const row = await db.updateById('clients', phone, updateData, 'phone');
           updated = dbClientToCamel(row);
         } else {
@@ -1143,6 +1160,9 @@ function dbClientToCamel(row) {
     referredAt: row.referred_at,
     isAdmin: row.is_admin,
     employeeName: row.employee_name,
+    loyaltyPoints: row.loyalty_points || 0,
+    totalPointsEarned: row.total_points_earned || 0,
+    isWholesale: row.is_wholesale || false,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };

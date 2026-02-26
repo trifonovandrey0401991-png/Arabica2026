@@ -46,6 +46,10 @@ import '../../features/tasks/pages/task_management_page.dart';
 import '../../features/employees/pages/employee_panel_page.dart';
 import 'client_functions_page.dart';
 
+// Магазин и поиск
+import '../../features/shop_catalog/pages/shop_catalog_page.dart';
+import '../../features/product_questions/pages/product_search_page.dart';
+
 // Сервисы для счётчиков
 import '../../core/services/report_notification_service.dart';
 import '../../core/services/base_http_service.dart';
@@ -633,7 +637,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
                   },
                 ),
               ),
-              // Кнопки "Сотрудники" и "Клиенты" — прижаты к низу
+              // Кнопки "Сотрудники", "Клиенты" и "Магазин" — прижаты к низу
               Padding(
                 padding: EdgeInsets.fromLTRB(pad, 4.h, pad, 6.h),
                 child: Row(
@@ -650,7 +654,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
                         ),
                       ),
                     ),
-                    SizedBox(width: 10.w),
+                    SizedBox(width: 8.w),
                     Expanded(
                       child: _buildRoleButton(
                         context,
@@ -660,6 +664,19 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => ClientFunctionsPage()),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: _buildRoleButton(
+                        context,
+                        icon: Icons.storefront_outlined,
+                        label: 'Магазин',
+                        color: AppColors.emerald,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => ShopCatalogPage()),
                         ),
                       ),
                     ),
@@ -710,21 +727,57 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
                     ),
                   ),
 
-                // Справа — кнопка выхода
+                // Справа — кнопки обновления, поиска и выхода
                 Align(
                   alignment: Alignment.centerRight,
-                  child: GestureDetector(
-                    onTap: widget.onLogout,
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(14.r),
-                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Обновить счётчики
+                      GestureDetector(
+                        onTap: _loadAllCounts,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(14.r),
+                            border: Border.all(color: Colors.white.withOpacity(0.1)),
+                          ),
+                          child: Icon(Icons.system_update_rounded, color: Colors.white.withOpacity(0.8), size: 20),
+                        ),
                       ),
-                      child: Icon(Icons.logout_rounded, color: Colors.white.withOpacity(0.8), size: 20),
-                    ),
+                      SizedBox(width: 6.w),
+                      // Поиск товара
+                      GestureDetector(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProductSearchPage())),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.amber,
+                            borderRadius: BorderRadius.circular(14.r),
+                            border: Border.all(color: AppColors.amberLight, width: 2),
+                          ),
+                          child: Icon(Icons.search_rounded, color: Colors.black87, size: 20),
+                        ),
+                      ),
+                      SizedBox(width: 6.w),
+                      // Выход
+                      GestureDetector(
+                        onTap: widget.onLogout,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(14.r),
+                            border: Border.all(color: Colors.white.withOpacity(0.1)),
+                          ),
+                          child: Icon(Icons.logout_rounded, color: Colors.white.withOpacity(0.8), size: 20),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -972,9 +1025,10 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
                 Expanded(
                   child: Text(
                     label,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.95),
-                      fontSize: 16.sp,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

@@ -47,7 +47,7 @@ async function main() {
   await migrateSingletonConfig('test-settings.json', 'test_settings', stats, 'testSettings');
   await migrateSingletonConfig('shop-managers.json', 'shop_managers', stats, 'shopManagers');
   await migrateWithdrawals(stats);
-  await migrateJsonbDir('shop-products', 'shop_products', stats, 'shopProducts');
+  await migrateJsonbDir('shop-products', 'dbf_shop_products', stats, 'shopProducts');
   await migrateSingletonConfig('referrals-viewed.json', 'referrals_viewed', stats, 'referralsViewed');
   await migrateAuthSessions(stats);
   await migrateAuthPins(stats);
@@ -80,7 +80,7 @@ async function patchSchema() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )`,
 
-    `CREATE TABLE IF NOT EXISTS shop_products (
+    `CREATE TABLE IF NOT EXISTS dbf_shop_products (
       id TEXT PRIMARY KEY,
       data JSONB NOT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW(),

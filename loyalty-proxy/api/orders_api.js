@@ -9,11 +9,13 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, fileExists } = require('../utils/file_helpers');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const ordersModule = require('../modules/orders');
 const { notifyCounterUpdate } = require('./counters_websocket');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
+const { loadAuthorizedEmployees } = require('./shop_catalog_api');
+const pushService = require('../utils/push_service');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const ORDERS_DIR = `${DATA_DIR}/orders`;
@@ -25,11 +27,25 @@ const USE_DB = process.env.USE_DB_ORDERS === 'true';
   }
 })();
 
+// Check if user can see wholesale orders
+async function canSeeWholesaleOrders(userPhone, isAdmin) {
+  // Admins/developers always see wholesale orders
+  if (isAdmin) return true;
+  if (!userPhone) return false;
+
+  try {
+    const authorized = await loadAuthorizedEmployees();
+    return authorized.some(e => e.phone === userPhone);
+  } catch (e) {
+    return false;
+  }
+}
+
 function setupOrdersAPI(app) {
   // POST /api/orders - создать заказ
   app.post('/api/orders', requireAuth, async (req, res) => {
     try {
-      const { clientPhone, clientName, shopAddress, items, totalPrice, comment } = req.body;
+      const { clientPhone, clientName, shopAddress, items, totalPrice, totalPointsPrice, comment } = req.body;
       console.log('POST /api/orders clientPhone:', clientPhone, 'shop:', shopAddress);
       const normalizedPhone = clientPhone.replace(/[^\d]/g, '');
 
@@ -39,11 +55,13 @@ function setupOrdersAPI(app) {
         shopAddress,
         items,
         totalPrice,
+        totalPointsPrice: totalPointsPrice || 0,
         comment
       });
 
       console.log(`✅ Создан заказ #${order.orderNumber} от ${clientName}`);
       notifyCounterUpdate('pendingOrders', { delta: 1 });
+      if (order.isWholesaleOrder) notifyCounterUpdate('wholesaleOrders', { delta: 1 });
       res.json({ success: true, order });
     } catch (err) {
       console.error('❌ Ошибка создания заказа:', err);
@@ -55,6 +73,50 @@ function setupOrdersAPI(app) {
   app.get('/api/orders', requireAuth, async (req, res) => {
     try {
       console.log('GET /api/orders', req.query);
+
+      // Check wholesale visibility for employee view (no clientPhone = employee request)
+      const isEmployeeView = !req.query.clientPhone;
+      const userPhone = req.user ? req.user.phone : null;
+      const userIsAdmin = req.user ? req.user.isAdmin : false;
+      let showWholesale = true;
+      if (isEmployeeView) {
+        showWholesale = await canSeeWholesaleOrders(userPhone, userIsAdmin);
+      }
+
+      // SQL-level pagination
+      if (USE_DB && isPaginationRequested(req.query)) {
+        const conditions = [];
+        const params = [];
+        let idx = 1;
+
+        if (req.query.clientPhone) {
+          conditions.push(`client_phone = $${idx++}`);
+          params.push(req.query.clientPhone.replace(/[^\d]/g, ''));
+        }
+        if (req.query.status) {
+          conditions.push(`status = $${idx++}`);
+          params.push(req.query.status);
+        }
+        if (req.query.shopAddress) {
+          conditions.push(`shop_address = $${idx++}`);
+          params.push(req.query.shopAddress);
+        }
+        // Hide wholesale orders from non-authorized employees
+        if (!showWholesale) {
+          conditions.push(`(is_wholesale_order = false OR is_wholesale_order IS NULL)`);
+        }
+
+        const result = await db.findAllPaginated('orders', {
+          where: conditions.length > 0 ? conditions.join(' AND ') : undefined,
+          whereParams: params.length > 0 ? params : undefined,
+          orderBy: 'order_number',
+          orderDir: 'DESC NULLS LAST',
+          page: parseInt(req.query.page) || 1,
+          pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+        });
+        return res.json(createDbPaginatedResponse(result, 'orders', ordersModule.dbOrderToCamel));
+      }
+
       const filters = {};
       if (req.query.clientPhone) {
         filters.clientPhone = req.query.clientPhone.replace(/[^\d]/g, '');
@@ -62,7 +124,11 @@ function setupOrdersAPI(app) {
       if (req.query.status) filters.status = req.query.status;
       if (req.query.shopAddress) filters.shopAddress = req.query.shopAddress;
 
-      const orders = await ordersModule.getOrders(filters);
+      let orders = await ordersModule.getOrders(filters);
+      // Hide wholesale orders from non-authorized employees
+      if (!showWholesale) {
+        orders = orders.filter(o => !o.isWholesaleOrder);
+      }
       if (isPaginationRequested(req.query)) {
         return res.json(createPaginatedResponse(orders, req.query, 'orders'));
       }
@@ -159,6 +225,24 @@ function setupOrdersAPI(app) {
       const order = await ordersModule.updateOrderStatus(id, updates);
       console.log(`✅ Заказ #${order.orderNumber} обновлен: ${updates.status}`);
       notifyCounterUpdate('pendingOrders', { delta: -1 });
+      if (order.isWholesaleOrder) notifyCounterUpdate('wholesaleOrders', { delta: -1 });
+
+      // Push клиенту при принятии опт-заказа
+      if (updates.status === 'accepted' && order.isWholesaleOrder && order.clientPhone) {
+        try {
+          await pushService.sendPushToPhone(
+            order.clientPhone,
+            'Ваш заказ принят ✓',
+            `Заказ #${order.orderNumber} подтверждён`,
+            { type: 'order_accepted', orderId: order.id, orderNumber: String(order.orderNumber) },
+            'orders_channel'
+          );
+          console.log(`📲 Push клиенту ${order.clientPhone} о принятии опт-заказа #${order.orderNumber}`);
+        } catch (pushErr) {
+          console.error('Ошибка push при принятии опт-заказа:', pushErr.message);
+        }
+      }
+
       res.json({ success: true, order });
     } catch (err) {
       console.error('❌ Ошибка обновления заказа:', err);

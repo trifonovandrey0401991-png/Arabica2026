@@ -10,7 +10,7 @@ const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { requireAuth } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_SHIFT_QUESTIONS === 'true';
@@ -33,6 +33,15 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
 
       let questions;
       if (USE_DB) {
+        // SQL-level pagination (when no shopAddress filter)
+        if (!req.query.shopAddress && isPaginationRequested(req.query)) {
+          const result = await db.findAllPaginated('shift_questions', {
+            orderBy: 'created_at', orderDir: 'ASC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(result, 'questions', r => r.data));
+        }
         const rows = await db.findAll('shift_questions', { orderBy: 'created_at', orderDir: 'ASC' });
         questions = rows.map(r => r.data);
       } else {

@@ -56,6 +56,7 @@ class LoyaltyLevel {
   final int id;
   final String name;
   final int minFreeDrinks;
+  final int minTotalPoints; // New: threshold in points (fallback: minFreeDrinks * 10)
   final LevelBadge badge;
   final String colorHex;
 
@@ -63,6 +64,7 @@ class LoyaltyLevel {
     required this.id,
     required this.name,
     required this.minFreeDrinks,
+    this.minTotalPoints = 0,
     required this.badge,
     required this.colorHex,
   });
@@ -76,10 +78,12 @@ class LoyaltyLevel {
   }
 
   factory LoyaltyLevel.fromJson(Map<String, dynamic> json) {
+    final minFreeDrinks = json['minFreeDrinks'] ?? 0;
     return LoyaltyLevel(
       id: json['id'] ?? 1,
       name: json['name'] ?? 'Новичок',
-      minFreeDrinks: json['minFreeDrinks'] ?? 0,
+      minFreeDrinks: minFreeDrinks,
+      minTotalPoints: json['minTotalPoints'] ?? (minFreeDrinks * 10),
       badge: LevelBadge.fromJson(json['badge'] ?? {}),
       colorHex: json['colorHex'] ?? '#78909C',
     );
@@ -89,6 +93,7 @@ class LoyaltyLevel {
     'id': id,
     'name': name,
     'minFreeDrinks': minFreeDrinks,
+    'minTotalPoints': minTotalPoints,
     'badge': badge.toJson(),
     'colorHex': colorHex,
   };
@@ -97,6 +102,7 @@ class LoyaltyLevel {
     int? id,
     String? name,
     int? minFreeDrinks,
+    int? minTotalPoints,
     LevelBadge? badge,
     String? colorHex,
   }) {
@@ -104,6 +110,7 @@ class LoyaltyLevel {
       id: id ?? this.id,
       name: name ?? this.name,
       minFreeDrinks: minFreeDrinks ?? this.minFreeDrinks,
+      minTotalPoints: minTotalPoints ?? this.minTotalPoints,
       badge: badge ?? this.badge,
       colorHex: colorHex ?? this.colorHex,
     );
@@ -244,11 +251,18 @@ class GamificationSettings {
     'updatedAt': updatedAt,
   };
 
-  /// Получить уровень по количеству бесплатных напитков
+  /// Получить уровень по количеству бесплатных напитков (legacy)
   LoyaltyLevel getLevelForFreeDrinks(int freeDrinks) {
+    return getLevelForPoints(freeDrinks * 10);
+  }
+
+  /// Получить уровень по totalPointsEarned
+  LoyaltyLevel getLevelForPoints(int totalPoints) {
     LoyaltyLevel result = levels.first;
     for (final level in levels) {
-      if (freeDrinks >= level.minFreeDrinks) {
+      // Use minTotalPoints if set, otherwise fallback to minFreeDrinks * 10
+      final threshold = level.minTotalPoints > 0 ? level.minTotalPoints : level.minFreeDrinks * 10;
+      if (totalPoints >= threshold) {
         result = level;
       }
     }
@@ -264,11 +278,12 @@ class GamificationSettings {
     return null;
   }
 
-  /// Сколько напитков до следующего уровня
-  int? drinksToNextLevel(int freeDrinks) {
+  /// Сколько баллов до следующего уровня
+  int? pointsToNextLevel(int totalPoints) {
     for (final level in levels) {
-      if (level.minFreeDrinks > freeDrinks) {
-        return level.minFreeDrinks - freeDrinks;
+      final threshold = level.minTotalPoints > 0 ? level.minTotalPoints : level.minFreeDrinks * 10;
+      if (threshold > totalPoints) {
+        return threshold - totalPoints;
       }
     }
     return null; // Максимальный уровень достигнут
@@ -280,45 +295,58 @@ class ClientGamificationData {
   final String phone;
   final String? name;
   final int freeDrinksGiven;
+  final int totalPointsEarned;
+  final int loyaltyPoints; // Current wallet balance
   final LoyaltyLevel currentLevel;
   final List<int> earnedBadges;
   final int wheelSpinsAvailable;
   final int wheelSpinsUsed;
   final int drinksToNextSpin;
+  final int pointsToNextSpin;
   final LoyaltyLevel? nextLevel;
   final int? drinksToNextLevel;
+  final int? pointsToNextLevel;
 
   const ClientGamificationData({
     required this.phone,
     this.name,
     required this.freeDrinksGiven,
+    required this.totalPointsEarned,
+    required this.loyaltyPoints,
     required this.currentLevel,
     required this.earnedBadges,
     required this.wheelSpinsAvailable,
     required this.wheelSpinsUsed,
     required this.drinksToNextSpin,
+    required this.pointsToNextSpin,
     this.nextLevel,
     this.drinksToNextLevel,
+    this.pointsToNextLevel,
   });
 
   factory ClientGamificationData.fromJson(Map<String, dynamic> json, GamificationSettings settings) {
     final freeDrinksGiven = json['freeDrinksGiven'] ?? 0;
+    final totalPointsEarned = json['totalPointsEarned'] ?? (freeDrinksGiven * 10);
 
     return ClientGamificationData(
       phone: json['phone'] ?? '',
       name: json['name'],
       freeDrinksGiven: freeDrinksGiven,
+      totalPointsEarned: totalPointsEarned,
+      loyaltyPoints: json['loyaltyPoints'] ?? 0,
       currentLevel: json['currentLevel'] != null
           ? LoyaltyLevel.fromJson(json['currentLevel'])
-          : settings.getLevelForFreeDrinks(freeDrinksGiven),
+          : settings.getLevelForPoints(totalPointsEarned),
       earnedBadges: (json['earnedBadges'] as List<dynamic>?)?.cast<int>() ?? [1],
       wheelSpinsAvailable: json['wheelSpinsAvailable'] ?? 0,
       wheelSpinsUsed: json['wheelSpinsUsed'] ?? 0,
       drinksToNextSpin: json['drinksToNextSpin'] ?? settings.wheel.freeDrinksPerSpin,
+      pointsToNextSpin: json['pointsToNextSpin'] ?? (settings.wheel.freeDrinksPerSpin * 10),
       nextLevel: json['nextLevel'] != null
           ? LoyaltyLevel.fromJson(json['nextLevel'])
           : null,
       drinksToNextLevel: json['drinksToNextLevel'],
+      pointsToNextLevel: json['pointsToNextLevel'],
     );
   }
 }

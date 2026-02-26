@@ -22,6 +22,29 @@ class ClientService {
     return clients;
   }
 
+  /// Получить клиентов с пагинацией
+  static Future<PaginatedResult<Client>> getClientsPaginated({
+    int page = 1,
+    int limit = 50,
+    String? search,
+  }) async {
+    Logger.debug('Загрузка клиентов: страница $page, лимит $limit');
+
+    final queryParams = <String, String>{};
+    if (search != null && search.isNotEmpty) {
+      queryParams['search'] = search;
+    }
+
+    return await BaseHttpService.getListPaginated<Client>(
+      endpoint: ApiConstants.clientsEndpoint,
+      fromJson: (json) => Client.fromJson(json),
+      listKey: 'clients',
+      page: page,
+      limit: limit,
+      queryParams: queryParams,
+    );
+  }
+
   /// Получить переписку с клиентом
   static Future<List<ClientMessage>> getClientMessages(String clientPhone) async {
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
@@ -126,6 +149,23 @@ class ClientService {
       return true;
     } catch (e) {
       Logger.error('Ошибка отметки сообщения', e);
+      return false;
+    }
+  }
+
+  /// Обновить флаг «оптовый клиент»
+  static Future<bool> updateWholesaleStatus({required String phone, required bool isWholesale}) async {
+    try {
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      Logger.debug('Обновление флага опт для ${Logger.maskPhone(normalizedPhone)}: $isWholesale');
+
+      final result = await BaseHttpService.postRaw(
+        endpoint: ApiConstants.clientsEndpoint,
+        body: {'phone': normalizedPhone, 'isWholesale': isWholesale},
+      );
+      return result != null;
+    } catch (e) {
+      Logger.error('Ошибка обновления флага опт', e);
       return false;
     }
   }
