@@ -761,7 +761,9 @@ function setupAttendanceAPI(app, {
   });
 
   // POST /api/attendance/gps-check - Проверка GPS и отправка уведомления
-  app.post('/api/attendance/gps-check', requireAuth, async (req, res) => {
+  // No requireAuth: called from WorkManager background isolate where session token is unavailable.
+  // Protected by global X-Api-Key middleware.
+  app.post('/api/attendance/gps-check', async (req, res) => {
     try {
       const { lat, lng, phone, employeeName } = req.body;
 

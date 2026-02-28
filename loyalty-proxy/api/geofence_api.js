@@ -268,7 +268,9 @@ function setupGeofenceAPI(app, sendPushToPhone) {
   });
 
   // POST /api/geofence/client-check - проверка геозоны клиента
-  app.post('/api/geofence/client-check', requireAuth, async (req, res) => {
+  // No requireAuth: called from WorkManager background isolate where session token is unavailable.
+  // Protected by global X-Api-Key middleware.
+  app.post('/api/geofence/client-check', async (req, res) => {
     try {
       const { clientPhone, latitude, longitude } = req.body;
 
