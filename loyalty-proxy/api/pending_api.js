@@ -7,8 +7,10 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const { requireAuth } = require('../utils/session_middleware');
+const { getMoscowDateString } = require('../utils/moscow_time');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -38,17 +40,17 @@ try {
   }
 })();
 
-// Helper function to get today's date string
+// Helper function to get today's date string (Moscow timezone)
 function getTodayStr() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return getMoscowDateString();
 }
 
-// Helper function to get yesterday's date string
+// Helper function to get yesterday's date string (Moscow timezone)
 function getYesterdayStr() {
-  const now = new Date();
-  now.setDate(now.getDate() - 1);
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const today = getMoscowDateString(); // YYYY-MM-DD
+  const d = new Date(today + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().split('T')[0];
 }
 
 // Helper function to sanitize string for ID
@@ -367,7 +369,7 @@ async function generateDailyPendingShifts() {
         completedBy: null,
         createdAt: new Date().toISOString()
       };
-      await fsp.writeFile(morningFile, JSON.stringify(morningReport, null, 2), 'utf8');
+      await writeJsonFile(morningFile, morningReport);
       generated++;
     } else {
       skipped++;
@@ -389,7 +391,7 @@ async function generateDailyPendingShifts() {
         completedBy: null,
         createdAt: new Date().toISOString()
       };
-      await fsp.writeFile(eveningFile, JSON.stringify(eveningReport, null, 2), 'utf8');
+      await writeJsonFile(eveningFile, eveningReport);
       generated++;
     } else {
       skipped++;
@@ -454,7 +456,7 @@ function setupPendingAPI(app) {
       report.status = report.status || 'pending';
 
       const filePath = path.join(PENDING_RECOUNT_DIR, `${report.id}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
+      await writeJsonFile(filePath, report);
 
       res.json({ success: true, report });
     } catch (error) {
@@ -491,7 +493,7 @@ function setupPendingAPI(app) {
       const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
       const updated = { ...report, ...updates, updatedAt: new Date().toISOString() };
 
-      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await writeJsonFile(filePath, updated);
       res.json({ success: true, report: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -635,7 +637,7 @@ function setupPendingAPI(app) {
       report.status = report.status || 'pending';
 
       const filePath = path.join(PENDING_SHIFT_DIR, `${report.id}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
+      await writeJsonFile(filePath, report);
 
       res.json({ success: true, report });
     } catch (error) {
@@ -672,7 +674,7 @@ function setupPendingAPI(app) {
       const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
       const updated = { ...report, ...updates, updatedAt: new Date().toISOString() };
 
-      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
+      await writeJsonFile(filePath, updated);
       res.json({ success: true, report: updated });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -695,7 +697,7 @@ function setupPendingAPI(app) {
       report.completedBy = completedBy;
       report.completedAt = new Date().toISOString();
 
-      await fsp.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
+      await writeJsonFile(filePath, report);
       res.json({ success: true, report });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -751,7 +753,7 @@ function setupPendingAPI(app) {
       report.createdAt = report.createdAt || new Date().toISOString();
 
       data.reports.push(report);
-      await fsp.writeFile(PENDING_SHIFT_HANDOVER_FILE, JSON.stringify(data, null, 2), 'utf8');
+      await writeJsonFile(PENDING_SHIFT_HANDOVER_FILE, data);
 
       res.json({ success: true, report });
     } catch (error) {
@@ -772,7 +774,7 @@ function setupPendingAPI(app) {
       const index = data.reports.findIndex(r => r.id === reportId);
       if (index !== -1) {
         data.reports.splice(index, 1);
-        await fsp.writeFile(PENDING_SHIFT_HANDOVER_FILE, JSON.stringify(data, null, 2), 'utf8');
+        await writeJsonFile(PENDING_SHIFT_HANDOVER_FILE, data);
         res.json({ success: true });
       } else {
         res.status(404).json({ success: false, error: 'Report not found' });

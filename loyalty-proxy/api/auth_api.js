@@ -154,7 +154,15 @@ function normalizePhone(phone) {
 async function getPinData(phone) {
   if (USE_DB) {
     const row = await db.findById('auth_pins', phone, 'phone');
-    return row ? row.data : null;
+    if (!row) return null;
+    // Map real DB columns to the expected JSON format used throughout auth_api.js
+    return {
+      pinHash: row.pin_hash,
+      hashType: row.hash_type || 'bcrypt',
+      salt: row.salt || null,
+      failedAttempts: row.failed_attempts || 0,
+      lockedUntil: row.locked_until ? new Date(row.locked_until).getTime() : null,
+    };
   }
 
   const filePath = path.join(PINS_DIR, `${phone}.json`);
@@ -175,7 +183,17 @@ async function savePinData(phone, data) {
   await writeJsonFile(filePath, data);
 
   if (USE_DB) {
-    try { await db.upsert('auth_pins', { phone: phone, data: data, updated_at: new Date().toISOString() }, 'phone'); }
+    // Map JSON fields to real DB column names (auth_pins table)
+    try {
+      await db.upsert('auth_pins', {
+        phone: phone,
+        pin_hash: data.pinHash || data.pin_hash || '',
+        hash_type: data.hashType || data.hash_type || 'bcrypt',
+        salt: data.salt || null,
+        failed_attempts: data.failedAttempts || data.failed_attempts || 0,
+        locked_until: data.lockedUntil ? new Date(data.lockedUntil).toISOString() : null,
+      }, 'phone');
+    }
     catch (dbErr) { console.error('DB save auth_pin error:', dbErr.message); }
   }
 }
@@ -186,9 +204,21 @@ async function savePinData(phone, data) {
 async function getSessionByToken(token) {
   try {
     if (USE_DB) {
-      const result = await db.query('SELECT data FROM auth_sessions WHERE data->>\'sessionToken\' = $1 LIMIT 1', [token]);
+      // Query real column names (auth_sessions has no 'data' column)
+      const result = await db.query(
+        'SELECT session_token, phone, is_admin, employee_id, expires_at FROM auth_sessions WHERE session_token = $1 LIMIT 1',
+        [token]
+      );
       if (result.rows && result.rows.length > 0) {
-        return result.rows[0].data;
+        const row = result.rows[0];
+        return {
+          sessionToken: row.session_token,
+          phone: row.phone,
+          name: null,  // Not stored in DB schema; caller falls back to pinData.name
+          isAdmin: row.is_admin || false,
+          employeeId: row.employee_id || null,
+          expiresAt: row.expires_at ? new Date(row.expires_at).getTime() : 0,
+        };
       }
       return null;
     }
@@ -217,7 +247,16 @@ async function saveSession(phone, session) {
   await writeJsonFile(filePath, session);
 
   if (USE_DB) {
-    try { await db.upsert('auth_sessions', { phone: phone, session_token: session.sessionToken || '', data: session, updated_at: new Date().toISOString() }, 'phone'); }
+    // Map session fields to real DB column names (auth_sessions table)
+    try {
+      await db.upsert('auth_sessions', {
+        phone: phone,
+        session_token: session.sessionToken || '',
+        employee_id: session.employeeId || null,
+        is_admin: session.isAdmin || false,
+        expires_at: session.expiresAt ? new Date(session.expiresAt).toISOString() : null,
+      }, 'phone');
+    }
     catch (dbErr) { console.error('DB save auth_session error:', dbErr.message); }
   }
 }

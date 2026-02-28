@@ -277,7 +277,7 @@ module.exports = function setupJobApplicationsAPI(app) {
       // Нормализуем телефон перед сохранением
       const normalizedPhone = normalizePhone(phone);
 
-      const id = `job_${Date.now()}`;
+      const id = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const application = {
         id,
         fullName,

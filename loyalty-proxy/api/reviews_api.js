@@ -117,7 +117,7 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
   app.post('/api/reviews', requireAuth, async (req, res) => {
     try {
       const now = new Date().toISOString();
-      const id = `review_${Date.now()}`;
+      const id = `review_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       let review;
 
@@ -213,7 +213,7 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
       const safeId = sanitizeId(req.params.id);
 
       const message = {
-        id: `message_${Date.now()}`,
+        id: `message_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         sender: req.body.sender,
         senderName: req.body.senderName,
         text: req.body.text,

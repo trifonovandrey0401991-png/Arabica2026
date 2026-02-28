@@ -261,6 +261,22 @@ CREATE TABLE IF NOT EXISTS envelope_reports (
 CREATE INDEX IF NOT EXISTS idx_envelope_date ON envelope_reports(created_at);
 CREATE INDEX IF NOT EXISTS idx_envelope_shop ON envelope_reports(shop_address);
 CREATE INDEX IF NOT EXISTS idx_envelope_status ON envelope_reports(status);
+-- Add columns read by dbEnvelopeReportToCamel() that were missing from schema
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='envelope_reports' AND column_name='ooo_z_report_edited') THEN
+    ALTER TABLE envelope_reports ADD COLUMN ooo_z_report_edited BOOLEAN DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='envelope_reports' AND column_name='ip_z_report_edited') THEN
+    ALTER TABLE envelope_reports ADD COLUMN ip_z_report_edited BOOLEAN DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='envelope_reports' AND column_name='ooo_field_regions') THEN
+    ALTER TABLE envelope_reports ADD COLUMN ooo_field_regions JSONB;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='envelope_reports' AND column_name='ip_field_regions') THEN
+    ALTER TABLE envelope_reports ADD COLUMN ip_field_regions JSONB;
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS coffee_machine_reports (
   id TEXT PRIMARY KEY,
@@ -318,6 +334,7 @@ CREATE INDEX IF NOT EXISTS idx_rko_date ON rko_reports(date);
 CREATE INDEX IF NOT EXISTS idx_rko_shop ON rko_reports(shop_address);
 CREATE INDEX IF NOT EXISTS idx_rko_status ON rko_reports(status);
 CREATE INDEX IF NOT EXISTS idx_rko_employee ON rko_reports(employee_name);
+CREATE INDEX IF NOT EXISTS idx_rko_employee_lower ON rko_reports(LOWER(TRIM(employee_name)));
 CREATE INDEX IF NOT EXISTS idx_rko_type ON rko_reports(rko_type);
 
 -- ============================================
@@ -548,6 +565,15 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_phone ON auth_sessions(phone);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_token ON auth_sessions(session_token);
+-- UNIQUE constraint required for ON CONFLICT (phone) upsert in saveSession()
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'auth_sessions_phone_unique'
+  ) THEN
+    ALTER TABLE auth_sessions ADD CONSTRAINT auth_sessions_phone_unique UNIQUE (phone);
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS auth_pins (
   phone TEXT PRIMARY KEY,
@@ -831,6 +857,28 @@ CREATE TABLE IF NOT EXISTS shop_product_groups (
 -- Флаг оптового заказа в orders
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_wholesale_order BOOLEAN DEFAULT false;
 
+-- Таблица выкупов наград за баллы лояльности
+CREATE TABLE IF NOT EXISTS loyalty_redemptions (
+  id TEXT PRIMARY KEY,
+  client_phone TEXT NOT NULL,
+  client_name TEXT,
+  recipe_id TEXT,
+  recipe_name TEXT,
+  points_price INTEGER NOT NULL,
+  qr_token TEXT UNIQUE NOT NULL,
+  status TEXT DEFAULT 'pending',       -- 'pending', 'scanned', 'confirmed'
+  shop_address TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  scanned_at TIMESTAMPTZ,
+  confirmed_at TIMESTAMPTZ,
+  confirmed_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_loyalty_rdm_phone ON loyalty_redemptions(client_phone);
+CREATE INDEX IF NOT EXISTS idx_loyalty_rdm_qr ON loyalty_redemptions(qr_token);
+CREATE INDEX IF NOT EXISTS idx_loyalty_rdm_status ON loyalty_redemptions(status);
+CREATE INDEX IF NOT EXISTS idx_loyalty_rdm_date ON loyalty_redemptions(created_at);
+CREATE INDEX IF NOT EXISTS idx_loyalty_rdm_shop ON loyalty_redemptions(shop_address);
+
 -- ============================================
--- Готово. Таблицы: ~53
+-- Готово. Таблицы: ~54
 -- ============================================

@@ -172,56 +172,56 @@ function setupClientsAPI(app) {
         return res.status(400).json({ success: false, error: 'Phone required' });
       }
 
-      let updated;
-
-      if (USE_DB) {
-        const now = new Date().toISOString();
-        const data = {
-          phone,
-          name: client.name !== undefined ? client.name : null,
-          client_name: client.clientName !== undefined ? client.clientName : null,
-          fcm_token: client.fcmToken !== undefined ? client.fcmToken : null,
-          referred_by: client.referredBy !== undefined ? client.referredBy : null,
-          referred_at: client.referredAt !== undefined ? client.referredAt : null,
-          is_admin: false, // SECURITY: isAdmin нельзя устанавливать через API
-          employee_name: client.employeeName !== undefined ? client.employeeName : null,
-          is_wholesale: client.isWholesale !== undefined ? client.isWholesale : false,
-          updated_at: now
-        };
-        // Upsert — если клиент существует, обновляем только переданные поля
-        const existing = await db.findById('clients', phone, 'phone');
-        if (existing) {
-          const updateData = { updated_at: now };
-          if (client.name !== undefined) updateData.name = client.name;
-          if (client.clientName !== undefined) updateData.client_name = client.clientName;
-          if (client.fcmToken !== undefined) updateData.fcm_token = client.fcmToken;
-          if (client.referredBy !== undefined) updateData.referred_by = client.referredBy;
-          if (client.referredAt !== undefined) updateData.referred_at = client.referredAt;
-          // SECURITY: isAdmin игнорируется — нельзя менять через API
-          if (client.employeeName !== undefined) updateData.employee_name = client.employeeName;
-          if (client.isWholesale !== undefined) updateData.is_wholesale = client.isWholesale;
-          const row = await db.updateById('clients', phone, updateData, 'phone');
-          updated = dbClientToCamel(row);
-        } else {
-          data.created_at = now;
-          const row = await db.insert('clients', data);
-          updated = dbClientToCamel(row);
+      // Always write to JSON first — ensures rollback safety when USE_DB_CLIENTS is toggled
+      await fsp.mkdir(CLIENTS_DIR, { recursive: true });
+      const filePath = path.join(CLIENTS_DIR, `${phone}.json`);
+      const updated = await withLock(filePath, async () => {
+        let existing = {};
+        if (await fileExists(filePath)) {
+          const content = await fsp.readFile(filePath, 'utf8');
+          existing = JSON.parse(content);
         }
-      } else {
-        const filePath = path.join(CLIENTS_DIR, `${phone}.json`);
+        const merged = { ...existing, ...client, phone };
+        merged.isAdmin = existing.isAdmin || false; // SECURITY: isAdmin нельзя устанавливать через API
+        merged.updatedAt = new Date().toISOString();
+        await writeJsonFile(filePath, merged);
+        return merged;
+      });
 
-        updated = await withLock(filePath, async () => {
-          let existing = {};
-          if (await fileExists(filePath)) {
-            const content = await fsp.readFile(filePath, 'utf8');
-            existing = JSON.parse(content);
+      // Dual-write to DB (if enabled); JSON is already saved — DB failure is non-fatal
+      if (USE_DB) {
+        try {
+          const now = new Date().toISOString();
+          const existingDb = await db.findById('clients', phone, 'phone');
+          if (existingDb) {
+            const updateData = { updated_at: now };
+            if (client.name !== undefined) updateData.name = client.name;
+            if (client.clientName !== undefined) updateData.client_name = client.clientName;
+            if (client.fcmToken !== undefined) updateData.fcm_token = client.fcmToken;
+            if (client.referredBy !== undefined) updateData.referred_by = client.referredBy;
+            if (client.referredAt !== undefined) updateData.referred_at = client.referredAt;
+            // SECURITY: isAdmin игнорируется — нельзя менять через API
+            if (client.employeeName !== undefined) updateData.employee_name = client.employeeName;
+            if (client.isWholesale !== undefined) updateData.is_wholesale = client.isWholesale;
+            await db.updateById('clients', phone, updateData, 'phone');
+          } else {
+            await db.insert('clients', {
+              phone,
+              name: client.name !== undefined ? client.name : null,
+              client_name: client.clientName !== undefined ? client.clientName : null,
+              fcm_token: client.fcmToken !== undefined ? client.fcmToken : null,
+              referred_by: client.referredBy !== undefined ? client.referredBy : null,
+              referred_at: client.referredAt !== undefined ? client.referredAt : null,
+              is_admin: false, // SECURITY: isAdmin нельзя устанавливать через API
+              employee_name: client.employeeName !== undefined ? client.employeeName : null,
+              is_wholesale: client.isWholesale !== undefined ? client.isWholesale : false,
+              created_at: now,
+              updated_at: now
+            });
           }
-          const merged = { ...existing, ...client, phone };
-          merged.isAdmin = existing.isAdmin || false; // SECURITY: isAdmin нельзя устанавливать через API
-          merged.updatedAt = new Date().toISOString();
-          await fsp.writeFile(filePath, JSON.stringify(merged, null, 2), 'utf8');
-          return merged;
-        });
+        } catch (dbErr) {
+          console.error('DB clients dual-write error:', dbErr.message);
+        }
       }
 
       res.json({ success: true, client: updated });
@@ -296,7 +296,7 @@ function setupClientsAPI(app) {
         }
         message.timestamp = message.timestamp || new Date().toISOString();
         dialog.messages.push(message);
-        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+        await writeJsonFile(filePath, dialog);
       });
 
       // DB dual-write
@@ -391,7 +391,7 @@ function setupClientsAPI(app) {
           dialog = JSON.parse(content);
         }
         dialog.messages.push(message);
-        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+        await writeJsonFile(filePath, dialog);
       });
 
       // DB dual-write
@@ -421,7 +421,7 @@ function setupClientsAPI(app) {
           const content = await fsp.readFile(filePath, 'utf8');
           const dialog = JSON.parse(content);
           dialog.messages.forEach(m => { if (m.from === 'admin') m.readByClient = true; });
-          await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+          await writeJsonFile(filePath, dialog);
         });
       }
 
@@ -454,7 +454,7 @@ function setupClientsAPI(app) {
           const content = await fsp.readFile(filePath, 'utf8');
           const dialog = JSON.parse(content);
           dialog.messages.forEach(m => { if (m.from === 'client') m.readByAdmin = true; });
-          await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+          await writeJsonFile(filePath, dialog);
         });
       }
 
@@ -553,7 +553,7 @@ function setupClientsAPI(app) {
           dialog = JSON.parse(content);
         }
         dialog.messages.push(message);
-        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+        await writeJsonFile(filePath, dialog);
       });
 
       // DB dual-write
@@ -606,7 +606,7 @@ function setupClientsAPI(app) {
               }
             }
           });
-          await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+          await writeJsonFile(filePath, dialog);
         });
       }
 
@@ -643,7 +643,7 @@ function setupClientsAPI(app) {
           const content = await fsp.readFile(filePath, 'utf8');
           const dialog = JSON.parse(content);
           dialog.messages.forEach(m => { if (m.senderType === 'client') m.isReadByManager = true; });
-          await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+          await writeJsonFile(filePath, dialog);
         });
       }
 
@@ -699,7 +699,7 @@ function setupClientsAPI(app) {
           dialog = JSON.parse(content);
         }
         dialog.messages.push(message);
-        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+        await writeJsonFile(filePath, dialog);
       });
 
       // DB dual-write
@@ -783,7 +783,7 @@ function setupClientsAPI(app) {
           dialog = JSON.parse(content);
         }
         dialog.messages.push(message);
-        await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+        await writeJsonFile(filePath, dialog);
       });
 
       // 2. Дублируем в management-директорию (клиент видит в "Связь с руководством")
@@ -807,7 +807,7 @@ function setupClientsAPI(app) {
           } catch (e) { /* ignore parse errors */ }
         }
         mgmtDialog.messages.push(mgmtMessage);
-        await fsp.writeFile(mgmtFilePath, JSON.stringify(mgmtDialog, null, 2), 'utf8');
+        await writeJsonFile(mgmtFilePath, mgmtDialog);
       });
 
       // DB dual-write: both dialog + management
@@ -908,7 +908,7 @@ function setupClientsAPI(app) {
               isBroadcast: true
             });
 
-            await fsp.writeFile(filePath, JSON.stringify(dialog, null, 2), 'utf8');
+            await writeJsonFile(filePath, dialog);
           });
 
           // DB dual-write
@@ -1093,7 +1093,7 @@ function setupClientsAPI(app) {
         const client = JSON.parse(await fsp.readFile(clientFile, 'utf8'));
         client.freeDrinksGiven = (client.freeDrinksGiven || 0) + count;
         client.updatedAt = new Date().toISOString();
-        await fsp.writeFile(clientFile, JSON.stringify(client, null, 2), 'utf8');
+        await writeJsonFile(clientFile, client);
         return { name: client.name, freeDrinksGiven: client.freeDrinksGiven };
       });
 
@@ -1132,7 +1132,7 @@ function setupClientsAPI(app) {
         const oldValue = client.freeDrinksGiven || 0;
         client.freeDrinksGiven = parseInt(freeDrinksGiven);
         client.updatedAt = new Date().toISOString();
-        await fsp.writeFile(clientFile, JSON.stringify(client, null, 2), 'utf8');
+        await writeJsonFile(clientFile, client);
         return { oldValue, freeDrinksGiven: client.freeDrinksGiven };
       });
 
@@ -1164,7 +1164,14 @@ function dbClientToCamel(row) {
     totalPointsEarned: row.total_points_earned || 0,
     isWholesale: row.is_wholesale || false,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    // These fields are computed from dialog files in JSON mode.
+    // In DB mode they are not stored in the clients table — return safe defaults.
+    hasUnreadFromClient: false,
+    hasUnreadManagement: false,
+    lastClientMessageTime: null,
+    lastManagementMessageTime: null,
+    freeDrinksGiven: row.free_drinks_given || 0,
   };
 }
 

@@ -7,6 +7,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { writeJsonFile } = require('../utils/async_fs');
+const { withLock } = require('../utils/file_lock');
 const { fileExists, loadJsonFile } = require('../utils/file_helpers');
 const { dbInsertPenalties } = require('./efficiency_penalties_api');
 
@@ -288,20 +289,21 @@ async function savePenalties(penalties) {
     penaltiesByMonth[monthKey].push(penalty);
   }
 
-  // Save to files
+  // Save to files (under lock to prevent race condition with parallel runs)
   for (const monthKey in penaltiesByMonth) {
     try {
       const filePath = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
-      let existingPenalties = await loadJsonFile(filePath, []);
-
-      existingPenalties = existingPenalties.concat(penaltiesByMonth[monthKey]);
 
       if (!(await fileExists(EFFICIENCY_PENALTIES_DIR))) {
         await fsp.mkdir(EFFICIENCY_PENALTIES_DIR, { recursive: true });
       }
 
-      await writeJsonFile(filePath, existingPenalties);
-      // DB dual-write
+      await withLock(filePath, async () => {
+        let existingPenalties = await loadJsonFile(filePath, []);
+        existingPenalties = existingPenalties.concat(penaltiesByMonth[monthKey]);
+        await writeJsonFile(filePath, existingPenalties, { useLock: false }); // already in lock
+      });
+      // DB dual-write (outside lock — DB handles its own concurrency)
       await dbInsertPenalties(penaltiesByMonth[monthKey]);
       console.log(`  Saved ${penaltiesByMonth[monthKey].length} penalties to ${monthKey}.json`);
     } catch (e) {

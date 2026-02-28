@@ -18,6 +18,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { writeJsonFile } = require('./async_fs');
+const { withLock } = require('./file_lock');
 const { fileExists, loadJsonFile } = require('./file_helpers');
 const { getMoscowTime, getMoscowDateString, MOSCOW_OFFSET_HOURS } = require('./moscow_time');
 const db = require('./db');
@@ -246,20 +247,24 @@ class BaseReportScheduler {
       await fsp.mkdir(this.EFFICIENCY_PENALTIES_DIR, { recursive: true });
     }
 
-    // Load existing penalties
+    // Read-check-write under lock to prevent race condition (parallel scheduler runs)
     const penaltiesFile = path.join(this.EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
-    let penalties = await loadJsonFile(penaltiesFile, []);
-    if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
+    const lockResult = await withLock(penaltiesFile, async () => {
+      let penalties = await loadJsonFile(penaltiesFile, []);
+      if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
 
-    // Duplicate check
-    const exists = penalties.some(p => p.sourceId === sourceId);
-    if (exists) {
-      console.log(`${this.tag} Penalty already exists for ${sourceId}, skipping`);
-      return null;
-    }
+      // Duplicate check
+      if (penalties.some(p => p.sourceId === sourceId)) {
+        console.log(`${this.tag} Penalty already exists for ${sourceId}, skipping`);
+        return null;
+      }
 
-    penalties.push(penalty);
-    await writeJsonFile(penaltiesFile, penalties);
+      penalties.push(penalty);
+      await writeJsonFile(penaltiesFile, penalties, { useLock: false }); // already inside lock
+      return penalty;
+    });
+
+    if (!lockResult) return null;
 
     // DB dual-write
     if (USE_DB_EFFICIENCY) {
@@ -444,6 +449,13 @@ class BaseReportScheduler {
 
     console.log(`\n[${now.toISOString()}] ${this.tag} Running checks... (Moscow time: ${moscow.toISOString()})`);
 
+    // Check pending deadlines FIRST — mark stale pending reports as failed before generating new ones
+    // This ensures stale files from previous days don't block new report creation
+    const failed = await this.checkPendingDeadlines();
+    if (failed > 0) {
+      console.log(`${this.tag} ${failed} reports marked as failed`);
+    }
+
     // Morning window
     if (this.isWithinTimeWindow(settings.morningStartTime, settings.morningEndTime)) {
       const lastGen = state.lastMorningGeneration;
@@ -466,12 +478,6 @@ class BaseReportScheduler {
           state.lastEveningGeneration = now.toISOString();
         }
       }
-    }
-
-    // Check pending deadlines
-    const failed = await this.checkPendingDeadlines();
-    if (failed > 0) {
-      console.log(`${this.tag} ${failed} reports marked as failed`);
     }
 
     // Check review timeouts (optional — override in subclass)
@@ -519,19 +525,28 @@ class BaseReportScheduler {
     console.log(`  - Check interval: ${this.checkIntervalMs / 1000 / 60} minutes`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-    // Guarded interval — защита от параллельного запуска
+    // Guarded interval — защита от параллельного запуска + таймаут от зависания
+    const MAX_RUN_MS = 10 * 60 * 1000; // 10 минут макс на один запуск
     const guardedCheck = async () => {
       if (this._isRunning) {
-        console.log(`${this.tag} Previous run still active, skipping`);
-        return;
+        // Проверяем таймаут — если предыдущий запуск завис дольше MAX_RUN_MS, сбрасываем
+        if (this._runStartedAt && (Date.now() - this._runStartedAt > MAX_RUN_MS)) {
+          console.error(`${this.tag} Previous run exceeded ${MAX_RUN_MS / 60000}min timeout, force-resetting`);
+          this._isRunning = false;
+        } else {
+          console.log(`${this.tag} Previous run still active, skipping`);
+          return;
+        }
       }
       this._isRunning = true;
+      this._runStartedAt = Date.now();
       try {
         await this.runScheduledChecks();
       } catch (err) {
         console.error(`${this.tag} Scheduler error:`, err.message);
       } finally {
         this._isRunning = false;
+        this._runStartedAt = null;
       }
     };
 

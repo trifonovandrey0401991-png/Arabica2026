@@ -9,7 +9,7 @@ const fsp = require('fs').promises;
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_LOYALTY_PROMO === 'true';
 
@@ -17,14 +17,14 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const LOYALTY_PROMO_FILE = `${DATA_DIR}/loyalty-promo.json`;
 
 function setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals } = {}) {
-  // GET /api/loyalty-promo - получить настройки акции
-  app.get('/api/loyalty-promo', requireAuth, async (req, res) => {
+  // GET /api/loyalty-promo - получить настройки акции (публичный - это просто маркетинговый текст)
+  app.get('/api/loyalty-promo', async (req, res) => {
     try {
       let settings = {
         promoText: 'Копите баллы и обменивайте на напитки и товары!',
         pointsRequired: 9,
         drinksToGive: 1,
-        pointsPerScan: 10,  // New: how many loyalty points per QR scan
+        pointsPerScan: 1,   // Default: 1 loyalty point per QR scan (configurable)
         success: true
       };
 
@@ -45,19 +45,9 @@ function setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals } = {}) {
   });
 
   // POST /api/loyalty-promo - сохранить настройки акции (только админ)
-  app.post('/api/loyalty-promo', requireAuth, async (req, res) => {
+  app.post('/api/loyalty-promo', requireAdmin, async (req, res) => {
     try {
-      const { promoText, pointsRequired, drinksToGive, pointsPerScan, employeePhone } = req.body;
-
-      // Проверка на админа или разработчика
-      const normalizedPhone = (employeePhone || '').replace(/[^\d]/g, '');
-      const employees = loadAllEmployeesForWithdrawals ? await loadAllEmployeesForWithdrawals() : [];
-      const employee = employees.find(e => e.phone && e.phone.replace(/[^\d]/g, '') === normalizedPhone);
-      const isAdminOrDev = employee && (employee.isAdmin === true || employee.role === 'developer');
-      if (!isAdminOrDev) {
-        console.log('POST /api/loyalty-promo: denied for non-admin', normalizedPhone);
-        return res.status(403).json({ success: false, error: 'Доступ запрещён' });
-      }
+      const { promoText, pointsRequired, drinksToGive, pointsPerScan } = req.body;
 
       const settings = {
         promoText: promoText || '',
@@ -65,7 +55,7 @@ function setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals } = {}) {
         drinksToGive: parseInt(drinksToGive) || 1,
         pointsPerScan: parseInt(pointsPerScan) || 10,
         updatedAt: new Date().toISOString(),
-        updatedBy: normalizedPhone
+        updatedBy: req.user.phone
       };
 
       await writeJsonFile(LOYALTY_PROMO_FILE, settings);
@@ -75,7 +65,7 @@ function setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals } = {}) {
         catch (dbErr) { console.error('DB save loyalty_promo error:', dbErr.message); }
       }
 
-      console.log('POST /api/loyalty-promo:', settings.pointsRequired + '+' + settings.drinksToGive, 'by', normalizedPhone);
+      console.log('POST /api/loyalty-promo:', settings.pointsRequired + '+' + settings.drinksToGive, 'pointsPerScan:', settings.pointsPerScan, 'by', req.user.phone);
       res.json({ success: true, ...settings });
     } catch (e) {
       console.error('Error saving loyalty-promo:', e);

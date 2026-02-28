@@ -11,8 +11,9 @@ const crypto = require('crypto');
 const { isAdminPhone } = require('../utils/admin_cache');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
+const { withLock } = require('../utils/file_lock');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 // Lazy-loaded to avoid circular dependency
 let walletApi = null;
 function getWalletApi() {
@@ -240,7 +241,8 @@ function getDefaultSettings() {
     ],
     wheel: {
       enabled: true,
-      freeDrinksPerSpin: 5,
+      freeDrinksPerSpin: 5,         // Legacy field (kept for backward compat)
+      pointsPerSpin: 50,            // Points needed per spin (50 scans at 1 pt/scan)
       sectors: [
         { index: 0, text: '+5 баллов', probability: 0.25, colorHex: '#4CAF50', prizeType: 'bonus_points', prizeValue: 5 },
         { index: 1, text: '+10 баллов', probability: 0.15, colorHex: '#2196F3', prizeType: 'bonus_points', prizeValue: 10 },
@@ -356,17 +358,10 @@ function setupLoyaltyGamificationAPI(app) {
   });
 
   // POST settings (admin only)
-  app.post('/api/loyalty-gamification/settings', requireAuth, async (req, res) => {
+  app.post('/api/loyalty-gamification/settings', requireAdmin, async (req, res) => {
     try {
       console.log('POST /api/loyalty-gamification/settings');
-      const { levels, wheel, employeePhone } = req.body;
-
-      // SECURITY: только админ/разработчик может менять настройки
-      const normalizedPhone = sanitizePhone(employeePhone);
-      if (!isAdminPhone(normalizedPhone)) {
-        console.warn(`SECURITY: non-admin tried to update gamification settings: ${normalizedPhone}`);
-        return res.status(403).json({ success: false, error: 'Доступ запрещён — только для администраторов' });
-      }
+      const { levels, wheel } = req.body;
 
       const settings = await loadSettings();
 
@@ -387,20 +382,9 @@ function setupLoyaltyGamificationAPI(app) {
 
   // ===== BADGE UPLOAD =====
 
-  app.post('/api/loyalty-gamification/upload-badge', requireAuth, upload.single('badge'), async (req, res) => {
+  app.post('/api/loyalty-gamification/upload-badge', requireAdmin, upload.single('badge'), async (req, res) => {
     try {
       console.log('POST /api/loyalty-gamification/upload-badge');
-
-      // Проверка admin прав через employeePhone (как в settings endpoint)
-      const employeePhone = sanitizePhone(req.body.employeePhone || req.headers['x-employee-phone'] || '');
-      if (!isAdminPhone(employeePhone)) {
-        // Удаляем уже загруженный файл если не админ
-        if (req.file && req.file.path) {
-          await fsp.unlink(req.file.path).catch(() => {});
-        }
-        console.warn(`⚠️ Non-admin badge upload attempt: ${maskPhone(employeePhone)}`);
-        return res.status(403).json({ success: false, error: 'Только администратор может загружать бейджи' });
-      }
 
       if (!req.file) {
         return res.status(400).json({ success: false, error: 'No file uploaded' });
@@ -443,18 +427,32 @@ function setupLoyaltyGamificationAPI(app) {
         client = { ...client, ...clientData };
       }
 
+      // If USE_DB: sync loyalty points from clients table (source of truth)
+      if (USE_DB) {
+        try {
+          const dbClient = await db.findById('clients', phone, 'phone');
+          if (dbClient) {
+            client.loyaltyPoints = dbClient.loyalty_points ?? client.loyaltyPoints ?? 0;
+            client.totalPointsEarned = dbClient.total_points_earned ?? client.totalPointsEarned ?? 0;
+            client.name = dbClient.name || client.name;
+          }
+        } catch (dbErr) { console.error('DB read client error:', dbErr.message); }
+      }
+
       // Use totalPointsEarned for levels/badges (backward compat: fallback to freeDrinksGiven * 10)
       const freeDrinksGiven = client.freeDrinksGiven || 0;
       const totalPointsEarned = client.totalPointsEarned || (freeDrinksGiven * 10);
       const currentLevel = calculateLevel(totalPointsEarned, settings.levels);
       const earnedBadges = calculateEarnedBadges(totalPointsEarned, settings.levels);
 
-      // Calculate wheel progress (based on totalPointsEarned)
+      // Calculate wheel progress using lastSpinTotalPoints
+      // This correctly handles settings changes: next threshold = lastSpinTotalPoints + pointsPerSpin
       const wheelSpinsUsed = client.wheelSpinsUsed || 0;
-      const pointsPerSpin = (settings.wheel.freeDrinksPerSpin || 5) * 10; // Convert to points scale
-      const totalSpinsEarned = Math.floor(totalPointsEarned / pointsPerSpin);
-      const wheelSpinsAvailable = Math.max(0, totalSpinsEarned - wheelSpinsUsed);
-      const pointsToNextSpin = pointsPerSpin - (totalPointsEarned % pointsPerSpin);
+      const lastSpinTotalPoints = client.lastSpinTotalPoints || 0;
+      const pointsPerSpin = settings.wheel.pointsPerSpin || ((settings.wheel.freeDrinksPerSpin || 5) * 10);
+      const accumulatedSinceLastSpin = totalPointsEarned - lastSpinTotalPoints;
+      const wheelSpinsAvailable = Math.max(0, Math.floor(accumulatedSinceLastSpin / pointsPerSpin));
+      const pointsToNextSpin = pointsPerSpin - (accumulatedSinceLastSpin % pointsPerSpin);
 
       // Find next level
       let nextLevel = null;
@@ -517,7 +515,28 @@ function setupLoyaltyGamificationAPI(app) {
       }
 
       if (!(await fileExists(clientPath))) {
-        return res.status(404).json({ success: false, error: 'Client not found' });
+        // Try to bootstrap client file from DB
+        if (USE_DB) {
+          const dbClient = await db.findById('clients', normalizedPhone, 'phone');
+          if (!dbClient) {
+            return res.status(404).json({ success: false, error: 'Client not found' });
+          }
+          const newClientData = {
+            phone: normalizedPhone,
+            name: dbClient.name || '',
+            loyaltyPoints: dbClient.loyalty_points || 0,
+            totalPointsEarned: dbClient.total_points_earned || 0,
+            freeDrinksGiven: 0,
+            wheelSpinsUsed: 0,
+            lastSpinTotalPoints: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          await writeJsonFile(clientPath, newClientData);
+          console.log(`📝 Bootstrapped gamification file for ${maskPhone(normalizedPhone)} from DB`);
+        } else {
+          return res.status(404).json({ success: false, error: 'Client not found' });
+        }
       }
 
       // Check for pending prize - client can only have ONE pending prize
@@ -534,104 +553,146 @@ function setupLoyaltyGamificationAPI(app) {
         });
       }
 
-      const content = await fsp.readFile(clientPath, 'utf8');
-      const client = JSON.parse(content);
+      // Lock on client file to prevent double-spin race condition
+      // All file writes inside withLock use { useLock: false } to avoid deadlock
+      const result = await withLock(clientPath, async () => {
+        const content = await fsp.readFile(clientPath, 'utf8');
+        const client = JSON.parse(content);
 
-      const freeDrinksGiven = client.freeDrinksGiven || 0;
-      const totalPointsEarned = client.totalPointsEarned || (freeDrinksGiven * 10);
-      const wheelSpinsUsed = client.wheelSpinsUsed || 0;
-      const pointsPerSpin = (settings.wheel.freeDrinksPerSpin || 5) * 10;
-      const totalSpinsEarned = Math.floor(totalPointsEarned / pointsPerSpin);
-      const wheelSpinsAvailable = Math.max(0, totalSpinsEarned - wheelSpinsUsed);
+        // Sync totalPointsEarned from DB (source of truth for points)
+        if (USE_DB) {
+          try {
+            const dbClient = await db.findById('clients', normalizedPhone, 'phone');
+            if (dbClient) {
+              client.totalPointsEarned = dbClient.total_points_earned ?? client.totalPointsEarned ?? 0;
+              client.loyaltyPoints = dbClient.loyalty_points ?? client.loyaltyPoints ?? 0;
+            }
+          } catch (dbErr) { console.error('DB read client error in spin:', dbErr.message); }
+        }
 
-      if (wheelSpinsAvailable <= 0) {
+        const freeDrinksGiven = client.freeDrinksGiven || 0;
+        const totalPointsEarned = client.totalPointsEarned || (freeDrinksGiven * 10);
+        const lastSpinTotalPoints = client.lastSpinTotalPoints || 0;
+        const pointsPerSpin = settings.wheel.pointsPerSpin || ((settings.wheel.freeDrinksPerSpin || 5) * 10);
+        const accumulatedSinceLastSpin = totalPointsEarned - lastSpinTotalPoints;
+        const wheelSpinsAvailable = Math.max(0, Math.floor(accumulatedSinceLastSpin / pointsPerSpin));
+
+        if (wheelSpinsAvailable <= 0) {
+          return { noSpins: true };
+        }
+
+        // Spin the wheel (weighted random)
+        const sectors = settings.wheel.sectors;
+        const random = Math.random();
+        let cumulative = 0;
+        let winSector = sectors[0];
+
+        for (const sector of sectors) {
+          cumulative += sector.probability;
+          if (random <= cumulative) {
+            winSector = sector;
+            break;
+          }
+        }
+
+        // Update client: advance lastSpinTotalPoints and deduct points from balance
+        client.lastSpinTotalPoints = lastSpinTotalPoints + pointsPerSpin;
+        client.loyaltyPoints = Math.max(0, (client.loyaltyPoints || 0) - pointsPerSpin);
+        client.wheelSpinsUsed = (client.wheelSpinsUsed || 0) + 1; // Historical counter
+        client.lastWheelSpin = new Date().toISOString();
+        client.updatedAt = new Date().toISOString();
+
+        await writeJsonFile(clientPath, client, { useLock: false });
+        if (USE_DB) {
+          try {
+            await db.upsert('clients', {
+              phone: normalizedPhone,
+              name: client.name || null,
+              client_name: client.name || null,
+              loyalty_points: client.loyaltyPoints,
+              updated_at: client.updatedAt || new Date().toISOString(),
+            }, 'phone');
+          }
+          catch (dbErr) { console.error('DB save client error:', dbErr.message); }
+        }
+
+        // Create prize record for client (all prizes now require manual issuance)
+        const prizeId = generatePrizeId();
+        const qrToken = generateQrToken();
+        const now = new Date().toISOString();
+
+        const prizeRecord = {
+          id: prizeId,
+          clientPhone: normalizedPhone,
+          clientName: client.name || 'Клиент',
+          prize: winSector.text,
+          prizeType: winSector.prizeType,
+          prizeValue: winSector.prizeValue,
+          spinDate: now,
+          status: 'pending',
+          qrToken: qrToken,
+          qrUsed: false,
+          issuedBy: null,
+          issuedByName: null,
+          issuedAt: null
+        };
+
+        await savePrize(prizeRecord);
+        console.log(`🎁 Создан приз для клиента ${normalizedPhone}: ${winSector.text}`);
+
+        // Save spin to history
+        const spinRecord = {
+          id: `spin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          phone: normalizedPhone,
+          clientName: client.name,
+          sectorIndex: winSector.index,
+          prize: winSector.text,
+          prizeType: winSector.prizeType,
+          prizeValue: winSector.prizeValue,
+          spunAt: now,
+          prizeId: prizeId, // Link to prize record
+          isProcessed: false // All prizes need manual issuance now
+        };
+
+        const monthKey = new Date().toISOString().slice(0, 7);
+        const historyPath = path.join(WHEEL_HISTORY_DIR, `${monthKey}.json`);
+
+        let history = [];
+        if (await fileExists(historyPath)) {
+          const historyContent = await fsp.readFile(historyPath, 'utf8');
+          history = JSON.parse(historyContent);
+        }
+        history.push(spinRecord);
+        await writeJsonFile(historyPath, history, { useLock: false });
+        if (USE_DB) {
+          try {
+            await db.insert('fortune_wheel_results', {
+              client_phone: normalizedPhone,
+              data: spinRecord,
+              created_at: spinRecord.spunAt
+            });
+          } catch (dbErr) { console.error('DB save fortune_wheel_result error:', dbErr.message); }
+        }
+
+        return {
+          noSpins: false,
+          client,
+          winSector,
+          spinRecord,
+          wheelSpinsAvailable,
+          prizeId,
+          qrToken
+        };
+      });
+
+      // Handle result outside lock (push notifications don't need lock)
+      if (result.noSpins) {
         return res.status(400).json({ success: false, error: 'No spins available' });
       }
 
-      // Spin the wheel (weighted random)
-      const sectors = settings.wheel.sectors;
-      const random = Math.random();
-      let cumulative = 0;
-      let winSector = sectors[0];
+      const { client, winSector, spinRecord, wheelSpinsAvailable, prizeId, qrToken } = result;
 
-      for (const sector of sectors) {
-        cumulative += sector.probability;
-        if (random <= cumulative) {
-          winSector = sector;
-          break;
-        }
-      }
-
-      // Update client
-      client.wheelSpinsUsed = (client.wheelSpinsUsed || 0) + 1;
-      client.lastWheelSpin = new Date().toISOString();
-      client.updatedAt = new Date().toISOString();
-
-      await writeJsonFile(clientPath, client);
-      if (USE_DB) {
-        try { await db.upsert('clients', { phone: normalizedPhone, data: client }, 'phone'); }
-        catch (dbErr) { console.error('DB save client error:', dbErr.message); }
-      }
-
-      // Create prize record for client (all prizes now require manual issuance)
-      const prizeId = generatePrizeId();
-      const qrToken = generateQrToken();
-      const now = new Date().toISOString();
-
-      const prizeRecord = {
-        id: prizeId,
-        clientPhone: normalizedPhone,
-        clientName: client.name || 'Клиент',
-        prize: winSector.text,
-        prizeType: winSector.prizeType,
-        prizeValue: winSector.prizeValue,
-        spinDate: now,
-        status: 'pending',
-        qrToken: qrToken,
-        qrUsed: false,
-        issuedBy: null,
-        issuedByName: null,
-        issuedAt: null
-      };
-
-      await savePrize(prizeRecord);
-      console.log(`🎁 Создан приз для клиента ${normalizedPhone}: ${winSector.text}`);
-
-      // Save spin to history
-      const spinRecord = {
-        id: `spin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        phone: normalizedPhone,
-        clientName: client.name,
-        sectorIndex: winSector.index,
-        prize: winSector.text,
-        prizeType: winSector.prizeType,
-        prizeValue: winSector.prizeValue,
-        spunAt: now,
-        prizeId: prizeId, // Link to prize record
-        isProcessed: false // All prizes need manual issuance now
-      };
-
-      const monthKey = new Date().toISOString().slice(0, 7);
-      const historyPath = path.join(WHEEL_HISTORY_DIR, `${monthKey}.json`);
-
-      let history = [];
-      if (await fileExists(historyPath)) {
-        const historyContent = await fsp.readFile(historyPath, 'utf8');
-        history = JSON.parse(historyContent);
-      }
-      history.push(spinRecord);
-      await writeJsonFile(historyPath, history);
-      if (USE_DB) {
-        try {
-          await db.insert('fortune_wheel_results', {
-            client_phone: normalizedPhone,
-            data: spinRecord,
-            created_at: spinRecord.spunAt
-          });
-        } catch (dbErr) { console.error('DB save fortune_wheel_result error:', dbErr.message); }
-      }
-
-      // Send push notification to admins/developers
+      // Send push notification to admins/developers (outside lock — not critical)
       const pushTitle = 'Клиент выиграл приз!';
       const pushBody = `${client.name || normalizedPhone}: ${winSector.text}`;
       await sendPrizePushNotification(pushTitle, pushBody, {
@@ -918,7 +979,14 @@ function setupLoyaltyGamificationAPI(app) {
           client.updatedAt = new Date().toISOString();
           await writeJsonFile(clientPath, client);
           if (USE_DB) {
-            try { await db.upsert('clients', { phone: prize.clientPhone, data: client }, 'phone'); }
+            try {
+              await db.upsert('clients', {
+                phone: prize.clientPhone,
+                name: client.name || null,
+                client_name: client.name || null,
+                updated_at: client.updatedAt || new Date().toISOString(),
+              }, 'phone');
+            }
             catch (dbErr) { console.error('DB save client error:', dbErr.message); }
           }
         }

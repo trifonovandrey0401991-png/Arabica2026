@@ -267,9 +267,13 @@ class EnvelopeScheduler extends BaseReportScheduler {
       // Проверить дедлайн
       const [deadlineHours, deadlineMinutes] = report.deadline.split(':').map(Number);
       const deadlineMinutesTotal = deadlineHours * 60 + deadlineMinutes;
-      const currentMinutesTotal = moscow.getUTCHours() * 60 + moscow.getUTCMinutes();
+      const currentHour = moscow.getUTCHours();
+      const currentMinutesTotal = currentHour * 60 + moscow.getUTCMinutes();
 
-      if (currentMinutesTotal >= deadlineMinutesTotal) {
+      // Cross-midnight fix: deadline ≥22:00, current time 00:00-05:00 → clock rolled past deadline
+      const crossedMidnight = deadlineHours >= 22 && currentHour < 5;
+
+      if (currentMinutesTotal >= deadlineMinutesTotal || crossedMidnight) {
         // Дедлайн прошел!
         report.status = 'failed';
         report.failedAt = moscow.toISOString();

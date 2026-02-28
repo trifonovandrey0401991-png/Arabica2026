@@ -157,6 +157,31 @@ const defaultEnvelopeQuestions = [
   }
 })();
 
+const EMPLOYEES_DIR_ENV = `${DATA_DIR}/employees`;
+const USE_DB_EMPLOYEES_ENV = process.env.USE_DB_EMPLOYEES === 'true';
+
+async function getEmployeePhoneByName(employeeName) {
+  if (!employeeName) return null;
+  try {
+    if (USE_DB_EMPLOYEES_ENV) {
+      const rows = await db.query('SELECT phone FROM employees WHERE name = $1 LIMIT 1', [employeeName]);
+      if (rows.length > 0) return rows[0].phone || null;
+    }
+    if (await fileExists(EMPLOYEES_DIR_ENV)) {
+      const files = (await fsp.readdir(EMPLOYEES_DIR_ENV)).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const emp = JSON.parse(await fsp.readFile(path.join(EMPLOYEES_DIR_ENV, file), 'utf8'));
+          if (emp.name === employeeName) return emp.phone || null;
+        } catch (_) {}
+      }
+    }
+  } catch (e) {
+    console.error('[Envelope] getEmployeePhoneByName error:', e.message);
+  }
+  return null;
+}
+
 function setupEnvelopeAPI(app) {
   // ========== ENVELOPE QUESTIONS ==========
 
@@ -212,7 +237,7 @@ function setupEnvelopeAPI(app) {
     try {
       console.log('POST /api/envelope-questions:', JSON.stringify(req.body).substring(0, 200));
 
-      const questionId = req.body.id || `envelope_q_${Date.now()}`;
+      const questionId = req.body.id || `envelope_q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const sanitizedId2 = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(ENVELOPE_QUESTIONS_DIR, `${sanitizedId2}.json`);
 
@@ -346,7 +371,7 @@ function setupEnvelopeAPI(app) {
           params.push(toDate);
         }
 
-        query += ' ORDER BY created_at DESC';
+        query += ' ORDER BY created_at DESC LIMIT 5000';
 
         const result = await db.query(query, params);
         reports = result.rows.map(dbEnvelopeReportToCamel);
@@ -661,17 +686,23 @@ function setupEnvelopeAPI(app) {
       console.log('Отчет конверта подтверждён:', rawId);
 
       // Пуш-уведомление сотруднику
-      const empPhone = report.employeePhone || report.phone;
+      const empPhone = report.employeePhone || report.phone
+        || await getEmployeePhoneByName(report.employeeName);
       if (empPhone) {
         try {
-          const ratingText = rating ? ` Оценка: ${rating}` : '';
-          await pushService.sendPushToPhone(empPhone, 'Конверт подтверждён', `Ваш отчёт по конверту подтверждён.${ratingText}`, {
-            type: 'envelope_confirmed',
-            envelopeId: rawId
-          });
+          const ratingText = rating ? ` Оценка: ${rating}/5` : '';
+          await pushService.sendPushToPhone(
+            empPhone,
+            'Конверт подтверждён',
+            `Ваш отчёт по конверту подтверждён.${ratingText}`,
+            { type: 'envelope_confirmed', envelopeId: rawId, rating: rating ? String(rating) : '' }
+          );
+          console.log(`[Envelope] Push отправлен сотруднику ${empPhone}`);
         } catch (pushErr) {
-          console.error('Ошибка отправки пуша по конверту:', pushErr.message);
+          console.error('[Envelope] Ошибка отправки push (confirm):', pushErr.message);
         }
+      } else {
+        console.log('[Envelope] Push не отправлен: нет телефона сотрудника');
       }
 
       notifyCounterUpdate('unconfirmedEnvelopes', { delta: -1 });

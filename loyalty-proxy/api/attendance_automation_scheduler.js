@@ -19,6 +19,7 @@ const { fileExists, loadJsonFile } = require('../utils/file_helpers');
 const { getMoscowTime, getMoscowDateString, MOSCOW_OFFSET_HOURS } = require('../utils/moscow_time');
 const BaseReportScheduler = require('../utils/base_report_scheduler');
 const db = require('../utils/db');
+const dataCache = require('../utils/data_cache');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const USE_DB = process.env.USE_DB_ATTENDANCE === 'true';
@@ -315,22 +316,13 @@ class AttendanceScheduler extends BaseReportScheduler {
       return;
     }
 
-    // Найти телефон сотрудника по employeeId
+    // Найти телефон сотрудника по employeeId (через кэш, без чтения файлов)
     let employeePhone = null;
     try {
-      if (await fileExists(this.EMPLOYEES_DIR)) {
-        const files = (await fsp.readdir(this.EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
-        for (const file of files) {
-          try {
-            const empData = JSON.parse(await fsp.readFile(path.join(this.EMPLOYEES_DIR, file), 'utf8'));
-            if (empData.id === employeeId && empData.phone) {
-              employeePhone = empData.phone;
-              break;
-            }
-          } catch (e) {
-            // Skip invalid files
-          }
-        }
+      const employees = dataCache.getEmployees();
+      if (employees) {
+        const emp = employees.find(e => e.id === employeeId);
+        if (emp && emp.phone) employeePhone = emp.phone;
       }
     } catch (e) {
       console.error(`${this.tag} Error finding employee phone:`, e.message);

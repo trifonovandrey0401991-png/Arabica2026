@@ -12,6 +12,8 @@ const { maskPhone, fileExists } = require('../utils/file_helpers');
 const { requireAuth } = require('../utils/session_middleware');
 const db = require('../utils/db');
 const USE_DB_ORDERS = process.env.USE_DB_ORDERS === 'true';
+const USE_DB_TASKS = process.env.USE_DB_TASKS === 'true';
+const USE_DB_RECURRING_TASKS = process.env.USE_DB_RECURRING_TASKS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -49,6 +51,75 @@ async function countInSubdirs(dirPath, filterFn) {
   return count;
 }
 
+// Count pending task assignments (regular + recurring) for a specific employee
+async function countActiveTasksForEmployee(employeeId, phone) {
+  let regularCount = 0;
+  let recurringCount = 0;
+  const normalizedPhone = phone ? phone.replace(/[^\d]/g, '') : null;
+
+  // === Regular task assignments ===
+  if (USE_DB_TASKS) {
+    try {
+      const result = await db.query(
+        'SELECT COUNT(*)::int AS cnt FROM task_assignments WHERE (assignee_id = $1 OR assignee_phone = $2) AND status = $3',
+        [employeeId || '', phone || '', 'pending']
+      );
+      regularCount = result.rows[0]?.cnt || 0;
+    } catch (e) { /* fallback to JSON */ }
+  }
+  if (regularCount === 0 && !USE_DB_TASKS) {
+    try {
+      const dir = `${DATA_DIR}/task-assignments`;
+      if (await fileExists(dir)) {
+        const files = (await fsp.readdir(dir)).filter(f => f.endsWith('.json'));
+        for (const file of files) {
+          try {
+            const data = JSON.parse(await fsp.readFile(path.join(dir, file), 'utf8'));
+            const assignments = data.assignments || data || [];
+            if (Array.isArray(assignments)) {
+              regularCount += assignments.filter(a =>
+                (a.assigneeId === employeeId || a.assigneePhone === phone) &&
+                a.status === 'pending'
+              ).length;
+            }
+          } catch (e) { /* skip */ }
+        }
+      }
+    } catch (e) { /* skip */ }
+  }
+
+  // === Recurring task instances ===
+  if (USE_DB_RECURRING_TASKS) {
+    try {
+      const result = await db.query(
+        'SELECT COUNT(*)::int AS cnt FROM recurring_task_instances WHERE assignee_phone = $1 AND status = $2',
+        [phone || '', 'pending']
+      );
+      recurringCount = result.rows[0]?.cnt || 0;
+    } catch (e) { /* fallback to JSON */ }
+  }
+  if (recurringCount === 0 && !USE_DB_RECURRING_TASKS) {
+    try {
+      const dir = `${DATA_DIR}/recurring-task-instances`;
+      if (await fileExists(dir)) {
+        const files = (await fsp.readdir(dir)).filter(f => f.endsWith('.json'));
+        for (const file of files) {
+          try {
+            const data = JSON.parse(await fsp.readFile(path.join(dir, file), 'utf8'));
+            const instances = Array.isArray(data) ? data : (data.instances || []);
+            recurringCount += instances.filter(i => {
+              const iPhone = i.assigneePhone ? i.assigneePhone.replace(/[^\d]/g, '') : '';
+              return (iPhone === normalizedPhone) && i.status === 'pending';
+            }).length;
+          } catch (e) { /* skip */ }
+        }
+      }
+    } catch (e) { /* skip */ }
+  }
+
+  return regularCount + recurringCount;
+}
+
 function setupDashboardBatchAPI(app) {
   /**
    * GET /api/dashboard/counters?phone={phone}&employeeId={id}
@@ -59,6 +130,49 @@ function setupDashboardBatchAPI(app) {
       const { phone, employeeId, employeeName } = req.query;
       console.log(`📊 GET /api/dashboard/counters phone=${maskPhone(phone)}`);
       const startTime = Date.now();
+
+      // Count shift-transfer unread for this employee from the single JSON file
+      async function countShiftTransferUnread(empId) {
+        if (!empId) return 0;
+        try {
+          const filePath = `${DATA_DIR}/shift-transfers.json`;
+          if (!await fileExists(filePath)) return 0;
+          const raw = await fsp.readFile(filePath, 'utf8');
+          const requests = JSON.parse(raw);
+          if (!Array.isArray(requests)) return 0;
+          return requests.filter(r => {
+            if (r.fromEmployeeId === empId) return false;
+            if (r.toEmployeeId && r.toEmployeeId !== empId) return false;
+            if (r.status !== 'pending' && r.status !== 'has_acceptances') return false;
+            if (r.isReadByRecipient) return false;
+            const acceptedBy = r.acceptedBy || [];
+            if (acceptedBy.some(a => a.employeeId === empId)) return false;
+            const rejectedBy = r.rejectedBy || [];
+            if (rejectedBy.some(a => a.employeeId === empId)) return false;
+            return true;
+          }).length;
+        } catch (e) { return 0; }
+      }
+
+      // Count unviewed report notifications
+      async function countReportNotifications() {
+        try {
+          const dir = `${DATA_DIR}/report-notifications`;
+          if (!await fileExists(dir)) return 0;
+          const files = (await fsp.readdir(dir)).filter(f => f.endsWith('.json'));
+          let count = 0;
+          for (const file of files) {
+            try {
+              const raw = await fsp.readFile(path.join(dir, file), 'utf8');
+              const notifs = JSON.parse(raw);
+              if (Array.isArray(notifs)) {
+                count += notifs.filter(n => !n.viewedAt).length;
+              }
+            } catch (e) { /* skip */ }
+          }
+          return count;
+        } catch (e) { return 0; }
+      }
 
       // Параллельно загружаем все счётчики
       const [
@@ -71,6 +185,11 @@ function setupDashboardBatchAPI(app) {
         wholesalePendingOrders,
         unreadReviews,
         activeTaskAssignments,
+        coffeeMachineReports,
+        unreadProductQuestions,
+        shiftTransferRequests,
+        jobApplications,
+        reportNotifications,
       ] = await Promise.all([
         // Pending shift reports (status = 'pending' or 'review')
         countInSubdirs(`${DATA_DIR}/shift-reports`, d => d.status === 'pending' || d.status === 'review'),
@@ -92,12 +211,19 @@ function setupDashboardBatchAPI(app) {
           : countJsonFiles(`${DATA_DIR}/orders`, d => d.status === 'pending' && d.isWholesaleOrder === true),
         // Unread reviews
         countJsonFiles(`${DATA_DIR}/reviews`, d => !d.isRead),
-        // Active task assignments for employee
-        employeeId
-          ? countJsonFiles(`${DATA_DIR}/task-assignments`, d =>
-              (d.assigneeId === employeeId || d.assigneePhone === phone) &&
-              d.status === 'pending')
-          : Promise.resolve(0),
+        // Active task assignments for employee (regular + recurring)
+        countActiveTasksForEmployee(employeeId, phone),
+        // Coffee machine reports pending (per-shop subdirs)
+        countInSubdirs(`${DATA_DIR}/coffee-machine-reports`, d => d.status === 'pending' || d.status === 'review'),
+        // Unanswered product questions (hasUnreadFromClient or unanswered shop)
+        countJsonFiles(`${DATA_DIR}/product-questions`, d =>
+          d.hasUnreadFromClient || (d.shops && d.shops.some(s => !s.isAnswered))),
+        // Shift transfer unread count for this employee
+        countShiftTransferUnread(employeeId),
+        // Pending job applications (status 'new')
+        countJsonFiles(`${DATA_DIR}/job-applications`, d => d.status === 'new' || !d.status),
+        // Unviewed report notifications
+        countReportNotifications(),
       ]);
 
       const elapsed = Date.now() - startTime;
@@ -115,6 +241,12 @@ function setupDashboardBatchAPI(app) {
           wholesalePendingOrders,
           unreadReviews,
           activeTaskAssignments,
+          // 5 counters that were previously missing (showed 0 on startup)
+          coffeeMachineReports,
+          unreadProductQuestions,
+          shiftTransferRequests,
+          jobApplications,
+          reportNotifications,
           // Суммарный счётчик для бейджа "Отчёты"
           totalPendingReports: pendingShiftReports + pendingRecountReports + pendingHandoverReports + unconfirmedWithdrawals + unconfirmedEnvelopes,
         },

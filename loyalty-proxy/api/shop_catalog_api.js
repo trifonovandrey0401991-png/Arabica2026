@@ -77,6 +77,7 @@ async function saveAuthorizedEmployees(list) {
 
 function setupShopCatalogAPI(app) {
   const requireAuth = app._requireAuth || require('../utils/session_middleware').requireAuth;
+  const requireAdmin = require('../utils/session_middleware').requireAdmin;
 
   // ==================== PRODUCT GROUPS ====================
 
@@ -399,7 +400,7 @@ function setupShopCatalogAPI(app) {
   });
 
   // POST /api/shop-catalog/authorized-employees
-  app.post('/api/shop-catalog/authorized-employees', requireAuth, async (req, res) => {
+  app.post('/api/shop-catalog/authorized-employees', requireAdmin, async (req, res) => {
     try {
       const { phone, name } = req.body;
       if (!phone) return res.status(400).json({ success: false, error: 'Телефон обязателен' });
@@ -422,7 +423,7 @@ function setupShopCatalogAPI(app) {
   });
 
   // DELETE /api/shop-catalog/authorized-employees/:phone
-  app.delete('/api/shop-catalog/authorized-employees/:phone', requireAuth, async (req, res) => {
+  app.delete('/api/shop-catalog/authorized-employees/:phone', requireAdmin, async (req, res) => {
     try {
       const phone = req.params.phone.replace(/[^\d]/g, '');
       let list = await loadAuthorizedEmployees();

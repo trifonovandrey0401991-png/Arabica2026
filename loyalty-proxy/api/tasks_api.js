@@ -14,6 +14,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
+const { notifyEmployeeCounter } = require('./counters_websocket');
 
 const USE_DB = process.env.USE_DB_TASKS === 'true';
 
@@ -577,7 +578,7 @@ function setupTasksAPI(app) {
 
       console.log(`  Created task ${taskId} with ${newAssignments.length} assignments`);
 
-      // Отправляем push-уведомления всем исполнителям
+      // Отправляем push-уведомления и WS-счётчики всем исполнителям
       for (const assignment of newAssignments) {
         const employeePhone = await getEmployeePhoneById(assignment.assigneeId);
         if (employeePhone) {
@@ -588,6 +589,8 @@ function setupTasksAPI(app) {
             { type: 'new_task', taskId: taskId, assignmentId: assignment.id }
           );
           console.log(`  Push sent to ${assignment.assigneeName} (${employeePhone})`);
+          // Live counter update: badge increments immediately without app restart
+          notifyEmployeeCounter(employeePhone, 'activeTaskAssignments', 1);
         } else {
           console.log(`  No phone found for ${assignment.assigneeName} (${assignment.assigneeId})`);
         }

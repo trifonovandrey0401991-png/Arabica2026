@@ -158,6 +158,31 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
     };
 
     await writeJsonFile(filePath, report);
+
+    // DB dual-write: save pending to PostgreSQL (same as shift scheduler)
+    if (USE_DB) {
+      try {
+        const deadlineTs = this.getDeadlineTime(deadline);
+        await db.upsert('shift_handover_reports', {
+          id: report.id,
+          employee_name: '',
+          employee_phone: null,
+          shop_address: report.shopAddress,
+          shop_name: report.shopName,
+          shift_type: report.shiftType,
+          status: 'pending',
+          answers: '[]',
+          date: report.date,
+          created_at: report.createdAt,
+          deadline: deadlineTs.toISOString(),
+          updated_at: report.createdAt
+        });
+        console.log(`${this.tag} DB: pending created ${report.id}`);
+      } catch (dbErr) {
+        console.error(`${this.tag} DB upsert pending error:`, dbErr.message);
+      }
+    }
+
     console.log(`${this.tag} Created pending ${shiftType} shift handover for ${shop.name}, deadline: ${deadline}`);
     return report;
   }
@@ -304,6 +329,20 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
         report.status = 'failed';
         report.failedAt = new Date().toISOString();
         await this.savePendingReport(report);
+
+        // DB dual-write: update failed status in PostgreSQL
+        if (USE_DB) {
+          try {
+            await db.updateById('shift_handover_reports', report.id, {
+              status: 'failed',
+              failed_at: report.failedAt,
+              updated_at: new Date().toISOString()
+            });
+          } catch (dbErr) {
+            console.error(`${this.tag} DB update failed error:`, dbErr.message);
+          }
+        }
+
         failedCount++;
 
         failedShops.push({

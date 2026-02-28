@@ -281,19 +281,32 @@ async function broadcastTypingStatus(conversationId, phone, isTyping) {
   await broadcastToConversation(conversationId, message, phone);
 }
 
-function broadcastOnlineStatus(phone, isOnline) {
+async function broadcastOnlineStatus(phone, isOnline) {
   const message = {
     type: 'online_status',
     phone,
     isOnline,
     timestamp: new Date().toISOString()
   };
-  for (const [userPhone, sockets] of connections.entries()) {
-    if (userPhone !== phone) {
-      for (const socket of sockets) {
+
+  // Отправляем только участникам разговоров с этим пользователем (не всем подряд)
+  try {
+    const result = await db.query(
+      `SELECT DISTINCT mp.phone FROM messenger_participants mp
+       WHERE mp.conversation_id IN (
+         SELECT conversation_id FROM messenger_participants WHERE phone = $1
+       ) AND mp.phone != $1`,
+      [phone]
+    );
+    const targetPhones = new Set(result.rows.map(r => r.phone));
+    for (const targetPhone of targetPhones) {
+      if (!connections.has(targetPhone)) continue;
+      for (const socket of connections.get(targetPhone)) {
         sendToSocket(socket, message);
       }
     }
+  } catch (err) {
+    console.error('[Messenger WS] Error broadcasting online status:', err.message);
   }
 }
 
@@ -337,6 +350,13 @@ function cleanupStaleConnections() {
   for (const [phone] of onlineStatus.entries()) {
     if (!connections.has(phone) || connections.get(phone).size === 0) {
       onlineStatus.delete(phone);
+    }
+  }
+
+  // Очищаем пустые записи typingStatus (разговоры без активных таймеров набора)
+  for (const [convId, chatTyping] of typingStatus.entries()) {
+    if (chatTyping.size === 0) {
+      typingStatus.delete(convId);
     }
   }
 }

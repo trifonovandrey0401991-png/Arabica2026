@@ -9,6 +9,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const { fileExists } = require('../utils/file_helpers');
 const { requireAdmin } = require('../utils/session_middleware');
+const { getMoscowTime } = require('../utils/moscow_time');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 
@@ -775,15 +776,15 @@ async function runAutoCleanup() {
 }
 
 function startAutoCleanupScheduler() {
-  // Запускаем ежедневно в 3:00 ночи
-  const now = new Date();
-  const target = new Date(now);
-  target.setHours(3, 0, 0, 0);
-  if (target <= now) {
-    target.setDate(target.getDate() + 1);
+  // Запускаем ежедневно в 3:00 ночи по Москве (UTC+3)
+  const mskNow = getMoscowTime();
+  const target = new Date(mskNow);
+  target.setUTCHours(3, 0, 0, 0); // 3:00 MSK (mskNow already shifted to MSK)
+  if (target <= mskNow) {
+    target.setUTCDate(target.getUTCDate() + 1);
   }
 
-  const msUntilFirst = target.getTime() - now.getTime();
+  const msUntilFirst = target.getTime() - mskNow.getTime();
 
   setTimeout(() => {
     runAutoCleanup().catch(e => console.error('[AutoCleanup] Error:', e.message));

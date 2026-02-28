@@ -142,19 +142,18 @@ async function initBatchCache(month) {
 
   if (USE_DB) {
     const { start, end } = getMonthRange(month);
-    const monthLike = month + '%';
 
-    // Load all data from DB in parallel (12 queries)
+    // Load all data from DB in parallel (12 queries, range-based for index usage)
     const [shiftRes, recountRes, handoverRes, attendanceRes, testRes, reviewRes, rkoRes, penaltyRes, envelopeRes, cmRes, taskAssignRes, recurringInstRes] = await Promise.all([
-      db.query('SELECT employee_name, employee_phone, shop_address, rating FROM shift_reports WHERE date LIKE $1', [monthLike]),
-      db.query('SELECT employee_name, employee_phone, admin_rating FROM recount_reports WHERE date LIKE $1', [monthLike]),
-      db.query('SELECT employee_name, employee_phone, rating FROM shift_handover_reports WHERE date LIKE $1', [monthLike]),
+      db.query('SELECT employee_name, employee_phone, shop_address, rating FROM shift_reports WHERE date >= $1 AND date < $2', [start, end]),
+      db.query('SELECT employee_name, employee_phone, admin_rating FROM recount_reports WHERE date >= $1 AND date < $2', [start, end]),
+      db.query('SELECT employee_name, employee_phone, rating FROM shift_handover_reports WHERE date >= $1 AND date < $2', [start, end]),
       db.query('SELECT employee_name, employee_phone, shop_address, is_on_time FROM attendance WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz', [start, end]),
-      db.query("SELECT data FROM test_results WHERE data->>'completedAt' LIKE $1", [monthLike]),
+      db.query("SELECT data FROM test_results WHERE (data->>'completedAt')::text >= $1 AND (data->>'completedAt')::text < $2", [start, end]),
       db.query('SELECT shop_address, review_type FROM reviews WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz', [start, end]),
       db.query('SELECT shop_address FROM rko_reports WHERE date >= $1::date AND date < $2::date', [start, end]),
       db.query('SELECT entity_id, employee_phone, points FROM efficiency_penalties WHERE date >= $1::date AND date < $2::date', [start, end]),
-      db.query('SELECT employee_name, status FROM envelope_reports WHERE date LIKE $1', [monthLike]),
+      db.query('SELECT employee_name, status FROM envelope_reports WHERE date >= $1 AND date < $2', [start, end]),
       db.query('SELECT employee_name, status FROM coffee_machine_reports WHERE date >= $1::date AND date < $2::date', [start, end]),
       db.query('SELECT ta.assignee_id, ta.status FROM task_assignments ta JOIN tasks t ON ta.task_id = t.id WHERE t.month = $1', [month]),
       db.query('SELECT assignee_id, status FROM recurring_task_instances WHERE date >= $1::date AND date < $2::date', [start, end]),
@@ -398,9 +397,10 @@ async function calculateShiftPoints(employeeId, employeeName, month) {
     let totalPoints = 0;
 
     if (USE_DB) {
+      const { start, end } = getMonthRange(month);
       const res = await db.query(
-        'SELECT rating FROM shift_reports WHERE date LIKE $1 AND (employee_name = $2 OR employee_phone = $3)',
-        [month + '%', employeeName, employeeId]
+        'SELECT rating FROM shift_reports WHERE date >= $1 AND date < $2 AND (employee_name = $3 OR employee_phone = $4)',
+        [start, end, employeeName, employeeId]
       );
       for (const row of res.rows) {
         if (row.rating && row.rating > 0) {
@@ -441,9 +441,10 @@ async function calculateRecountPoints(employeeId, employeeName, month) {
     let totalPoints = 0;
 
     if (USE_DB) {
+      const { start, end } = getMonthRange(month);
       const res = await db.query(
-        'SELECT admin_rating FROM recount_reports WHERE date LIKE $1 AND (employee_name = $2 OR employee_phone = $3)',
-        [month + '%', employeeName, employeeId]
+        'SELECT admin_rating FROM recount_reports WHERE date >= $1 AND date < $2 AND (employee_name = $3 OR employee_phone = $4)',
+        [start, end, employeeName, employeeId]
       );
       for (const row of res.rows) {
         if (row.admin_rating && row.admin_rating > 0) {
@@ -484,9 +485,10 @@ async function calculateHandoverPoints(employeeId, employeeName, month) {
     let totalPoints = 0;
 
     if (USE_DB) {
+      const { start, end } = getMonthRange(month);
       const res = await db.query(
-        'SELECT rating FROM shift_handover_reports WHERE date LIKE $1 AND (employee_name = $2 OR employee_phone = $3)',
-        [month + '%', employeeName, employeeId]
+        'SELECT rating FROM shift_handover_reports WHERE date >= $1 AND date < $2 AND (employee_name = $3 OR employee_phone = $4)',
+        [start, end, employeeName, employeeId]
       );
       for (const row of res.rows) {
         if (row.rating && row.rating > 0) {
@@ -569,9 +571,10 @@ async function calculateTestPoints(employeeId, employeeName, month) {
     let totalPoints = 0;
 
     if (USE_DB) {
+      const { start, end } = getMonthRange(month);
       const res = await db.query(
-        "SELECT data FROM test_results WHERE data->>'completedAt' LIKE $1 AND (data->>'employeeName' = $2 OR data->>'employeeId' = $3)",
-        [month + '%', employeeName, employeeId]
+        "SELECT data FROM test_results WHERE (data->>'completedAt')::text >= $1 AND (data->>'completedAt')::text < $2 AND (data->>'employeeName' = $3 OR data->>'employeeId' = $4)",
+        [start, end, employeeName, employeeId]
       );
       for (const row of res.rows) {
         const score = parseInt(row.data?.score) || 0;
@@ -760,13 +763,13 @@ async function calculateTasksPoints(employeeId, month) {
 /**
  * Рассчитать все автоматические штрафы (attendance, envelope, etc.)
  */
-async function calculateAttendancePenalties(employeeId, month) {
+async function calculateAttendancePenalties(employeeId, employeeName, month) {
   try {
     if (USE_DB) {
       const { start, end } = getMonthRange(month);
       const res = await db.query(
-        'SELECT SUM(points) as total FROM efficiency_penalties WHERE (entity_id = $1 OR employee_phone = $1) AND date >= $2::date AND date < $3::date',
-        [employeeId, start, end]
+        'SELECT SUM(points) as total FROM efficiency_penalties WHERE (entity_id = $1 OR employee_phone = $1 OR entity_id = $4) AND date >= $2::date AND date < $3::date',
+        [employeeId, start, end, employeeName || '']
       );
       return parseFloat(res.rows[0]?.total) || 0;
     }
@@ -785,7 +788,9 @@ async function calculateAttendancePenalties(employeeId, month) {
 
     let totalPenalty = 0;
     for (const penalty of penalties) {
-      const matchesEmployee = (penalty.employeeId === employeeId) || (penalty.entityId === employeeId);
+      const matchesEmployee = (penalty.employeeId === employeeId)
+        || (penalty.entityId === employeeId)
+        || (employeeName && penalty.entityId === employeeName);
       const matchesMonth = penalty.date && penalty.date.startsWith(month);
 
       if (matchesEmployee && matchesMonth) {
@@ -816,9 +821,10 @@ async function calculateEnvelopePoints(employeeName, month) {
     let totalPoints = 0;
 
     if (USE_DB) {
+      const { start, end } = getMonthRange(month);
       const res = await db.query(
-        "SELECT status FROM envelope_reports WHERE LOWER(TRIM(employee_name)) = LOWER(TRIM($1)) AND date LIKE $2 AND status = 'confirmed'",
-        [employeeName, month + '%']
+        "SELECT status FROM envelope_reports WHERE LOWER(TRIM(employee_name)) = LOWER(TRIM($1)) AND date >= $2 AND date < $3 AND status = 'confirmed'",
+        [employeeName, start, end]
       );
       totalPoints += res.rows.length * settings.submittedPoints;
     } else {
@@ -908,7 +914,7 @@ async function calculateFullEfficiency(employeeId, employeeName, shopAddress, mo
       recount: await calculateRecountPoints(employeeId, employeeName, month),
       handover: await calculateHandoverPoints(employeeId, employeeName, month),
       attendance: await calculateAttendancePoints(employeeId, month),
-      attendancePenalties: await calculateAttendancePenalties(employeeId, month),
+      attendancePenalties: await calculateAttendancePenalties(employeeId, employeeName, month),
       test: await calculateTestPoints(employeeId, employeeName, month),
       reviews: await calculateReviewsPoints(shopAddress, month),
       productSearch: await calculateProductSearchPoints(employeeId, month),
@@ -1034,13 +1040,17 @@ async function calculateAttendancePointsCached(employeeId, employeeName, cache) 
 /**
  * Рассчитать штрафы используя кэш
  */
-function calculateAttendancePenaltiesCached(employeeId, cache) {
+function calculateAttendancePenaltiesCached(employeeId, employeeName, cache) {
   if (!cache.penalties) return 0;
 
   let totalPoints = 0;
 
   for (const penalty of cache.penalties) {
-    if (penalty.entityId === employeeId || penalty.employeePhone === employeeId) {
+    if (
+      penalty.entityId === employeeId
+      || penalty.employeePhone === employeeId
+      || (employeeName && penalty.entityId === employeeName)
+    ) {
       totalPoints += penalty.points || 0;
     }
   }
@@ -1250,7 +1260,7 @@ async function calculateFullEfficiencyCached(employeeId, employeeName, shopAddre
       recount: await calculateRecountPointsCached(employeeId, employeeName, cache),
       handover: await calculateHandoverPointsCached(employeeId, employeeName, cache),
       attendance: await calculateAttendancePointsCached(employeeId, employeeName, cache),
-      attendancePenalties: calculateAttendancePenaltiesCached(employeeId, cache),
+      attendancePenalties: calculateAttendancePenaltiesCached(employeeId, employeeName, cache),
       test: await calculateTestPointsCached(employeeId, employeeName, cache),
       reviews: calculateReviewsPointsMultiShop(empShops, cache),
       productSearch: 0, // Handled via efficiency-penalties

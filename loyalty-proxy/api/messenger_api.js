@@ -86,7 +86,7 @@ function setupMessengerAPI(app, uploadMedia) {
           c.created_at
         ) DESC
         LIMIT $2 OFFSET $3
-      `, [normalizedPhone, parseInt(limit), parseInt(offset)]);
+      `, [normalizedPhone, Math.min(parseInt(limit) || 50, 100), parseInt(offset)]);
 
       res.json({ success: true, conversations: result.rows });
     } catch (error) {
@@ -424,7 +424,7 @@ function setupMessengerAPI(app, uploadMedia) {
       }
 
       sql += ` ORDER BY created_at DESC LIMIT $${paramIdx}`;
-      params.push(parseInt(limit));
+      params.push(Math.min(parseInt(limit) || 50, 200));
 
       const result = await db.query(sql, params);
 
@@ -443,11 +443,12 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.post('/api/messenger/conversations/:id/messages', requireAuth, async (req, res) => {
     try {
-      const { senderPhone, senderName, type = 'text', content, mediaUrl, voiceDuration, replyToId } = req.body;
-      if (!senderPhone) return res.status(400).json({ success: false, error: 'senderPhone required' });
+      const { type = 'text', content, mediaUrl, voiceDuration, replyToId } = req.body;
+      // SECURITY: берём телефон из токена авторизации, игнорируем req.body.senderPhone
+      const senderName = req.user.name || null;
 
       const conversationId = req.params.id;
-      const normalizedSender = senderPhone.replace(/[^\d]/g, '');
+      const normalizedSender = req.user.phone.replace(/[^\d]/g, '');
 
       // Проверяем что отправитель — участник
       const participant = await db.query(
@@ -584,7 +585,7 @@ function setupMessengerAPI(app, uploadMedia) {
            AND content ILIKE $2
          ORDER BY created_at DESC
          LIMIT $3`,
-        [req.params.id, `%${searchQuery}%`, parseInt(limit)]
+        [req.params.id, `%${searchQuery}%`, Math.min(parseInt(limit) || 50, 200)]
       );
 
       res.json({ success: true, messages: result.rows.reverse() });
@@ -743,7 +744,7 @@ function setupMessengerAPI(app, uploadMedia) {
   app.get('/api/messenger/contacts/search', requireAuth, async (req, res) => {
     try {
       const { query: searchQuery, limit = 50 } = req.query;
-      const parsedLimit = parseInt(limit);
+      const parsedLimit = Math.min(parseInt(limit) || 50, 200);
 
       let employeesResult, clientsResult;
 

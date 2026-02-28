@@ -7,6 +7,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { getMoscowDateString } = require('../utils/moscow_time');
 
 // Push-уведомления
 const {
@@ -53,8 +54,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
    * Начисление баллов за своевременный ответ на вопрос о товаре
    */
   async function assignAnswerBonus({ questionId, shopAddress, senderPhone, senderName, points, questionAge }) {
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
+    const today = getMoscowDateString(); // Moscow timezone YYYY-MM-DD
     const monthKey = today.substring(0, 7); // YYYY-MM
 
     const PENALTIES_DIR = path.join(DATA_DIR, 'efficiency-penalties');
@@ -97,7 +97,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       reason: `Ответил на вопрос за ${Math.round(questionAge)} минут`,
       sourceId: sourceId,
       sourceType: 'question_answer',
-      createdAt: now.toISOString()
+      createdAt: new Date().toISOString()
     };
 
     penalties.push(bonus);
@@ -253,7 +253,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
       const questionId = `pq_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const timestamp = new Date().toISOString();
-      const messageId = `msg_${Date.now()}`;
+      const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       // Определяем, это вопрос для всей сети или для конкретного магазина
       const isNetworkWide = shopAddress === 'Вся сеть';
@@ -425,7 +425,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       const content = await fsp.readFile(filePath, 'utf8');
       const question = JSON.parse(content);
       const timestamp = new Date().toISOString();
-      const messageId = `msg_${Date.now()}`;
+      const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       // Создаем новое сообщение от сотрудника
       const newMessage = {
@@ -663,7 +663,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       }
 
       message.timestamp = message.timestamp || new Date().toISOString();
-      message.id = message.id || `msg_${Date.now()}`;
+      message.id = message.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       dialog.messages.push(message);
 
       await writeJsonFile(filePath, dialog);
@@ -1316,7 +1316,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       const content = await fsp.readFile(filePath, 'utf8');
       const question = JSON.parse(content);
       const timestamp = new Date().toISOString();
-      const messageId = `msg_${Date.now()}`;
+      const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       const newMessage = {
         id: messageId,

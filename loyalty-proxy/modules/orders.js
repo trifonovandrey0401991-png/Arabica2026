@@ -490,6 +490,7 @@ async function sendNewOrderNotificationToEmployees(order) {
 }
 
 async function addOrderToDialog(order) {
+  if (!order.clientPhone) return; // Prevent creating 'null/' directory when order has no client
   const dialogDir = path.join(DIALOGS_DIR, order.clientPhone);
   const dialogFile = path.join(dialogDir, encodeURIComponent(order.shopAddress) + '.json');
 
@@ -531,6 +532,7 @@ async function addOrderToDialog(order) {
 }
 
 async function addResponseToDialog(order, responseType) {
+  if (!order.clientPhone) return; // Guard against null clientPhone
   const dialogDir = path.join(DIALOGS_DIR, order.clientPhone);
   const dialogFile = path.join(dialogDir, encodeURIComponent(order.shopAddress) + '.json');
 

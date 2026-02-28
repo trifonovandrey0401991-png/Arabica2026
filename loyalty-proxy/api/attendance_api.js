@@ -372,7 +372,7 @@ function setupAttendanceAPI(app, {
         await fsp.mkdir(ATTENDANCE_DIR, { recursive: true });
       }
 
-      const recordId = req.body.id || `attendance_${Date.now()}`;
+      const recordId = req.body.id || `attendance_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const sanitizedId = recordId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const recordFile = path.join(ATTENDANCE_DIR, `${sanitizedId}.json`);
 

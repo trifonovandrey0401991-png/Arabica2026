@@ -118,8 +118,8 @@ class RecountScheduler extends BaseReportScheduler {
       return false;
     }
 
-    // DB dual-write: обновляем статус в БД после файла (только для реальных отчётов, не pending)
-    if (USE_DB && report.id && !report.id.startsWith('pending_recount_')) {
+    // DB dual-write: update status in DB after file write
+    if (USE_DB && report.id) {
       try {
         const dbUpdate = {
           status: dataToSave.status,
@@ -175,6 +175,30 @@ class RecountScheduler extends BaseReportScheduler {
     };
 
     await writeJsonFile(filePath, report);
+
+    // DB dual-write: save pending to PostgreSQL (same as shift scheduler)
+    if (USE_DB) {
+      try {
+        await db.upsert('recount_reports', {
+          id: report.id,
+          employee_name: '',
+          employee_phone: null,
+          shop_address: report.shopAddress,
+          shop_name: report.shopName,
+          shift_type: report.shiftType,
+          status: 'pending',
+          answers: '[]',
+          date: getMoscowDateString(),
+          created_at: report.createdAt,
+          deadline: report.deadline,
+          updated_at: report.createdAt
+        });
+        console.log(`${this.tag} DB: pending created ${report.id}`);
+      } catch (dbErr) {
+        console.error(`${this.tag} DB upsert pending error:`, dbErr.message);
+      }
+    }
+
     return report;
   }
 
@@ -490,22 +514,33 @@ class RecountScheduler extends BaseReportScheduler {
   // ==================== CLEANUP ====================
 
   async cleanupFailedReports() {
-    const reports = await this.loadTodayReports();
     let removedCount = 0;
+    const today = getMoscowDateString();
 
-    for (const report of reports) {
-      if (report.status === 'failed' && report._filePath) {
+    if (!(await fileExists(this.RECOUNT_REPORTS_DIR))) return 0;
+
+    try {
+      const allFiles = (await fsp.readdir(this.RECOUNT_REPORTS_DIR)).filter(f => f.endsWith('.json'));
+      for (const file of allFiles) {
+        const filePath = path.join(this.RECOUNT_REPORTS_DIR, file);
         try {
-          await fsp.unlink(report._filePath);
-          removedCount++;
+          const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
+          const reportDate = report.createdAt ? report.createdAt.split('T')[0] : null;
+          // Remove: today's failed reports + any reports from previous days
+          if (report.status === 'failed' || (reportDate && reportDate < today)) {
+            await fsp.unlink(filePath);
+            removedCount++;
+          }
         } catch (e) {
-          console.error(`${this.tag} Error removing file ${report._filePath}:`, e.message);
+          console.error(`${this.tag} Error processing file ${file}:`, e.message);
         }
       }
+    } catch (e) {
+      console.error(`${this.tag} Error during cleanup:`, e.message);
     }
 
     if (removedCount > 0) {
-      console.log(`${this.tag} Cleanup: removed ${removedCount} failed reports`);
+      console.log(`${this.tag} Cleanup: removed ${removedCount} failed/stale reports`);
     }
 
     return removedCount;

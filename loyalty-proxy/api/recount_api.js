@@ -345,7 +345,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
             params.push(req.query.date);
           }
 
-          sql += ' ORDER BY created_at DESC';
+          sql += ' ORDER BY created_at DESC LIMIT 5000';
 
           const result = await db.query(sql, params);
           const reports = result.rows.map(dbRecountToCamel);

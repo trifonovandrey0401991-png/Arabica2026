@@ -1,7 +1,6 @@
 const express = require('express');
 const http = require('http');
 const fetch = require('node-fetch');
-const bodyParser = require('body-parser');
 const cors = require('cors');
 const multer = require('multer');
 const fsp = require('fs').promises;
@@ -43,17 +42,17 @@ process.on('warning', (warning) => {
 // Безопасная функция для запуска Python скриптов (защита от Command Injection)
 function spawnPython(args) {
   return new Promise((resolve, reject) => {
-    const process = spawn('python3', args, {
+    const childProcess = spawn('python3', args, {
       stdio: ['pipe', 'pipe', 'pipe']
     });
 
     let stdout = '';
     let stderr = '';
 
-    process.stdout.on('data', (data) => { stdout += data.toString(); });
-    process.stderr.on('data', (data) => { stderr += data.toString(); });
+    childProcess.stdout.on('data', (data) => { stdout += data.toString(); });
+    childProcess.stderr.on('data', (data) => { stderr += data.toString(); });
 
-    process.on('close', (code) => {
+    childProcess.on('close', (code) => {
       if (code === 0) {
         resolve({ stdout, stderr });
       } else {
@@ -61,7 +60,7 @@ function spawnPython(args) {
       }
     });
 
-    process.on('error', (err) => {
+    childProcess.on('error', (err) => {
       reject(err);
     });
   });
@@ -137,6 +136,7 @@ const { setupShiftHandoverQuestionsAPI } = require('./api/shift_handover_questio
 const { setupBonusPenaltiesAPI } = require('./api/bonus_penalties_api');
 const { setupEmployeeRegistrationAPI } = require('./api/employee_registration_api');
 const { setupAiDashboardAPI } = require('./api/ai_dashboard_api');
+const { setupHealthMonitorAPI } = require('./api/health_monitor_api');
 const { startYoloRetrainScheduler, triggerManualRetrain, getRetrainStatus } = require('./api/yolo_retrain_scheduler');
 const { getNextReferralCode } = require('./api/employees_api');
 const authApiRouter = require("./api/auth_api");
@@ -214,7 +214,7 @@ try {
   helmet = null;
 }
 
-app.use(bodyParser.json({ limit: "50mb" }));
+app.use(express.json({ limit: "50mb" }));
 
 // Применяем Security Headers если helmet установлен
 if (helmet) {
@@ -801,6 +801,9 @@ app.post('/api/fcm-tokens', async (req, res) => {
 // Initialize Job Applications API
 setupJobApplicationsAPI(app);
 
+// Dev health monitor (protected by DEV_HEALTH_KEY)
+setupHealthMonitorAPI(app);
+
 // Создаём HTTP сервер для поддержки WebSocket
 const server = http.createServer(app);
 
@@ -843,7 +846,7 @@ initSessionMiddleware().catch(e => {
   console.error('Session middleware init error:', e.message);
 });
 
-server.listen(3000, () => console.log("Proxy listening on port 3000 (HTTP + WebSocket)"));
+// server.listen moved to end of file — all routes must be registered before accepting connections
 setupRecountPointsAPI(app);
 setupReferralsAPI(app);
 setupRatingWheelAPI(app);
@@ -869,7 +872,7 @@ setupMessengerAPI(app, uploadMessengerMedia);
 setupMediaAPI(app, uploadChatMedia);
 setupShopManagersAPI(app);
 setupLoyaltyGamificationAPI(app);
-setupCoffeeMachineAPI(app);
+setupCoffeeMachineAPI(app, { sendPushToPhone });
 setupExecutionChainAPI(app);
 
 // Migrated modules (inline routes removed from index.js)
@@ -1050,3 +1053,6 @@ app.post("/api/app-version", async (req, res) => {
     return res.status(500).json({ error: "Ошибка сохранения версии" });
   }
 });
+
+// All routes registered — now start accepting connections
+server.listen(3000, () => console.log("Proxy listening on port 3000 (HTTP + WebSocket)"));

@@ -9,8 +9,8 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { fileExists, sanitizeId } = require('../utils/file_helpers');
-const { getMoscowTime } = require('../utils/moscow_time');
+const { fileExists, sanitizeId, loadJsonFile } = require('../utils/file_helpers');
+const { getMoscowTime, getMoscowDateString } = require('../utils/moscow_time');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { withLock } = require('../utils/file_lock');
 const { writeJsonFile } = require('../utils/async_fs');
@@ -371,10 +371,10 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
   app.post('/api/shift-reports', requireAuth, async (req, res) => {
     try {
-      const { getShiftSettings, loadTodayReports, saveTodayReports } = require('./shift_automation_scheduler');
+      const { getShiftSettings } = require('./shift_automation_scheduler');
       const settings = await getShiftSettings();
       const now = new Date();
-      const today = now.toISOString().split('T')[0];
+      const moscowNow = getMoscowTime();
       const shiftType = req.body.shiftType;
       const shopAddress = req.body.shopAddress;
 
@@ -421,10 +421,30 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
         });
       }
 
+      // For midnight-crossing morning window (e.g. 23:01-13:00), pending reports are stored
+      // in tomorrow's file when we're in the pre-midnight part (>= morningStartTime).
+      function getReportDate() {
+        if (shiftType === 'morning') {
+          const start = parseTime(settings.morningStartTime);
+          const end = parseTime(settings.morningEndTime);
+          const startMin = start.hours * 60 + start.minutes;
+          const endMin = end.hours * 60 + end.minutes;
+          if (startMin > endMin) {
+            const currentMin = moscowNow.getUTCHours() * 60 + moscowNow.getUTCMinutes();
+            if (currentMin >= startMin) {
+              const tomorrowMoscow = new Date(moscowNow.getTime() + 24 * 60 * 60 * 1000);
+              return tomorrowMoscow.toISOString().split('T')[0];
+            }
+          }
+        }
+        return getMoscowDateString();
+      }
+      const reportDate = getReportDate();
+
       // Загружаем и обновляем отчёты под блокировкой файла (защита от гонки)
-      const todayFile = path.join(SHIFT_REPORTS_DIR, `${today}.json`);
+      const todayFile = path.join(SHIFT_REPORTS_DIR, `${reportDate}.json`);
       const updatedReport = await withLock(todayFile, async () => {
-        let reports = await loadTodayReports();
+        let reports = await loadJsonFile(todayFile, []);
 
         // Ищем pending отчёт для этого магазина и типа смены
         const pendingIndex = reports.findIndex(r =>
@@ -662,10 +682,9 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
           const efficiencyPoints = calculateShiftPoints ? calculateShiftPoints(rating, settings) : 0;
           console.log(`📊 Пересменка: баллы эффективности: ${efficiencyPoints} (оценка: ${rating})`);
 
-          // Сохраняем баллы в efficiency-penalties
-          const now = new Date();
-          const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-          const today = now.toISOString().split('T')[0];
+          // Сохраняем баллы в efficiency-penalties (Moscow timezone for business date)
+          const today = getMoscowDateString();
+          const monthKey = today.substring(0, 7);
           const efficiencyDir = `${DATA_DIR}/efficiency-penalties`;
 
           if (!await fileExists(efficiencyDir)) {
@@ -701,7 +720,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
                 reason: `Оценка пересменки: ${rating}/10`,
                 sourceId: sourceId,
                 sourceType: 'shift_report',
-                createdAt: now.toISOString()
+                createdAt: new Date().toISOString()
               };
 
               penalties.push(penalty);
@@ -1018,7 +1037,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
               type: 'shift_handover_status',
               status: updatedReport.status,
               rating: rating ? String(rating) : '',
-              reportId: id
+              reportId: rawId
             });
             console.log(`[ShiftHandover] Push отправлен сотруднику ${employeePhone}: ${body}`);
           } catch (pushError) {

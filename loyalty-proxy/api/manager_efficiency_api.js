@@ -17,6 +17,12 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
 const { requireAuth } = require('../utils/session_middleware');
+const db = require('../utils/db');
+
+// Feature flags
+const USE_DB_SHIFTS = process.env.USE_DB_SHIFTS === 'true';
+const USE_DB_RECOUNT = process.env.USE_DB_RECOUNT === 'true';
+const USE_DB_EFFICIENCY = process.env.USE_DB_EFFICIENCY === 'true';
 
 // Directories
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -30,8 +36,6 @@ const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
 const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
 const SHOP_MANAGERS_FILE = `${DATA_DIR}/shop-managers.json`;
 
-// Import efficiency calculation settings
-const efficiencyCalc = require('../efficiency_calc.js');
 
 /**
  * Load JSON file safely
@@ -171,6 +175,76 @@ async function loadPenaltiesForMonth(month) {
 }
 
 /**
+ * Load shift reports for month from PostgreSQL
+ */
+async function loadShiftReportsDB(month) {
+  const result = await db.query(
+    'SELECT shop_address, employee_name, status, rating FROM shift_reports WHERE date LIKE $1',
+    [month + '%']
+  );
+  return result.rows.map(r => ({
+    shopAddress: r.shop_address,
+    employeeName: r.employee_name,
+    status: r.status,
+    rating: r.rating,
+    adminRating: r.rating,
+  }));
+}
+
+/**
+ * Load recount reports for month from PostgreSQL
+ */
+async function loadRecountReportsDB(month) {
+  const result = await db.query(
+    'SELECT shop_address, employee_name, status, admin_rating FROM recount_reports WHERE date LIKE $1',
+    [month + '%']
+  );
+  return result.rows.map(r => ({
+    shopAddress: r.shop_address,
+    employeeName: r.employee_name,
+    status: r.status,
+    adminRating: r.admin_rating,
+    rating: r.admin_rating,
+  }));
+}
+
+/**
+ * Load shift handover reports for month from PostgreSQL
+ */
+async function loadHandoverReportsDB(month) {
+  const result = await db.query(
+    'SELECT shop_address, employee_name, status, rating FROM shift_handover_reports WHERE date LIKE $1',
+    [month + '%']
+  );
+  return result.rows.map(r => ({
+    shopAddress: r.shop_address,
+    employeeName: r.employee_name,
+    status: r.status,
+    rating: r.rating,
+    adminRating: r.rating,
+  }));
+}
+
+/**
+ * Load efficiency penalties for month from PostgreSQL
+ */
+async function loadPenaltiesDB(month) {
+  const [year, monthNum] = month.split('-').map(Number);
+  const start = `${month}-01`;
+  const end = `${year}-${String(monthNum + 1).padStart(2, '0')}-01`;
+  const result = await db.query(
+    'SELECT shop_address, entity_name, employee_name, points FROM efficiency_penalties WHERE date >= $1::date AND date < $2::date',
+    [start, end]
+  );
+  return result.rows.map(r => ({
+    shopAddress: r.shop_address || '',
+    entityName: r.entity_name || r.employee_name || '',
+    employeeName: r.employee_name || '',
+    points: parseFloat(r.points) || 0,
+  }));
+}
+
+/**
  * Load points settings
  */
 async function loadPointsSettings() {
@@ -293,7 +367,12 @@ async function calculateManagerEfficiency(phone, month) {
   const isRejected = (status) => status === 'failed' || status === 'rejected';
 
   // 1. Load shift reports
-  const shiftReports = await loadReportsForMonth(SHIFT_REPORTS_DIR, month, 'handoverDate');
+  let shiftReports;
+  if (USE_DB_SHIFTS) {
+    try { shiftReports = await loadShiftReportsDB(month); }
+    catch (e) { console.error('DB error loading shift reports, falling back to files:', e.message); }
+  }
+  if (!shiftReports) shiftReports = await loadReportsForMonth(SHIFT_REPORTS_DIR, month, 'handoverDate');
   console.log(`Loaded ${shiftReports.length} shift reports`);
   for (const report of shiftReports) {
     if (!validAddresses.has(report.shopAddress)) continue;
@@ -317,7 +396,12 @@ async function calculateManagerEfficiency(phone, month) {
   }
 
   // 2. Load recount reports
-  const recountReports = await loadReportsForMonth(RECOUNT_REPORTS_DIR, month, 'recountDate');
+  let recountReports;
+  if (USE_DB_RECOUNT) {
+    try { recountReports = await loadRecountReportsDB(month); }
+    catch (e) { console.error('DB error loading recount reports, falling back to files:', e.message); }
+  }
+  if (!recountReports) recountReports = await loadReportsForMonth(RECOUNT_REPORTS_DIR, month, 'recountDate');
   console.log(`Loaded ${recountReports.length} recount reports`);
   for (const report of recountReports) {
     if (!validAddresses.has(report.shopAddress)) continue;
@@ -340,7 +424,12 @@ async function calculateManagerEfficiency(phone, month) {
   }
 
   // 3. Load shift handover reports
-  const handoverReports = await loadReportsForMonth(SHIFT_HANDOVER_DIR, month, 'handoverDate');
+  let handoverReports;
+  if (USE_DB_SHIFTS) {
+    try { handoverReports = await loadHandoverReportsDB(month); }
+    catch (e) { console.error('DB error loading handover reports, falling back to files:', e.message); }
+  }
+  if (!handoverReports) handoverReports = await loadReportsForMonth(SHIFT_HANDOVER_DIR, month, 'handoverDate');
   console.log(`Loaded ${handoverReports.length} handover reports`);
   for (const report of handoverReports) {
     if (!validAddresses.has(report.shopAddress)) continue;
@@ -363,7 +452,12 @@ async function calculateManagerEfficiency(phone, month) {
   }
 
   // 4. Load penalties
-  const penalties = await loadPenaltiesForMonth(month);
+  let penalties;
+  if (USE_DB_EFFICIENCY) {
+    try { penalties = await loadPenaltiesDB(month); }
+    catch (e) { console.error('DB error loading penalties, falling back to files:', e.message); }
+  }
+  if (!penalties) penalties = await loadPenaltiesForMonth(month);
   console.log(`Loaded ${penalties.length} penalties`);
   for (const penalty of penalties) {
     // Map penalty shopAddress to valid addresses if needed
@@ -436,8 +530,9 @@ async function calculateManagerEfficiency(phone, month) {
   const formattedShopBreakdown = shopBreakdown.map(shop => {
     const managedShop = managedShops.find(s => s.address === shop.shopAddress);
     return {
-      shopId: managedShop?.id || '',
+      shopId: managedShop?.id || shop.shopAddress, // fallback to address so Flutter matching works
       shopName: managedShop?.name || shop.shopAddress,
+      shopAddress: shop.shopAddress,
       totalPoints: Math.round(shop.totalPoints * 10) / 10,
       earnedPoints: Math.round(shop.earnedPoints * 10) / 10,
       lostPoints: Math.round(shop.lostPoints * 10) / 10,

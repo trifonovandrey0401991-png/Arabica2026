@@ -11,7 +11,7 @@ const { sanitizeId, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const USE_DB = process.env.USE_DB_BONUS_PENALTIES === 'true';
@@ -107,7 +107,7 @@ function setupBonusPenaltiesAPI(app, { sendPushToPhone } = {}) {
             return res.json(response);
           }
 
-          const sql = `SELECT * FROM bonus_penalties WHERE ${where} ORDER BY created_at DESC`;
+          const sql = `SELECT * FROM bonus_penalties WHERE ${where} ORDER BY created_at DESC LIMIT 5000`;
           const result = await db.query(sql, params);
           const records = result.rows.map(dbToCamel);
 
@@ -169,7 +169,7 @@ function setupBonusPenaltiesAPI(app, { sendPushToPhone } = {}) {
   });
 
   // POST /api/bonus-penalties - создать премию/штраф
-  app.post('/api/bonus-penalties', requireAuth, async (req, res) => {
+  app.post('/api/bonus-penalties', requireAdmin, async (req, res) => {
     try {
       const { employeeId, employeeName, type, amount, comment, adminName } = req.body;
 
@@ -214,7 +214,7 @@ function setupBonusPenaltiesAPI(app, { sendPushToPhone } = {}) {
 
       // Создаем новую запись
       const newRecord = {
-        id: `bp_${Date.now()}`,
+        id: `bp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         employeeId,
         employeeName,
         type,
@@ -274,7 +274,7 @@ function setupBonusPenaltiesAPI(app, { sendPushToPhone } = {}) {
   });
 
   // DELETE /api/bonus-penalties/:id - удалить премию/штраф
-  app.delete('/api/bonus-penalties/:id', requireAuth, async (req, res) => {
+  app.delete('/api/bonus-penalties/:id', requireAdmin, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       const month = req.query.month || getCurrentMonth();

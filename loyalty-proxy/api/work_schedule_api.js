@@ -10,7 +10,7 @@ const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_WORK_SCHEDULE === 'true';
 
@@ -246,7 +246,7 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // DELETE /api/work-schedule/clear - очистить весь месяц
-  app.delete('/api/work-schedule/clear', requireAuth, async (req, res) => {
+  app.delete('/api/work-schedule/clear', requireAdmin, async (req, res) => {
     try {
       const month = req.query.month;
 

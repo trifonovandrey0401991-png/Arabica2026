@@ -371,6 +371,13 @@ function cleanupStaleConnections() {
       onlineStatus.delete(phone);
     }
   }
+
+  // Очищаем пустые записи typingStatus (чаты без активных таймеров набора)
+  for (const [chatId, chatTyping] of typingStatus.entries()) {
+    if (chatTyping.size === 0) {
+      typingStatus.delete(chatId);
+    }
+  }
 }
 
 // ===== ПУБЛИЧНЫЕ ФУНКЦИИ ДЛЯ ИНТЕГРАЦИИ С REST API =====

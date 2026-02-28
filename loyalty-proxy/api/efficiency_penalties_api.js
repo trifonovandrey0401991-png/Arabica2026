@@ -14,9 +14,13 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
+const MOSCOW_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC+3 offset in milliseconds
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const USE_DB = process.env.USE_DB_EFFICIENCY === 'true';
+const USE_DB_SHIFTS = process.env.USE_DB_SHIFTS === 'true';
+const USE_DB_RECOUNT = process.env.USE_DB_RECOUNT === 'true';
+const USE_DB_ATTENDANCE = process.env.USE_DB_ATTENDANCE === 'true';
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
 const SHIFT_REPORTS_DIR = `${DATA_DIR}/shift-reports`;
 const SHIFT_HANDOVER_REPORTS_DIR = `${DATA_DIR}/shift-handover-reports`;
@@ -25,8 +29,9 @@ const SHIFT_HANDOVER_REPORTS_DIR = `${DATA_DIR}/shift-handover-reports`;
 
 function getMonthKey(date) {
   if (!date) {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    // Use Moscow time (UTC+3) to avoid wrong month at midnight boundary
+    const now = new Date(Date.now() + MOSCOW_OFFSET_MS);
+    return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
   }
   return date.substring(0, 7);
 }
@@ -186,20 +191,41 @@ async function dbInsertPenalties(penalties) {
 // ===== Helper functions for reports-batch (from inline code) =====
 
 async function loadShiftReportsForPeriod(startDate, endDate) {
-  const reports = [];
+  if (USE_DB_SHIFTS) {
+    try {
+      const result = await db.query(
+        'SELECT * FROM shift_reports WHERE created_at >= $1 AND created_at <= $2 ORDER BY created_at',
+        [startDate.toISOString(), endDate.toISOString()]
+      );
+      return result.rows.map(row => ({
+        id: row.id,
+        employeeName: row.employee_name,
+        employeePhone: row.employee_phone,
+        shopAddress: row.shop_address,
+        shopName: row.shop_name,
+        shiftType: row.shift_type,
+        status: row.status,
+        rating: row.rating,
+        date: row.date,
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+        confirmedAt: row.confirmed_at ? new Date(row.confirmed_at).toISOString() : null,
+        failedAt: row.failed_at ? new Date(row.failed_at).toISOString() : null,
+      }));
+    } catch (e) {
+      console.error('DB error loading shift reports for batch, falling back to files:', e.message);
+    }
+  }
 
+  // JSON fallback
+  const reports = [];
   if (!await fileExists(SHIFT_REPORTS_DIR)) {
     return reports;
   }
-
   const files = (await fsp.readdir(SHIFT_REPORTS_DIR)).filter(f => f.endsWith('.json'));
-
   for (const file of files) {
     try {
       const content = await fsp.readFile(path.join(SHIFT_REPORTS_DIR, file), 'utf8');
       const report = JSON.parse(content);
-
-      // Проверяем период
       const reportDate = new Date(report.createdAt || report.timestamp);
       if (reportDate >= startDate && reportDate <= endDate) {
         reports.push(report);
@@ -208,26 +234,48 @@ async function loadShiftReportsForPeriod(startDate, endDate) {
       console.error(`Ошибка чтения shift report ${file}:`, e.message);
     }
   }
-
   return reports;
 }
 
 async function loadRecountReportsForPeriod(startDate, endDate) {
+  if (USE_DB_RECOUNT) {
+    try {
+      const result = await db.query(
+        'SELECT * FROM recount_reports WHERE COALESCE(completed_at, created_at) >= $1 AND COALESCE(completed_at, created_at) <= $2 ORDER BY created_at',
+        [startDate.toISOString(), endDate.toISOString()]
+      );
+      return result.rows.map(row => ({
+        id: row.id,
+        employeeName: row.employee_name,
+        employeePhone: row.employee_phone,
+        shopAddress: row.shop_address,
+        shopName: row.shop_name,
+        shiftType: row.shift_type,
+        status: row.status,
+        adminRating: row.admin_rating,
+        adminName: row.admin_name,
+        ratedAt: row.rated_at ? new Date(row.rated_at).toISOString() : null,
+        date: row.date,
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+        completedAt: row.completed_at ? new Date(row.completed_at).toISOString() : null,
+        failedAt: row.failed_at ? new Date(row.failed_at).toISOString() : null,
+      }));
+    } catch (e) {
+      console.error('DB error loading recount reports for batch, falling back to files:', e.message);
+    }
+  }
+
+  // JSON fallback
   const reports = [];
   const reportsDir = `${DATA_DIR}/recount-reports`;
-
   if (!await fileExists(reportsDir)) {
     return reports;
   }
-
   const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
-
   for (const file of files) {
     try {
       const content = await fsp.readFile(path.join(reportsDir, file), 'utf8');
       const report = JSON.parse(content);
-
-      // Проверяем период
       const reportDate = new Date(report.completedAt || report.createdAt);
       if (reportDate >= startDate && reportDate <= endDate) {
         reports.push(report);
@@ -236,25 +284,45 @@ async function loadRecountReportsForPeriod(startDate, endDate) {
       console.error(`Ошибка чтения recount report ${file}:`, e.message);
     }
   }
-
   return reports;
 }
 
 async function loadShiftHandoverReportsForPeriod(startDate, endDate) {
-  const reports = [];
+  if (USE_DB_SHIFTS) {
+    try {
+      const result = await db.query(
+        'SELECT * FROM shift_handover_reports WHERE created_at >= $1 AND created_at <= $2 ORDER BY created_at',
+        [startDate.toISOString(), endDate.toISOString()]
+      );
+      return result.rows.map(row => ({
+        id: row.id,
+        employeeName: row.employee_name,
+        employeePhone: row.employee_phone,
+        shopAddress: row.shop_address,
+        shopName: row.shop_name,
+        shiftType: row.shift_type,
+        status: row.status,
+        rating: row.rating,
+        date: row.date,
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+        confirmedAt: row.confirmed_at ? new Date(row.confirmed_at).toISOString() : null,
+        failedAt: row.failed_at ? new Date(row.failed_at).toISOString() : null,
+      }));
+    } catch (e) {
+      console.error('DB error loading shift handover reports for batch, falling back to files:', e.message);
+    }
+  }
 
+  // JSON fallback
+  const reports = [];
   if (!await fileExists(SHIFT_HANDOVER_REPORTS_DIR)) {
     return reports;
   }
-
   const files = (await fsp.readdir(SHIFT_HANDOVER_REPORTS_DIR)).filter(f => f.endsWith('.json'));
-
   for (const file of files) {
     try {
       const content = await fsp.readFile(path.join(SHIFT_HANDOVER_REPORTS_DIR, file), 'utf8');
       const report = JSON.parse(content);
-
-      // Проверяем период
       const reportDate = new Date(report.createdAt);
       if (reportDate >= startDate && reportDate <= endDate) {
         reports.push(report);
@@ -263,26 +331,46 @@ async function loadShiftHandoverReportsForPeriod(startDate, endDate) {
       console.error(`Ошибка чтения shift handover report ${file}:`, e.message);
     }
   }
-
   return reports;
 }
 
 async function loadAttendanceForPeriod(startDate, endDate) {
+  if (USE_DB_ATTENDANCE) {
+    try {
+      const result = await db.query(
+        'SELECT * FROM attendance WHERE COALESCE(timestamp, created_at) >= $1 AND COALESCE(timestamp, created_at) <= $2 ORDER BY COALESCE(timestamp, created_at)',
+        [startDate.toISOString(), endDate.toISOString()]
+      );
+      return result.rows.map(row => ({
+        id: row.id,
+        employeeName: row.employee_name,
+        employeePhone: row.employee_phone,
+        shopAddress: row.shop_address,
+        shopName: row.shop_name,
+        shiftType: row.shift_type,
+        status: row.status,
+        timestamp: row.timestamp ? new Date(row.timestamp).toISOString() : null,
+        isOnTime: row.is_on_time,
+        lateMinutes: row.late_minutes,
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+        failedAt: row.failed_at ? new Date(row.failed_at).toISOString() : null,
+      }));
+    } catch (e) {
+      console.error('DB error loading attendance for batch, falling back to files:', e.message);
+    }
+  }
+
+  // JSON fallback
   const records = [];
   const attendanceDir = `${DATA_DIR}/attendance`;
-
   if (!await fileExists(attendanceDir)) {
     return records;
   }
-
   const files = (await fsp.readdir(attendanceDir)).filter(f => f.endsWith('.json'));
-
   for (const file of files) {
     try {
       const content = await fsp.readFile(path.join(attendanceDir, file), 'utf8');
       const record = JSON.parse(content);
-
-      // Проверяем период
       const recordDate = new Date(record.timestamp || record.createdAt);
       if (recordDate >= startDate && recordDate <= endDate) {
         records.push(record);
@@ -291,7 +379,6 @@ async function loadAttendanceForPeriod(startDate, endDate) {
       console.error(`Ошибка чтения attendance record ${file}:`, e.message);
     }
   }
-
   return records;
 }
 
@@ -328,8 +415,9 @@ function setupEfficiencyPenaltiesAPI(app) {
       }
 
       // Создаём границы периода
-      const startDate = new Date(year, monthNum - 1, 1, 0, 0, 0);
-      const endDate = new Date(year, monthNum, 0, 23, 59, 59);
+      // Moscow UTC+3 boundaries: Date.UTC gives UTC midnight, subtract offset for Moscow midnight
+      const startDate = new Date(Date.UTC(year, monthNum - 1, 1) - MOSCOW_OFFSET_MS);
+      const endDate = new Date(Date.UTC(year, monthNum, 1) - MOSCOW_OFFSET_MS - 1);
 
       console.log(`  📅 Период: ${startDate.toISOString()} - ${endDate.toISOString()}`);
 
@@ -395,7 +483,7 @@ function setupEfficiencyPenaltiesAPI(app) {
         const startDate = `${month}-01`;
         const endDate = `${year}-${String(monthNum).padStart(2, '0')}-${new Date(year, monthNum, 0).getDate()}`;
         const result = await db.query(
-          'SELECT * FROM efficiency_penalties WHERE date >= $1 AND date <= $2 ORDER BY created_at',
+          'SELECT * FROM efficiency_penalties WHERE date >= $1 AND date <= $2 ORDER BY created_at LIMIT 5000',
           [startDate, endDate]
         );
         penalties = result.rows.map(dbPenaltyToCamel);
@@ -449,8 +537,9 @@ function setupEfficiencyPenaltiesAPI(app) {
       const startTime = Date.now();
 
       const [year, monthNum] = month.split('-').map(Number);
-      const startDate = new Date(year, monthNum - 1, 1, 0, 0, 0);
-      const endDate = new Date(year, monthNum, 0, 23, 59, 59);
+      // Moscow UTC+3 boundaries: Date.UTC gives UTC midnight, subtract offset for Moscow midnight
+      const startDate = new Date(Date.UTC(year, monthNum - 1, 1) - MOSCOW_OFFSET_MS);
+      const endDate = new Date(Date.UTC(year, monthNum, 1) - MOSCOW_OFFSET_MS - 1);
 
       const isInPeriod = (dateStr) => {
         if (!dateStr) return false;
@@ -465,7 +554,7 @@ function setupEfficiencyPenaltiesAPI(app) {
         const startDate = `${month}-01`;
         const endDate = `${year}-${String(monthNum).padStart(2, '0')}-${new Date(year, monthNum, 0).getDate()}`;
         const result = await db.query(
-          'SELECT * FROM efficiency_penalties WHERE date >= $1 AND date <= $2 ORDER BY created_at',
+          'SELECT * FROM efficiency_penalties WHERE date >= $1 AND date <= $2 ORDER BY created_at LIMIT 5000',
           [startDate, endDate]
         );
         penalties = result.rows.map(dbPenaltyToCamel);

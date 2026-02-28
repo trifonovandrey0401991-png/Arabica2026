@@ -13,7 +13,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, writeJsonFile } = require('../utils/file_helpers');
-const { getMoscowDateString } = require('../utils/moscow_time');
+const { getMoscowDateString, getMoscowTime } = require('../utils/moscow_time');
 const { requireAuth } = require('../utils/session_middleware');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -73,46 +73,72 @@ async function saveConfig(config) {
 // ═══════════════════════════════════════════════════
 
 /**
- * Проверяет, отметился ли сотрудник на работе сегодня
+ * Проверяет, отметился ли сотрудник на работе сегодня.
+ * Для ночных смен (23:01–13:00) в постполуночной части (00:00–13:00)
+ * также проверяет вчерашнюю дату — сотрудник мог отметиться до полуночи.
  */
 async function checkAttendance(employeeName, shopAddress, date) {
+  // Build list of dates to check: today + yesterday when in post-midnight portion
+  // of a midnight-crossing morning window (e.g. 23:01–13:00)
+  const datesToCheck = [date];
   try {
-    // Сначала пробуем БД
-    if (USE_DB_ATTENDANCE && db) {
+    const { getShiftSettings } = require('./shift_automation_scheduler');
+    const settings = await getShiftSettings();
+    const parseMin = t => { const [h, m] = (t || '00:00').split(':').map(Number); return h * 60 + m; };
+    const startMin = parseMin(settings.morningStartTime);
+    const endMin = parseMin(settings.morningEndTime);
+    if (startMin > endMin) {
+      // Midnight-crossing window — check if we're in the post-midnight part
+      const moscowNow = getMoscowTime();
+      const currentMin = moscowNow.getUTCHours() * 60 + moscowNow.getUTCMinutes();
+      if (currentMin < endMin) {
+        // Post-midnight: attendance may have been marked before midnight (yesterday)
+        const yesterday = new Date(new Date(date + 'T12:00:00Z').getTime() - 86400000)
+          .toISOString().split('T')[0];
+        datesToCheck.push(yesterday);
+      }
+    }
+  } catch { /* use only today */ }
+
+  try {
+    for (const checkDate of datesToCheck) {
+      // Сначала пробуем БД
       // NB: attendance.timestamp хранит московское время с +00 offset (клиент шлёт MSK)
       // Поэтому НЕ добавляем interval '3 hours' — иначе двойной сдвиг
       // NB: НЕ фильтруем по shop_address — сотрудник мог отметиться в другом магазине
-      const result = await db.query(
-        `SELECT id FROM attendance WHERE employee_name = $1 AND timestamp::date = $2::date LIMIT 1`,
-        [employeeName, date]
-      );
-      if (result.rows.length > 0) return true;
-    }
+      if (USE_DB_ATTENDANCE && db) {
+        const result = await db.query(
+          `SELECT id FROM attendance WHERE employee_name = $1 AND timestamp::date = $2::date LIMIT 1`,
+          [employeeName, checkDate]
+        );
+        if (result.rows.length > 0) return true;
+      }
 
-    // Fallback на JSON
-    const attendanceDir = path.join(DATA_DIR, 'attendance');
-    if (!(await fileExists(attendanceDir))) return false;
+      // Fallback на JSON
+      const attendanceDir = path.join(DATA_DIR, 'attendance');
+      if (!(await fileExists(attendanceDir))) continue;
 
-    const files = await fsp.readdir(attendanceDir);
-    const jsonFiles = files.filter(f => f.endsWith('.json'));
+      const files = await fsp.readdir(attendanceDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
 
-    for (const file of jsonFiles) {
-      try {
-        const data = JSON.parse(await fsp.readFile(path.join(attendanceDir, file), 'utf8'));
-        // NB: НЕ фильтруем по shopAddress — сотрудник мог отметиться в другом магазине
-        if (data.employeeName === employeeName) {
-          // Проверяем дату (timestamp может быть в московском или UTC формате)
-          const ts = data.timestamp || data.date;
-          if (ts && ts.startsWith(date)) return true;
-          // Также проверяем createdAt (UTC) — конвертируем в московскую дату
-          const createdAt = data.createdAt;
-          if (createdAt) {
-            const moscowDate = new Date(new Date(createdAt).getTime() + 3 * 60 * 60 * 1000)
-              .toISOString().split('T')[0];
-            if (moscowDate === date) return true;
+      for (const file of jsonFiles) {
+        try {
+          const data = JSON.parse(await fsp.readFile(path.join(attendanceDir, file), 'utf8'));
+          // NB: НЕ фильтруем по shopAddress — сотрудник мог отметиться в другом магазине
+          if (data.employeeName === employeeName) {
+            // Проверяем дату (timestamp может быть в московском или UTC формате)
+            const ts = data.timestamp || data.date;
+            if (ts && ts.startsWith(checkDate)) return true;
+            // Также проверяем createdAt (UTC) — конвертируем в московскую дату
+            const createdAt = data.createdAt;
+            if (createdAt) {
+              const moscowDate = new Date(new Date(createdAt).getTime() + 3 * 60 * 60 * 1000)
+                .toISOString().split('T')[0];
+              if (moscowDate === checkDate) return true;
+            }
           }
-        }
-      } catch { /* skip broken files */ }
+        } catch { /* skip broken files */ }
+      }
     }
   } catch (e) {
     console.error('[ExecutionChain] Ошибка проверки attendance:', e.message);
@@ -178,47 +204,70 @@ async function checkTesting(employeeName, shopAddress, date) {
 }
 
 /**
- * Проверяет, сдал ли сотрудник пересменку сегодня
+ * Проверяет, сдал ли сотрудник пересменку сегодня.
+ * Для ночных смен (23:01–13:00) в постполуночной части (00:00–13:00)
+ * также проверяет вчерашнюю дату — сотрудник мог сдать пересменку до полуночи.
  */
 async function checkShift(employeeName, shopAddress, date) {
+  // Build list of dates to check: today + yesterday when in post-midnight portion
+  const datesToCheck = [date];
   try {
-    // Сначала пробуем БД
-    // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
-    if (USE_DB_SHIFTS && db) {
-      const result = await db.query(
-        `SELECT id FROM shift_reports WHERE employee_name = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date LIMIT 1`,
-        [employeeName, date]
-      );
-      if (result.rows.length > 0) return true;
-    }
-
-    // Fallback на JSON
-    const reportsDir = path.join(DATA_DIR, 'shift-reports');
-    if (!(await fileExists(reportsDir))) return false;
-
-    const dayFile = path.join(reportsDir, `${date}.json`);
-    if (await fileExists(dayFile)) {
-      const reports = JSON.parse(await fsp.readFile(dayFile, 'utf8'));
-      if (Array.isArray(reports)) {
-        return reports.some(r => r.employeeName === employeeName);
+    const { getShiftSettings } = require('./shift_automation_scheduler');
+    const settings = await getShiftSettings();
+    const parseMin = t => { const [h, m] = (t || '00:00').split(':').map(Number); return h * 60 + m; };
+    const startMin = parseMin(settings.morningStartTime);
+    const endMin = parseMin(settings.morningEndTime);
+    if (startMin > endMin) {
+      const moscowNow = getMoscowTime();
+      const currentMin = moscowNow.getUTCHours() * 60 + moscowNow.getUTCMinutes();
+      if (currentMin < endMin) {
+        const yesterday = new Date(new Date(date + 'T12:00:00Z').getTime() - 86400000)
+          .toISOString().split('T')[0];
+        datesToCheck.push(yesterday);
       }
     }
+  } catch { /* use only today */ }
 
-    const files = await fsp.readdir(reportsDir);
-    const jsonFiles = files.filter(f => f.endsWith('.json') && f !== `${date}.json`);
+  try {
+    for (const checkDate of datesToCheck) {
+      // Сначала пробуем БД
+      // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
+      if (USE_DB_SHIFTS && db) {
+        const result = await db.query(
+          `SELECT id FROM shift_reports WHERE employee_name = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date LIMIT 1`,
+          [employeeName, checkDate]
+        );
+        if (result.rows.length > 0) return true;
+      }
 
-    for (const file of jsonFiles) {
-      try {
-        const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName) {
-          const ts = data.createdAt || data.date || data.timestamp;
-          if (ts && ts.startsWith(date)) return true;
+      // Fallback на JSON
+      const reportsDir = path.join(DATA_DIR, 'shift-reports');
+      if (!(await fileExists(reportsDir))) continue;
+
+      const dayFile = path.join(reportsDir, `${checkDate}.json`);
+      if (await fileExists(dayFile)) {
+        const reports = JSON.parse(await fsp.readFile(dayFile, 'utf8'));
+        if (Array.isArray(reports)) {
+          if (reports.some(r => r.employeeName === employeeName)) return true;
         }
-        if (Array.isArray(data)) {
-          if (data.some(r => r.employeeName === employeeName &&
-              (r.createdAt || r.date || '').startsWith(date))) return true;
-        }
-      } catch { /* skip */ }
+      }
+
+      const files = await fsp.readdir(reportsDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json') && f !== `${checkDate}.json`);
+
+      for (const file of jsonFiles) {
+        try {
+          const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
+          if (data.employeeName === employeeName) {
+            const ts = data.createdAt || data.date || data.timestamp;
+            if (ts && ts.startsWith(checkDate)) return true;
+          }
+          if (Array.isArray(data)) {
+            if (data.some(r => r.employeeName === employeeName &&
+                (r.createdAt || r.date || '').startsWith(checkDate))) return true;
+          }
+        } catch { /* skip */ }
+      }
     }
   } catch (e) {
     console.error('[ExecutionChain] Ошибка проверки shift:', e.message);
@@ -227,35 +276,59 @@ async function checkShift(employeeName, shopAddress, date) {
 }
 
 /**
+ * Returns [date] normally, or [date, yesterday] when in post-midnight portion
+ * of a midnight-crossing morning window (e.g. 23:01–13:00).
+ * Ensures reports submitted before midnight are found the next morning.
+ */
+async function getDateRange(date) {
+  const dates = [date];
+  try {
+    const { getShiftSettings } = require('./shift_automation_scheduler');
+    const settings = await getShiftSettings();
+    const parseMin = t => { const [h, m] = (t || '00:00').split(':').map(Number); return h * 60 + m; };
+    const startMin = parseMin(settings.morningStartTime);
+    const endMin = parseMin(settings.morningEndTime);
+    if (startMin > endMin) {
+      const moscowNow = getMoscowTime();
+      const currentMin = moscowNow.getUTCHours() * 60 + moscowNow.getUTCMinutes();
+      if (currentMin < endMin) {
+        dates.push(new Date(new Date(date + 'T12:00:00Z').getTime() - 86400000).toISOString().split('T')[0]);
+      }
+    }
+  } catch { /* use only today */ }
+  return dates;
+}
+
+/**
  * Проверяет, прошёл ли сотрудник пересчёт сегодня
  */
 async function checkRecount(employeeName, shopAddress, date) {
+  const datesToCheck = await getDateRange(date);
   try {
-    // Сначала пробуем БД
-    // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
-    if (USE_DB_RECOUNT && db) {
-      const result = await db.query(
-        `SELECT id FROM recount_reports WHERE employee_name = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date LIMIT 1`,
-        [employeeName, date]
-      );
-      if (result.rows.length > 0) return true;
-    }
+    for (const checkDate of datesToCheck) {
+      // Сначала пробуем БД
+      if (USE_DB_RECOUNT && db) {
+        const result = await db.query(
+          `SELECT id FROM recount_reports WHERE employee_name = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date LIMIT 1`,
+          [employeeName, checkDate]
+        );
+        if (result.rows.length > 0) return true;
+      }
 
-    // Fallback на JSON
-    const reportsDir = path.join(DATA_DIR, 'recount-reports');
-    if (!(await fileExists(reportsDir))) return false;
+      // Fallback на JSON
+      const reportsDir = path.join(DATA_DIR, 'recount-reports');
+      if (!(await fileExists(reportsDir))) continue;
 
-    const files = await fsp.readdir(reportsDir);
-    const jsonFiles = files.filter(f => f.endsWith('.json'));
-
-    for (const file of jsonFiles) {
-      try {
-        const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName) {
-          const ts = data.createdAt || data.date;
-          if (ts && ts.startsWith(date)) return true;
-        }
-      } catch { /* skip */ }
+      const files = await fsp.readdir(reportsDir);
+      for (const file of files.filter(f => f.endsWith('.json'))) {
+        try {
+          const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
+          if (data.employeeName === employeeName) {
+            const ts = data.createdAt || data.date;
+            if (ts && ts.startsWith(checkDate)) return true;
+          }
+        } catch { /* skip */ }
+      }
     }
   } catch (e) {
     console.error('[ExecutionChain] Ошибка проверки recount:', e.message);
@@ -267,32 +340,32 @@ async function checkRecount(employeeName, shopAddress, date) {
  * Проверяет, сдал ли сотрудник смену сегодня
  */
 async function checkShiftHandover(employeeName, shopAddress, date) {
+  const datesToCheck = await getDateRange(date);
   try {
-    // Сначала пробуем БД
-    // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
-    if (USE_DB_SHIFT_HANDOVER && db) {
-      const result = await db.query(
-        `SELECT id FROM shift_handover_reports WHERE employee_name = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date LIMIT 1`,
-        [employeeName, date]
-      );
-      if (result.rows.length > 0) return true;
-    }
+    for (const checkDate of datesToCheck) {
+      // Сначала пробуем БД
+      if (USE_DB_SHIFT_HANDOVER && db) {
+        const result = await db.query(
+          `SELECT id FROM shift_handover_reports WHERE employee_name = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date LIMIT 1`,
+          [employeeName, checkDate]
+        );
+        if (result.rows.length > 0) return true;
+      }
 
-    // Fallback на JSON
-    const reportsDir = path.join(DATA_DIR, 'shift-handover-reports');
-    if (!(await fileExists(reportsDir))) return false;
+      // Fallback на JSON
+      const reportsDir = path.join(DATA_DIR, 'shift-handover-reports');
+      if (!(await fileExists(reportsDir))) continue;
 
-    const files = await fsp.readdir(reportsDir);
-    const jsonFiles = files.filter(f => f.endsWith('.json'));
-
-    for (const file of jsonFiles) {
-      try {
-        const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName) {
-          const ts = data.createdAt || data.date;
-          if (ts && ts.startsWith(date)) return true;
-        }
-      } catch { /* skip */ }
+      const files = await fsp.readdir(reportsDir);
+      for (const file of files.filter(f => f.endsWith('.json'))) {
+        try {
+          const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
+          if (data.employeeName === employeeName) {
+            const ts = data.createdAt || data.date;
+            if (ts && ts.startsWith(checkDate)) return true;
+          }
+        } catch { /* skip */ }
+      }
     }
   } catch (e) {
     console.error('[ExecutionChain] Ошибка проверки shift_handover:', e.message);
@@ -304,32 +377,32 @@ async function checkShiftHandover(employeeName, shopAddress, date) {
  * Проверяет, сдал ли сотрудник счётчик кофемашин сегодня
  */
 async function checkCoffeeMachine(employeeName, shopAddress, date) {
+  const datesToCheck = await getDateRange(date);
   try {
-    // Сначала пробуем БД
-    // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
-    if (USE_DB_COFFEE_MACHINE && db) {
-      const result = await db.query(
-        `SELECT id FROM coffee_machine_reports WHERE employee_name = $1 AND date = $2::date LIMIT 1`,
-        [employeeName, date]
-      );
-      if (result.rows.length > 0) return true;
-    }
+    for (const checkDate of datesToCheck) {
+      // Сначала пробуем БД
+      if (USE_DB_COFFEE_MACHINE && db) {
+        const result = await db.query(
+          `SELECT id FROM coffee_machine_reports WHERE employee_name = $1 AND date = $2::date LIMIT 1`,
+          [employeeName, checkDate]
+        );
+        if (result.rows.length > 0) return true;
+      }
 
-    // Fallback на JSON
-    const reportsDir = path.join(DATA_DIR, 'coffee-machine-reports');
-    if (!(await fileExists(reportsDir))) return false;
+      // Fallback на JSON
+      const reportsDir = path.join(DATA_DIR, 'coffee-machine-reports');
+      if (!(await fileExists(reportsDir))) continue;
 
-    const files = await fsp.readdir(reportsDir);
-    const jsonFiles = files.filter(f => f.endsWith('.json'));
-
-    for (const file of jsonFiles) {
-      try {
-        const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName) {
-          const ts = data.date || data.createdAt;
-          if (ts && ts.startsWith(date)) return true;
-        }
-      } catch { /* skip */ }
+      const files = await fsp.readdir(reportsDir);
+      for (const file of files.filter(f => f.endsWith('.json'))) {
+        try {
+          const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
+          if (data.employeeName === employeeName) {
+            const ts = data.date || data.createdAt;
+            if (ts && ts.startsWith(checkDate)) return true;
+          }
+        } catch { /* skip */ }
+      }
     }
   } catch (e) {
     console.error('[ExecutionChain] Ошибка проверки coffee_machine:', e.message);
@@ -341,32 +414,32 @@ async function checkCoffeeMachine(employeeName, shopAddress, date) {
  * Проверяет, сдал ли сотрудник конверт сегодня
  */
 async function checkEnvelope(employeeName, shopAddress, date) {
+  const datesToCheck = await getDateRange(date);
   try {
-    // Сначала пробуем БД
-    // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
-    if (USE_DB_ENVELOPE && db) {
-      const result = await db.query(
-        `SELECT id FROM envelope_reports WHERE employee_name = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date LIMIT 1`,
-        [employeeName, date]
-      );
-      if (result.rows.length > 0) return true;
-    }
+    for (const checkDate of datesToCheck) {
+      // Сначала пробуем БД
+      if (USE_DB_ENVELOPE && db) {
+        const result = await db.query(
+          `SELECT id FROM envelope_reports WHERE employee_name = $1 AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $2::date LIMIT 1`,
+          [employeeName, checkDate]
+        );
+        if (result.rows.length > 0) return true;
+      }
 
-    // Fallback на JSON
-    const reportsDir = path.join(DATA_DIR, 'envelope-reports');
-    if (!(await fileExists(reportsDir))) return false;
+      // Fallback на JSON
+      const reportsDir = path.join(DATA_DIR, 'envelope-reports');
+      if (!(await fileExists(reportsDir))) continue;
 
-    const files = await fsp.readdir(reportsDir);
-    const jsonFiles = files.filter(f => f.endsWith('.json'));
-
-    for (const file of jsonFiles) {
-      try {
-        const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
-        if (data.employeeName === employeeName) {
-          const ts = data.createdAt || data.date;
-          if (ts && ts.startsWith(date)) return true;
-        }
-      } catch { /* skip */ }
+      const files = await fsp.readdir(reportsDir);
+      for (const file of files.filter(f => f.endsWith('.json'))) {
+        try {
+          const data = JSON.parse(await fsp.readFile(path.join(reportsDir, file), 'utf8'));
+          if (data.employeeName === employeeName) {
+            const ts = data.createdAt || data.date;
+            if (ts && ts.startsWith(checkDate)) return true;
+          }
+        } catch { /* skip */ }
+      }
     }
   } catch (e) {
     console.error('[ExecutionChain] Ошибка проверки envelope:', e.message);
@@ -378,29 +451,30 @@ async function checkEnvelope(employeeName, shopAddress, date) {
  * Проверяет, сдал ли сотрудник РКО сегодня
  */
 async function checkRko(employeeName, shopAddress, date) {
+  const datesToCheck = await getDateRange(date);
   try {
-    // Сначала пробуем БД
-    // NB: НЕ фильтруем по shop_address — сотрудник мог работать в другом магазине
-    if (USE_DB_RKO && db) {
-      const result = await db.query(
-        `SELECT id FROM rko_reports WHERE employee_name = $1 AND date = $2::date LIMIT 1`,
-        [employeeName, date]
-      );
-      if (result.rows.length > 0) return true;
+    for (const checkDate of datesToCheck) {
+      // Сначала пробуем БД
+      if (USE_DB_RKO && db) {
+        const result = await db.query(
+          `SELECT id FROM rko_reports WHERE employee_name = $1 AND date = $2::date LIMIT 1`,
+          [employeeName, checkDate]
+        );
+        if (result.rows.length > 0) return true;
+      }
+
+      // Fallback на JSON
+      const metadataFile = path.join(DATA_DIR, 'rko-reports', 'rko_metadata.json');
+      if (!(await fileExists(metadataFile))) continue;
+
+      const metadata = JSON.parse(await fsp.readFile(metadataFile, 'utf8'));
+      const entries = Array.isArray(metadata) ? metadata : (metadata.reports || []);
+      if (entries.some(entry => {
+        if (entry.employeeName !== employeeName) return false;
+        const ts = entry.date || entry.createdAt;
+        return ts && ts.startsWith(checkDate);
+      })) return true;
     }
-
-    // Fallback на JSON
-    const metadataFile = path.join(DATA_DIR, 'rko-reports', 'rko_metadata.json');
-    if (!(await fileExists(metadataFile))) return false;
-
-    const metadata = JSON.parse(await fsp.readFile(metadataFile, 'utf8'));
-    const entries = Array.isArray(metadata) ? metadata : (metadata.reports || []);
-
-    return entries.some(entry => {
-      if (entry.employeeName !== employeeName) return false;
-      const ts = entry.date || entry.createdAt;
-      return ts && ts.startsWith(date);
-    });
   } catch (e) {
     console.error('[ExecutionChain] Ошибка проверки rko:', e.message);
   }

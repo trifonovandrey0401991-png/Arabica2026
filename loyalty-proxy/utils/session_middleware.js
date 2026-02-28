@@ -28,7 +28,8 @@ const INDEX_REBUILD_INTERVAL_MS = 5 * 60 * 1000; // 5 минут
  */
 async function rebuildTokenIndex() {
   try {
-    if (!fs.existsSync(SESSIONS_DIR)) return;
+    // Async check avoids blocking the event loop (fs.existsSync was synchronous)
+    try { await fsp.access(SESSIONS_DIR); } catch { return; }
 
     const files = await fsp.readdir(SESSIONS_DIR);
     const jsonFiles = files.filter(f => f.endsWith('.json'));
@@ -154,11 +155,22 @@ async function initSessionMiddleware() {
   await rebuildTokenIndex();
 
   // Периодически перестраиваем индекс (для подхватывания новых сессий)
-  setInterval(() => {
+  // Store the interval handle so it can be cleared on graceful shutdown
+  rebuildInterval = setInterval(() => {
     rebuildTokenIndex().catch(e => {
       console.error('[SessionMiddleware] Periodic rebuild error:', e.message);
     });
   }, INDEX_REBUILD_INTERVAL_MS);
+}
+
+// Stored interval handle for graceful shutdown
+let rebuildInterval = null;
+
+function stopSessionMiddleware() {
+  if (rebuildInterval) {
+    clearInterval(rebuildInterval);
+    rebuildInterval = null;
+  }
 }
 
 /**

@@ -111,7 +111,14 @@ async function savePendingCountingSamples(samples) {
 }
 
 // Путь к единой YOLO-модели (display_detector.pt и counting_detector.pt не используются)
-const UNIFIED_MODEL = require('../ml/yolo-wrapper').DEFAULT_MODEL;
+// Wrapped in try/catch so the server starts even when ML dependencies are unavailable.
+let UNIFIED_MODEL;
+try {
+  UNIFIED_MODEL = require('../ml/yolo-wrapper').DEFAULT_MODEL;
+} catch (e) {
+  UNIFIED_MODEL = null;
+  console.warn('[CigaretteVision] YOLO wrapper unavailable — AI detection disabled:', e.message);
+}
 
 // Дефолтные настройки (можно изменить через API)
 const DEFAULT_SETTINGS = {

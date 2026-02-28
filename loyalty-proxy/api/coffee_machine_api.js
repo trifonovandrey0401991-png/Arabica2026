@@ -98,7 +98,39 @@ function camelToDbCm(body) {
 
 // ====================================================================================
 
-function setupCoffeeMachineAPI(app) {
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
+const USE_DB_EMPLOYEES = process.env.USE_DB_EMPLOYEES === 'true';
+
+/** Look up employee phone by display name (DB first, then JSON files fallback) */
+async function getEmployeePhoneByName(employeeName) {
+  if (!employeeName) return null;
+  try {
+    if (USE_DB_EMPLOYEES) {
+      const rows = await db.query(
+        'SELECT phone FROM employees WHERE name = $1 LIMIT 1',
+        [employeeName]
+      );
+      if (rows.length > 0) return rows[0].phone || null;
+    }
+    // Fallback: scan JSON files
+    const fspLocal = require('fs').promises;
+    const { fileExists: fe } = require('../utils/file_helpers');
+    if (await fe(EMPLOYEES_DIR)) {
+      const files = (await fspLocal.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const emp = JSON.parse(await fspLocal.readFile(require('path').join(EMPLOYEES_DIR, file), 'utf8'));
+          if (emp.name === employeeName) return emp.phone || null;
+        } catch (_) {}
+      }
+    }
+  } catch (e) {
+    console.error('[CoffeeMachine] getEmployeePhoneByName error:', e.message);
+  }
+  return null;
+}
+
+function setupCoffeeMachineAPI(app, { sendPushToPhone } = {}) {
 
   // ============================================
   // ШАБЛОНЫ КОФЕМАШИН (developer only)
@@ -153,7 +185,7 @@ function setupCoffeeMachineAPI(app) {
 
       // Генерация ID если нет
       if (!template.id) {
-        template.id = `tmpl_${Date.now()}`;
+        template.id = `tmpl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       }
       template.createdAt = template.createdAt || new Date().toISOString();
       template.updatedAt = new Date().toISOString();
@@ -351,7 +383,7 @@ function setupCoffeeMachineAPI(app) {
           params.push(req.query.toDate);
         }
 
-        query += ' ORDER BY created_at DESC';
+        query += ' ORDER BY created_at DESC LIMIT 5000';
 
         const result = await db.query(query, params);
         reports = result.rows.map(dbCmReportToCamel);
@@ -540,6 +572,28 @@ function setupCoffeeMachineAPI(app) {
       await writeJsonFile(filePath, report);
 
       console.log(`[CoffeeMachine] ✅ Отчёт подтверждён: ${id} (оценка: ${rating})`);
+
+      // Push-уведомление сотруднику
+      if (sendPushToPhone) {
+        try {
+          const employeePhone = report.employeePhone || await getEmployeePhoneByName(report.employeeName);
+          if (employeePhone) {
+            const ratingStr = rating != null ? ` Оценка: ${rating}/10` : '';
+            await sendPushToPhone(
+              employeePhone,
+              'Счётчик кофемашин подтверждён',
+              `Ваш отчёт по кофемашинам подтверждён.${ratingStr}`,
+              { type: 'coffee_machine_status', status: 'confirmed', reportId: id, rating: rating != null ? String(rating) : '' }
+            );
+            console.log(`[CoffeeMachine] Push отправлен сотруднику ${employeePhone}`);
+          } else {
+            console.log('[CoffeeMachine] Push не отправлен: нет телефона сотрудника');
+          }
+        } catch (pushErr) {
+          console.error('[CoffeeMachine] Ошибка отправки push (confirm):', pushErr.message);
+        }
+      }
+
       notifyCounterUpdate('coffeeMachineReports', { delta: -1 });
       res.json({ success: true, report });
     } catch (error) {
@@ -588,6 +642,28 @@ function setupCoffeeMachineAPI(app) {
       await writeJsonFile(filePath, report);
 
       console.log(`[CoffeeMachine] ❌ Отчёт отклонён: ${id}`);
+
+      // Push-уведомление сотруднику
+      if (sendPushToPhone) {
+        try {
+          const employeePhone = report.employeePhone || await getEmployeePhoneByName(report.employeeName);
+          if (employeePhone) {
+            const reason = rejectReason ? ` Причина: ${rejectReason}` : '';
+            await sendPushToPhone(
+              employeePhone,
+              'Счётчик кофемашин отклонён',
+              `Ваш отчёт по кофемашинам отклонён.${reason}`,
+              { type: 'coffee_machine_status', status: 'rejected', reportId: id }
+            );
+            console.log(`[CoffeeMachine] Push отправлен сотруднику ${employeePhone}`);
+          } else {
+            console.log('[CoffeeMachine] Push не отправлен: нет телефона сотрудника');
+          }
+        } catch (pushErr) {
+          console.error('[CoffeeMachine] Ошибка отправки push (reject):', pushErr.message);
+        }
+      }
+
       res.json({ success: true, report });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });

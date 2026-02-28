@@ -5,6 +5,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { writeJsonFile } = require('./async_fs');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -43,10 +44,10 @@ async function loadJsonFile(filePath, defaultValue = null) {
 }
 
 /**
- * Сохранить JSON файл
+ * Сохранить JSON файл (atomic write with lock via writeJsonFile)
  */
 async function saveJsonFile(filePath, data) {
-  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+  await writeJsonFile(filePath, data);
 }
 
 /**

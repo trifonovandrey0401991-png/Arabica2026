@@ -126,10 +126,11 @@ async function findAll(table, options = {}) {
   // Дополнительный WHERE (для сложных условий)
   if (where) {
     // Перенумеровать плейсхолдеры в where clause
+    // Negative lookahead (?!\d) prevents $1 from matching inside $10, $11, etc.
     let adjustedWhere = where;
     for (let i = whereParams.length; i >= 1; i--) {
       adjustedWhere = adjustedWhere.replace(
-        new RegExp(`\\$${i}`, 'g'),
+        new RegExp(`\\$${i}(?!\\d)`, 'g'),
         `$${paramIndex + i - 1}`
       );
     }
@@ -147,11 +148,13 @@ async function findAll(table, options = {}) {
 
   let sql = `SELECT * FROM ${escapeTable(table)} ${whereClause} ORDER BY ${escapeColumn(orderBy)} ${dir}`;
 
-  if (limit !== null) {
-    sql += ` LIMIT $${paramIndex}`;
-    params.push(limit);
-    paramIndex++;
-  }
+  // Safety cap: never return more than 10 000 rows without explicit limit.
+  // Prevents accidental memory exhaustion on large tables. Callers that legitimately
+  // need more rows should pass an explicit limit or use pagination via findAllPaginated().
+  const effectiveLimit = limit !== null ? limit : 10000;
+  sql += ` LIMIT $${paramIndex}`;
+  params.push(effectiveLimit);
+  paramIndex++;
 
   if (offset !== null) {
     sql += ` OFFSET $${paramIndex}`;
@@ -160,6 +163,9 @@ async function findAll(table, options = {}) {
   }
 
   const result = await query(sql, params);
+  if (limit === null && result.rows.length >= 10000) {
+    console.warn(`[DB] findAll('${table}') hit the 10 000-row safety cap. Consider adding pagination.`);
+  }
   return result.rows;
 }
 
@@ -264,7 +270,7 @@ async function _countWithWhere(table, options = {}) {
     let adjustedWhere = where;
     for (let i = whereParams.length; i >= 1; i--) {
       adjustedWhere = adjustedWhere.replace(
-        new RegExp(`\\$${i}`, 'g'),
+        new RegExp(`\\$${i}(?!\\d)`, 'g'),
         `$${paramIndex + i - 1}`
       );
     }
@@ -393,9 +399,14 @@ async function deleteWhere(table, filters) {
   let paramIndex = 1;
 
   for (const [col, val] of Object.entries(filters)) {
-    conditions.push(`${escapeColumn(col)} = $${paramIndex}`);
-    params.push(val);
-    paramIndex++;
+    if (val === null || val === undefined) {
+      // SQL: "col = NULL" never matches — must use IS NULL
+      conditions.push(`${escapeColumn(col)} IS NULL`);
+    } else {
+      conditions.push(`${escapeColumn(col)} = $${paramIndex}`);
+      params.push(val);
+      paramIndex++;
+    }
   }
 
   if (conditions.length === 0) {

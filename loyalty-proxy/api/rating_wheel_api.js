@@ -13,6 +13,7 @@ const { calculateReferralPointsWithMilestone } = require('./referrals_api');
 const { calculateFullEfficiency, initBatchCache, clearBatchCache, calculateFullEfficiencyCached } = require('../efficiency_calc');
 const { withLock } = require('../utils/file_lock');
 const { requireAuth } = require('../utils/session_middleware');
+const { getMoscowDateString } = require('../utils/moscow_time');
 
 const USE_DB = process.env.USE_DB_RATING_WHEEL === 'true';
 
@@ -24,17 +25,17 @@ const EMPLOYEES_DIR = path.join(DATA_DIR, 'employees');
 const ATTENDANCE_DIR = path.join(DATA_DIR, 'attendance');
 const EFFICIENCY_DIR = path.join(DATA_DIR, 'efficiency-penalties');
 
-// Хелпер: текущий месяц YYYY-MM
+// Хелпер: текущий месяц YYYY-MM (Moscow timezone)
 function getCurrentMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  return getMoscowDateString().substring(0, 7);
 }
 
-// Хелпер: предыдущий месяц
+// Хелпер: предыдущий месяц (Moscow timezone)
 function getPreviousMonth(monthsBack = 1) {
-  const now = new Date();
-  now.setMonth(now.getMonth() - monthsBack);
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const today = getMoscowDateString(); // YYYY-MM-DD
+  const d = new Date(today + 'T00:00:00Z');
+  d.setUTCMonth(d.getUTCMonth() - monthsBack);
+  return d.toISOString().split('T')[0].substring(0, 7);
 }
 
 // Хелпер: название месяца
@@ -606,7 +607,7 @@ module.exports = function setupRatingWheelAPI(app) {
   app.get('/api/ratings/:employeeId', requireAuth, async (req, res) => {
     try {
       const { employeeId } = req.params;
-      const monthsCount = parseInt(req.query.months) || 3;
+      const monthsCount = Math.min(parseInt(req.query.months) || 3, 24);
 
       console.log(`📊 GET /api/ratings/${employeeId} months=${monthsCount}`);
 

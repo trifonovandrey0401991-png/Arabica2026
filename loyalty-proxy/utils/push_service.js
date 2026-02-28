@@ -201,6 +201,69 @@ async function getAdminFcmTokens() {
 }
 
 /**
+ * Получить телефоны всех администраторов И разработчиков
+ * @returns {string[]} Массив нормализованных телефонов
+ */
+async function getAdminAndDeveloperPhones() {
+  const phones = [];
+  try {
+    if (!(await fileExists(EMPLOYEES_DIR))) return phones;
+    const files = await fsp.readdir(EMPLOYEES_DIR);
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+      const employee = await loadJsonFile(path.join(EMPLOYEES_DIR, file), null);
+      if (employee && (employee.isAdmin === true || employee.role === 'developer') && employee.phone) {
+        phones.push(employee.phone.replace(/[^\d]/g, ''));
+      }
+    }
+  } catch (e) {
+    console.error('[PushService] Ошибка получения админов/разработчиков:', e.message);
+  }
+  return phones;
+}
+
+/**
+ * Отправить push всем администраторам и разработчикам
+ * @param {string} title
+ * @param {string} body
+ * @param {Object} [data={}]
+ * @param {string} [channelId='prizes_channel']
+ */
+async function sendPushToAdminsAndDevelopers(title, body, data = {}, channelId = 'prizes_channel') {
+  if (!firebaseInitialized || !admin) {
+    console.log('[PushService] Firebase не инициализирован');
+    return;
+  }
+
+  const phones = await getAdminAndDeveloperPhones();
+  if (phones.length === 0) {
+    console.log('[PushService] Нет получателей (admin+dev)');
+    return;
+  }
+
+  const tokens = await getFcmTokens(phones);
+  if (tokens.length === 0) {
+    console.log('[PushService] Нет FCM токенов для admin+dev');
+    return;
+  }
+
+  console.log(`[PushService] Push ${tokens.length} admin+dev: ${title}`);
+
+  for (const { phone, token } of tokens) {
+    try {
+      const message = buildMessage(token, title, body, data, channelId);
+      await admin.messaging().send(message);
+      console.log(`[PushService] Push отправлен: ${maskPhone(phone)}`);
+    } catch (e) {
+      console.error(`[PushService] Ошибка push ${maskPhone(phone)}:`, e.message);
+      if (isInvalidTokenError(e.message || '')) {
+        await removeInvalidToken(phone);
+      }
+    }
+  }
+}
+
+/**
  * Отправить push одному пользователю по телефону
  * @param {string} phone - Номер телефона
  * @param {string} title - Заголовок
@@ -326,11 +389,13 @@ module.exports = {
   sendPushToPhone,
   sendPushToMultiple,
   sendPushToAllAdmins,
+  sendPushToAdminsAndDevelopers,
   sendPushByToken,
   getFcmTokenByPhone,
   getFcmTokens,
   getAdminPhones,
   getAdminFcmTokens,
+  getAdminAndDeveloperPhones,
   isInvalidTokenError,
   removeInvalidToken,
   stringifyData,

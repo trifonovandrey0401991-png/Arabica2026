@@ -202,8 +202,8 @@ async function runRetrain() {
  */
 function checkSchedule() {
   const now = getMoscowTime();
-  const hour = now.getHours();
-  const dow = now.getDay(); // 0=Sun
+  const hour = now.getUTCHours(); // getMoscowTime() shifts to UTC+3 — use getUTCHours()
+  const dow = now.getUTCDay(); // 0=Sun
 
   if (dow === CRON_DOW && hour === CRON_HOUR) {
     runRetrain().catch(e =>
