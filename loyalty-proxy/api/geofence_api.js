@@ -10,7 +10,7 @@ const path = require('path');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { requireAuth } = require('../utils/session_middleware');
-const { getMoscowDateString } = require('../utils/moscow_time');
+const { getMoscowDateString, getMoscowTime } = require('../utils/moscow_time');
 
 // Директории хранения данных
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -53,7 +53,7 @@ async function loadGeofenceSettings() {
     radiusMeters: 500,
     notificationTitle: 'Arabica рядом!',
     notificationBody: 'Вы рядом с нашей кофейней. Заходите за ароматным кофе!',
-    cooldownHours: 24,
+    cooldownHours: 4,
     updatedAt: new Date().toISOString(),
     updatedBy: 'system'
   };
@@ -125,30 +125,34 @@ function calculateGpsDistance(lat1, lon1, lat2, lon2) {
 }
 
 /**
- * Проверить, было ли уведомление отправлено в период cooldown
+ * Проверить, было ли уведомление отправлено в период cooldown (глобально — по любому магазину).
+ * Проверяем файлы сегодня и вчера, чтобы корректно работать при переходе через полночь.
  */
-async function wasNotificationSentRecently(phone, shopId, cooldownHours) {
+async function wasNotificationSentRecently(phone, cooldownHours) {
   try {
-    const today = getMoscowDateString();
     const normalizedPhone = phone.replace(/[^\d]/g, '');
-    const notificationFile = path.join(
-      GEOFENCE_NOTIFICATIONS_DIR,
-      `${normalizedPhone}_${today}.json`
-    );
-
-    if (!(await fileExists(notificationFile))) {
-      return false;
-    }
-
-    const notifications = await loadJsonFile(notificationFile, []);
     const now = new Date();
 
-    for (const n of notifications) {
-      if (n.shopId === shopId) {
+    const today = getMoscowDateString();
+    const yesterdayMoscow = getMoscowTime();
+    yesterdayMoscow.setDate(yesterdayMoscow.getDate() - 1);
+    const yesterday = yesterdayMoscow.toISOString().split('T')[0];
+
+    for (const dateStr of [today, yesterday]) {
+      const notificationFile = path.join(
+        GEOFENCE_NOTIFICATIONS_DIR,
+        `${normalizedPhone}_${dateStr}.json`
+      );
+
+      if (!(await fileExists(notificationFile))) continue;
+
+      const notifications = await loadJsonFile(notificationFile, []);
+
+      for (const n of notifications) {
         const sentAt = new Date(n.sentAt);
         const hoursSinceSent = (now - sentAt) / (1000 * 60 * 60);
         if (hoursSinceSent < cooldownHours) {
-          return true;
+          return true; // Was near any shop recently
         }
       }
     }
@@ -314,9 +318,9 @@ function setupGeofenceAPI(app, sendPushToPhone) {
         }
 
         if (distance <= settings.radiusMeters) {
-          // 4. Проверить cooldown
-          if (await wasNotificationSentRecently(clientPhone, shop.id, settings.cooldownHours)) {
-            console.log(`📍 Геозона: cooldown активен для ${clientPhone} -> ${shop.address}`);
+          // 4. Проверить глобальный cooldown (не был у любого магазина в последние N часов)
+          if (await wasNotificationSentRecently(clientPhone, settings.cooldownHours)) {
+            console.log(`📍 Геозона: cooldown активен для ${clientPhone} (последний пуш < ${settings.cooldownHours}ч)`);
             continue;
           }
 
