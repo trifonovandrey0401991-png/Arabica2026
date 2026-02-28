@@ -15,7 +15,6 @@ import '../../features/employees/models/user_role_model.dart';
 import '../../features/clients/pages/registration_page.dart';
 import '../../features/loyalty/services/loyalty_storage.dart';
 import '../../features/product_questions/pages/product_search_shop_selection_page.dart';
-import '../../features/employees/pages/employee_panel_page.dart';
 import '../../features/shops/pages/shops_on_map_page.dart';
 import '../../features/job_application/pages/job_application_welcome_page.dart';
 import '../../features/rating/services/rating_service.dart';
@@ -66,6 +65,7 @@ import '../../core/services/app_update_service.dart';
 import '../../core/services/counters_ws_service.dart';
 import '../../features/efficiency/services/efficiency_data_service.dart';
 import '../../features/network_management/pages/network_management_page.dart';
+import '../../features/network_management/services/network_management_service.dart';
 import 'manager_grid_page.dart';
 import '../../features/main_cash/pages/main_cash_page.dart';
 import '../../features/execution_chain/services/execution_chain_service.dart';
@@ -279,6 +279,9 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
           _pendingOrdersCount = counters.pendingOrders;
           _wholesalePendingCount = counters.wholesalePendingOrders;
           _activeTasksCount = counters.activeTaskAssignments;
+          // 5 counters previously missing (showed 0 on startup)
+          if (counters.unreadProductQuestions > 0) _unreadProductQuestionsCount = counters.unreadProductQuestions;
+          if (counters.shiftTransferRequests > 0) _shiftTransferUnreadCount = counters.shiftTransferRequests;
         });
       }
     } catch (e) {
@@ -806,6 +809,164 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
     );
   }
 
+  /// Диалог выбора конкретного управляющего → открывает его реальный экран
+  Future<void> _openManagerPicker() async {
+    final phone = _userRole?.phone ?? '';
+
+    List<Map<String, dynamic>> managers = [];
+    if (phone.isNotEmpty) {
+      try {
+        managers = await NetworkManagementService.getManagers(phone);
+      } catch (e) {
+        Logger.error('Error loading managers list: $e');
+      }
+    }
+
+    if (!mounted) return;
+
+    if (managers.isEmpty) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => ManagerGridPage()));
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.emeraldDark,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 12.h),
+            Container(
+              width: 40.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+            SizedBox(height: 16.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              child: Text(
+                'Выберите управляющего',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            SizedBox(height: 8.h),
+            Divider(color: Colors.white24),
+            ...managers.map((m) {
+              final name = m['name']?.toString() ?? m['phone']?.toString() ?? 'Управляющий';
+              return ListTile(
+                leading: Container(
+                  padding: EdgeInsets.all(6.w),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Icon(Icons.manage_accounts_outlined, color: AppColors.gold, size: 20),
+                ),
+                title: Text(name, style: TextStyle(color: Colors.white, fontSize: 14.sp)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => ManagerGridPage()));
+                },
+              );
+            }),
+            SizedBox(height: 8.h),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Диалог выбора: Заведующая или Сотрудник
+  void _openEmployeePanelPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.emeraldDark,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 12.h),
+            Container(
+              width: 40.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+            SizedBox(height: 16.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              child: Text(
+                'Выберите роль для просмотра',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            SizedBox(height: 8.h),
+            Divider(color: Colors.white24),
+            ListTile(
+              leading: Container(
+                padding: EdgeInsets.all(6.w),
+                decoration: BoxDecoration(
+                  color: AppColors.emerald.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Icon(Icons.manage_accounts, color: Colors.white, size: 20),
+              ),
+              title: Text('Заведующая', style: TextStyle(color: Colors.white, fontSize: 14.sp)),
+              subtitle: Text(
+                'Отчёты и управление магазином',
+                style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => ManagerGridPage()));
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: EdgeInsets.all(6.w),
+                decoration: BoxDecoration(
+                  color: AppColors.emerald.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Icon(Icons.grid_view_rounded, color: Colors.white, size: 20),
+              ),
+              title: Text('Сотрудник', style: TextStyle(color: Colors.white, fontSize: 14.sp)),
+              subtitle: Text(
+                'Смены, задачи, обучение',
+                style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => MainMenuPage(forceRole: UserRole.employee)));
+              },
+            ),
+            SizedBox(height: 8.h),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Меню для разработчиков - админ меню + "Управление сетью"
   Widget _buildDeveloperMenu() {
     return Padding(
@@ -870,7 +1031,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                 'Управляющая(ий)',
                 'Отчёты и управление',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => ManagerGridPage())),
+                () => _openManagerPicker(),
               ),
               SizedBox(height: spacing),
               _buildAdminRow(
@@ -878,7 +1039,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                 'Панель сотрудника',
                 'Функции сотрудника',
                 buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => MainMenuPage(forceRole: UserRole.employee))),
+                () => _openEmployeePanelPicker(),
               ),
               SizedBox(height: spacing),
               _buildAdminRow(
@@ -1829,17 +1990,18 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
       }),
       _buildCompactTile(Icons.card_membership_outlined, 'Лояльность', () async {
         final enabled = await FirebaseService.areNotificationsEnabled();
-        if (!enabled && context.mounted) {
+        if (!enabled && mounted) {
           final result = await NotificationRequiredDialog.show(context);
           if (result == true) {
             await Future.delayed(Duration(milliseconds: 500));
             final ok = await FirebaseService.areNotificationsEnabled();
-            if (ok && context.mounted) {
+            if (ok && mounted) {
               Navigator.push(context, MaterialPageRoute(builder: (_) => LoyaltyPage()));
             }
           }
           return;
         }
+        if (!mounted) return;
         Navigator.push(context, MaterialPageRoute(builder: (_) => LoyaltyPage()));
       }),
       _buildCompactTile(Icons.star_outline_rounded, 'Отзывы', () {
@@ -1883,7 +2045,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
           final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
           try {
             final hasAttendance = await AttendanceService.hasAttendanceToday(employeeName);
-            if (!context.mounted) return;
+            if (!mounted) return;
             if (hasAttendance) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Вы уже отметились сегодня'), backgroundColor: Colors.orange.shade700),
@@ -1893,7 +2055,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
           } catch (e) {
             Logger.warning('Ошибка проверки отметки: $e');
           }
-          if (!context.mounted) return;
+          if (!mounted) return;
           await _markAttendanceAutomatically(context, employeeName);
         });
       }),
@@ -1902,7 +2064,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         await _executeWithChainCheck('shift', () async {
           final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
           final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-          if (!context.mounted) return;
+          if (!mounted) return;
           await Navigator.push(context, MaterialPageRoute(builder: (_) => ShiftShopSelectionPage(employeeName: employeeName)));
         });
       }),
@@ -1911,7 +2073,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         await _executeWithChainCheck('shift_handover', () async {
           final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
           final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-          if (!context.mounted) return;
+          if (!mounted) return;
           await Navigator.push(context, MaterialPageRoute(builder: (_) => ShiftHandoverShopSelectionPage(employeeName: employeeName)));
         });
       }),
@@ -1928,7 +2090,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
             final prefs = await SharedPreferences.getInstance();
             final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
             if (phone == null || phone.isEmpty) {
-              if (context.mounted) {
+              if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Не удалось определить телефон сотрудника'), backgroundColor: Colors.red.shade700),
                 );
@@ -1938,14 +2100,14 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
             final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
             final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
             if (registration == null || !registration.isVerified) {
-              if (context.mounted) {
+              if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Только верифицированные сотрудники могут создавать РКО'), backgroundColor: Colors.orange.shade700),
                 );
               }
               return;
             }
-            if (!context.mounted) return;
+            if (!mounted) return;
             await Navigator.push(context, MaterialPageRoute(builder: (_) => RKOTypeSelectionPage()));
           } catch (e) {
             Logger.error('Ошибка проверки верификации', e);
@@ -1957,7 +2119,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
         final employeeId = await EmployeesPage.getCurrentEmployeeId();
         final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        if (!context.mounted) return;
+        if (!mounted) return;
         await Navigator.push(context, MaterialPageRoute(
           builder: (_) => MyTasksPage(employeeId: employeeId ?? employeeName, employeeName: employeeName),
         ));
@@ -1989,7 +2151,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
         final employeeId = await EmployeesPage.getCurrentEmployeeId();
         final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        if (!context.mounted || employeeId == null) return;
+        if (!mounted || employeeId == null) return;
         await Navigator.push(context, MaterialPageRoute(
           builder: (_) => FortuneWheelPage(employeeId: employeeId, employeeName: employeeName),
         ));
@@ -2241,7 +2403,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         // Повторяем логику "Я на работе"
         final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
         final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        if (!context.mounted) return;
+        if (!mounted) return;
         await _markAttendanceAutomatically(context, employeeName);
         _invalidateChainCache();
         break;
@@ -2252,7 +2414,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
       case 'shift':
         final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
         final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        if (!context.mounted) return;
+        if (!mounted) return;
         await Navigator.push(context, MaterialPageRoute(
           builder: (_) => ShiftShopSelectionPage(employeeName: employeeName),
         ));
@@ -2265,7 +2427,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
       case 'shift_handover':
         final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
         final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        if (!context.mounted) return;
+        if (!mounted) return;
         await Navigator.push(context, MaterialPageRoute(
           builder: (_) => ShiftHandoverShopSelectionPage(employeeName: employeeName),
         ));
@@ -2275,7 +2437,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         // Кофемашина доступна через "Сдать смену"
         final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
         final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        if (!context.mounted) return;
+        if (!mounted) return;
         await Navigator.push(context, MaterialPageRoute(
           builder: (_) => ShiftHandoverShopSelectionPage(employeeName: employeeName),
         ));
@@ -2285,7 +2447,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         // Конверт доступен через "Сдать смену"
         final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
         final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        if (!context.mounted) return;
+        if (!mounted) return;
         await Navigator.push(context, MaterialPageRoute(
           builder: (_) => ShiftHandoverShopSelectionPage(employeeName: employeeName),
         ));
