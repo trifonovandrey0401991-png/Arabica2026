@@ -7,6 +7,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
+const { writeJsonFile } = require('../utils/async_fs');
 const { compressUpload } = require('../utils/image_compress');
 const { requireAuth } = require('../utils/session_middleware');
 const { getMoscowDateString } = require('../utils/moscow_time');
@@ -137,7 +138,7 @@ function setupMediaAPI(app, uploadChatMedia) {
       logData.timestamp = new Date().toISOString();
 
       const filePath = path.join(dateDir, `${logId}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(logData, null, 2), 'utf8');
+      await writeJsonFile(filePath, logData);
 
       res.json({ success: true, logId });
     } catch (error) {

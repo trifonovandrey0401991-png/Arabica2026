@@ -5,6 +5,7 @@ import '../models/pending_coffee_machine_report_model.dart';
 import '../services/coffee_machine_report_service.dart';
 import 'coffee_machine_report_view_page.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/widgets/report_list_widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Список отчётов по счётчикам кофемашин (5 вкладок)
@@ -178,7 +179,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
   }
 
   Widget _buildTabs() {
-    final tabNames = ['В очереди', 'Не сданы', 'Ожидают', 'Подтверждены', 'Отклонены'];
+    final tabNames = ['Не пройдены', 'Не в срок', 'Ожидают', 'Подтверждены', 'Отклонены'];
     final counts = [
       _filterPending('pending').length,
       _filterPending('failed').length,
@@ -199,16 +200,33 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
         children: [
           Row(
             children: [
-              Expanded(child: _buildTabButton(0, tabNames[0], counts[0])),
-              Expanded(child: _buildTabButton(1, tabNames[1], counts[1])),
-              Expanded(child: _buildTabButton(2, tabNames[2], counts[2])),
+              for (int i = 0; i < 3; i++)
+                ReportTabButton(
+                  isSelected: _selectedTab == i,
+                  onTap: () {
+                    _tabController.animateTo(i);
+                    if (mounted) setState(() {});
+                  },
+                  label: tabNames[i],
+                  count: counts[i],
+                  accentColor: AppColors.gold,
+                ),
             ],
           ),
           SizedBox(height: 8),
           Row(
             children: [
-              Expanded(child: _buildTabButton(3, tabNames[3], counts[3])),
-              Expanded(child: _buildTabButton(4, tabNames[4], counts[4])),
+              for (int i = 3; i < 5; i++)
+                ReportTabButton(
+                  isSelected: _selectedTab == i,
+                  onTap: () {
+                    _tabController.animateTo(i);
+                    if (mounted) setState(() {});
+                  },
+                  label: tabNames[i],
+                  count: counts[i],
+                  accentColor: AppColors.gold,
+                ),
             ],
           ),
         ],
@@ -216,183 +234,43 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
     );
   }
 
-  Widget _buildTabButton(int index, String label, int count) {
-    final isSelected = _selectedTab == index;
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 3.w),
-      child: GestureDetector(
-        onTap: () {
-          if (mounted) setState(() {
-            _selectedTab = index;
-            _tabController.animateTo(index);
-          });
-        },
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(10.r),
-            border: Border.all(
-              color: isSelected ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 12.sp,
-                    color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.6),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ),
-              if (count > 0) ...[
-                SizedBox(width: 4),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                  child: Text(
-                    '$count',
-                    style: TextStyle(
-                      color: isSelected ? AppColors.night : Colors.white.withOpacity(0.7),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11.sp,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  List<String> get _uniqueShops =>
+      _allReports.map((r) => r.shopAddress).toSet().toList()..sort();
+
+  List<String> get _uniqueEmployees =>
+      _allReports.map((r) => r.employeeName).toSet().toList()..sort();
 
   Widget _buildFilters() {
-    final shops = _allReports.map((r) => r.shopAddress).toSet().toList()..sort();
-    final employees = _allReports.map((r) => r.employeeName).toSet().toList()..sort();
-    final hasFilter = _selectedShop != null || _selectedEmployee != null || _selectedDate != null;
-
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
-      child: Row(
-        children: [
-          // Магазин
-          Expanded(
-            child: _buildFilterDropdown<String>(
-              value: _selectedShop,
-              hint: 'Магазин',
-              items: shops,
-              onChanged: (v) => setState(() => _selectedShop = v),
-            ),
-          ),
-          SizedBox(width: 8),
-          // Сотрудник
-          Expanded(
-            child: _buildFilterDropdown<String>(
-              value: _selectedEmployee,
-              hint: 'Сотрудник',
-              items: employees,
-              onChanged: (v) => setState(() => _selectedEmployee = v),
-            ),
-          ),
-          SizedBox(width: 8),
-          // Дата
-          GestureDetector(
-            onTap: () async {
-              final date = await showDatePicker(
-                context: context,
-                initialDate: _selectedDate ?? DateTime.now(),
-                firstDate: DateTime(2024),
-                lastDate: DateTime.now(),
-              );
-              if (date != null) setState(() => _selectedDate = date);
-            },
-            child: Container(
-              padding: EdgeInsets.all(8.w),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-              child: Icon(
-                Icons.calendar_today,
-                color: _selectedDate != null ? AppColors.gold : Colors.white54,
-                size: 18,
-              ),
-            ),
-          ),
-          // Сброс
-          if (hasFilter) ...[
-            SizedBox(width: 6),
-            GestureDetector(
-              onTap: () => setState(() {
-                _selectedShop = null;
-                _selectedEmployee = null;
-                _selectedDate = null;
-              }),
-              child: Container(
-                padding: EdgeInsets.all(8.w),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Icon(Icons.close, color: Colors.red, size: 18),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterDropdown<T>({
-    T? value,
-    required String hint,
-    required List<T> items,
-    required ValueChanged<T?> onChanged,
-  }) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(8.r),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          value: value,
-          hint: Text(hint, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp)),
-          isExpanded: true,
-          dropdownColor: AppColors.emeraldDark,
-          style: TextStyle(color: Colors.white, fontSize: 12.sp),
-          icon: Icon(Icons.arrow_drop_down, color: Colors.white.withOpacity(0.4)),
-          items: [
-            DropdownMenuItem<T>(value: null, child: Text('Все', style: TextStyle(color: Colors.white.withOpacity(0.5)))),
-            ...items.map((item) => DropdownMenuItem<T>(
-              value: item,
-              child: Text(
-                item.toString(),
-                overflow: TextOverflow.ellipsis,
-              ),
-            )),
-          ],
-          onChanged: onChanged,
-        ),
+      child: ReportFiltersWidget(
+        shops: _uniqueShops,
+        employees: _uniqueEmployees,
+        selectedShop: _selectedShop,
+        selectedEmployee: _selectedEmployee,
+        selectedDate: _selectedDate,
+        onShopChanged: (v) => setState(() => _selectedShop = v),
+        onEmployeeChanged: (v) => setState(() => _selectedEmployee = v),
+        onDateChanged: (v) {
+          if (mounted) setState(() => _selectedDate = v);
+        },
+        onReset: () => setState(() {
+          _selectedShop = null;
+          _selectedEmployee = null;
+          _selectedDate = null;
+        }),
       ),
     );
   }
 
   Widget _buildPendingList(String status) {
     final reports = _filterPending(status);
-    if (reports.isEmpty) return _buildEmpty(status == 'pending' ? 'Нет ожидающих' : 'Нет несданных');
+    if (reports.isEmpty) {
+      return ReportEmptyState(
+        icon: Icons.coffee_outlined,
+        title: status == 'pending' ? 'Нет ожидающих' : 'Нет несданных',
+      );
+    }
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -407,7 +285,12 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
 
   Widget _buildReportsList(String status) {
     final reports = _filterReports(status);
-    if (reports.isEmpty) return _buildEmpty('Нет отчётов');
+    if (reports.isEmpty) {
+      return ReportEmptyState(
+        icon: Icons.coffee_outlined,
+        title: 'Нет отчётов',
+      );
+    }
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -416,19 +299,6 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         itemCount: reports.length,
         itemBuilder: (_, i) => _buildReportCard(reports[i]),
-      ),
-    );
-  }
-
-  Widget _buildEmpty(String message) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.coffee_outlined, size: 48, color: Colors.white.withOpacity(0.2)),
-          SizedBox(height: 12),
-          Text(message, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14.sp)),
-        ],
       ),
     );
   }

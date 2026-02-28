@@ -171,6 +171,7 @@ class AppUpdateService {
       }
 
       // 3. Проверяем Play Store через in_app_update
+      if (!context.mounted) return;
       await _checkPlayStoreUpdate(context);
 
     } catch (e) {
@@ -212,6 +213,7 @@ class AppUpdateService {
         // Если обновление доступно, запускаем Flexible Update
         if (_updateInfo?.flexibleUpdateAllowed ?? false) {
           Logger.info('🔄 Запуск фонового обновления...');
+          if (!context.mounted) return;
           await _performFlexibleUpdate(context);
         } else if (_updateInfo?.immediateUpdateAllowed ?? false) {
           Logger.info('🔄 Запуск немедленного обновления...');

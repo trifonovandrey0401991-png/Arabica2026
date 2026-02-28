@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'cart_provider.dart';
+import '../../features/menu/pages/menu_page.dart';
+import '../../features/shop_catalog/models/shop_product.dart';
 import '../../features/orders/services/order_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/utils/logger.dart';
@@ -67,14 +69,49 @@ class Order {
   }
 
   factory Order.fromJson(Map<String, dynamic> json) {
-    // Для упрощения, создаем заказ из JSON
-    // В реальном приложении нужно будет восстановить MenuItem из данных
     final itemsList = json['items'] as List<dynamic>?;
     final itemsData = itemsList?.map((item) => item as Map<String, dynamic>).toList();
 
+    // Reconstruct CartItem objects from serialized data so order.items is usable
+    final reconstructedItems = itemsData?.map((itemJson) {
+      final typeStr = itemJson['type'] as String?;
+      final type = typeStr == 'shopProduct' ? CartItemType.shopProduct : CartItemType.drink;
+      final paymentStr = itemJson['paymentMethod'] as String?;
+      final paymentMethod = paymentStr == 'points' ? PaymentMethod.points : PaymentMethod.money;
+      final quantity = (itemJson['quantity'] as int?) ?? 1;
+      final price = (itemJson['price'] ?? '0').toString();
+      final name = (itemJson['name'] ?? '').toString();
+
+      if (type == CartItemType.shopProduct) {
+        return CartItem(
+          type: CartItemType.shopProduct,
+          shopProduct: ShopProduct(
+            id: '',
+            name: name,
+            priceRetail: double.tryParse(price) ?? 0.0,
+          ),
+          paymentMethod: paymentMethod,
+          quantity: quantity,
+        );
+      }
+      return CartItem(
+        type: CartItemType.drink,
+        menuItem: MenuItem(
+          id: '',
+          name: name,
+          price: price,
+          category: '',
+          shop: '',
+          photoId: '',
+        ),
+        paymentMethod: paymentMethod,
+        quantity: quantity,
+      );
+    }).toList() ?? [];
+
     return Order(
       id: json['id'] as String,
-      items: [], // Упрощенная версия
+      items: reconstructedItems,
       itemsData: itemsData,
       totalPrice: (json['totalPrice'] as num).toDouble(),
       createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
@@ -262,9 +299,9 @@ class OrderProvider with ChangeNotifier {
     }
   }
 
-  /// Получить провайдер из контекста
+  /// Получить провайдер из контекста (регистрирует зависимость для перестройки)
   static OrderProvider of(BuildContext context) {
-    final scope = context.findAncestorWidgetOfExactType<_OrderProviderScope>();
+    final scope = context.dependOnInheritedWidgetOfExactType<_OrderProviderScope>();
     if (scope == null) {
       throw Exception('OrderProvider not found in widget tree');
     }
@@ -283,7 +320,8 @@ class _OrderProviderScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(_OrderProviderScope oldWidget) {
-    return orderProvider != oldWidget.orderProvider;
+    // Same instance, but content changed — always notify dependents
+    return true;
   }
 }
 
@@ -301,7 +339,19 @@ class _OrderProviderScopeState extends State<OrderProviderScope> {
   final OrderProvider _orderProvider = OrderProvider();
 
   @override
+  void initState() {
+    super.initState();
+    // Rebuild InheritedWidget when orders change (e.g. order status updated)
+    _orderProvider.addListener(_onOrdersChanged);
+  }
+
+  void _onOrdersChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    _orderProvider.removeListener(_onOrdersChanged);
     _orderProvider.dispose();
     super.dispose();
   }

@@ -367,6 +367,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
             description: '${widget.rkoType}: ${amount.toStringAsFixed(0)} руб',
           );
 
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('РКО успешно создан и загружен на сервер'),
@@ -485,6 +486,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
     }
 
     // Показываем диалог
+    if (!mounted) return false;
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,

@@ -315,14 +315,14 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                   bottomRight: Radius.circular(28.r),
                 ),
               ),
-              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
+              padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 12.h),
               child: Column(
                 children: [
                   Container(
-                    padding: EdgeInsets.all(16.w),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                     decoration: BoxDecoration(
                       color: AppColors.emerald.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(16.r),
+                      borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(
                         color: AppColors.gold.withOpacity(0.2),
                         width: 1,
@@ -331,11 +331,11 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                     child: Row(
                       children: [
                         Container(
-                          width: 48,
-                          height: 48,
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
                             color: AppColors.gold.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12.r),
+                            borderRadius: BorderRadius.circular(8.r),
                             border: Border.all(
                               color: AppColors.gold.withOpacity(0.3),
                               width: 1,
@@ -344,10 +344,10 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                           child: Icon(
                             Icons.stars_rounded,
                             color: AppColors.gold,
-                            size: 28,
+                            size: 20,
                           ),
                         ),
-                        SizedBox(width: 16),
+                        SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,7 +356,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                                 'Настройка баллов',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 18.sp,
+                                  fontSize: 14.sp,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -364,7 +364,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                                 '${_categories.length} категорий',
                                 style: TextStyle(
                                   color: Colors.white.withOpacity(0.6),
-                                  fontSize: 13.sp,
+                                  fontSize: 11.sp,
                                 ),
                               ),
                             ],
@@ -397,10 +397,10 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
 
   Widget _buildCategoryCard(_PointsCategory category) {
     return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
+      margin: EdgeInsets.only(bottom: 6.h),
       decoration: BoxDecoration(
         color: AppColors.emeraldDark,
-        borderRadius: BorderRadius.circular(20.r),
+        borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: AppColors.emerald.withOpacity(0.5),
           width: 1,
@@ -408,51 +408,56 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20.r),
+        borderRadius: BorderRadius.circular(12.r),
         child: InkWell(
           onTap: () => _openCategorySettings(category.id),
-          borderRadius: BorderRadius.circular(20.r),
+          borderRadius: BorderRadius.circular(12.r),
           child: Padding(
-            padding: EdgeInsets.all(16.w),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
             child: Row(
               children: [
                 // Icon with gradient
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: category.gradientColors,
                     ),
-                    borderRadius: BorderRadius.circular(16.r),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Icon(
                     category.icon,
                     color: Colors.white,
-                    size: 28,
+                    size: 18,
                   ),
                 ),
-                SizedBox(width: 16),
+                SizedBox(width: 10),
                 // Text
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         category.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 17.sp,
+                          fontSize: 13.sp,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      SizedBox(height: 2),
                       Text(
                         category.description,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 13.sp,
+                          fontSize: 11.sp,
                           color: Colors.white.withOpacity(0.5),
                         ),
                       ),
@@ -460,18 +465,10 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                   ),
                 ),
                 // Arrow
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppColors.emerald.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                  child: Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.gold.withOpacity(0.7),
-                    size: 24,
-                  ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.gold.withOpacity(0.7),
+                  size: 20,
                 ),
               ],
             ),

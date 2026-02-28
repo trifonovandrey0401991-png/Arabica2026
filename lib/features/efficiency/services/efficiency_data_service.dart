@@ -267,6 +267,8 @@ class EfficiencyDataService {
     Set<String> validAddresses,
   ) async {
     final Map<String, List<EfficiencyRecord>> byEmployee = {};
+    // Keep best display name: prefer version with uppercase letters
+    final Map<String, String> displayNames = {};
 
     for (final record in records) {
       if (record.employeeName.isEmpty) continue;
@@ -282,14 +284,23 @@ class EfficiencyDataService {
         continue;
       }
 
-      byEmployee.putIfAbsent(record.employeeName, () => []);
-      byEmployee[record.employeeName]!.add(record);
+      // Normalize key to lowercase to avoid duplicates (e.g. "андрей в" vs "Андрей В")
+      final normalizedKey = record.employeeName.trim().toLowerCase();
+      byEmployee.putIfAbsent(normalizedKey, () => []);
+      byEmployee[normalizedKey]!.add(record);
+
+      // Prefer display name with uppercase letters (proper case)
+      final existing = displayNames[normalizedKey];
+      if (existing == null || _hasUpperCaseRu(record.employeeName)) {
+        displayNames[normalizedKey] = record.employeeName.trim();
+      }
     }
 
     final summaries = byEmployee.entries.map((entry) {
+      final displayName = displayNames[entry.key] ?? entry.key;
       return EfficiencySummary.fromRecords(
         entityId: entry.key,
-        entityName: entry.key,
+        entityName: displayName,
         records: entry.value,
       );
     }).toList();
@@ -371,6 +382,15 @@ class EfficiencyDataService {
       },
       duration: _getCacheDuration(year, month),
     );
+  }
+
+  /// Returns true if the string contains at least one uppercase Cyrillic or Latin letter.
+  /// Used to prefer properly-cased display names over all-lowercase variants.
+  static bool _hasUpperCaseRu(String name) {
+    return name.runes.any((r) {
+      final ch = String.fromCharCode(r);
+      return ch != ch.toLowerCase();
+    });
   }
 
   /// Получить штрафы с сервера напрямую

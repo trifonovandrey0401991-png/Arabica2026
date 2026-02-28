@@ -1,7 +1,7 @@
 # Navigation — Quick Reference Index
 > **Цель**: найти нужную информацию в ARCHITECTURE_COMPLETE.md (ARCH) и PROJECT_MAP.md (MAP) без чтения всего файла.
 > Указывай `offset` и `limit` при чтении: `Read(file, offset=LINE, limit=50)`
-> Дата: 2026-02-25 | Версия: 2.7.3 | 37 модулей | 74 API | 11 schedulers
+> Дата: 2026-02-26 | Версия: 2.7.4 | 37 модулей | 74 API | 11 schedulers
 
 ---
 
@@ -31,20 +31,20 @@
 | tests | 990, 1550 (API) | 864 | 8 | Низкий |
 | product_questions | 1572 (API) | 887 | 14 | Низкий |
 | ai_training | 1719 (cig API+embeddings), 1739 (catalog 17 endpoints), 1763 (AI verif), 1787 (dashboard) | 918 | 33 | Низкий |
-| messenger | 1067 | 981 | 17 | Низкий |
-| employee_chat | 863, 1597 (API) | 1030 | 13 | Низкий |
-| clients | 1819 (API) | 1064 | 19 | Низкий |
-| loyalty | 1469 (API), 1479 (gamif) | 1098 | 14 | Низкий |
-| bonuses | — | 1129 | 4 | Низкий |
-| referrals | 1658 (API) | 1148 | 5 | Низкий |
-| reviews | 1561 (API) | 1168 | 9 | Низкий |
-| tasks | 1515 (API) | 1192 | 16 | Низкий |
-| coffee_machine | — | 1225 | 14 | Низкий |
-| data_cleanup | 1801 (API) | 1258 | 4 | Низкий |
-| job_application | 1667 (API) | 1278 | 6 | Низкий |
-| suppliers | 1677 (API) | 1299 | 3 | Низкий |
-| network_management | — | 1317 | 2 | Низкий |
-| execution_chain | — | 1332 | 3 | Низкий |
+| messenger | 1067 | 1004 | 17 | Низкий |
+| employee_chat | 863, 1597 (API) | 1053 | 13 | Низкий |
+| clients | 1819 (API) | 1087 | 19 | Низкий |
+| loyalty | 1469 (API), 1479 (gamif) | 1121 | 14 | Низкий |
+| bonuses | — | 1152 | 4 | Низкий |
+| referrals | 1658 (API) | 1171 | 5 | Низкий |
+| reviews | 1561 (API) | 1191 | 9 | Низкий |
+| tasks | 1515 (API) | 1215 | 16 | Низкий |
+| coffee_machine | — | 1248 | 14 | Низкий |
+| data_cleanup | 1801 (API) | 1281 | 4 | Низкий |
+| job_application | 1667 (API) | 1301 | 6 | Низкий |
+| suppliers | 1677 (API) | 1322 | 3 | Низкий |
+| network_management | — | 1340 | 2 | Низкий |
+| execution_chain | — | 1355 | 3 | Низкий |
 | geofence | 1708 (API) | — | — | Низкий |
 | recurring_tasks | 1527 (API) | — | — | Низкий |
 

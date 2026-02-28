@@ -6,6 +6,7 @@ import '../../shops/services/shop_service.dart';
 import '../../shops/models/shop_model.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
+import '../../employees/services/user_role_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -56,6 +57,15 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   }
 
   Future<void> _loadCurrentUser() async {
+    // Developer-only page: redirect immediately if not developer
+    final roleData = await UserRoleService.loadUserRole();
+    if (!mounted) return;
+    if (roleData == null || !roleData.isDeveloper) {
+      Logger.warning('NetworkManagementPage: access denied for role ${roleData?.role}');
+      Navigator.pop(context);
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     _currentUserPhone = prefs.getString('user_phone');
     if (_currentUserPhone != null) {
@@ -309,7 +319,10 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                   itemCount: _managers.length,
                   itemBuilder: (context, index) {
                     final manager = _managers[index];
-                    final shopCount = (manager['managedShops'] as List?)?.length ?? 0;
+                    final existingShopIds = _allShops.map((s) => s.id).toSet();
+                    final shopCount = (manager['managedShops'] as List?)
+                        ?.where((id) => existingShopIds.contains(id.toString()))
+                        .length ?? 0;
                     final employeeCount = (manager['employees'] as List?)?.length ?? 0;
                     return _buildManagerCard(manager, shopCount, employeeCount);
                   },
@@ -368,10 +381,12 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                     icon: Icons.store,
                     title: 'Магазины',
                     value: shopCount > 0
-                        ? (manager['managedShops'] as List).map((id) {
-                            final shop = _allShops.where((s) => s.id == id).firstOrNull;
-                            return shop?.name ?? id;
-                          }).join(', ')
+                        ? (manager['managedShops'] as List)
+                            .where((id) => _allShops.any((s) => s.id == id.toString()))
+                            .map((id) {
+                              final shop = _allShops.where((s) => s.id == id).firstOrNull;
+                              return shop?.name ?? id;
+                            }).join(', ')
                         : 'Не назначены',
                     onEdit: () => _showEditManagerShopsDialog(manager),
                   ),

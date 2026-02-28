@@ -122,7 +122,15 @@ class PhotoUploadService {
       final xhr = html.HttpRequest();
 
       xhr.open('POST', '${ApiConstants.serverUrl}/upload-photo', true);
-      
+
+      // Добавляем заголовки авторизации (аналогично мобильной версии)
+      if (ApiConstants.apiKey != null && ApiConstants.apiKey!.isNotEmpty) {
+        xhr.setRequestHeader('X-API-Key', ApiConstants.apiKey!);
+      }
+      if (ApiConstants.sessionToken != null && ApiConstants.sessionToken!.isNotEmpty) {
+        xhr.setRequestHeader('Authorization', 'Bearer ${ApiConstants.sessionToken}');
+      }
+
       xhr.onLoad.listen((e) {
         final status = xhr.status ?? 0;
         Logger.debug('📥 Получен ответ: статус $status');

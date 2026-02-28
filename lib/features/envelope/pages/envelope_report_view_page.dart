@@ -3,7 +3,9 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/envelope_report_model.dart';
+import '../models/envelope_question_model.dart';
 import '../services/envelope_report_service.dart';
+import '../services/envelope_question_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../ai_training/services/z_report_service.dart';
@@ -30,11 +32,71 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
   late EnvelopeReport _report;
   bool _isLoading = false;
   int _selectedRating = 5;
+  List<EnvelopeQuestion> _questions = [];
 
   @override
   void initState() {
     super.initState();
     _report = widget.report;
+    _loadQuestions();
+  }
+
+  Future<void> _loadQuestions() async {
+    try {
+      final qs = await EnvelopeQuestionService.getQuestions();
+      if (mounted) setState(() => _questions = qs);
+    } catch (e) { Logger.error('EnvelopeReportView', 'Failed to load questions', e); }
+  }
+
+  /// Returns reference photo URL for a photo question by section and position index.
+  String? _getReferencePhoto(String section, int indexInSection) {
+    final sectionPhotos = _questions
+        .where((q) => q.type == 'photo' && q.section == section && q.isActive)
+        .toList()
+      ..sort((a, b) => a.order.compareTo(b.order));
+    if (indexInSection < sectionPhotos.length) {
+      return sectionPhotos[indexInSection].referencePhotoUrl;
+    }
+    return null;
+  }
+
+  void _openPhotoFullscreen(BuildContext ctx, Widget photo) {
+    showDialog(
+      context: ctx,
+      barrierColor: Colors.black87,
+      builder: (dialogContext) => GestureDetector(
+        onTap: () => Navigator.of(dialogContext).pop(),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Stack(
+            children: [
+              Center(
+                child: InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 5.0,
+                  child: photo,
+                ),
+              ),
+              Positioned(
+                top: 40,
+                right: 16,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(dialogContext).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, color: Colors.white, size: 24),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _formatDate(DateTime date) {
@@ -414,8 +476,9 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
         fieldRegions: fieldRegions,
       );
 
-      if (!mounted) return;
+      if (!mounted || !dialogContext.mounted) return;
       Navigator.of(dialogContext).pop(); // закрыть загрузку
+      if (!dialogContext.mounted) return;
       Navigator.of(dialogContext).pop(); // закрыть фото-диалог
 
       if (saved) {
@@ -436,7 +499,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
       }
     } catch (e) {
       Logger.error('Ошибка сохранения для обучения AI', e);
-      if (mounted) {
+      if (mounted && dialogContext.mounted) {
         Navigator.of(dialogContext).pop(); // закрыть загрузку
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ошибка: $e'), backgroundColor: AppColors.error),
@@ -482,7 +545,9 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
                   _buildIPSection(),
                   SizedBox(height: 12.h),
                   _buildTotalCard(),
-                  SizedBox(height: 20.h),
+                  SizedBox(height: 12.h),
+                  _buildPhotosSection(),
+                  SizedBox(height: 8.h),
                   if (widget.isAdmin && _report.status == 'pending')
                     SizedBox(
                       width: double.infinity,
@@ -952,6 +1017,187 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
     );
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // ФОТО-ВОПРОСЫ
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Строит блок со всеми фото-ответами сотрудника (аналог пересменки)
+  Widget _buildPhotosSection() {
+    // Собираем 4 элемента: title, photoUrl?, referencePhotoUrl?
+    final items = <_PhotoItem>[
+      _PhotoItem(
+        title: 'ООО: Z-отчёт',
+        photoUrl: _report.oooZReportPhotoUrl,
+        referencePhotoUrl: _getReferencePhoto('ooo', 0),
+      ),
+      _PhotoItem(
+        title: 'ООО: Конверт',
+        photoUrl: _report.oooEnvelopePhotoUrl,
+        referencePhotoUrl: _getReferencePhoto('ooo', 1),
+      ),
+      _PhotoItem(
+        title: 'ИП: Z-отчёт',
+        photoUrl: _report.ipZReportPhotoUrl,
+        referencePhotoUrl: _getReferencePhoto('ip', 0),
+      ),
+      _PhotoItem(
+        title: 'ИП: Конверт',
+        photoUrl: _report.ipEnvelopePhotoUrl,
+        referencePhotoUrl: _getReferencePhoto('ip', 1),
+      ),
+    ].where((i) => i.photoUrl != null).toList();
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 4.h),
+          child: Row(
+            children: [
+              Icon(Icons.photo_library_outlined, color: AppColors.gold, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Фотографии',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 6.h),
+        ...items.map((item) => Padding(
+          padding: EdgeInsets.only(bottom: 12.h),
+          child: _buildAnswerPhotoCard(item),
+        )),
+      ],
+    );
+  }
+
+  Widget _buildAnswerPhotoCard(_PhotoItem item) {
+    final hasReference = item.referencePhotoUrl != null && item.referencePhotoUrl!.isNotEmpty;
+
+    final employeePhotoWidget = AppCachedImage(
+      imageUrl: item.photoUrl!,
+      fit: BoxFit.cover,
+      errorWidget: (_, __, ___) => Container(
+        color: AppColors.emeraldDark,
+        child: Icon(Icons.broken_image_outlined, color: Colors.white38, size: 40),
+      ),
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.emeraldDark.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Заголовок вопроса
+          Padding(
+            padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 10.h),
+            child: Text(
+              item.title,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+
+          if (hasReference)
+            // Два фото рядом: слева эталон, справа от сотрудника
+            Padding(
+              padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 14.h),
+              child: Row(
+                children: [
+                  // Эталонное фото
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Эталон',
+                          style: TextStyle(color: Colors.white38, fontSize: 10.sp),
+                        ),
+                        SizedBox(height: 4.h),
+                        GestureDetector(
+                          onTap: () => _openPhotoFullscreen(
+                            context,
+                            AppCachedImage(
+                              imageUrl: item.referencePhotoUrl!,
+                              fit: BoxFit.contain,
+                              errorWidget: (_, __, ___) => Icon(Icons.broken_image_outlined, color: Colors.white38, size: 40),
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8.r),
+                            child: AspectRatio(
+                              aspectRatio: 4 / 3,
+                              child: AppCachedImage(
+                                imageUrl: item.referencePhotoUrl!,
+                                fit: BoxFit.cover,
+                                errorWidget: (_, __, ___) => Container(
+                                  color: AppColors.emeraldDark,
+                                  child: Icon(Icons.broken_image_outlined, color: Colors.white38, size: 32),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 10.w),
+                  // Фото сотрудника
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Фото',
+                          style: TextStyle(color: Colors.white38, fontSize: 10.sp),
+                        ),
+                        SizedBox(height: 4.h),
+                        GestureDetector(
+                          onTap: () => _openPhotoFullscreen(context, employeePhotoWidget),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8.r),
+                            child: AspectRatio(
+                              aspectRatio: 4 / 3,
+                              child: employeePhotoWidget,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            // Нет эталона — фото на всю ширину
+            GestureDetector(
+              onTap: () => _openPhotoFullscreen(context, employeePhotoWidget),
+              child: AspectRatio(
+                aspectRatio: 4 / 3,
+                child: employeePhotoWidget,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTotalCard() {
     return Container(
       padding: EdgeInsets.all(16.w),
@@ -1017,4 +1263,16 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
       ),
     );
   }
+}
+
+class _PhotoItem {
+  final String title;
+  final String? photoUrl;
+  final String? referencePhotoUrl;
+
+  const _PhotoItem({
+    required this.title,
+    required this.photoUrl,
+    this.referencePhotoUrl,
+  });
 }

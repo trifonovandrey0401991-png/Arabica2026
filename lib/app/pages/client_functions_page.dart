@@ -67,11 +67,11 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
                       icon: Icons.coffee_outlined,
                       title: 'Меню',
                       onTap: () async {
-                        final shop = await _showShopDialog(context);
+                        final shop = await _showShopDialog(this.context);
                         if (!mounted || shop == null) return;
                         final cats = await _loadCategories(shop.address);
                         if (!mounted) return;
-                        Navigator.push(context, MaterialPageRoute(
+                        Navigator.push(this.context, MaterialPageRoute(
                           builder: (_) => MenuGroupsPage(groups: cats, selectedShop: shop.address),
                         ));
                       },
@@ -102,18 +102,19 @@ class _ClientFunctionsPageState extends State<ClientFunctionsPage> {
                       title: 'Лояльность',
                       onTap: () async {
                         final enabled = await FirebaseService.areNotificationsEnabled();
-                        if (!enabled && context.mounted) {
-                          final result = await NotificationRequiredDialog.show(context);
+                        if (!enabled && mounted) {
+                          final result = await NotificationRequiredDialog.show(this.context);
                           if (result == true) {
                             await Future.delayed(Duration(milliseconds: 500));
                             final ok = await FirebaseService.areNotificationsEnabled();
-                            if (ok && context.mounted) {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => LoyaltyPage()));
+                            if (ok && mounted) {
+                              Navigator.push(this.context, MaterialPageRoute(builder: (_) => LoyaltyPage()));
                             }
                           }
                           return;
                         }
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => LoyaltyPage()));
+                        if (!mounted) return;
+                        Navigator.push(this.context, MaterialPageRoute(builder: (_) => LoyaltyPage()));
                       },
                     ),
                     _buildRow(

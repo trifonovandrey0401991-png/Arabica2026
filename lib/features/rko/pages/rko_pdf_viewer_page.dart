@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:open_file/open_file.dart';
@@ -29,17 +30,37 @@ class RKOPDFViewerPage extends StatefulWidget {
 class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
   String? _errorMessage;
   bool _isLoading = false;
+  Uint8List? _pdfBytes; // downloaded PDF bytes for authenticated loading
 
   bool get _isDocx => widget.fileName.toLowerCase().endsWith('.docx');
 
   @override
   void initState() {
     super.initState();
-    // Автоматически открываем .docx файл при загрузке страницы
     if (_isDocx) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _openDocx();
-      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openDocx());
+    } else {
+      // PDF: download with auth headers, then show in-memory
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadPdf());
+    }
+  }
+
+  Future<void> _loadPdf() async {
+    if (mounted) setState(() { _isLoading = true; _errorMessage = null; });
+    try {
+      final fileUrl = RKOReportsService.getPDFUrl(widget.fileName);
+      Logger.info('Скачиваем PDF: $fileUrl');
+      final response = await http.get(Uri.parse(fileUrl), headers: ApiConstants.headersWithApiKey);
+      if (response.statusCode != 200) {
+        throw Exception('Сервер ответил ${response.statusCode}');
+      }
+      if (!mounted) return;
+      setState(() { _pdfBytes = response.bodyBytes; });
+    } catch (e) {
+      Logger.error('Ошибка загрузки PDF', e);
+      if (mounted) setState(() { _errorMessage = e.toString(); });
+    } finally {
+      if (mounted) setState(() { _isLoading = false; });
     }
   }
 
@@ -89,8 +110,6 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
 
   @override
   Widget build(BuildContext context) {
-    final fileUrl = RKOReportsService.getPDFUrl(widget.fileName);
-
     // Для .docx файлов открываем через системное приложение
     if (_isDocx) {
       return Scaffold(
@@ -169,60 +188,56 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
       );
     }
 
-    // Для PDF файлов используем встроенный просмотрщик
+    // Для PDF файлов: скачиваем с авторизацией, показываем из памяти
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.fileName.length > 30 
-            ? '${widget.fileName.substring(0, 30)}...' 
+          widget.fileName.length > 30
+            ? '${widget.fileName.substring(0, 30)}...'
             : widget.fileName,
           overflow: TextOverflow.ellipsis,
         ),
         backgroundColor: AppColors.primaryGreen,
       ),
-      body: _errorMessage != null
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  SizedBox(height: 16),
-                  Text(
-                    'Ошибка загрузки PDF',
-                    style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      SizedBox(height: 16),
+                      Text(
+                        'Ошибка загрузки PDF',
+                        style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 32.w),
+                        child: Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 14.sp),
+                        ),
+                      ),
+                      SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: _loadPdf,
+                        child: const Text('Попробовать снова'),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 8),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 32.w),
-                    child: Text(
-                      _errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 14.sp),
-                    ),
-                  ),
-                  SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (mounted) setState(() {
-                        _errorMessage = null;
-                      });
-                    },
-                    child: Text('Попробовать снова'),
-                  ),
-                ],
-              ),
-            )
-          : SfPdfViewer.network(
-              fileUrl,
-              onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
-                Logger.error('Ошибка загрузки PDF: ${details.error}', details.description);
-                if (mounted) {
-                  setState(() {
-                    _errorMessage = details.description;
-                  });
-                }
-              },
-            ),
+                )
+              : _pdfBytes != null
+                  ? SfPdfViewer.memory(
+                      _pdfBytes!,
+                      onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
+                        Logger.error('Ошибка отображения PDF', details.description);
+                        if (mounted) setState(() => _errorMessage = details.description);
+                      },
+                    )
+                  : const SizedBox.shrink(),
     );
   }
 }

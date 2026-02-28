@@ -11,6 +11,7 @@ const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { invalidatePointsSettings } = require('../utils/data_cache');
 const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const db = require('../utils/db');
 
 // Round to 1 decimal place to avoid float errors (e.g. -4.3999999999999995 → -4.4)
 function parsePoints(value) {
@@ -43,8 +44,17 @@ async function ensureDir() {
 }
 
 // Сохранить настройки и инвалидировать кэш
+// Dual-write: JSON first (primary), then DB (for efficiency_calc.js)
 async function saveSettings(filePath, data) {
   await writeJsonFile(filePath, data);
+  // Write to points_settings DB table (key = filename without _settings.json)
+  try {
+    const filename = path.basename(filePath, '.json');
+    const settingsId = filename.replace('_settings', '');
+    await db.upsert('points_settings', { id: settingsId, data });
+  } catch (e) {
+    console.error(`[PointsSettings] DB dual-write error:`, e.message);
+  }
   invalidatePointsSettings();
 }
 

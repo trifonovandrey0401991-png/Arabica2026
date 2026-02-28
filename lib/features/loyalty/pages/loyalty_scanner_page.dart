@@ -3,7 +3,6 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/logger.dart';
 import '../services/loyalty_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -186,94 +185,6 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
     }
   }
 
-  // _redeem removed — points spend via DrinkRedemptionPage (Phase 2)
-  Future<void> _redeemLegacy() async {
-    final qr = _client?.qr;
-    if (qr == null) return;
-
-    if (mounted) setState(() {
-      _isProcessing = true;
-    });
-    try {
-      final client = await LoyaltyService.redeem(qr);
-      if (mounted) {
-        setState(() {
-          _client = client;
-          _errorMessage = null;
-        });
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8.w),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Icon(Icons.check_circle, color: Colors.white),
-                ),
-                SizedBox(width: 12),
-                Text(
-                  'Баллы списаны, напиток выдан!',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            backgroundColor: _successGradient[0],
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-            margin: EdgeInsets.all(16.w),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        String errorMessage = 'Ошибка при списании баллов';
-        final errorString = e.toString().toLowerCase();
-
-        if (errorString.contains('failed to fetch') ||
-            errorString.contains('connection') ||
-            errorString.contains('network')) {
-          errorMessage = 'Ошибка подключения к серверу';
-        } else if (errorString.contains('timeout')) {
-          errorMessage = 'Превышено время ожидания';
-        } else if (errorString.contains('недостаточно') ||
-                   errorString.contains('not enough')) {
-          errorMessage = 'Недостаточно баллов для списания';
-        }
-
-        if (mounted) setState(() {
-          _errorMessage = errorMessage;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error_outline, color: Colors.white),
-                SizedBox(width: 12),
-                Text(errorMessage),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-            margin: EdgeInsets.all(16.w),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
-    }
-  }
-
   void _resetScan() {
     if (mounted) setState(() {
       _client = null;
@@ -390,11 +301,11 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
             onPressed: _showManualQrDialog,
           ),
           ValueListenableBuilder(
-            valueListenable: _controller.torchState,
-            builder: (context, state, child) {
+            valueListenable: _controller,
+            builder: (context, value, child) {
               return IconButton(
                 icon: Icon(
-                  state == TorchState.on ? Icons.flash_on : Icons.flash_off,
+                  value.torchState == TorchState.on ? Icons.flash_on : Icons.flash_off,
                 ),
                 onPressed: () => _controller.toggleTorch(),
               );
@@ -519,7 +430,8 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                       borderRadius: BorderRadius.circular(20.r),
                     ),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisSize: MainAxisSize.max,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           Icons.qr_code_scanner,
@@ -527,11 +439,14 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
                           size: 20,
                         ),
                         SizedBox(width: 8),
-                        Text(
-                          'Наведите на QR-код клиента',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
-                            fontSize: 14.sp,
+                        Flexible(
+                          child: Text(
+                            'Наведите на QR-код клиента',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 14.sp,
+                            ),
                           ),
                         ),
                       ],
@@ -1028,54 +943,6 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
     );
   }
 
-  Widget _buildInfoChip({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(14.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 18, color: color),
-              SizedBox(width: 6),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12.sp,
-              color: Colors.grey[500],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 extension on List<Barcode> {

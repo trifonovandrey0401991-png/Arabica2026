@@ -148,7 +148,7 @@ const defaultEnvelopeQuestions = [
       console.log('Инициализация дефолтных вопросов конверта...');
       for (const q of defaultEnvelopeQuestions) {
         const filePath = path.join(ENVELOPE_QUESTIONS_DIR, `${q.id}.json`);
-        await fsp.writeFile(filePath, JSON.stringify({ ...q, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, null, 2));
+        await writeJsonFile(filePath, { ...q, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
       }
       console.log('✅ Дефолтные вопросы конверта созданы');
     }
@@ -255,7 +255,7 @@ function setupEnvelopeAPI(app) {
         updatedAt: new Date().toISOString(),
       };
 
-      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await writeJsonFile(filePath, question);
       console.log('Вопрос конверта создан:', filePath);
 
       res.json({ success: true, question });
@@ -295,7 +295,7 @@ function setupEnvelopeAPI(app) {
       question.updatedAt = new Date().toISOString();
       if (!question.createdAt) question.createdAt = new Date().toISOString();
 
-      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await writeJsonFile(filePath, question);
       console.log('Вопрос конверта обновлен:', filePath);
 
       res.json({ success: true, question });

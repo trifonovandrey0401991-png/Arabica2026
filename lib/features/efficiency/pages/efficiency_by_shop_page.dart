@@ -152,18 +152,23 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
       );
     }
 
+    // Sort shops: best (highest totalPoints) first
+    final sorted = List<EfficiencySummary>.from(_data!.byShop)
+      ..sort((a, b) => b.totalPoints.compareTo(a.totalPoints));
+    final totalShops = sorted.length;
+
     return RefreshIndicator(
       color: AppColors.gold,
       backgroundColor: AppColors.emerald,
       onRefresh: () => _loadData(forceRefresh: true),
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
-        itemCount: _data!.byShop.length + 1,
+        itemCount: sorted.length + 1,
         itemBuilder: (context, index) {
           if (index == 0) {
             return _buildSummaryCard();
           }
-          return _buildShopCard(_data!.byShop[index - 1]);
+          return _buildShopCard(sorted[index - 1], position: index, total: totalShops);
         },
       ),
     );
@@ -173,8 +178,16 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
     return EfficiencySummaryCard(summaries: _data!.byShop);
   }
 
-  Widget _buildShopCard(EfficiencySummary summary) {
+  Widget _buildShopCard(EfficiencySummary summary, {required int position, required int total}) {
     final isPositive = summary.totalPoints >= 0;
+    // Top-3 get special colors
+    final posColor = position == 1
+        ? AppColors.gold
+        : position == 2
+            ? Colors.grey.shade300
+            : position == 3
+                ? Colors.orange.shade400
+                : Colors.white.withOpacity(0.5);
 
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
@@ -205,6 +218,27 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
               children: [
                 Row(
                   children: [
+                    // Position badge
+                    Container(
+                      width: 32.w,
+                      height: 32.w,
+                      margin: EdgeInsets.only(right: 10.w),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: posColor.withOpacity(0.15),
+                        border: Border.all(color: posColor.withOpacity(0.5), width: 1.5),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$position',
+                          style: TextStyle(
+                            color: posColor,
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
                     Expanded(
                       child: Text(
                         summary.entityName,
@@ -255,6 +289,23 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
                       ),
                     ),
                     Spacer(),
+                    // Position label
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(color: posColor.withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        '$position/$total',
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          color: posColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
                     Text(
                       '${summary.recordsCount} записей',
                       style: TextStyle(

@@ -29,6 +29,7 @@ import '../../features/job_application/pages/job_applications_list_page.dart';
 import '../../features/referrals/pages/referrals_report_page.dart';
 import '../../features/fortune_wheel/pages/wheel_reports_page.dart';
 import '../../features/loyalty/pages/client_wheel_prizes_report_page.dart';
+import '../../features/loyalty/pages/free_drinks_report_page.dart';
 import '../../features/orders/pages/orders_report_page.dart';
 import '../../features/ai_training/pages/ai_training_page.dart';
 
@@ -75,6 +76,7 @@ import '../../features/rating/services/rating_service.dart';
 import '../../features/rating/models/employee_rating_model.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/efficiency/services/efficiency_data_service.dart';
+import '../../features/efficiency/services/manager_efficiency_service.dart';
 
 /// Страница-сетка для управляющего: 8 отчётов + 7 работа с сотрудниками + 3 эффективность + 7 работа с клиентами = 25
 class ManagerGridPage extends StatefulWidget {
@@ -120,6 +122,9 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
   // Шапка: рейтинг и эффективность
   EmployeeRating? _employeeRating;
   double? _efficiencyPoints;
+  // Для управляющих: личная % и магазины %
+  double? _managerPersonalPct;
+  double? _managerShopPct;
 
   @override
   void initState() {
@@ -175,17 +180,38 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
         Logger.warning('Ошибка загрузки рейтинга: $e');
       }
 
-      // Эффективность
+      // Эффективность: для управляющих — личная% и магазины%, для остальных — баллы
       try {
-        final employeeName = await EmployeesPage.getCurrentEmployeeName();
-        if (employeeName != null && employeeName.isNotEmpty) {
-          final now = DateTime.now();
-          final data = await EfficiencyDataService.loadMonthData(now.year, now.month);
-          final summary = data.byEmployee.firstWhere(
-            (s) => s.entityName == employeeName,
-            orElse: () => throw StateError('Not found'),
-          );
-          if (mounted) setState(() => _efficiencyPoints = summary.totalPoints);
+        final role = await UserRoleService.loadUserRole();
+        final isManager = role?.role == UserRole.admin;
+
+        if (isManager) {
+          final prefs = await SharedPreferences.getInstance();
+          final phone = prefs.getString('user_phone') ?? '';
+          if (phone.isNotEmpty) {
+            final month = ManagerEfficiencyService.getCurrentMonth();
+            final data = await ManagerEfficiencyService.getManagerEfficiency(
+              phone: phone,
+              month: month,
+            );
+            if (data != null && mounted) {
+              setState(() {
+                _managerPersonalPct = data.reviewEfficiencyPercentage;
+                _managerShopPct = data.shopEfficiencyPercentage;
+              });
+            }
+          }
+        } else {
+          final employeeName = await EmployeesPage.getCurrentEmployeeName();
+          if (employeeName != null && employeeName.isNotEmpty) {
+            final now = DateTime.now();
+            final data = await EfficiencyDataService.loadMonthData(now.year, now.month);
+            final summary = data.byEmployee.firstWhere(
+              (s) => s.entityName == employeeName,
+              orElse: () => throw StateError('Not found'),
+            );
+            if (mounted) setState(() => _efficiencyPoints = summary.totalPoints);
+          }
         }
       } catch (e) {
         Logger.warning('Ошибка загрузки эффективности: $e');
@@ -270,7 +296,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
     try {
       final role = await UserRoleService.loadUserRole();
       if (mounted && role != null) setState(() => _userRole = role);
-    } catch (_) {}
+    } catch (e) { Logger.error('ManagerGrid: Failed to load user role: $e'); }
 
     // Запускаем все загрузки параллельно
     await Future.wait([
@@ -368,8 +394,12 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
         timeout: ApiConstants.longTimeout,
       );
       if (result != null && result['success'] == true) {
-        final withdrawals = result['withdrawals'] as List<dynamic>? ?? [];
-        final count = withdrawals.where((w) => w['confirmed'] != true).length;
+        final all = result['withdrawals'] as List<dynamic>? ?? [];
+        final filtered = await MultitenancyFilterService.filterByShopAddress(
+          all.map((w) => w as Map<String, dynamic>).toList(),
+          (w) => w['shopAddress']?.toString() ?? '',
+        );
+        final count = filtered.where((w) => w['confirmed'] != true).length;
         if (mounted) setState(() => _withdrawalsCount = count);
       }
     } catch (e) { Logger.error('Ошибка загрузки счётчика выемок', e); }
@@ -713,16 +743,25 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
                   ),
                 ),
 
-                // Слева — бейджи рейтинга и эффективности
-                if (showRating || showEfficiency)
+                // Слева — для управляющих: личная% и магазины%; для сотрудников: рейтинг + баллы
+                if (_managerPersonalPct != null || _managerShopPct != null || showRating || showEfficiency)
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (showRating) _buildRatingBadge(),
-                        if (showRating && showEfficiency) SizedBox(width: 4),
-                        if (showEfficiency) _buildEfficiencyBadge(),
+                        if (_managerPersonalPct != null || _managerShopPct != null) ...[
+                          if (_managerPersonalPct != null)
+                            _buildManagerEffBadge('Личная', _managerPersonalPct!),
+                          if (_managerPersonalPct != null && _managerShopPct != null)
+                            SizedBox(width: 4),
+                          if (_managerShopPct != null)
+                            _buildManagerEffBadge('Магазины', _managerShopPct!),
+                        ] else ...[
+                          if (showRating) _buildRatingBadge(),
+                          if (showRating && showEfficiency) SizedBox(width: 4),
+                          if (showEfficiency) _buildEfficiencyBadge(),
+                        ],
                       ],
                     ),
                   ),
@@ -867,6 +906,43 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
               color: isPositive ? AppColors.successLight : Colors.orange.shade300,
               fontSize: 11.sp,
               fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Бейдж эффективности управляющей (Личная% / Магазины%)
+  Widget _buildManagerEffBadge(String label, double pct) {
+    final isGood = pct >= 50;
+    final badgeColor = isGood ? AppColors.successLight : Colors.orange.shade300;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: badgeColor.withOpacity(0.5)),
+        color: badgeColor.withOpacity(0.12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: badgeColor.withOpacity(0.75),
+              fontSize: 8.sp,
+              fontWeight: FontWeight.w500,
+              height: 1.1,
+            ),
+          ),
+          Text(
+            '${pct.toStringAsFixed(0)}%',
+            style: TextStyle(
+              color: badgeColor,
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w700,
+              height: 1.1,
             ),
           ),
         ],
@@ -1331,6 +1407,13 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
             'icon': Icons.groups_outlined,
             'label': 'Клиенты',
             'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientsManagementPage())),
+            'color': null,
+            'badge': null,
+          },
+          {
+            'icon': Icons.local_cafe_outlined,
+            'label': 'Бонусы клиентов',
+            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FreeDrinksReportPage())),
             'color': null,
             'badge': null,
           },

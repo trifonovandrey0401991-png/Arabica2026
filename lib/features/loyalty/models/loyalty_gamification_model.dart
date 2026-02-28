@@ -185,19 +185,26 @@ class WheelSector {
 /// Настройки колеса удачи
 class WheelSettings {
   final bool enabled;
-  final int freeDrinksPerSpin;
+  final int freeDrinksPerSpin; // Legacy field, kept for backward compat
+  final int pointsPerSpin;     // New: points needed per spin (0 = use freeDrinksPerSpin * 10)
   final List<WheelSector> sectors;
 
   const WheelSettings({
     required this.enabled,
     required this.freeDrinksPerSpin,
+    this.pointsPerSpin = 0,
     required this.sectors,
   });
+
+  /// Effective points per spin (new field or legacy fallback)
+  int get effectivePointsPerSpin =>
+      pointsPerSpin > 0 ? pointsPerSpin : freeDrinksPerSpin * 10;
 
   factory WheelSettings.fromJson(Map<String, dynamic> json) {
     return WheelSettings(
       enabled: json['enabled'] ?? true,
       freeDrinksPerSpin: json['freeDrinksPerSpin'] ?? 5,
+      pointsPerSpin: json['pointsPerSpin'] ?? 0,
       sectors: (json['sectors'] as List<dynamic>?)
           ?.map((s) => WheelSector.fromJson(s))
           .toList() ?? [],
@@ -207,17 +214,20 @@ class WheelSettings {
   Map<String, dynamic> toJson() => {
     'enabled': enabled,
     'freeDrinksPerSpin': freeDrinksPerSpin,
+    'pointsPerSpin': pointsPerSpin,
     'sectors': sectors.map((s) => s.toJson()).toList(),
   };
 
   WheelSettings copyWith({
     bool? enabled,
     int? freeDrinksPerSpin,
+    int? pointsPerSpin,
     List<WheelSector>? sectors,
   }) {
     return WheelSettings(
       enabled: enabled ?? this.enabled,
       freeDrinksPerSpin: freeDrinksPerSpin ?? this.freeDrinksPerSpin,
+      pointsPerSpin: pointsPerSpin ?? this.pointsPerSpin,
       sectors: sectors ?? this.sectors,
     );
   }
@@ -340,8 +350,8 @@ class ClientGamificationData {
       earnedBadges: (json['earnedBadges'] as List<dynamic>?)?.cast<int>() ?? [1],
       wheelSpinsAvailable: json['wheelSpinsAvailable'] ?? 0,
       wheelSpinsUsed: json['wheelSpinsUsed'] ?? 0,
-      drinksToNextSpin: json['drinksToNextSpin'] ?? settings.wheel.freeDrinksPerSpin,
-      pointsToNextSpin: json['pointsToNextSpin'] ?? (settings.wheel.freeDrinksPerSpin * 10),
+      drinksToNextSpin: json['drinksToNextSpin'] ?? settings.wheel.effectivePointsPerSpin,
+      pointsToNextSpin: json['pointsToNextSpin'] ?? settings.wheel.effectivePointsPerSpin,
       nextLevel: json['nextLevel'] != null
           ? LoyaltyLevel.fromJson(json['nextLevel'])
           : null,

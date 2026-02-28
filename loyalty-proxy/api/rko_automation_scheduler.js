@@ -20,6 +20,7 @@ const { fileExists, loadJsonFile } = require('../utils/file_helpers');
 const { getMoscowTime, getMoscowDateString, MOSCOW_OFFSET_HOURS } = require('../utils/moscow_time');
 const BaseReportScheduler = require('../utils/base_report_scheduler');
 const db = require('../utils/db');
+const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_RKO === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -123,7 +124,7 @@ class RkoScheduler extends BaseReportScheduler {
     }
 
     const now = new Date();
-    const reportId = `pending_rko_${shiftType}_${shop.address.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
+    const reportId = generateId(`pending_rko_${shiftType}_${shop.address.replace(/[^a-zA-Z0-9]/g, '_')}`);
     const filePath = path.join(this.RKO_PENDING_DIR, `${reportId}.json`);
 
     const report = {

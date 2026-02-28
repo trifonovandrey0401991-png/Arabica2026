@@ -35,8 +35,6 @@ class _MessengerProfilePageState extends State<MessengerProfilePage> {
   bool _isSaving = false;
   String? _avatarUrl;
   File? _newAvatarFile;
-  String? _originalName;
-
   @override
   void initState() {
     super.initState();
@@ -57,7 +55,6 @@ class _MessengerProfilePageState extends State<MessengerProfilePage> {
           if (profile != null) {
             _nameController.text = profile['display_name'] as String? ?? '';
             _avatarUrl = profile['avatar_url'] as String?;
-            _originalName = profile['display_name'] as String?;
           }
           _isLoading = false;
         });
@@ -148,6 +145,7 @@ class _MessengerProfilePageState extends State<MessengerProfilePage> {
           await prefs.setString('user_name', displayName);
         }
 
+        if (!mounted) return;
         Navigator.pop(
           context,
           ProfileResult(

@@ -1,3 +1,4 @@
+import 'dart:async';
 // Условный импорт Firebase Messaging: на веб - stub, на мобильных - реальный пакет
 import 'package:firebase_messaging/firebase_messaging.dart' if (dart.library.html) 'firebase_service_stub.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -27,8 +28,11 @@ import '../../features/tasks/pages/task_reports_page.dart';
 import '../../features/ai_training/pages/pending_codes_page.dart';
 import '../../features/tests/pages/test_notifications_page.dart';
 import '../../app/pages/reports_page.dart';
+import '../../features/efficiency/pages/my_efficiency_page.dart';
 import '../../features/employee_chat/pages/employee_chats_list_page.dart';
 import '../../features/employees/services/user_role_service.dart';
+import '../../features/messenger/services/messenger_service.dart';
+import '../../features/messenger/pages/messenger_chat_page.dart';
 import '../constants/api_constants.dart';
 import '../utils/logger.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
@@ -61,7 +65,14 @@ class FirebaseService {
       FlutterLocalNotificationsPlugin();
 
   static bool _initialized = false;
-  static BuildContext? _globalContext;
+
+  /// Global navigator key — never goes stale after navigation (replaces _globalContext)
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  // StreamSubscriptions stored for proper cancellation (Task 31: prevent memory leak)
+  static StreamSubscription<RemoteMessage>? _onMessageSub;
+  static StreamSubscription<RemoteMessage>? _onMessageOpenedAppSub;
+  static StreamSubscription<String>? _onTokenRefreshSub;
 
   /// Callback для мгновенного обновления бейджа заказов при получении push
   static VoidCallback? onOrderPushReceived;
@@ -72,7 +83,7 @@ class FirebaseService {
   /// Флаг для предотвращения повторного показа диалога блокировки
   static bool _verificationRevokedDialogShown = false;
 
-  /// Буфер для уведомления, пришедшего до установки _globalContext (BUG-01: cold start)
+  /// Буфер для уведомления, пришедшего до готовности navigatorKey (BUG-01: cold start)
   static Map<String, dynamic>? _pendingNotificationData;
   
   /// Получить экземпляр FirebaseMessaging (ленивая инициализация)
@@ -235,30 +246,13 @@ class FirebaseService {
       Logger.debug('Ошибка регистрации background handler: $e');
     }
 
-    Logger.debug('Начало инициализации локальных уведомлений...');
-    // Инициализация локальных уведомлений
-    final androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    final iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-
-    final initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-
-    try {
-      await _localNotifications.initialize(
-        initSettings,
-        onDidReceiveNotificationResponse: _onNotificationTapped,
-      );
-      Logger.debug('Локальные уведомления инициализированы');
-    } catch (e) {
-      Logger.debug('Ошибка инициализации локальных уведомлений: $e');
-      // Продолжаем работу даже если локальные уведомления не инициализированы
-    }
+    // NotificationService.initialize() is always called first from main.dart and
+    // registers the authoritative onDidReceiveNotificationResponse callback.
+    // Calling _localNotifications.initialize() here a second time would overwrite
+    // that callback with a less complete one (Task 32 fix: no double initialization).
+    // _localNotifications.show() works without a second initialize() because the
+    // native plugin is already initialized by NotificationService.
+    Logger.debug('Локальные уведомления уже инициализированы через NotificationService');
 
     // Получаем FCM токен с повторными попытками и обработкой ошибок
     Logger.debug('Начало получения FCM токена...');
@@ -274,7 +268,8 @@ class FirebaseService {
 
     // Обработка уведомлений в foreground (когда приложение открыто)
     try {
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      _onMessageSub?.cancel();
+      _onMessageSub = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         Logger.debug('Получено сообщение в foreground: ${message.notification?.title}');
 
         // Проверяем тип уведомления - если верификация отозвана, сразу показываем диалог
@@ -298,7 +293,8 @@ class FirebaseService {
 
     // Обработка нажатия на уведомление (когда приложение в фоне)
     try {
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      _onMessageOpenedAppSub?.cancel();
+      _onMessageOpenedAppSub = FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
         Logger.debug('Уведомление открыто из фона');
         _handleNotificationTap(message);
       });
@@ -320,7 +316,8 @@ class FirebaseService {
 
     // Обновление токена при его изменении
     try {
-      messaging.onTokenRefresh.listen((newToken) {
+      _onTokenRefreshSub?.cancel();
+      _onTokenRefreshSub = messaging.onTokenRefresh.listen((newToken) {
         Logger.debug('FCM Token обновлен');
         _saveTokenToServer(newToken);
       });
@@ -388,9 +385,9 @@ class FirebaseService {
     return token;
   }
 
-  /// Установить глобальный контекст для навигации
+  /// Установить глобальный контекст для навигации (сохранено для обратной совместимости)
   static void setGlobalContext(BuildContext context) {
-    _globalContext = context;
+    // Navigator is now resolved via navigatorKey — context argument no longer stored
     // BUG-01: обработать буферизованное уведомление из cold start
     if (_pendingNotificationData != null) {
       final data = _pendingNotificationData!;
@@ -695,34 +692,22 @@ class FirebaseService {
     );
   }
 
-  /// Обработка нажатия на уведомление
-  static void _onNotificationTapped(NotificationResponse response) {
-    if (response.payload != null && _globalContext != null) {
-      try {
-        final data = jsonDecode(response.payload!) as Map<String, dynamic>;
-        _handleNotificationNavigation(data);
-      } catch (e) {
-        Logger.error('Ошибка обработки уведомления', e);
-      }
-    }
-  }
-
   /// Обработка навигации при открытии уведомления
   static void _handleNotificationTap(RemoteMessage message) {
-    if (_globalContext != null) {
+    if (navigatorKey.currentState != null) {
       _handleNotificationNavigation(message.data);
     }
   }
 
   /// Показать блокирующий диалог при отзыве верификации
   static void _showVerificationRevokedDialog() {
-    if (_globalContext == null || _verificationRevokedDialogShown) return;
+    if (navigatorKey.currentContext == null || _verificationRevokedDialogShown) return;
 
     _verificationRevokedDialogShown = true;
     Logger.debug('Показываем диалог блокировки - верификация отозвана');
 
     showDialog(
-      context: _globalContext!,
+      context: navigatorKey.currentContext!,
       barrierDismissible: false,
       builder: (context) => PopScope(
         canPop: false,
@@ -778,10 +763,10 @@ class FirebaseService {
 
   /// Навигация к диалогу при открытии уведомления
   static void _handleNotificationNavigation(Map<String, dynamic> data) async {
-    if (_globalContext == null) {
-      // BUG-01: сохраняем данные до появления контекста
+    if (navigatorKey.currentState == null) {
+      // BUG-01: сохраняем данные до готовности navigatorKey
       _pendingNotificationData = Map<String, dynamic>.from(data);
-      Logger.debug('Контекст ещё не готов, уведомление сохранено в буфер');
+      Logger.debug('Navigator ещё не готов, уведомление сохранено в буфер');
       return;
     }
 
@@ -800,14 +785,14 @@ class FirebaseService {
 
       if ((type == 'new_order' || type == 'order_unconfirmed') && isStaff) {
         // Сотрудник/админ → страница управления заказами
-        Navigator.of(_globalContext!).push(
+        navigatorKey.currentState!.push(
           MaterialPageRoute(
             builder: (context) => EmployeeOrdersPage(),
           ),
         );
       } else {
         // Клиент (или статус заказа) → страница "Мои заказы"
-        Navigator.of(_globalContext!).push(
+        navigatorKey.currentState!.push(
           MaterialPageRoute(
             builder: (context) => OrdersPage(),
           ),
@@ -823,13 +808,13 @@ class FirebaseService {
       if (questionId != null) {
         // Для сетевых вопросов → страница управления (выбор магазина)
         if (shopAddress == 'Вся сеть' || shopAddress == null || shopAddress.isEmpty) {
-          Navigator.of(_globalContext!).push(
+          navigatorKey.currentState!.push(
             MaterialPageRoute(
               builder: (context) => const ProductQuestionsManagementPage(),
             ),
           );
         } else {
-          Navigator.of(_globalContext!).push(
+          navigatorKey.currentState!.push(
             MaterialPageRoute(
               builder: (context) => ProductQuestionAnswerPage(
                 questionId: questionId,
@@ -849,13 +834,13 @@ class FirebaseService {
       if (questionId != null) {
         // Для сетевых вопросов → страница управления (выбор магазина)
         if (shopAddress == 'Вся сеть' || shopAddress == null || shopAddress.isEmpty) {
-          Navigator.of(_globalContext!).push(
+          navigatorKey.currentState!.push(
             MaterialPageRoute(
               builder: (context) => const ProductQuestionsManagementPage(),
             ),
           );
         } else {
-          Navigator.of(_globalContext!).push(
+          navigatorKey.currentState!.push(
             MaterialPageRoute(
               builder: (context) => ProductQuestionAnswerPage(
                 questionId: questionId,
@@ -873,17 +858,17 @@ class FirebaseService {
     if (type == 'product_question_answered' || type == 'product_answer') {
       final questionId = data['questionId'] as String?;
 
-      if (questionId != null && questionId.isNotEmpty && _globalContext != null) {
-        Navigator.of(_globalContext!).push(
+      if (questionId != null && questionId.isNotEmpty && navigatorKey.currentState != null) {
+        navigatorKey.currentState!.push(
           MaterialPageRoute(
             builder: (context) => ProductQuestionDialogPage(
               questionId: questionId,
             ),
           ),
         );
-      } else if (_globalContext != null) {
+      } else if (navigatorKey.currentState != null) {
         // Fallback: общий клиентский чат
-        Navigator.of(_globalContext!).push(
+        navigatorKey.currentState!.push(
           MaterialPageRoute(
             builder: (context) => const ProductQuestionClientDialogPage(),
           ),
@@ -898,7 +883,7 @@ class FirebaseService {
       final dialogId = data['dialogId'] as String?;
       final shopAddress = data['shopAddress'] as String?;
       if (dialogId != null && shopAddress != null) {
-        Navigator.of(_globalContext!).push(
+        navigatorKey.currentState!.push(
           MaterialPageRoute(
             builder: (context) => ProductQuestionPersonalDialogPage(
               dialogId: dialogId,
@@ -915,7 +900,7 @@ class FirebaseService {
       final dialogId = data['dialogId'] as String?;
       final shopAddress = data['shopAddress'] as String?;
       if (dialogId != null && shopAddress != null) {
-        Navigator.of(_globalContext!).push(
+        navigatorKey.currentState!.push(
           MaterialPageRoute(
             builder: (context) => ProductQuestionEmployeeDialogPage(
               dialogId: dialogId,
@@ -932,7 +917,7 @@ class FirebaseService {
     if (type == 'new_task' || type == 'new_recurring_task' ||
         type == 'task_expired' || type == 'recurring_task_expired' ||
         type == 'task_reminder') {
-      Navigator.of(_globalContext!).push(
+      navigatorKey.currentState!.push(
         MaterialPageRoute(
           builder: (context) => MyTasksPage(),
         ),
@@ -942,7 +927,7 @@ class FirebaseService {
 
     // Обработка уведомлений о просроченных задачах для админа → отчёты по задачам
     if (type == 'task_expired_admin' || type == 'recurring_task_expired_admin') {
-      Navigator.of(_globalContext!).push(
+      navigatorKey.currentState!.push(
         MaterialPageRoute(
           builder: (context) => const TaskReportsPage(),
         ),
@@ -952,7 +937,7 @@ class FirebaseService {
 
     // Обработка уведомлений чата сотрудников
     if (type == 'employee_chat') {
-      Navigator.of(_globalContext!).push(
+      navigatorKey.currentState!.push(
         MaterialPageRoute(
           builder: (context) => EmployeeChatsListPage(),
         ),
@@ -962,7 +947,7 @@ class FirebaseService {
 
     // Обработка уведомлений от руководства (рассылка и личные сообщения)
     if (type == 'management_message') {
-      Navigator.of(_globalContext!).push(
+      navigatorKey.currentState!.push(
         MaterialPageRoute(
           builder: (context) => MyDialogsPage(),
         ),
@@ -976,7 +961,7 @@ class FirebaseService {
 
       // Для админа - переход на страницу графика работы (Note: можно добавить initialTab для открытия вкладки "Заявки")
       if (action == 'admin_review') {
-        Navigator.of(_globalContext!).push(
+        navigatorKey.currentState!.push(
           MaterialPageRoute(
             builder: (context) => WorkSchedulePage(),
           ),
@@ -986,7 +971,7 @@ class FirebaseService {
 
       // Для сотрудника - переход к мой график (Note: можно добавить initialTab для открытия вкладки "Заявки")
       if (action == 'view_request') {
-        Navigator.of(_globalContext!).push(
+        navigatorKey.currentState!.push(
           MaterialPageRoute(
             builder: (context) => MySchedulePage(),
           ),
@@ -996,7 +981,7 @@ class FirebaseService {
 
       // При одобрении - переход к графику
       if (action == 'view_schedule') {
-        Navigator.of(_globalContext!).push(
+        navigatorKey.currentState!.push(
           MaterialPageRoute(
             builder: (context) => MySchedulePage(),
           ),
@@ -1007,7 +992,7 @@ class FirebaseService {
 
     // Обработка уведомления об обновлении графика → мой график
     if (type == 'schedule_updated') {
-      Navigator.of(_globalContext!).push(
+      navigatorKey.currentState!.push(
         MaterialPageRoute(
           builder: (context) => MySchedulePage(),
         ),
@@ -1017,7 +1002,7 @@ class FirebaseService {
 
     // Обработка уведомления о назначении теста → страница тестов
     if (type == 'test_assigned') {
-      Navigator.of(_globalContext!).push(
+      navigatorKey.currentState!.push(
         MaterialPageRoute(
           builder: (context) => const TestNotificationsPage(),
         ),
@@ -1027,7 +1012,7 @@ class FirebaseService {
 
     // Обработка уведомления о новом отчёте (для админов) → страница отчётов
     if (type == 'report_notification') {
-      Navigator.of(_globalContext!).push(
+      navigatorKey.currentState!.push(
         MaterialPageRoute(
           builder: (context) => const ReportsPage(),
         ),
@@ -1037,7 +1022,7 @@ class FirebaseService {
 
     // Обработка уведомления о новых кодах (для админов) → страница ожидающих кодов
     if (type == 'new_pending_codes') {
-      Navigator.of(_globalContext!).push(
+      navigatorKey.currentState!.push(
         MaterialPageRoute(
           builder: (context) => const PendingCodesPage(),
         ),
@@ -1045,11 +1030,30 @@ class FirebaseService {
       return;
     }
 
+    // Обработка уведомлений о бонусах и штрафах → Моя эффективность
+    if (type == 'bonus_penalty') {
+      navigatorKey.currentState!.push(
+        MaterialPageRoute(
+          builder: (context) => const MyEfficiencyPage(),
+        ),
+      );
+      return;
+    }
+
+    // Обработка уведомлений мессенджера → открываем конкретный чат
+    if (type == 'messenger_message') {
+      final conversationId = data['conversationId'] as String?;
+      if (conversationId != null && conversationId.isNotEmpty) {
+        _openMessengerConversation(conversationId);
+      }
+      return;
+    }
+
     // Обработка уведомлений об отзывах (старая логика)
     final reviewId = data['reviewId'] as String?;
     if (reviewId != null) {
       // Навигация к диалогу
-      Navigator.of(_globalContext!).push(
+      navigatorKey.currentState!.push(
         MaterialPageRoute(
           builder: (context) => FutureBuilder<Review?>(
             future: ReviewService.getReviewById(reviewId),
@@ -1074,6 +1078,28 @@ class FirebaseService {
         ),
       );
     }
+  }
+
+  /// Открыть конкретный чат мессенджера по conversationId
+  static Future<void> _openMessengerConversation(String conversationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final myPhone = prefs.getString('user_phone') ?? '';
+    final myName = prefs.getString('employee_name') ?? prefs.getString('user_name') ?? '';
+    if (myPhone.isEmpty) return;
+
+    final conversation = await MessengerService.getConversation(conversationId);
+    if (conversation == null) return;
+
+    if (navigatorKey.currentState == null) return;
+    navigatorKey.currentState!.push(
+      MaterialPageRoute(
+        builder: (_) => MessengerChatPage(
+          conversation: conversation,
+          userPhone: myPhone,
+          userName: myName,
+        ),
+      ),
+    );
   }
 }
 

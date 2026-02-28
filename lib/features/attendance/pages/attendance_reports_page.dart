@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/cache_manager.dart';
 import '../models/shop_attendance_summary.dart';
@@ -30,6 +31,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
   // Состояние UI
   final Set<String> _expandedShops = {};
   String _searchQuery = '';
+  Timer? _searchDebounce;
 
 
   @override
@@ -43,6 +45,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _tabController.dispose();
     super.dispose();
   }
@@ -287,7 +290,12 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage>
             border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: TextField(
-            onChanged: (value) => setState(() => _searchQuery = value),
+            onChanged: (value) {
+              _searchDebounce?.cancel();
+              _searchDebounce = Timer(Duration(milliseconds: 300), () {
+                if (mounted) setState(() => _searchQuery = value);
+              });
+            },
             style: TextStyle(color: Colors.white),
             cursorColor: AppColors.gold,
             decoration: InputDecoration(

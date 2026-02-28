@@ -11,6 +11,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { fileExists } = require('../utils/file_helpers');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
+const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_RECOUNT === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -142,7 +143,7 @@ module.exports = function setupRecountPointsAPI(app) {
         // Если нет записи - создаём с дефолтными баллами
         const settings = await getSettings();
         const newPoints = {
-          id: `rp_${Date.now()}`,
+          id: generateId('rp'),
           employeeId: normalizedPhone,
           employeeName: await getEmployeeNameByPhone(normalizedPhone) || '',
           phone: normalizedPhone,
@@ -195,7 +196,7 @@ module.exports = function setupRecountPointsAPI(app) {
       const filePath = path.join(RECOUNT_POINTS_DIR, `${normalizedPhone}.json`);
 
       let data = {
-        id: `rp_${Date.now()}`,
+        id: generateId('rp'),
         employeeId: normalizedPhone,
         employeeName: employeeName || '',
         phone: normalizedPhone,
@@ -275,7 +276,7 @@ module.exports = function setupRecountPointsAPI(app) {
           if (await fileExists(pointsFile)) continue;
 
           const pointsData = {
-            id: `rp_${Date.now()}_${count}`,
+            id: generateId('rp'),
             employeeId: phone,
             employeeName: employee.name || '',
             phone: phone,

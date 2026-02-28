@@ -2287,19 +2287,6 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     );
   }
 
-  /// Комбинированная точность для сортировки (учитывает и display и counting)
-  int? _getCombinedAccuracy(CigaretteProduct product) {
-    final displayAcc = product.displayAccuracy;
-    final countingAcc = product.countingAccuracy;
-
-    if (displayAcc == null && countingAcc == null) return null;
-    if (displayAcc == null) return countingAcc;
-    if (countingAcc == null) return displayAcc;
-
-    // Возвращаем среднее если есть оба
-    return ((displayAcc + countingAcc) / 2).round();
-  }
-
   /// Бейдж с процентом точности ИИ
   /// Цвет зависит от точности: зелёный (>=70%), оранжевый (40-69%), красный (<40%)
   Widget _buildAccuracyBadge(int accuracy, int attempts) {
@@ -3080,7 +3067,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   void _confirmDeleteCountingSample(TrainingSample sample, CigaretteProduct product, StateSetter setDialogState) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.darkNavy,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Row(
@@ -3096,12 +3083,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogCtx),
             child: Text('Отмена'),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context); // Закрыть диалог подтверждения
+              Navigator.pop(dialogCtx); // Закрыть диалог подтверждения
               final success = await CigaretteVisionService.deleteCountingSample(sample.id);
               if (success && mounted) {
                 setDialogState(() {});
@@ -3596,6 +3583,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       final shopAddress = prefs.getString('selectedShopAddress');
 
       // Открываем экран разметки
+      if (!mounted) return;
       final result = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
@@ -3993,7 +3981,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               targetProductId: target.id,
             );
 
-            if (mounted) {
+            if (mounted && dialogCtx.mounted) {
               if (success) {
                 Navigator.pop(dialogCtx);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -4728,6 +4716,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         debugPrint('[DELETE] Updated photos: ${updatedProduct.trainingPhotosCount}');
         _showPhotosManagementDialog(updatedProduct);
       } else {
+        if (!mounted) return;
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

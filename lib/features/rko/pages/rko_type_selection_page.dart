@@ -81,6 +81,7 @@ class _RKOTypeSelectionPageState extends State<RKOTypeSelectionPage> {
     }
 
     // Открываем страницу выбора магазина
+    if (!mounted) return;
     final selectedShop = await Navigator.push<Shop>(
       context,
       MaterialPageRoute(
@@ -477,6 +478,7 @@ class _RKOShopSelectionPageState extends State<_RKOShopSelectionPage> {
     }
 
     // Показываем диалог
+    if (!mounted) return false;
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,

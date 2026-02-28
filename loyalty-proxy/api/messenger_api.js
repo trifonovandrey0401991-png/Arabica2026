@@ -561,7 +561,7 @@ function setupMessengerAPI(app, uploadMedia) {
       if (wsNotify) {
         try {
           await wsNotify.notifyMessageDeleted(req.params.id, req.params.msgId);
-        } catch (e) {}
+        } catch (e) { console.error('WS notifyMessageDeleted error:', e.message); }
       }
 
       res.json({ success: true });
@@ -618,7 +618,7 @@ function setupMessengerAPI(app, uploadMedia) {
       if (wsNotify) {
         try {
           await wsNotify.notifyReadReceipt(req.params.id, normalizedPhone, now);
-        } catch (e) {}
+        } catch (e) { console.error('WS notifyReadReceipt error:', e.message); }
       }
 
       res.json({ success: true });
@@ -658,7 +658,7 @@ function setupMessengerAPI(app, uploadMedia) {
       if (wsNotify) {
         try {
           await wsNotify.notifyReactionAdded(req.params.id, req.params.msgId, reaction, normalizedPhone);
-        } catch (e) {}
+        } catch (e) { console.error('WS notifyReactionAdded error:', e.message); }
       }
 
       res.json({ success: true, reactions });
@@ -694,7 +694,7 @@ function setupMessengerAPI(app, uploadMedia) {
       if (wsNotify) {
         try {
           await wsNotify.notifyReactionRemoved(req.params.id, req.params.msgId, reaction, normalizedPhone);
-        } catch (e) {}
+        } catch (e) { console.error('WS notifyReactionRemoved error:', e.message); }
       }
 
       res.json({ success: true, reactions });

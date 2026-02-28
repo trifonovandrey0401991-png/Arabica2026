@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/widgets/shop_icon.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
@@ -72,9 +73,23 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
         shiftType = 'evening';
       }
 
-      // Загружаем магазины, где уже пройдена пересменка
+      // Загружаем магазины, где уже пройдена пересменка.
+      // Для утренней смены с переходом через полночь (напр. 23:01-13:00):
+      // если сейчас предполуночная часть (≥23:01), отчёты созданы для ЗАВТРА.
       if (shiftType != null) {
-        await _loadSubmittedShops(shiftType);
+        DateTime queryDate = DateTime.now();
+        if (shiftType == 'morning') {
+          final startMin = morningStart.hour * 60 + morningStart.minute;
+          final endMin = morningEnd.hour * 60 + morningEnd.minute;
+          if (startMin > endMin) {
+            // Midnight-crossing window — check if we're in the pre-midnight part
+            final currentMin = now.hour * 60 + now.minute;
+            if (currentMin >= startMin) {
+              queryDate = DateTime.now().add(const Duration(days: 1));
+            }
+          }
+        }
+        await _loadSubmittedShops(shiftType, queryDate);
       }
 
       if (mounted) {
@@ -92,10 +107,11 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
     }
   }
 
-  /// Загрузить магазины, где уже есть отчёт за сегодня (статус != pending)
-  Future<void> _loadSubmittedShops(String shiftType) async {
+  /// Загрузить магазины, где уже есть отчёт (статус != pending)
+  /// queryDate — дата для запроса (может быть завтра для ночного окна пересменки)
+  Future<void> _loadSubmittedShops(String shiftType, DateTime queryDate) async {
     try {
-      final reports = await ShiftReportService.getReports(date: DateTime.now());
+      final reports = await ShiftReportService.getReports(date: queryDate);
       _submittedShops = reports
           .where((r) => r.shiftType == shiftType && r.status != 'pending')
           .map((r) => r.shopAddress)
@@ -302,7 +318,12 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
                                   borderRadius: BorderRadius.circular(14.r),
                                   child: InkWell(
                                     borderRadius: BorderRadius.circular(14.r),
-                                    onTap: () {
+                                    onTap: () async {
+                                      // Save selected shop so other modules
+                                      // (prize scanner, loyalty) know current shop
+                                      final prefs = await SharedPreferences.getInstance();
+                                      await prefs.setString('selected_shop_address', shop.address);
+                                      if (!context.mounted) return;
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(

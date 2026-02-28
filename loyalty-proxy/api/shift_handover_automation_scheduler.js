@@ -21,6 +21,7 @@ const { getMoscowTime, getMoscowDateString, MOSCOW_OFFSET_HOURS } = require('../
 const BaseReportScheduler = require('../utils/base_report_scheduler');
 const db = require('../utils/db');
 const { loadShopManagers } = require('./shop_managers_api');
+const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_SHIFT_HANDOVER === 'true';
 
@@ -139,7 +140,7 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
 
     const now = new Date();
     const today = getMoscowDateString();
-    const reportId = `pending_sh_${shiftType}_${shop.address.replace(/[^a-zA-Z0-9а-яА-ЯёЁ]/g, '_')}_${Date.now()}`;
+    const reportId = generateId(`pending_sh_${shiftType}_${shop.address.replace(/[^a-zA-Z0-9а-яА-ЯёЁ]/g, '_')}`);
     const filePath = path.join(this.SHIFT_HANDOVER_PENDING_DIR, `${reportId}.json`);
 
     const report = {
@@ -448,7 +449,7 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
         const cutoff = new Date(now.getTime() - timeoutHours * 60 * 60 * 1000).toISOString();
         const result = await db.query(
           `SELECT * FROM shift_handover_reports
-           WHERE status = 'pending' AND created_at < $1`,
+           WHERE status = 'pending' AND employee_name != '' AND created_at < $1`,
           [cutoff]
         );
 
@@ -521,6 +522,8 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
           const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
 
           if (report.status !== 'pending') continue;
+          // Skip scheduler-created records (no employee submitted) — let checkPendingDeadlines mark them failed
+          if (!report.employeeName) continue;
 
           const createdAt = new Date(report.createdAt);
           const hoursPassed = (now - createdAt) / (1000 * 60 * 60);

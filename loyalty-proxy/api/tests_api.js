@@ -12,6 +12,7 @@ const { isPaginationRequested, createPaginatedResponse, createDbPaginatedRespons
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
 const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_TESTS === 'true';
 
@@ -186,7 +187,7 @@ function setupTestsAPI(app) {
   app.post('/api/test-questions', requireAdmin, async (req, res) => {
     try {
       const question = {
-        id: `test_question_${Date.now()}`,
+        id: generateId('test_question'),
         question: req.body.question,
         options: req.body.options || [],
         correctAnswer: req.body.correctAnswer,
@@ -310,7 +311,7 @@ function setupTestsAPI(app) {
     try {
       console.log('POST /api/test-results employee:', req.body?.employeeName, 'test:', req.body?.testId);
       const result = {
-        id: req.body.id || `test_result_${Date.now()}`,
+        id: req.body.id || generateId('test_result'),
         employeeName: req.body.employeeName,
         employeePhone: req.body.employeePhone,
         score: req.body.score,

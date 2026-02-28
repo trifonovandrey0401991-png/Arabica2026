@@ -9,6 +9,7 @@ const multer = require('multer');
 const { sanitizeId, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { compressUpload } = require('../utils/image_compress');
+const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_SHOP_CATALOG === 'true';
 
@@ -29,7 +30,7 @@ const productPhotoStorage = multer.diskStorage({
     cb(null, PRODUCT_PHOTOS_DIR);
   },
   filename: function (req, file, cb) {
-    const productId = sanitizeId(req.params.id || `product_${Date.now()}`);
+    const productId = sanitizeId(req.params.id || generateId('product'));
     const ext = path.extname(file.originalname) || '.jpg';
     cb(null, `${productId}_${Date.now()}${ext}`);
   }

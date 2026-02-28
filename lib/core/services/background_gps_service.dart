@@ -69,10 +69,11 @@ class BackgroundGpsService {
   /// Проверить GPS и отправить на сервер
   static Future<void> checkGpsAndNotify() async {
     try {
-      // Проверка времени: работаем только с 6:00 до 22:00
-      final now = DateTime.now();
+      // Проверка времени: работаем только с 6:00 до 22:00 по Москве (UTC+3)
+      // DateTime.now() ненадёжен в фоне — используем UTC+3 явно
+      final now = DateTime.now().toUtc().add(const Duration(hours: 3));
       if (now.hour < 6 || now.hour >= 22) {
-        Logger.debug('[BackgroundGPS] Вне рабочих часов (${now.hour}:${now.minute}), пропускаем');
+        Logger.debug('[BackgroundGPS] Вне рабочих часов МСК (${now.hour}:${now.minute}), пропускаем');
         return;
       }
 

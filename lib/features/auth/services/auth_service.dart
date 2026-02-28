@@ -266,15 +266,22 @@ class AuthService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200 && data['success'] == true) {
+        // Проверяем обязательные поля от сервера
+        final tokenValue = data['sessionToken'];
+        final expiresValue = data['expiresAt'];
+        if (tokenValue is! String || expiresValue is! int) {
+          return AuthResult.failure('Сервер вернул неполные данные сессии');
+        }
+
         // Создаём сессию из ответа сервера
         final session = AuthSession(
-          sessionToken: data['sessionToken'] as String,
+          sessionToken: tokenValue,
           phone: normalizedPhone,
           name: data['name'] as String?,
           deviceId: deviceId,
           deviceName: deviceName,
           createdAt: DateTime.now(),
-          expiresAt: DateTime.fromMillisecondsSinceEpoch(data['expiresAt'] as int),
+          expiresAt: DateTime.fromMillisecondsSinceEpoch(expiresValue),
           isVerified: true,
         );
         await _storage.saveSession(session);
@@ -391,6 +398,9 @@ class AuthService {
 
     // Устанавливаем session token для всех API запросов
     ApiConstants.sessionToken = session.sessionToken;
+
+    // Обновляем lastActivity на сервере (асинхронно, как и в loginWithPin)
+    _refreshSessionOnServer(session.sessionToken);
 
     return AuthResult.success(session: session);
   }
@@ -543,17 +553,24 @@ class AuthService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200 && data['success'] == true) {
+        // Проверяем обязательные поля от сервера
+        final tokenValue = data['sessionToken'];
+        final expiresValue = data['expiresAt'];
+        if (tokenValue is! String || expiresValue is! int) {
+          return AuthResult.failure('Сервер вернул неполные данные сессии');
+        }
+
         // Создаём локальные credentials для офлайн-входа
         await _storage.createCredentials(newPin);
 
         // Создаём сессию из ответа сервера
         final session = AuthSession(
-          sessionToken: data['sessionToken'] as String,
+          sessionToken: tokenValue,
           phone: normalizedPhone,
           deviceId: deviceId,
           deviceName: deviceName,
           createdAt: DateTime.now(),
-          expiresAt: DateTime.fromMillisecondsSinceEpoch(data['expiresAt'] as int),
+          expiresAt: DateTime.fromMillisecondsSinceEpoch(expiresValue),
           isVerified: true,
         );
         await _storage.saveSession(session);

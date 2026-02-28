@@ -9,7 +9,6 @@ import '../../efficiency/models/points_settings_model.dart';
 import '../models/pending_recount_report_model.dart';
 import '../services/pending_recount_service.dart';
 import '../services/recount_question_service.dart';
-import '../../ai_training/services/cigarette_vision_service.dart';
 import 'recount_questions_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
@@ -31,7 +30,6 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
   Map<String, ShopSyncInfo> _shopsSyncInfo = {}; // Информация о синхронизации магазинов
   List<PendingRecountReport> _pendingRecounts = []; // Ожидающие пересчёты
   RecountPointsSettings? _recountSettings; // Настройки интервалов
-  bool _isAiModelTrained = false; // Обучена ли модель ИИ
   Map<String, int> _shopAiCounts = {}; // Кол-во AI-товаров per shop (загружается фоном)
 
   /// Таймаут для определения устаревших данных (5 минут)
@@ -53,13 +51,6 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
       _loadPendingRecounts(),
       _loadRecountSettings(),
     ]);
-
-    // Статус ИИ — не блокируем основную загрузку
-    try {
-      _isAiModelTrained = await CigaretteVisionService.isModelTrained();
-    } catch (e) {
-      debugPrint('[RecountShopSelection] Не удалось проверить статус ИИ: $e');
-    }
 
     if (mounted) {
       setState(() {

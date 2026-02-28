@@ -29,8 +29,9 @@ import 'core/services/firebase_service.dart' if (dart.library.html) 'core/servic
 /// Глобальный флаг - показывать ли диалог об уведомлениях при запуске
 bool _shouldShowNotificationDialog = false;
 
-/// Глобальный ключ навигатора для auto-logout при 401
-final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+/// Глобальный ключ навигатора — используется тот же экземпляр, что и в FirebaseService
+/// (один ключ → один NavigatorState, нет рассинхронизации)
+final GlobalKey<NavigatorState> navigatorKey = FirebaseService.navigatorKey;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -103,7 +104,7 @@ void main() async {
     await prefs.remove('user_name');
     await prefs.remove('user_phone');
     await UserRoleService.clearUserRole();
-    _navigatorKey.currentState?.pushAndRemoveUntil(
+    navigatorKey.currentState?.pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => RegistrationPage()),
       (_) => false,
     );
@@ -141,7 +142,7 @@ class ArabicaApp extends StatelessWidget {
         return CartProviderScope(
           child: OrderProviderScope(
             child: MaterialApp(
-              navigatorKey: _navigatorKey,
+              navigatorKey: navigatorKey,
               debugShowCheckedModeBanner: false,
               title: 'Arabica',
               theme: ThemeData(

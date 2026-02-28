@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/logger.dart';
 import '../services/loyalty_service.dart';
@@ -73,17 +74,51 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
       return;
     }
 
-    // Сначала показываем кэшированные данные (мгновенно, без спиннера)
-    final cached = await LoyaltyStorage.read(name: name, phone: phone);
-    if (cached != null && mounted) {
-      if (mounted) setState(() {
-        _info = cached;
+    // Load all cached data in parallel (instant, no spinner)
+    final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+    final results = await Future.wait([
+      LoyaltyStorage.read(name: name, phone: phone),
+      LoyaltyStorage.readGamificationSettings(),
+      LoyaltyStorage.readClientGamificationData(normalizedPhone),
+      LoyaltyStorage.readClientPrize(normalizedPhone),
+    ]);
+
+    final cachedInfo = results[0] as LoyaltyInfo?;
+    final cachedSettingsJson = results[1] as Map<String, dynamic>?;
+    final cachedClientJson = results[2] as Map<String, dynamic>?;
+    final cachedPrizeJson = results[3] as Map<String, dynamic>?;
+
+    GamificationSettings? cachedSettings;
+    ClientGamificationData? cachedClientData;
+    ClientPrize? cachedPrize;
+
+    if (cachedSettingsJson != null) {
+      try {
+        cachedSettings = GamificationSettings.fromJson(cachedSettingsJson);
+        if (cachedClientJson != null) {
+          cachedClientData = ClientGamificationData.fromJson(cachedClientJson, cachedSettings);
+        }
+        if (cachedPrizeJson != null) {
+          cachedPrize = ClientPrize.fromJson(cachedPrizeJson);
+        }
+      } catch (_) {
+        // Ignore bad cache — server will provide fresh data
+      }
+    }
+
+    final hasCache = cachedInfo != null || cachedSettings != null;
+    if (hasCache && mounted) {
+      setState(() {
+        if (cachedInfo != null) _info = cachedInfo;
+        _gamificationSettings = cachedSettings;
+        _gamificationData = cachedClientData;
+        _pendingPrize = cachedPrize;
         _loading = false;
       });
     }
 
-    // Затем обновляем свежими данными с сервера (в фоне)
-    await _refresh(showSpinner: cached == null);
+    // Refresh from server in background (show spinner only if nothing cached)
+    await _refresh(showSpinner: !hasCache);
   }
 
   Future<void> _refresh({bool showSpinner = true}) async {
@@ -92,6 +127,15 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
       final phone = prefs.getString('user_phone');
       final name = prefs.getString('user_name');
       if (phone == null || name == null) {
+        return;
+      }
+
+      // If no auth token, don't call protected APIs — just show cached data or login prompt
+      if (ApiConstants.sessionToken == null) {
+        if (mounted) setState(() {
+          _loading = false;
+          _error = 'Войдите в аккаунт, чтобы увидеть баланс';
+        });
         return;
       }
 
@@ -183,27 +227,27 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                             color: AppColors.emerald,
                             child: SingleChildScrollView(
                               physics: AlwaysScrollableScrollPhysics(),
-                              padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 20.h),
+                              padding: EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 12.h),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   _qrCard(info),
                                   // Баланс кошелька
-                                  SizedBox(height: 16),
+                                  SizedBox(height: 10),
                                   _walletBalanceCard(info),
                                   // Две кнопки: Бесплатный напиток + В магазин
-                                  SizedBox(height: 16),
+                                  SizedBox(height: 10),
                                   _actionButtonsRow(),
                                   // Уровень клиента
                                   if (_gamificationData != null) ...[
-                                    SizedBox(height: 16),
+                                    SizedBox(height: 10),
                                     _levelCard(),
                                   ],
                                   // Карточка приза или Колесо удачи
                                   if (_gamificationSettings != null &&
                                       _gamificationSettings!.wheel.enabled &&
                                       _gamificationData != null) ...[
-                                    SizedBox(height: 16),
+                                    SizedBox(height: 10),
                                     // Если есть pending приз - показываем карточку приза
                                     if (_pendingPrize != null)
                                       _pendingPrizeCard()
@@ -211,7 +255,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                                       _wheelCard(),
                                   ],
                                   if (info.promoText.isNotEmpty) ...[
-                                    SizedBox(height: 16),
+                                    SizedBox(height: 10),
                                     _promoCard(info.promoText),
                                   ],
                                 ],
@@ -346,20 +390,20 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
         : <LoyaltyLevel>[];
 
     final qrWidget = Container(
-      padding: EdgeInsets.all(12.w),
+      padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(10.r),
       ),
       child: QrImageView(
         data: info.qr,
         version: QrVersions.auto,
-        size: 180,
+        size: 148,
       ),
     );
 
     return Container(
-      padding: EdgeInsets.all(24.w),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withOpacity(0.15)),
@@ -369,12 +413,12 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
           Text(
             'Ваш QR-код',
             style: TextStyle(
-              fontSize: 18.sp,
+              fontSize: 15.sp,
               fontWeight: FontWeight.w500,
               color: Colors.white.withOpacity(0.9),
             ),
           ),
-          SizedBox(height: 72),
+          SizedBox(height: 10),
           // QR с значками вокруг
           if (earnedLevels.isNotEmpty)
             QrBadgesWidget(
@@ -383,20 +427,20 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
             )
           else
             qrWidget,
-          SizedBox(height: 72),
+          SizedBox(height: 10),
           Text(
             info.name,
             style: TextStyle(
-              fontSize: 16.sp,
+              fontSize: 15.sp,
               fontWeight: FontWeight.w500,
               color: Colors.white.withOpacity(0.9),
             ),
           ),
-          SizedBox(height: 4),
+          SizedBox(height: 2),
           Text(
             info.phone,
             style: TextStyle(
-              fontSize: 14.sp,
+              fontSize: 13.sp,
               color: Colors.white.withOpacity(0.5),
             ),
           ),
@@ -407,77 +451,72 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
 
   Widget _walletBalanceCard(LoyaltyInfo info) {
     return Container(
-      padding: EdgeInsets.all(20.w),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: Color(0xFFD4AF37).withOpacity(0.4)),
+        border: Border.all(color: AppColors.gold.withOpacity(0.4)),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFFD4AF37).withOpacity(0.15),
-            Color(0xFFD4AF37).withOpacity(0.05),
+            AppColors.gold.withOpacity(0.12),
+            AppColors.gold.withOpacity(0.04),
           ],
         ),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.gold, AppColors.darkGold],
+              ),
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            child: Icon(Icons.account_balance_wallet, color: Colors.white, size: 22),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ваши баллы',
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
+                ),
+                Text(
+                  '${info.loyaltyPoints}',
+                  style: TextStyle(
+                    fontSize: 26.sp,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.gold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFD4AF37), Color(0xFFB8960C)],
-                  ),
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                child: Icon(Icons.account_balance_wallet, color: Colors.white, size: 28),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Ваши баллы',
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        color: Colors.white.withOpacity(0.7),
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      '${info.loyaltyPoints}',
-                      style: TextStyle(
-                        fontSize: 32.sp,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFD4AF37),
-                      ),
-                    ),
-                  ],
+              Text(
+                'Всего накоплено',
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  color: Colors.white.withOpacity(0.5),
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Всего накоплено',
-                    style: TextStyle(
-                      fontSize: 11.sp,
-                      color: Colors.white.withOpacity(0.5),
-                    ),
-                  ),
-                  Text(
-                    '${info.totalPointsEarned}',
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white.withOpacity(0.7),
-                    ),
-                  ),
-                ],
+              Text(
+                '${info.totalPointsEarned}',
+                style: TextStyle(
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withOpacity(0.7),
+                ),
               ),
             ],
           ),
@@ -487,7 +526,9 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
   }
 
   Widget _actionButtonsRow() {
-    return Row(
+    return IntrinsicHeight(
+      child: Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Кнопка «Бесплатный напиток»
         Expanded(
@@ -496,38 +537,41 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const DrinkRedemptionPage()));
             },
             child: Container(
-              padding: EdgeInsets.all(16.w),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16.r),
-                border: Border.all(color: Color(0xFFFF9800).withOpacity(0.4)),
+                borderRadius: BorderRadius.circular(14.r),
+                border: Border.all(color: AppColors.turquoise.withOpacity(0.35)),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFFFF9800).withOpacity(0.15),
-                    Color(0xFFFF9800).withOpacity(0.05),
+                    AppColors.turquoise.withOpacity(0.15),
+                    AppColors.turquoise.withOpacity(0.04),
                   ],
                 ),
               ),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Color(0xFFFF9800), Color(0xFFE65100)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.turquoise, AppColors.emeraldLight],
                       ),
-                      borderRadius: BorderRadius.circular(12.r),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
-                    child: Icon(Icons.local_cafe, color: Colors.white, size: 28),
+                    child: Icon(Icons.local_cafe, color: Colors.white, size: 22),
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 6),
                   Text(
-                    'Бесплатный\nнапиток',
+                    'Бесплатный напиток',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 13.sp,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.w600,
                       color: Colors.white.withOpacity(0.9),
                       height: 1.2,
@@ -546,38 +590,42 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
               Navigator.push(context, MaterialPageRoute(builder: (_) => ShopCatalogPage()));
             },
             child: Container(
-              padding: EdgeInsets.all(16.w),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16.r),
-                border: Border.all(color: Color(0xFF4CAF50).withOpacity(0.4)),
+                borderRadius: BorderRadius.circular(14.r),
+                border: Border.all(color: AppColors.emerald.withOpacity(0.5)),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFF4CAF50).withOpacity(0.15),
-                    Color(0xFF4CAF50).withOpacity(0.05),
+                    AppColors.emerald.withOpacity(0.3),
+                    AppColors.emerald.withOpacity(0.1),
                   ],
                 ),
               ),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.emerald, AppColors.emeraldDark],
                       ),
-                      borderRadius: BorderRadius.circular(12.r),
+                      borderRadius: BorderRadius.circular(10.r),
+                      border: Border.all(color: AppColors.emeraldLight.withOpacity(0.3)),
                     ),
-                    child: Icon(Icons.storefront, color: Colors.white, size: 28),
+                    child: Icon(Icons.storefront, color: Colors.white, size: 22),
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 6),
                   Text(
                     'В магазин',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 13.sp,
+                      fontSize: 12.sp,
                       fontWeight: FontWeight.w600,
                       color: Colors.white.withOpacity(0.9),
                       height: 1.2,
@@ -589,6 +637,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
           ),
         ),
       ],
+    ),
     );
   }
 
@@ -639,7 +688,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     final level = data.currentLevel;
 
     return Container(
-      padding: EdgeInsets.all(20.w),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: level.color.withOpacity(0.4)),
@@ -655,23 +704,23 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: level.color,
-              borderRadius: BorderRadius.circular(12.r),
+              borderRadius: BorderRadius.circular(10.r),
             ),
             child: Center(
               child: level.badge.type == 'icon'
                   ? Icon(
                       level.badge.getIcon() ?? Icons.workspace_premium,
                       color: Colors.white,
-                      size: 28,
+                      size: 22,
                     )
                   : Icon(
                       Icons.emoji_events,
                       color: Colors.white,
-                      size: 28,
+                      size: 22,
                     ),
             ),
           ),
@@ -719,13 +768,13 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     final settings = _gamificationSettings!;
 
     // Прогресс: сколько баллов собрано к следующей прокрутке
-    final pointsPerSpin = settings.wheel.freeDrinksPerSpin * 10;
+    final pointsPerSpin = settings.wheel.effectivePointsPerSpin;
     final currentProgressPoints = pointsPerSpin - data.pointsToNextSpin;
 
     return GestureDetector(
       onTap: _openWheelPage,
       child: Container(
-        padding: EdgeInsets.all(20.w),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16.r),
           border: Border.all(color: Color(0xFF8E2DE2).withOpacity(0.4)),
@@ -741,18 +790,18 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
                 ),
-                borderRadius: BorderRadius.circular(12.r),
+                borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(
                 Icons.casino,
                 color: Colors.white,
-                size: 28,
+                size: 22,
               ),
             ),
             SizedBox(width: 16),
@@ -818,7 +867,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     return GestureDetector(
       onTap: _openPrizePage,
       child: Container(
-        padding: EdgeInsets.all(20.w),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16.r),
           border: Border.all(color: prize.prizeColor.withOpacity(0.5)),
@@ -834,8 +883,8 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -843,7 +892,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                     prize.prizeColor.withOpacity(0.7),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(12.r),
+                borderRadius: BorderRadius.circular(10.r),
                 boxShadow: [
                   BoxShadow(
                     color: prize.prizeColor.withOpacity(0.4),
@@ -855,7 +904,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
               child: Icon(
                 prize.prizeIcon,
                 color: Colors.white,
-                size: 28,
+                size: 22,
               ),
             ),
             SizedBox(width: 16),

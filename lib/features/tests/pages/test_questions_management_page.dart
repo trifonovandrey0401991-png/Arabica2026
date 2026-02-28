@@ -5,6 +5,7 @@ import '../services/test_question_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/cache_manager.dart';
+import '../../../shared/widgets/delete_confirmation_dialog.dart';
 
 /// Страница управления вопросами тестирования
 class TestQuestionsManagementPage extends StatefulWidget {
@@ -196,12 +197,14 @@ class _TestQuestionsManagementPageState extends State<TestQuestionsManagementPag
   }
 
   Future<void> _deleteQuestion(TestQuestion question) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await DeleteConfirmationDialog.show(
       context: context,
-      builder: (context) => _ModernDeleteDialog(question: question),
+      title: 'Удалить вопрос?',
+      itemText: question.question,
+      warningText: 'Это действие невозможно отменить',
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       final success = await TestQuestionService.deleteQuestion(question.id);
       if (success) {
         await _loadQuestions();
@@ -1076,98 +1079,6 @@ class _TestSettingsDialogState extends State<_TestSettingsDialog> {
           ),
         );
       }).toList(),
-    );
-  }
-}
-
-/// Современный диалог удаления
-class _ModernDeleteDialog extends StatelessWidget {
-  final TestQuestion question;
-
-  _ModernDeleteDialog({required this.question});
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: AppColors.emeraldDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
-      child: Padding(
-        padding: EdgeInsets.all(24.w),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: EdgeInsets.all(16.w),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.12),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.red.withOpacity(0.25)),
-              ),
-              child: Icon(
-                Icons.delete_outline_rounded,
-                color: Colors.red[300],
-                size: 32,
-              ),
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Удалить вопрос?',
-              style: TextStyle(
-                fontSize: 18.sp,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            SizedBox(height: 12),
-            Text(
-              question.question,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.5),
-                fontSize: 14.sp,
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-            SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white.withOpacity(0.7),
-                      side: BorderSide(color: Colors.white.withOpacity(0.15)),
-                      padding: EdgeInsets.symmetric(vertical: 14.h),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                    ),
-                    child: Text('Отмена'),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.withOpacity(0.2),
-                      foregroundColor: Colors.red[300],
-                      padding: EdgeInsets.symmetric(vertical: 14.h),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                        side: BorderSide(color: Colors.red.withOpacity(0.3)),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text('Удалить'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

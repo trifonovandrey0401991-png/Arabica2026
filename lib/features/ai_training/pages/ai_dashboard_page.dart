@@ -75,7 +75,7 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
         // Step 3: Save to cache
         if (systems != null) CacheManager.set(_cacheKey, systems);
       } else {
-        if (_metrics == null) {
+        if (_metrics == null && mounted) {
           setState(() {
             _error = 'Не удалось загрузить метрики';
             _loading = false;
@@ -125,7 +125,7 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
             if (result['status'] == 'done') _loadMetrics();
           }
         }
-      } catch (_) {}
+      } catch (e) { Logger.error('AiDashboard', 'Failed to poll training status', e); }
     });
   }
 

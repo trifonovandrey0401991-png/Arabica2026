@@ -79,12 +79,19 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
     // Загружаем вопросы
     final questions = await ShiftQuestionService.getQuestions();
 
-    // Фильтруем вопросы без фото (исключаем photo-only)
-    final filteredQuestions = questions.where((q) => !q.isPhotoOnly).toList();
+    // Показываем только вопросы с форматом да/нет и числовым — остальные (фото, текст) скрываем
+    final filteredQuestions = questions.where((q) => q.isYesNo || q.isNumberOnly).toList();
 
-    // Создаём map отчётов по магазинам
+    // Создаём map отчётов по магазинам.
+    // Включаем только реально пройденные (не pending/failed) — только у них есть ответы.
+    // Список отсортирован новейшими первыми, берём первый подходящий для каждого магазина.
     for (final report in widget.reports) {
-      _reportsByShop[report.shopAddress.toLowerCase().trim()] = report;
+      if (report.status != 'pending' &&
+          report.status != 'failed' &&
+          report.employeeName.isNotEmpty) {
+        final key = report.shopAddress.toLowerCase().trim();
+        _reportsByShop.putIfAbsent(key, () => report);
+      }
     }
 
     if (!mounted) return;
@@ -221,7 +228,10 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
 
   /// Заголовок со статистикой (компактный)
   Widget _buildStatisticsHeader() {
-    final passedCount = widget.reports.length;
+    // Только реально пройденные (не pending/failed) с заполненным именем сотрудника
+    final passedCount = widget.reports.where((r) =>
+      r.status != 'pending' && r.status != 'failed' && r.employeeName.isNotEmpty
+    ).length;
     final totalCount = widget.allShops.length;
     final notPassedCount = totalCount - passedCount;
 

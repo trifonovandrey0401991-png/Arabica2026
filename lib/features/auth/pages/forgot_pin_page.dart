@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/logger.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_service.dart';
@@ -92,23 +93,33 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
       _errorMessage = null;
     });
 
-    final result = await _authService.requestOtp(_fullPhone);
+    try {
+      final result = await _authService.requestOtp(_fullPhone);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (result.success) {
-      _telegramBotLink = result.message;
-      if (mounted) setState(() {
-        _step = 1;
+      setState(() {
+        _isLoading = false;
       });
-    } else {
-      if (mounted) setState(() {
+
+      if (result.success) {
+        _telegramBotLink = result.message;
+        if (mounted) setState(() {
+          _step = 1;
+        });
+      } else {
+        if (mounted) setState(() {
+          _showError = true;
+          _errorMessage = result.error;
+        });
+      }
+    } catch (e, st) {
+      Logger.error('Ошибка запроса OTP кода', e, st);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
         _showError = true;
-        _errorMessage = result.error;
+        _errorMessage = 'Нет связи с сервером. Проверьте интернет.';
       });
     }
   }
@@ -131,32 +142,42 @@ class _ForgotPinPageState extends State<ForgotPinPage> {
       _errorMessage = null;
     });
 
-    final result = await _authService.verifyOtp(_fullPhone, code);
+    try {
+      final result = await _authService.verifyOtp(_fullPhone, code);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-    });
+      setState(() {
+        _isLoading = false;
+      });
 
-    if (result.success) {
-      _registrationToken = result.message;
+      if (result.success) {
+        _registrationToken = result.message;
 
-      // Переходим к созданию нового PIN
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => PinSetupPage(
-            phone: _fullPhone,
-            name: widget.name ?? 'Пользователь',
-            registrationToken: _registrationToken,
-            onSuccess: widget.onSuccess,
+        // Переходим к созданию нового PIN
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => PinSetupPage(
+              phone: _fullPhone,
+              name: widget.name ?? 'Пользователь',
+              registrationToken: _registrationToken,
+              onSuccess: widget.onSuccess,
+            ),
           ),
-        ),
-      );
-    } else {
-      if (mounted) setState(() {
+        );
+      } else {
+        if (mounted) setState(() {
+          _showError = true;
+          _errorMessage = result.error;
+        });
+      }
+    } catch (e, st) {
+      Logger.error('Ошибка проверки OTP кода', e, st);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
         _showError = true;
-        _errorMessage = result.error;
+        _errorMessage = 'Нет связи с сервером. Проверьте интернет.';
       });
     }
   }

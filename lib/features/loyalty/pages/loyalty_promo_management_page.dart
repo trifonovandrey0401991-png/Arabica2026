@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/logger.dart';
@@ -16,8 +15,10 @@ class LoyaltyPromoManagementPage extends StatefulWidget {
 
 class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage> {
   final TextEditingController _promoTextController = TextEditingController();
-  final TextEditingController _pointsRequiredController = TextEditingController(text: '10');
-  final TextEditingController _drinksToGiveController = TextEditingController(text: '1');
+  final TextEditingController _pointsPerScanController = TextEditingController(text: '1');
+  // Сохраняем значения формулы со стороны сервера, но не показываем их в UI
+  int _pointsRequired = 10;
+  int _drinksToGive = 1;
   bool _isLoading = false;
   bool _isSaving = false;
   String? _error;
@@ -31,8 +32,7 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
   @override
   void dispose() {
     _promoTextController.dispose();
-    _pointsRequiredController.dispose();
-    _drinksToGiveController.dispose();
+    _pointsPerScanController.dispose();
     super.dispose();
   }
 
@@ -45,13 +45,10 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
     try {
       final settings = await LoyaltyService.fetchPromoSettings();
       _promoTextController.text = settings.promoText;
-      _pointsRequiredController.text = settings.pointsRequired > 0
-          ? settings.pointsRequired.toString()
-          : '10';
-      _drinksToGiveController.text = settings.drinksToGive > 0
-          ? settings.drinksToGive.toString()
-          : '1';
-      Logger.debug('✅ Настройки акции загружены: ${_pointsRequiredController.text}+${_drinksToGiveController.text}');
+      _pointsRequired = settings.pointsRequired > 0 ? settings.pointsRequired : 10;
+      _drinksToGive = settings.drinksToGive > 0 ? settings.drinksToGive : 1;
+      _pointsPerScanController.text = settings.pointsPerScan.toString();
+      Logger.debug('✅ Настройки акции загружены');
     } catch (e) {
       Logger.error('Ошибка загрузки настроек акции', e);
       _error = 'Ошибка загрузки: ${e.toString()}';
@@ -65,44 +62,17 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
   }
 
   Future<void> _savePromoSettings() async {
-    final pointsRequired = int.tryParse(_pointsRequiredController.text) ?? 0;
-    final drinksToGive = int.tryParse(_drinksToGiveController.text) ?? 0;
-
-    if (pointsRequired < 1 || pointsRequired > 100) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Количество баллов должно быть от 1 до 100'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    if (drinksToGive < 1 || drinksToGive > 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Количество напитков должно быть от 1 до 10'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    if (mounted) setState(() {
-      _isSaving = true;
-      _error = null;
-    });
+    if (mounted) setState(() { _isSaving = true; _error = null; });
 
     try {
-      // Получаем phone текущего пользователя для проверки роли
-      // Проверяем оба ключа - для клиентов (user_phone) и сотрудников (userPhone)
       final prefs = await SharedPreferences.getInstance();
       final employeePhone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
 
       final success = await LoyaltyService.savePromoSettings(
         promoText: _promoTextController.text.trim(),
-        pointsRequired: pointsRequired,
-        drinksToGive: drinksToGive,
+        pointsRequired: _pointsRequired,
+        drinksToGive: _drinksToGive,
+        pointsPerScan: int.tryParse(_pointsPerScanController.text) ?? 1,
         employeePhone: employeePhone,
       );
 
@@ -110,224 +80,301 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Настройки акции успешно сохранены'),
-              backgroundColor: Colors.green,
+              content: Text('Условия акции сохранены'),
+              backgroundColor: AppColors.primaryGreen,
             ),
           );
         }
       } else {
-        _error = 'Не удалось сохранить настройки акции';
+        if (mounted) setState(() => _error = 'Не удалось сохранить');
       }
     } catch (e) {
       Logger.error('Ошибка сохранения настроек акции', e);
-      _error = 'Ошибка сохранения: ${e.toString()}';
+      if (mounted) setState(() => _error = 'Ошибка: ${e.toString()}');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.night,
       appBar: AppBar(
-        title: Text('Управление акцией'),
-        backgroundColor: AppColors.primaryGreen,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.white,
+        title: Text(
+          'Управление акцией',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.emerald.withOpacity(0.4),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(color: AppColors.turquoise),
+            )
           : SingleChildScrollView(
               padding: EdgeInsets.all(16.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Карточка с настройками формулы акции
-                  Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.w),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Формула акции',
-                            style: TextStyle(
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Укажите сколько напитков нужно купить и сколько получить бесплатно',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _pointsRequiredController,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(3),
-                                  ],
-                                  decoration: InputDecoration(
-                                    labelText: 'Сколько купить',
-                                    hintText: '10',
-                                    border: OutlineInputBorder(),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    prefixIcon: Icon(Icons.shopping_cart),
-                                  ),
-                                ),
+                  // Карточка с текстом условий акции
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.emeraldDark.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(16.r),
+                      border: Border.all(
+                        color: AppColors.emerald.withOpacity(0.3),
+                      ),
+                    ),
+                    padding: EdgeInsets.all(20.w),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(8.w),
+                              decoration: BoxDecoration(
+                                color: AppColors.emerald.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10.r),
                               ),
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 16.w),
-                                child: Text(
-                                  '+',
-                                  style: TextStyle(
-                                    fontSize: 24.sp,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primaryGreen,
-                                  ),
-                                ),
+                              child: Icon(
+                                Icons.local_offer_outlined,
+                                color: AppColors.turquoise,
+                                size: 22.sp,
                               ),
-                              Expanded(
-                                child: TextField(
-                                  controller: _drinksToGiveController,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(2),
-                                  ],
-                                  decoration: InputDecoration(
-                                    labelText: 'Сколько выдать',
-                                    hintText: '1',
-                                    border: OutlineInputBorder(),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    prefixIcon: Icon(Icons.card_giftcard),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 12),
-                          Container(
-                            padding: EdgeInsets.all(12.w),
-                            decoration: BoxDecoration(
-                              color: Colors.teal.shade50,
-                              borderRadius: BorderRadius.circular(8.r),
-                              border: Border.all(color: Colors.teal.shade200),
                             ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.info_outline, color: Colors.teal.shade700),
-                                SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Пример: ${_pointsRequiredController.text.isEmpty ? "10" : _pointsRequiredController.text} + ${_drinksToGiveController.text.isEmpty ? "1" : _drinksToGiveController.text} означает "купи ${_pointsRequiredController.text.isEmpty ? "10" : _pointsRequiredController.text} напитков, получи ${_drinksToGiveController.text.isEmpty ? "1" : _drinksToGiveController.text} бесплатно"',
+                            SizedBox(width: 12.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Условия акции',
                                     style: TextStyle(
-                                      fontSize: 13.sp,
-                                      color: Colors.teal.shade700,
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Текст отображается клиенту в карте лояльности',
+                                    style: TextStyle(
+                                      fontSize: 12.sp,
+                                      color: Colors.white.withOpacity(0.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
+                          ],
+                        ),
+                        SizedBox(height: 20.h),
+                        TextField(
+                          controller: _promoTextController,
+                          maxLines: 8,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 14.sp,
                           ),
-                        ],
-                      ),
+                          decoration: InputDecoration(
+                            hintText: 'Например: Накапливайте баллы за каждую покупку и обменивайте их на напитки...',
+                            hintStyle: TextStyle(
+                              color: Colors.white.withOpacity(0.3),
+                              fontSize: 13.sp,
+                            ),
+                            filled: true,
+                            fillColor: AppColors.night.withOpacity(0.6),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(
+                                color: AppColors.emerald.withOpacity(0.3),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(
+                                color: AppColors.emerald.withOpacity(0.3),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(
+                                color: AppColors.turquoise,
+                                width: 1.5,
+                              ),
+                            ),
+                            contentPadding: EdgeInsets.all(14.w),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(height: 16),
-                  // Карточка с текстом условий
-                  Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.w),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Текст условий акции',
-                            style: TextStyle(
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Этот текст будет отображаться в карте лояльности клиента',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          TextField(
-                            controller: _promoTextController,
-                            maxLines: 6,
-                            decoration: InputDecoration(
-                              labelText: 'Текст условий',
-                              hintText: 'Например: При покупке 10 напитков получите 1 бесплатный...',
-                              border: OutlineInputBorder(),
-                              filled: true,
-                              fillColor: Colors.white,
-                            ),
-                          ),
-                        ],
+
+                  SizedBox(height: 16.h),
+
+                  // Карточка: баллов за сканирование
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.emeraldDark.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(16.r),
+                      border: Border.all(
+                        color: AppColors.emerald.withOpacity(0.3),
                       ),
                     ),
+                    padding: EdgeInsets.all(20.w),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(8.w),
+                              decoration: BoxDecoration(
+                                color: AppColors.emerald.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10.r),
+                              ),
+                              child: Icon(
+                                Icons.qr_code_scanner_outlined,
+                                color: AppColors.turquoise,
+                                size: 22.sp,
+                              ),
+                            ),
+                            SizedBox(width: 12.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Баллов за сканирование',
+                                    style: TextStyle(
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Сколько баллов получает клиент при каждом сканировании QR',
+                                    style: TextStyle(
+                                      fontSize: 12.sp,
+                                      color: Colors.white.withOpacity(0.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16.h),
+                        TextField(
+                          controller: _pointsPerScanController,
+                          keyboardType: TextInputType.number,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 14.sp,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '1',
+                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                            prefixIcon: Icon(Icons.star_outline, color: AppColors.turquoise),
+                            suffixText: 'балл(а)',
+                            suffixStyle: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.sp),
+                            filled: true,
+                            fillColor: AppColors.night.withOpacity(0.6),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.3)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.3)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(color: AppColors.turquoise, width: 1.5),
+                            ),
+                            contentPadding: EdgeInsets.all(14.w),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+
                   if (_error != null) ...[
-                    SizedBox(height: 16),
+                    SizedBox(height: 12.h),
                     Container(
-                      padding: EdgeInsets.all(12.w),
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                       decoration: BoxDecoration(
-                        color: Colors.red[50],
-                        borderRadius: BorderRadius.circular(8.r),
-                        border: Border.all(color: Colors.red),
+                        color: AppColors.error.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: AppColors.error.withOpacity(0.4)),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error, color: Colors.red),
-                          SizedBox(width: 8),
+                          Icon(Icons.error_outline, color: AppColors.error, size: 18.sp),
+                          SizedBox(width: 8.w),
                           Expanded(
                             child: Text(
                               _error!,
-                              style: TextStyle(color: Colors.red),
+                              style: TextStyle(color: AppColors.error, fontSize: 13.sp),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ],
-                  SizedBox(height: 24),
+
+                  SizedBox(height: 24.h),
+
                   SizedBox(
                     width: double.infinity,
+                    height: 52.h,
                     child: ElevatedButton.icon(
                       onPressed: _isSaving ? null : _savePromoSettings,
                       icon: _isSaving
                           ? SizedBox(
-                              width: 20,
-                              height: 20,
+                              width: 18,
+                              height: 18,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : Icon(Icons.save),
-                      label: Text(_isSaving ? 'Сохранение...' : 'Сохранить настройки'),
+                          : Icon(Icons.save_outlined, size: 20.sp),
+                      label: Text(
+                        _isSaving ? 'Сохранение...' : 'Сохранить условия',
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryGreen,
+                        backgroundColor: AppColors.emerald,
                         foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                        disabledBackgroundColor: AppColors.emerald.withOpacity(0.4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14.r),
+                        ),
+                        elevation: 0,
                       ),
                     ),
                   ),

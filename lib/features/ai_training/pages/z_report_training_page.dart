@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/z_report_service.dart';
+import '../../../core/utils/logger.dart';
 import '../../employees/models/user_role_model.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../shops/services/shop_service.dart';
@@ -1133,7 +1134,7 @@ class _PhotosTabState extends State<_PhotosTab> {
         final data = jsonDecode(response.body);
         return List<Map<String, dynamic>>.from(data['shops'] ?? []);
       }
-    } catch (_) {}
+    } catch (e) { Logger.error('ZReportTraining', 'Failed to load shops', e); }
     return [];
   }
 

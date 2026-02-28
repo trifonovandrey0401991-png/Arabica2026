@@ -690,7 +690,7 @@ class _TrainingPageState extends State<TrainingPage> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } catch (e) {
         Logger.error('Ошибка открытия ссылки', e);
-        if (context.mounted) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Не удалось открыть ссылку: ${article.url}'),

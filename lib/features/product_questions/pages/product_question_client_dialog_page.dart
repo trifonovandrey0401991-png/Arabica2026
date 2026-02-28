@@ -292,6 +292,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
       final dialogs = await ProductQuestionService.getClientPersonalDialogs(_clientPhone!);
       final existingDialog = dialogs.where((d) => d.shopAddress == shopAddress).firstOrNull;
 
+      if (!mounted) return;
       if (existingDialog != null) {
         await Navigator.push(
           context,
@@ -307,6 +308,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
         await _startPersonalDialog(shopAddress);
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Ошибка при открытии диалога: $e'), backgroundColor: Colors.red),
       );

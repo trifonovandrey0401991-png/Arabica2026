@@ -206,6 +206,16 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   );
                   if (loginResult.success) {
                     Logger.success('✅ Успешный вход с существующим PIN через сервер');
+                    // Re-check role now that we have an auth token
+                    try {
+                      final roleAfterLogin = await UserRoleService.getUserRole(existingUser.phone);
+                      await UserRoleService.saveUserRole(roleAfterLogin);
+                      final prefs2 = await SharedPreferences.getInstance();
+                      await prefs2.setString('user_name', roleAfterLogin.displayName);
+                      Logger.success('✅ Роль перепроверена после входа: ${roleAfterLogin.role.name}');
+                    } catch (e) {
+                      Logger.warning('Не удалось перепроверить роль после входа: $e');
+                    }
                   } else {
                     Logger.warning('❌ Ошибка входа через сервер: ${loginResult.error}');
                     // Показываем ошибку пользователю и выходим

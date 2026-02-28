@@ -496,9 +496,10 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           ),
         ],
       ),
-    ).then((_) {
-      manualController.dispose();
-    });
+    );
+    // Note: manualController is a local variable and will be GC'd when the dialog
+    // is removed from the tree. Calling dispose() in .then() causes a crash because
+    // the dialog's TextField still has a listener during the close animation.
   }
 
   /// Диалог при ошибке OCR: только выделить область

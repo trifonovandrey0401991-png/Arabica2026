@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/notification_service.dart';
 import '../models/message_model.dart';
 
 // ==================== WebSocket Event Models ====================
@@ -64,6 +65,18 @@ class MessengerWsService {
   bool _isDisposed = false;
   Timer? _pingTimer;
 
+  // Tracks which conversation is currently open (to suppress duplicate notifications)
+  static String? _activeConversationId;
+  static void setActiveConversation(String? id) => _activeConversationId = id;
+
+  // Online users cache: phone → isOnline
+  final Map<String, bool> _onlineUsers = {};
+
+  bool isPhoneOnline(String phone) {
+    final normalized = phone.replaceAll(RegExp(r'[^\d]'), '');
+    return _onlineUsers[normalized] == true;
+  }
+
   // Reconnection
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 10;
@@ -116,6 +129,7 @@ class MessengerWsService {
       _reconnectAttempts = 0;
       _connectionStatusController.add(true);
       _startPing();
+      requestOnlineUsers();
 
       Logger.debug('💬 Messenger WS: connected');
     } catch (e) {
@@ -156,10 +170,19 @@ class MessengerWsService {
           final convId = message['conversationId'] as String? ?? '';
           final msgData = message['message'] as Map<String, dynamic>?;
           if (msgData != null) {
+            final msg = MessengerMessage.fromJson(msgData);
             _newMessageController.add(MsgrNewMessage(
               conversationId: convId,
-              message: MessengerMessage.fromJson(msgData),
+              message: msg,
             ));
+            // Show local notification if user is not currently in this chat
+            if (_activeConversationId != convId) {
+              final senderName = msg.senderName ?? msg.senderPhone;
+              final preview = (msg.content != null && msg.content!.isNotEmpty)
+                  ? msg.content!
+                  : 'Новое сообщение';
+              NotificationService.showMessengerNotification(senderName, preview, convId);
+            }
           }
           break;
 
@@ -172,10 +195,26 @@ class MessengerWsService {
           break;
 
         case 'online_status':
+          final statusPhone = message['phone'] as String? ?? '';
+          final isOnline = message['isOnline'] == true;
+          if (statusPhone.isNotEmpty) _onlineUsers[statusPhone] = isOnline;
           _onlineStatusController.add(MsgrOnlineStatus(
-            phone: message['phone'] as String? ?? '',
-            isOnline: message['isOnline'] == true,
+            phone: statusPhone,
+            isOnline: isOnline,
           ));
+          break;
+
+        case 'online_users_list':
+          final users = message['users'] as List?;
+          if (users != null) {
+            _onlineUsers.clear();
+            for (final u in users) {
+              if (u is Map) {
+                final p = u['phone']?.toString() ?? '';
+                if (p.isNotEmpty) _onlineUsers[p] = true;
+              }
+            }
+          }
           break;
 
         case 'message_deleted':

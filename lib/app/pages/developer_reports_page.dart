@@ -1,0 +1,291 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../core/theme/app_colors.dart';
+
+// Reports
+import '../../features/rko/pages/rko_reports_page.dart';
+import '../../features/shifts/pages/shift_reports_list_page.dart';
+import '../../features/shift_handover/pages/shift_handover_reports_list_page.dart';
+import '../../features/envelope/pages/envelope_reports_list_page.dart';
+import '../../features/coffee_machine/pages/coffee_machine_reports_list_page.dart';
+import '../../features/recount/pages/recount_reports_list_page.dart';
+import '../../features/attendance/pages/attendance_reports_page.dart';
+import '../../features/tests/pages/test_report_page.dart';
+
+// Staff
+import '../../features/kpi/pages/kpi_type_selection_page.dart';
+import '../../features/tasks/pages/task_reports_page.dart';
+import '../../features/work_schedule/pages/shift_transfer_requests_page.dart';
+import '../../features/fortune_wheel/pages/wheel_reports_page.dart';
+import '../../features/work_schedule/pages/work_schedule_page.dart';
+import '../../features/bonuses/pages/bonus_penalty_management_page.dart';
+import '../../features/tasks/pages/task_management_page.dart';
+import '../../features/efficiency/pages/employees_efficiency_page.dart';
+import '../../features/messenger/pages/messenger_shell_page.dart';
+
+// My efficiency
+import '../../features/efficiency/pages/my_efficiency_page.dart';
+import '../../features/main_cash/pages/main_cash_page.dart';
+import '../../features/tasks/pages/my_tasks_page.dart';
+import '../../features/ai_training/pages/ai_training_page.dart';
+
+// Clients
+import '../../features/reviews/pages/reviews_list_page.dart';
+import '../../features/product_questions/pages/product_questions_report_page.dart';
+import '../../features/job_application/pages/job_applications_list_page.dart';
+import '../../features/referrals/pages/referrals_report_page.dart';
+import '../../features/loyalty/pages/client_wheel_prizes_report_page.dart';
+import '../../features/orders/pages/orders_report_page.dart';
+import '../../features/clients/pages/clients_management_page.dart';
+import '../../features/loyalty/pages/free_drinks_report_page.dart';
+
+/// Developer reports page — tile grid (4 per row), same visual as DataManagementPage
+class DeveloperReportsPage extends StatelessWidget {
+  const DeveloperReportsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.night,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.emerald, AppColors.emeraldDark, AppColors.night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(context),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                  children: [
+                    _buildSection(context, 'Отчёты', _reportsItems(context)),
+                    _buildSection(context, 'Работа с сотрудниками', _staffItems(context)),
+                    _buildSection(context, 'Моя эффективность', _myEfficiencyItems(context)),
+                    _buildSection(context, 'Работа с клиентами', _clientItems(context)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 24.w, 8.h),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white.withOpacity(0.8),
+              size: 22,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              'Отчёты',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection(BuildContext context, String title, List<_DevReportItem> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(top: 8.h, bottom: 6.h, left: 4.w),
+          child: Row(
+            children: [
+              Container(
+                width: 3,
+                height: 14.h,
+                decoration: BoxDecoration(
+                  color: AppColors.gold,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const cols = 4;
+            const spacing = 8.0;
+            final tileW = (constraints.maxWidth - spacing * (cols - 1)) / cols;
+            final tileH = tileW * 0.95;
+            return GridView.count(
+              crossAxisCount: cols,
+              crossAxisSpacing: spacing,
+              mainAxisSpacing: spacing,
+              childAspectRatio: tileW / tileH,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              children: items.map((item) => _buildTile(context, item)).toList(),
+            );
+          },
+        ),
+        SizedBox(height: 8.h),
+      ],
+    );
+  }
+
+  Widget _buildTile(BuildContext context, _DevReportItem item) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(14.r),
+      child: InkWell(
+        onTap: () => item.onTap(context),
+        borderRadius: BorderRadius.circular(14.r),
+        splashColor: Colors.white.withOpacity(0.12),
+        highlightColor: Colors.white.withOpacity(0.06),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14.r),
+            color: Colors.white.withOpacity(0.07),
+            border: Border.all(color: Colors.white.withOpacity(0.14)),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 40.w,
+                height: 40.w,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10.r),
+                  color: Colors.white.withOpacity(0.1),
+                ),
+                child: Icon(
+                  item.icon,
+                  color: Colors.white.withOpacity(0.85),
+                  size: 22,
+                ),
+              ),
+              SizedBox(height: 6.h),
+              Text(
+                item.label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w400,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<_DevReportItem> _reportsItems(BuildContext context) => [
+    _DevReportItem(Icons.receipt_long_outlined, 'РКО',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => RKOReportsPage()))),
+    _DevReportItem(Icons.swap_horiz_rounded, 'Пересменки',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => ShiftReportsListPage()))),
+    _DevReportItem(Icons.check_circle_outline_rounded, 'Сдача смены',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => ShiftHandoverReportsListPage()))),
+    _DevReportItem(Icons.mail_outline_rounded, 'Конверты',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => EnvelopeReportsListPage()))),
+    _DevReportItem(Icons.coffee_outlined, 'Кофемашины',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => CoffeeMachineReportsListPage()))),
+    _DevReportItem(Icons.calculate_outlined, 'Пересчёт',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => RecountReportsListPage()))),
+    _DevReportItem(Icons.access_time_rounded, 'Приходы',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => AttendanceReportsPage()))),
+    _DevReportItem(Icons.quiz_outlined, 'Тесты',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => TestReportPage()))),
+  ];
+
+  List<_DevReportItem> _staffItems(BuildContext context) => [
+    _DevReportItem(Icons.insights_outlined, 'KPI',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => KPITypeSelectionPage()))),
+    _DevReportItem(Icons.task_alt_outlined, 'Задачи',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => TaskReportsPage()))),
+    _DevReportItem(Icons.swap_horizontal_circle_outlined, 'Заявки',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => ShiftTransferRequestsPage()))),
+    _DevReportItem(Icons.casino_outlined, 'Колесо (Сотр)',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => WheelReportsPage()))),
+    _DevReportItem(Icons.calendar_month_outlined, 'График',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => WorkSchedulePage()))),
+    _DevReportItem(Icons.account_balance_wallet_outlined, 'Штрафы',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => BonusPenaltyManagementPage()))),
+    _DevReportItem(Icons.assignment_outlined, 'Задачи (упр)',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => TaskManagementPage(createdBy: 'admin')))),
+    _DevReportItem(Icons.trending_up_rounded, 'Эффективность',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => EmployeesEfficiencyPage()))),
+    _DevReportItem(Icons.chat_outlined, 'Чат',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => const MessengerShellPage()))),
+  ];
+
+  List<_DevReportItem> _myEfficiencyItems(BuildContext context) => [
+    _DevReportItem(Icons.person_outline_rounded, 'Моя эффект.',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => MyEfficiencyPage()))),
+    _DevReportItem(Icons.point_of_sale_outlined, 'Касса',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => MainCashPage()))),
+    _DevReportItem(Icons.task_alt_rounded, 'Мои задачи',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => const MyTasksPage()))),
+    _DevReportItem(Icons.psychology_outlined, 'Обучение ИИ',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => AITrainingPage()))),
+  ];
+
+  List<_DevReportItem> _clientItems(BuildContext context) => [
+    _DevReportItem(Icons.star_outline_rounded, 'Отзывы',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => ReviewsListPage()))),
+    _DevReportItem(Icons.search_rounded, 'Поиск товаров',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => ProductQuestionsReportPage()))),
+    _DevReportItem(Icons.work_outline_rounded, 'Вакансии',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => JobApplicationsListPage()))),
+    _DevReportItem(Icons.person_add_alt_outlined, 'Приглашения',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => ReferralsReportPage()))),
+    _DevReportItem(Icons.emoji_events_outlined, 'Колесо (Кл)',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => ClientWheelPrizesReportPage()))),
+    _DevReportItem(Icons.shopping_bag_outlined, 'Заказы',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => OrdersReportPage()))),
+    _DevReportItem(Icons.groups_outlined, 'Клиенты',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => ClientsManagementPage()))),
+    _DevReportItem(Icons.local_cafe_outlined, 'Бонусы кл.',
+        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => const FreeDrinksReportPage()))),
+  ];
+}
+
+class _DevReportItem {
+  final IconData icon;
+  final String label;
+  final void Function(BuildContext) onTap;
+
+  const _DevReportItem(this.icon, this.label, this.onTap);
+}

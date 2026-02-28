@@ -42,37 +42,48 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
 
     final int rating = result;
 
-    // Получаем имя админа
-    final prefs = await SharedPreferences.getInstance();
-    final adminName = prefs.getString('currentEmployeeName') ??
-                      prefs.getString('user_display_name') ??
-                      'Неизвестный';
+    try {
+      // Получаем имя админа
+      final prefs = await SharedPreferences.getInstance();
+      final adminName = prefs.getString('currentEmployeeName') ??
+                        prefs.getString('user_display_name') ??
+                        'Неизвестный';
 
-    final confirmedReport = _currentReport.copyWith(
-      confirmedAt: DateTime.now(),
-      rating: rating,
-      confirmedByAdmin: adminName,
-      status: 'confirmed',
-    );
+      final confirmedReport = _currentReport.copyWith(
+        confirmedAt: DateTime.now(),
+        rating: rating,
+        confirmedByAdmin: adminName,
+        status: 'confirmed',
+      );
 
-    // Сохраняем локально
-    await ShiftReport.updateReport(confirmedReport);
+      // Сохраняем локально
+      await ShiftReport.updateReport(confirmedReport);
 
-    // Отправляем на сервер
-    final serverSuccess = await ShiftReportService.updateReport(confirmedReport);
+      // Отправляем на сервер
+      final serverSuccess = await ShiftReportService.updateReport(confirmedReport);
 
-    if (!mounted) return;
-    setState(() {
-      _currentReport = confirmedReport;
-    });
+      if (!mounted) return;
+      setState(() {
+        _currentReport = confirmedReport;
+      });
 
-    if (mounted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(serverSuccess
+                ? 'Отчет подтвержден с оценкой $rating'
+                : 'Отчет подтвержден локально с оценкой $rating'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e, st) {
+      Logger.error('Ошибка подтверждения отчета пересменки', e, st);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(serverSuccess
-              ? 'Отчет подтвержден с оценкой $rating'
-              : 'Отчет подтвержден локально с оценкой $rating'),
-          backgroundColor: Colors.green,
+          content: Text('Не удалось подтвердить отчет. Попробуйте ещё раз.'),
+          backgroundColor: Colors.red,
         ),
       );
     }

@@ -617,6 +617,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
 
     if (selectedEmployee == null) return;
 
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

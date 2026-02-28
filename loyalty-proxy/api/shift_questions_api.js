@@ -12,6 +12,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { requireAuth } = require('../utils/session_middleware');
+const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_SHIFT_QUESTIONS === 'true';
 
@@ -134,7 +135,7 @@ function setupShiftQuestionsAPI(app, { upload } = {}) {
     try {
       console.log('POST /api/shift-questions:', JSON.stringify(req.body).substring(0, 200));
 
-      const questionId = req.body.id || `shift_question_${Date.now()}`;
+      const questionId = req.body.id || generateId('shift_question');
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
 

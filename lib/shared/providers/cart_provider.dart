@@ -55,13 +55,6 @@ class CartItem {
     return unitPointsPrice * quantity;
   }
 
-  /// Unique key for deduplication
-  String get _dedupeKey {
-    if (type == CartItemType.drink) {
-      return 'drink_${menuItem?.name}_${menuItem?.price}_${menuItem?.category}';
-    }
-    return 'shop_${shopProduct?.id}_${paymentMethod.name}';
-  }
 }
 
 /// Провайдер для управления корзиной
@@ -222,9 +215,9 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Получить провайдер из контекста
+  /// Получить провайдер из контекста (регистрирует зависимость для перестройки)
   static CartProvider of(BuildContext context) {
-    final scope = context.findAncestorWidgetOfExactType<_CartProviderScope>();
+    final scope = context.dependOnInheritedWidgetOfExactType<_CartProviderScope>();
     if (scope == null) {
       throw Exception('CartProvider not found in widget tree');
     }
@@ -243,7 +236,8 @@ class _CartProviderScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(_CartProviderScope oldWidget) {
-    return cart != oldWidget.cart;
+    // Same instance, but content changed — always notify dependents
+    return true;
   }
 }
 
@@ -261,7 +255,19 @@ class _CartProviderScopeState extends State<CartProviderScope> {
   final CartProvider _cart = CartProvider();
 
   @override
+  void initState() {
+    super.initState();
+    // Rebuild InheritedWidget when cart notifies (e.g. item added/removed)
+    _cart.addListener(_onCartChanged);
+  }
+
+  void _onCartChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    _cart.removeListener(_onCartChanged);
     _cart.dispose();
     super.dispose();
   }

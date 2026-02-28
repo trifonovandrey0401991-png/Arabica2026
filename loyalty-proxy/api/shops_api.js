@@ -13,6 +13,7 @@ const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { requireAdmin } = require('../utils/session_middleware');
+const { generateId } = require('../utils/id_generator');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SHOPS_DIR = `${DATA_DIR}/shops`;
@@ -116,7 +117,7 @@ function setupShopsAPI(app) {
       const { name, address, latitude, longitude, icon } = req.body;
       console.log('POST /api/shops', name, address);
 
-      const id = 'shop_' + Date.now();
+      const id = generateId('shop');
       const now = new Date().toISOString();
 
       let shop;

@@ -697,7 +697,7 @@ const uploadEmployeePhoto = multer({
 });
 
 // Эндпоинт для загрузки фото сотрудника
-app.post('/upload-employee-photo', uploadEmployeePhoto.single('file'), compressUpload, (req, res) => {
+app.post('/upload-employee-photo', requireAuth, uploadEmployeePhoto.single('file'), compressUpload, (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Файл не загружен' });

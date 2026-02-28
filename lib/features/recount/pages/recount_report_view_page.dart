@@ -439,7 +439,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
       children: [
         Text(
           'Решение по ошибке ИИ:',
-          style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+          style: TextStyle(fontSize: 12.sp, color: Colors.white60),
         ),
         SizedBox(height: 6),
         Row(
@@ -1099,15 +1099,18 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
 
   Widget _buildAnswerCard(int index, RecountAnswer answer) {
     final gradeColor = _gradeColor(answer.grade);
+    final hasPhoto = answer.photoUrl != null || answer.photoPath != null;
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16.r),
-        color: Colors.white,
+        color: const Color(0xFF0A2424),
+        border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: Offset(0, 3),
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -1115,14 +1118,16 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with grade
+          // Grade header with gradient
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
             decoration: BoxDecoration(
-              color: gradeColor.withOpacity(0.08),
-              border: Border(
-                bottom: BorderSide(color: gradeColor.withOpacity(0.2)),
+              gradient: LinearGradient(
+                colors: [gradeColor.withOpacity(0.28), gradeColor.withOpacity(0.08)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
               ),
+              border: Border(bottom: BorderSide(color: gradeColor.withOpacity(0.35))),
             ),
             child: Row(
               children: [
@@ -1134,11 +1139,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                   ),
                   child: Text(
                     'Грейд ${answer.grade}',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
                   ),
                 ),
                 if (answer.photoRequired)
@@ -1151,42 +1152,31 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
           ),
           // Question title
           Padding(
-            padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 4.h),
+            padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 8.h),
             child: Text(
               'Вопрос ${index + 1}: ${answer.question}',
-              style: TextStyle(
-                fontSize: 15.sp,
-                fontWeight: FontWeight.bold,
-                color: AppColors.emeraldDark,
-              ),
+              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),
-          // Answer content
+          // Match / mismatch + AI blocks
           Padding(
-            padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
+            padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, hasPhoto ? 10.h : 16.h),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Match result
                 if (answer.answer == 'сходится')
                   _buildMatchBlock(answer)
                 else if (answer.answer == 'не сходится')
                   _buildMismatchBlock(answer),
-
-                // AI verification
                 if (answer.aiVerified == true) ...[
-                  SizedBox(height: 12.h),
+                  SizedBox(height: 10.h),
                   _buildAiVerificationBlock(index, answer),
-                ],
-
-                // Photo
-                if (answer.photoUrl != null || answer.photoPath != null) ...[
-                  SizedBox(height: 12.h),
-                  _buildPhotoBlock(index, answer),
                 ],
               ],
             ),
           ),
+          // Photo — full-width, edge-to-edge (card clips corners)
+          if (hasPhoto) _buildPhotoBlock(index, answer),
         ],
       ),
     );
@@ -1200,9 +1190,9 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
     return Container(
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: AppColors.success.withOpacity(0.08),
+        color: AppColors.success.withOpacity(0.12),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: AppColors.success.withOpacity(0.2)),
+        border: Border.all(color: AppColors.success.withOpacity(0.35)),
       ),
       child: Row(
         children: [
@@ -1210,7 +1200,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
             width: 36.w,
             height: 36.w,
             decoration: BoxDecoration(
-              color: AppColors.success.withOpacity(0.15),
+              color: AppColors.success.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.check_circle_rounded, color: AppColors.success, size: 22),
@@ -1222,16 +1212,12 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
               children: [
                 Text(
                   'Сходится',
-                  style: TextStyle(
-                    color: AppColors.success,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15.sp,
-                  ),
+                  style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold, fontSize: 15.sp),
                 ),
                 if (answer.quantity != null)
                   Text(
                     'Количество: ${answer.quantity} шт',
-                    style: TextStyle(fontSize: 13.sp, color: Colors.grey[700]),
+                    style: TextStyle(fontSize: 13.sp, color: Colors.white70),
                   ),
               ],
             ),
@@ -1278,20 +1264,20 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
           Container(
             padding: EdgeInsets.all(10.w),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF061818),
               borderRadius: BorderRadius.circular(10.r),
             ),
             child: IntrinsicHeight(
               child: Row(
                 children: [
                   Expanded(
-                    child: _buildCountColumn('По программе', '${answer.programBalance ?? '-'} шт', Colors.grey[700]!),
+                    child: _buildCountColumn('По программе', '${answer.programBalance ?? '-'} шт', Colors.white70),
                   ),
-                  VerticalDivider(width: 1, thickness: 1, color: Colors.grey[300]),
+                  VerticalDivider(width: 1, thickness: 1, color: AppColors.emerald.withOpacity(0.3)),
                   Expanded(
-                    child: _buildCountColumn('По факту', '${answer.actualBalance ?? '-'} шт', Colors.grey[700]!),
+                    child: _buildCountColumn('По факту', '${answer.actualBalance ?? '-'} шт', Colors.white70),
                   ),
-                  VerticalDivider(width: 1, thickness: 1, color: Colors.grey[300]),
+                  VerticalDivider(width: 1, thickness: 1, color: AppColors.emerald.withOpacity(0.3)),
                   Expanded(
                     child: _buildCountColumn(
                       'Разница',
@@ -1302,7 +1288,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                           : '-',
                       answer.difference != null
                           ? (answer.difference! > 0 ? AppColors.error : AppColors.info)
-                          : Colors.grey[700]!,
+                          : Colors.white70,
                     ),
                   ),
                 ],
@@ -1334,17 +1320,13 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 11.sp, color: Colors.grey[500]),
+          style: TextStyle(fontSize: 11.sp, color: Colors.white54),
           textAlign: TextAlign.center,
         ),
         SizedBox(height: 4.h),
         Text(
           value,
-          style: TextStyle(
-            fontSize: 16.sp,
-            fontWeight: FontWeight.bold,
-            color: valueColor,
-          ),
+          style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: valueColor),
           textAlign: TextAlign.center,
         ),
       ],
@@ -1491,20 +1473,16 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
     return Container(
       padding: EdgeInsets.all(8.w),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.7),
+        color: const Color(0xFF061818),
         borderRadius: BorderRadius.circular(8.r),
       ),
       child: Column(
         children: [
-          Text(label, style: TextStyle(fontSize: 11.sp, color: Colors.grey[500])),
+          Text(label, style: TextStyle(fontSize: 11.sp, color: Colors.white54)),
           SizedBox(height: 4.h),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.bold,
-              color: valueColor ?? AppColors.night,
-            ),
+            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: valueColor ?? Colors.white),
           ),
         ],
       ),
@@ -1544,76 +1522,69 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
   // ═══════════════════════════════════════════════════
 
   Widget _buildPhotoBlock(int index, RecountAnswer answer) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final imageWidget = answer.photoUrl != null
-                ? AppCachedImage(
-                    imageUrl: answer.photoUrl!,
-                    fit: BoxFit.cover,
-                    errorWidget: (context, error, stackTrace) {
-                      return Center(child: Icon(Icons.error, color: AppColors.error));
-                    },
-                  )
-                : answer.photoPath != null
-                    ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                        ? AppCachedImage(
-                            imageUrl: answer.photoPath!,
-                            fit: BoxFit.cover,
-                            errorWidget: (context, error, stackTrace) {
-                              return Center(child: Icon(Icons.error, color: AppColors.error));
-                            },
-                          ) as Widget
-                        : Image.file(
-                            File(answer.photoPath!),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Center(child: Icon(Icons.error, color: AppColors.error));
-                            },
-                          )
-                    : Center(child: Icon(Icons.image_not_supported, color: Colors.grey)) as Widget;
+    Widget buildImage() {
+      if (answer.photoUrl != null) {
+        return AppCachedImage(
+          imageUrl: answer.photoUrl!,
+          fit: BoxFit.cover,
+          errorWidget: (context, error, stackTrace) =>
+              Center(child: Icon(Icons.error, color: AppColors.error)),
+        );
+      } else if (answer.photoPath != null) {
+        if (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http')) {
+          return AppCachedImage(
+            imageUrl: answer.photoPath!,
+            fit: BoxFit.cover,
+            errorWidget: (context, error, stackTrace) =>
+                Center(child: Icon(Icons.error, color: AppColors.error)),
+          );
+        } else {
+          return Image.file(
+            File(answer.photoPath!),
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) =>
+                Center(child: Icon(Icons.error, color: AppColors.error)),
+          );
+        }
+      }
+      return Center(child: Icon(Icons.image_not_supported, color: Colors.grey));
+    }
 
-            return Container(
-              height: 200,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12.r),
-                child: answer.selectedRegion != null
-                    ? Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          imageWidget,
-                          CustomPaint(
-                            painter: _RegionOverlayPainter(
-                              region: answer.selectedRegion!,
-                              containerWidth: constraints.maxWidth,
-                              containerHeight: 200,
-                            ),
-                          ),
-                        ],
-                      )
-                    : imageWidget,
-              ),
-            );
-          },
+    final imageWidget = buildImage();
+
+    return Column(
+      children: [
+        // Full-width photo — clipped by parent card's borderRadius
+        AspectRatio(
+          aspectRatio: 4 / 3,
+          child: answer.selectedRegion != null
+              ? Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    imageWidget,
+                    LayoutBuilder(
+                      builder: (context, constraints) => CustomPaint(
+                        painter: _RegionOverlayPainter(
+                          region: answer.selectedRegion!,
+                          containerWidth: constraints.maxWidth,
+                          containerHeight: constraints.maxHeight,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : imageWidget,
         ),
-        // Photo verification buttons
-        SizedBox(height: 8.h),
-        _buildPhotoVerificationButtons(index),
-        // Training button
-        _buildReportTrainingButton(index, answer),
+        // Verification + training buttons
+        Padding(
+          padding: EdgeInsets.all(12.w),
+          child: Column(
+            children: [
+              _buildPhotoVerificationButtons(index),
+              _buildReportTrainingButton(index, answer),
+            ],
+          ),
+        ),
       ],
     );
   }

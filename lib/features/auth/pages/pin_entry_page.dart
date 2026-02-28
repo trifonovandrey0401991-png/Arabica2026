@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/logger.dart';
 
 import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
@@ -53,21 +54,26 @@ class _PinEntryPageState extends State<PinEntryPage> {
   }
 
   Future<void> _checkBiometric() async {
-    final available = await _biometricService.isAvailable();
-    final enabled = await _authService.isBiometricEnabled();
-    final name = await _biometricService.getBiometricTypeName();
+    try {
+      final available = await _biometricService.isAvailable();
+      final enabled = await _authService.isBiometricEnabled();
+      final name = await _biometricService.getBiometricTypeName();
 
-    if (mounted) {
-      setState(() {
-        _biometricAvailable = available;
-        _biometricEnabled = enabled;
-        _biometricName = name;
-      });
+      if (mounted) {
+        setState(() {
+          _biometricAvailable = available;
+          _biometricEnabled = enabled;
+          _biometricName = name;
+        });
 
-      // Автоматически запускаем биометрию если включена
-      if (available && enabled) {
-        _authenticateWithBiometric();
+        // Автоматически запускаем биометрию если включена
+        if (available && enabled) {
+          _authenticateWithBiometric();
+        }
       }
+    } catch (e, st) {
+      Logger.error('Ошибка проверки биометрии', e, st);
+      // Биометрия просто не будет доступна — PIN всегда работает
     }
   }
 
@@ -78,33 +84,47 @@ class _PinEntryPageState extends State<PinEntryPage> {
       _errorMessage = null;
     });
 
-    final result = await _authService.loginWithPin(pin);
+    try {
+      final result = await _authService.loginWithPin(pin);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (result.success) {
-      // Если биометрия доступна но НЕ включена - предложить включить
-      if (_biometricAvailable && !_biometricEnabled) {
-        await _offerEnableBiometric();
-      }
-      widget.onSuccess?.call();
-    } else {
-      if (mounted) setState(() {
-        _showError = true;
-        _errorMessage = result.error;
-        _clearPin = true;
+      setState(() {
+        _isLoading = false;
       });
 
-      Future.delayed(Duration(milliseconds: 100), () {
-        if (mounted) {
-          setState(() {
-            _clearPin = false;
-          });
+      if (result.success) {
+        // Если биометрия доступна но НЕ включена - предложить включить
+        if (_biometricAvailable && !_biometricEnabled) {
+          await _offerEnableBiometric();
         }
+        widget.onSuccess?.call();
+      } else {
+        if (mounted) setState(() {
+          _showError = true;
+          _errorMessage = result.error;
+          _clearPin = true;
+        });
+
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (mounted) {
+            setState(() {
+              _clearPin = false;
+            });
+          }
+        });
+      }
+    } catch (e, st) {
+      Logger.error('Ошибка входа по PIN', e, st);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _showError = true;
+        _errorMessage = 'Нет связи с сервером. Проверьте интернет.';
+        _clearPin = true;
+      });
+      Future.delayed(Duration(milliseconds: 100), () {
+        if (mounted) setState(() => _clearPin = false);
       });
     }
   }
@@ -180,6 +200,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
             _biometricEnabled = true;
           });
 
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('$_biometricName успешно включён!'),
@@ -197,24 +218,34 @@ class _PinEntryPageState extends State<PinEntryPage> {
       _showError = false;
     });
 
-    final result = await _authService.loginWithBiometric();
+    try {
+      final result = await _authService.loginWithBiometric();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-    });
+      setState(() {
+        _isLoading = false;
+      });
 
-    if (result.success) {
-      widget.onSuccess?.call();
-    } else {
-      // Не показываем ошибку при отмене биометрии
-      if (result.error?.contains('отклонена') != true) {
-        if (mounted) setState(() {
-          _showError = true;
-          _errorMessage = result.error;
-        });
+      if (result.success) {
+        widget.onSuccess?.call();
+      } else {
+        // Не показываем ошибку при отмене биометрии
+        if (result.error?.contains('отклонена') != true) {
+          if (mounted) setState(() {
+            _showError = true;
+            _errorMessage = result.error;
+          });
+        }
       }
+    } catch (e, st) {
+      Logger.error('Ошибка биометрической авторизации', e, st);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _showError = true;
+        _errorMessage = 'Ошибка биометрии. Используйте PIN-код.';
+      });
     }
   }
 

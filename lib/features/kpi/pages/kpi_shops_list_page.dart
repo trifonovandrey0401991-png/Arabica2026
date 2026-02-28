@@ -27,9 +27,6 @@ class _KPIShopsListPageState extends State<KPIShopsListPage> {
   // Кэш месячной статистики
   final Map<String, List<KPIShopMonthStats>> _monthlyStatsCache = {};
 
-  // Отслеживание загружаемых магазинов (для предотвращения дублирования)
-  final Set<String> _loadingShops = {};
-
   @override
   void initState() {
     super.initState();

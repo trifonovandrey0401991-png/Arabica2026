@@ -13,6 +13,7 @@ const { isPaginationRequested, createPaginatedResponse, createDbPaginatedRespons
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 const { compressUpload } = require('../utils/image_compress');
+const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_RECIPES === 'true';
 
@@ -43,7 +44,7 @@ const recipePhotoStorage = multer.diskStorage({
     cb(null, RECIPE_PHOTOS_DIR);
   },
   filename: function (req, file, cb) {
-    const safeId = sanitizeId(req.body.recipeId || `recipe_${Date.now()}`);
+    const safeId = sanitizeId(req.body.recipeId || generateId('recipe'));
     cb(null, `${safeId}.jpg`);
   }
 });
@@ -190,7 +191,7 @@ function setupRecipesAPI(app) {
         return res.status(400).json({ success: false, error: 'Название и категория обязательны' });
       }
 
-      const id = `recipe_${Date.now()}`;
+      const id = generateId('recipe');
       const recipe = {
         id,
         name,

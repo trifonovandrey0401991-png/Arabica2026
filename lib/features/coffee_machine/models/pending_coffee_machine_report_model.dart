@@ -60,9 +60,9 @@ class PendingCoffeeMachineReport {
   String get statusText {
     switch (status) {
       case 'pending':
-        return 'В очереди';
+        return 'Не пройден';
       case 'failed':
-        return 'Не сдан';
+        return 'Не в срок';
       default:
         return status;
     }

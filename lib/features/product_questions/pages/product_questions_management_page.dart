@@ -16,7 +16,8 @@ class ProductQuestionsManagementPage extends StatefulWidget {
   State<ProductQuestionsManagementPage> createState() => _ProductQuestionsManagementPageState();
 }
 
-class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagementPage> {
+class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagementPage>
+    with WidgetsBindingObserver {
   List<ProductQuestion> _allQuestions = [];
   List<PersonalProductDialog> _personalDialogs = [];
   List<Shop> _shops = [];
@@ -37,6 +38,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadUserRole();
     _loadData();
     _refreshTimer = Timer.periodic(Duration(seconds: 10), (_) => _loadDataSilent());
@@ -44,8 +46,20 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+    } else if (state == AppLifecycleState.resumed) {
+      _refreshTimer ??= Timer.periodic(Duration(seconds: 10), (_) => _loadDataSilent());
+      _loadDataSilent();
+    }
   }
 
   Future<void> _loadUserRole() async {
@@ -731,6 +745,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
               shopAddressForAnswer = selectedShop.address;
             }
 
+            if (!mounted) return;
             await Navigator.push(
               context,
               MaterialPageRoute(

@@ -125,7 +125,7 @@ async function initBatchCache(month) {
   console.log(`[Efficiency] Инициализация batch кэша для ${month}${USE_DB ? ' (PostgreSQL)' : ' (JSON)'}...`);
 
   // Load all settings once for batch
-  const [shiftSettings, recountSettings, handoverSettings, attendanceSettings, testSettings, envelopeSettings, coffeeMachineSettings, rkoSettings, reviewsSettings] = await Promise.all([
+  const [shiftSettings, recountSettings, handoverSettings, attendanceSettings, testSettings, envelopeSettings, coffeeMachineSettings, rkoSettings, reviewsSettings, ordersSettings] = await Promise.all([
     getShiftSettings(),
     getRecountSettings(),
     getHandoverSettings(),
@@ -135,16 +135,17 @@ async function initBatchCache(month) {
     getCoffeeMachineSettings(),
     getRkoSettings(),
     getReviewsSettings(),
+    getOrdersSettings(),
   ]);
   const taskConfig = await getTaskPointsConfig();
 
-  const settings = { shiftSettings, recountSettings, handoverSettings, attendanceSettings, testSettings, envelopeSettings, coffeeMachineSettings, rkoSettings, reviewsSettings, taskConfig };
+  const settings = { shiftSettings, recountSettings, handoverSettings, attendanceSettings, testSettings, envelopeSettings, coffeeMachineSettings, rkoSettings, reviewsSettings, ordersSettings, taskConfig };
 
   if (USE_DB) {
     const { start, end } = getMonthRange(month);
 
     // Load all data from DB in parallel (12 queries, range-based for index usage)
-    const [shiftRes, recountRes, handoverRes, attendanceRes, testRes, reviewRes, rkoRes, penaltyRes, envelopeRes, cmRes, taskAssignRes, recurringInstRes] = await Promise.all([
+    const [shiftRes, recountRes, handoverRes, attendanceRes, testRes, reviewRes, rkoRes, penaltyRes, envelopeRes, cmRes, taskAssignRes, recurringInstRes, ordersRes] = await Promise.all([
       db.query('SELECT employee_name, employee_phone, shop_address, rating FROM shift_reports WHERE date >= $1 AND date < $2', [start, end]),
       db.query('SELECT employee_name, employee_phone, admin_rating FROM recount_reports WHERE date >= $1 AND date < $2', [start, end]),
       db.query('SELECT employee_name, employee_phone, rating FROM shift_handover_reports WHERE date >= $1 AND date < $2', [start, end]),
@@ -157,6 +158,7 @@ async function initBatchCache(month) {
       db.query('SELECT employee_name, status FROM coffee_machine_reports WHERE date >= $1::date AND date < $2::date', [start, end]),
       db.query('SELECT ta.assignee_id, ta.status FROM task_assignments ta JOIN tasks t ON ta.task_id = t.id WHERE t.month = $1', [month]),
       db.query('SELECT assignee_id, status FROM recurring_task_instances WHERE date >= $1::date AND date < $2::date', [start, end]),
+      db.query("SELECT status, accepted_by, rejected_by FROM orders WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz AND status IN ('accepted', 'rejected')", [start, end]),
     ]);
 
     _batchCache = {
@@ -175,6 +177,7 @@ async function initBatchCache(month) {
       penalties: penaltyRes.rows.map(r => ({ entityId: r.entity_id, employeePhone: r.employee_phone, points: parseFloat(r.points) || 0 })),
       taskAssignments: taskAssignRes.rows.map(r => ({ assigneeId: r.assignee_id, status: r.status })),
       recurringInstances: recurringInstRes.rows.map(r => ({ assigneeId: r.assignee_id, status: r.status })),
+      orders: ordersRes.rows.map(r => ({ status: r.status, acceptedBy: r.accepted_by, rejectedBy: r.rejected_by })),
       settings,
     };
   } else {
@@ -381,6 +384,13 @@ async function getReviewsSettings() {
   return await loadSettings('reviews_points_settings.json', {
     positivePoints: 3,
     negativePoints: -5,
+  });
+}
+
+async function getOrdersSettings() {
+  return await loadSettings('orders_points_settings.json', {
+    acceptedPoints: 0.2,
+    rejectedPoints: -3,
   });
 }
 
@@ -806,10 +816,41 @@ async function calculateAttendancePenalties(employeeId, employeeName, month) {
 }
 
 /**
- * Рассчитать заказы (orders) - TODO: интеграция с Lichi CRM API
+ * Рассчитать баллы за заказы (orders)
+ * accepted_by / rejected_by — имя сотрудника, обработавшего заказ
  */
-async function calculateOrdersPoints(employeeId, month) {
-  return 0;
+async function calculateOrdersPoints(employeeId, employeeName, month) {
+  try {
+    const settings = await getOrdersSettings();
+    let totalPoints = 0;
+
+    if (USE_DB) {
+      const { start, end } = getMonthRange(month);
+      const res = await db.query(
+        `SELECT status, accepted_by, rejected_by FROM orders
+         WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz
+           AND status IN ('accepted', 'rejected')`,
+        [start, end]
+      );
+      const empNameLower = employeeName ? employeeName.trim().toLowerCase() : '';
+      for (const row of res.rows) {
+        if (row.status === 'accepted' && row.accepted_by) {
+          if (row.accepted_by.trim().toLowerCase() === empNameLower) {
+            totalPoints += settings.acceptedPoints;
+          }
+        } else if (row.status === 'rejected' && row.rejected_by) {
+          if (row.rejected_by.trim().toLowerCase() === empNameLower) {
+            totalPoints += settings.rejectedPoints;
+          }
+        }
+      }
+    }
+
+    return totalPoints;
+  } catch (e) {
+    console.error('Error calculating orders points:', e);
+    return 0;
+  }
 }
 
 /**
@@ -920,7 +961,7 @@ async function calculateFullEfficiency(employeeId, employeeName, shopAddress, mo
       productSearch: await calculateProductSearchPoints(employeeId, month),
       rko: await calculateRkoPoints(shopAddress, month),
       tasks: await calculateTasksPoints(employeeId, month),
-      orders: await calculateOrdersPoints(employeeId, month),
+      orders: await calculateOrdersPoints(employeeId, employeeName, month),
       envelope: await calculateEnvelopePoints(employeeName, month),
       coffeeMachine: await calculateCoffeeMachinePoints(employeeName, month),
     };
@@ -1189,6 +1230,33 @@ async function calculateCoffeeMachinePointsCached(employeeName, cache) {
 }
 
 /**
+ * Рассчитать баллы за заказы используя кэш
+ */
+function calculateOrdersPointsCached(employeeName, cache) {
+  if (!cache.orders) return 0;
+
+  const settings = cache.settings ? cache.settings.ordersSettings : { acceptedPoints: 0.2, rejectedPoints: -3 };
+  const empNameLower = employeeName ? employeeName.trim().toLowerCase() : '';
+  if (!empNameLower) return 0;
+
+  let totalPoints = 0;
+
+  for (const order of cache.orders) {
+    if (order.status === 'accepted' && order.acceptedBy) {
+      if (order.acceptedBy.trim().toLowerCase() === empNameLower) {
+        totalPoints += settings.acceptedPoints;
+      }
+    } else if (order.status === 'rejected' && order.rejectedBy) {
+      if (order.rejectedBy.trim().toLowerCase() === empNameLower) {
+        totalPoints += settings.rejectedPoints;
+      }
+    }
+  }
+
+  return totalPoints;
+}
+
+/**
  * Determine employee's shop addresses from cache data
  * Looks at shift reports and attendance to find which shops the employee worked at
  */
@@ -1266,7 +1334,7 @@ async function calculateFullEfficiencyCached(employeeId, employeeName, shopAddre
       productSearch: 0, // Handled via efficiency-penalties
       rko: calculateRkoPointsMultiShop(empShops, cache),
       tasks: calculateTasksPointsCached(employeeId, cache),
-      orders: 0, // TODO: Lichi CRM
+      orders: calculateOrdersPointsCached(employeeName, cache),
       envelope: await calculateEnvelopePointsCached(employeeName, cache),
       coffeeMachine: await calculateCoffeeMachinePointsCached(employeeName, cache),
     };

@@ -15,6 +15,7 @@ const { getMoscowTime } = require('../utils/moscow_time');
 const BaseReportScheduler = require('../utils/base_report_scheduler');
 const db = require('../utils/db');
 const { loadShopManagers } = require('./shop_managers_api');
+const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_COFFEE_MACHINE === 'true';
 
@@ -259,7 +260,7 @@ class CoffeeMachineScheduler extends BaseReportScheduler {
       }
 
       const report = {
-        id: `pending_cm_${shiftType}_${shopAddress.replace(/[^a-zA-Z0-9а-яА-Я]/g, '_')}_${Date.now()}`,
+        id: generateId(`pending_cm_${shiftType}_${shopAddress.replace(/[^a-zA-Z0-9а-яА-Я]/g, '_')}`),
         shopAddress,
         shiftType,
         status: 'pending',

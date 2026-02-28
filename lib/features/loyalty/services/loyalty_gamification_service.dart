@@ -7,6 +7,12 @@ import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../models/loyalty_gamification_model.dart';
+import 'loyalty_storage.dart';
+
+/// Выбрасывается когда у клиента есть невыданный приз и нельзя крутить снова
+class PendingPrizeException implements Exception {
+  const PendingPrizeException();
+}
 
 /// Сервис для работы с геймификацией программы лояльности
 class LoyaltyGamificationService {
@@ -37,8 +43,11 @@ class LoyaltyGamificationService {
       );
 
       if (result != null && result['success'] == true) {
-        _cachedSettings = GamificationSettings.fromJson(result['settings'] ?? {});
+        final settingsJson = result['settings'] ?? {};
+        _cachedSettings = GamificationSettings.fromJson(settingsJson);
         _cacheTime = DateTime.now();
+        // Persist to SharedPreferences for instant load on next app open
+        await LoyaltyStorage.saveGamificationSettings(Map<String, dynamic>.from(settingsJson));
         Logger.debug('✅ Настройки геймификации загружены: ${_cachedSettings!.levels.length} уровней');
         return _cachedSettings!;
       }
@@ -90,8 +99,10 @@ class LoyaltyGamificationService {
 
       if (result != null && result['success'] == true) {
         final settings = await fetchSettings();
-        // Сервер возвращает client вложенным в результат
-        return ClientGamificationData.fromJson(result['client'] ?? result, settings);
+        final clientJson = Map<String, dynamic>.from(result['client'] ?? result);
+        // Persist to SharedPreferences for instant load on next app open
+        await LoyaltyStorage.saveClientGamificationData(normalizedPhone, clientJson);
+        return ClientGamificationData.fromJson(clientJson, settings);
       }
       return null;
     } catch (e) {
@@ -113,6 +124,9 @@ class LoyaltyGamificationService {
       if (result != null && result['success'] == true && result['spin'] != null) {
         Logger.debug('🎡 Колесо прокручено: ${result['spin']['prize']}');
         return WheelSpinResult.fromJson(result['spin']);
+      }
+      if (result != null && result['hasPendingPrize'] == true) {
+        throw const PendingPrizeException();
       }
       return null;
     } catch (e) {
@@ -238,8 +252,12 @@ class LoyaltyGamificationService {
       );
 
       if (result != null && result['success'] == true && result['hasPendingPrize'] == true) {
-        return ClientPrize.fromJson(result['prize']);
+        final prizeJson = Map<String, dynamic>.from(result['prize']);
+        await LoyaltyStorage.saveClientPrize(normalizedPhone, prizeJson);
+        return ClientPrize.fromJson(prizeJson);
       }
+      // No prize — clear cached prize
+      await LoyaltyStorage.saveClientPrize(normalizedPhone, null);
       return null;
     } catch (e) {
       Logger.error('Ошибка загрузки pending приза', e);
@@ -439,6 +457,7 @@ class LoyaltyGamificationService {
       wheel: WheelSettings(
         enabled: true,
         freeDrinksPerSpin: 5,
+        pointsPerSpin: 50,
         sectors: [
           const WheelSector(index: 0, text: '+5 баллов', probability: 0.25, colorHex: '#4CAF50', prizeType: 'bonus_points', prizeValue: 5),
           const WheelSector(index: 1, text: 'Скидка 10%', probability: 0.20, colorHex: '#2196F3', prizeType: 'discount', prizeValue: 10),

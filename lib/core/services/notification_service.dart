@@ -348,6 +348,38 @@ class NotificationService {
     });
   }
 
+  /// Показать уведомление о новом сообщении в мессенджере (локальное, при WS-доставке)
+  static Future<void> showMessengerNotification(
+    String title,
+    String body,
+    String conversationId,
+  ) async {
+    await initialize();
+
+    final androidDetails = AndroidNotificationDetails(
+      'messenger_channel',
+      'Мессенджер',
+      channelDescription: 'Уведомления о новых сообщениях',
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
+    );
+
+    final iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    await _notifications.show(
+      'msgr_$conversationId'.hashCode,
+      title,
+      body,
+      NotificationDetails(android: androidDetails, iOS: iosDetails),
+      payload: jsonEncode({'type': 'messenger_message', 'conversationId': conversationId}),
+    );
+  }
+
   /// Отправить уведомление клиенту об отказе от заказа
   static Future<void> _notifyClientAboutRejection(
     BuildContext context,

@@ -154,6 +154,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
       phones,
     );
 
+    if (!mounted) return;
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -210,6 +211,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
         requesterPhone: widget.userPhone,
       );
 
+      if (!mounted) return;
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

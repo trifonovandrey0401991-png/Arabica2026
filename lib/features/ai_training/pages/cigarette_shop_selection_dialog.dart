@@ -125,6 +125,7 @@ class CigaretteShopSelectionDialog {
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.setString('selectedShopAddress', shop.address);
 
+                          if (!context.mounted) return;
                           Navigator.pop(context);
 
                           ScaffoldMessenger.of(context).showSnackBar(

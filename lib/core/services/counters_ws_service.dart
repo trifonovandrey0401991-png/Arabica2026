@@ -33,9 +33,11 @@ class CountersWsService {
   CountersWsService._();
 
   WebSocketChannel? _channel;
+  StreamSubscription<dynamic>? _channelSubscription;
   String? _userPhone;
   String? _userRole;
   bool _isConnected = false;
+  bool _isConnecting = false; // TCP open but not yet confirmed by server
   bool _isDisposed = false;
   Timer? _pingTimer;
 
@@ -61,7 +63,7 @@ class CountersWsService {
   /// Call once from the main page (MainMenuPage or ManagerGridPage).
   /// Safe to call multiple times — will not reconnect if already connected.
   Future<void> connect(String userPhone, {String role = 'employee'}) async {
-    if (_isConnected && _userPhone == userPhone) return;
+    if ((_isConnected || _isConnecting) && _userPhone == userPhone) return;
 
     _userPhone = userPhone;
     _userRole = role;
@@ -70,26 +72,27 @@ class CountersWsService {
   }
 
   Future<void> _doConnect() async {
+    if (_isConnecting) return;
+    _isConnecting = true;
     try {
       final wsUrl = _buildWebSocketUrl();
       Logger.debug('📊 Counters WS: connecting...');
 
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
 
-      _channel!.stream.listen(
+      _channelSubscription = _channel!.stream.listen(
         _handleMessage,
         onError: _handleError,
         onDone: _handleDone,
       );
 
-      _isConnected = true;
-      _reconnectAttempts = 0;
-      _connectionStatusController.add(true);
-      _startPing();
-
-      Logger.debug('📊 Counters WS: connected');
+      // Do NOT set _isConnected = true here.
+      // Wait for server to send the 'connected' confirmation message.
+      // This prevents premature badge updates and ping-before-handshake.
+      Logger.debug('📊 Counters WS: socket opened, awaiting server confirmation...');
     } catch (e) {
       Logger.error('📊 Counters WS: connection error: $e');
+      _isConnecting = false;
       _isConnected = false;
       _connectionStatusController.add(false);
       _scheduleReconnect();
@@ -136,6 +139,11 @@ class CountersWsService {
 
         case 'connected':
           Logger.debug('📊 Counters WS: server confirmed connection');
+          _isConnecting = false;
+          _isConnected = true;
+          _reconnectAttempts = 0;
+          _connectionStatusController.add(true);
+          _startPing();
           break;
 
         case 'pong':
@@ -148,6 +156,7 @@ class CountersWsService {
 
   void _handleError(dynamic error) {
     Logger.error('📊 Counters WS: error: $error');
+    _isConnecting = false;
     _isConnected = false;
     _connectionStatusController.add(false);
     _scheduleReconnect();
@@ -155,6 +164,7 @@ class CountersWsService {
 
   void _handleDone() {
     Logger.debug('📊 Counters WS: disconnected');
+    _isConnecting = false;
     _isConnected = false;
     _pingTimer?.cancel();
     _connectionStatusController.add(false);
@@ -204,8 +214,11 @@ class CountersWsService {
 
   void disconnect() {
     _isDisposed = true;
+    _isConnecting = false;
     _isConnected = false;
     _pingTimer?.cancel();
+    _channelSubscription?.cancel();
+    _channelSubscription = null;
     _channel?.sink.close();
     _channel = null;
     _connectionStatusController.add(false);

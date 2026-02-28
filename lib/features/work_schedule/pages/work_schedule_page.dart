@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 import '../models/work_schedule_model.dart';
-import '../models/shift_transfer_model.dart';
 import '../services/work_schedule_service.dart';
 import '../services/shift_transfer_service.dart';
 import '../services/schedule_pdf_service.dart';
@@ -103,15 +101,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     if (mounted) setState(() {});
   }
 
-  Future<void> _loadAdminNotifications() async {
-    try {
-      await ShiftTransferService.getAdminRequests();
-      await _loadAdminUnreadCount();
-    } catch (e) {
-      Logger.error('Ошибка загрузки уведомлений админа', e);
-    }
-  }
-
   Future<void> _loadAdminUnreadCount() async {
     try {
       await ShiftTransferService.getAdminUnreadCount();
@@ -173,13 +162,15 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           _schedule = schedule;
           _isLoading = false;
         });
-        // Step 3: Save to cache
-        CacheManager.set(_cacheKey, {
-          'employees': employees,
-          'shops': shops,
-          'schedule': schedule,
-          'shopSettings': _shopSettingsCache,
-        });
+        // Step 3: Save to cache only if shops loaded (don't cache empty list)
+        if (shops.isNotEmpty) {
+          CacheManager.set(_cacheKey, {
+            'employees': employees,
+            'shops': shops,
+            'schedule': schedule,
+            'shopSettings': _shopSettingsCache,
+          });
+        }
         // Валидация графика после загрузки
         _validateCurrentSchedule();
       }

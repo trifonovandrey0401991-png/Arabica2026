@@ -163,8 +163,10 @@ class ShopService {
 
       case UserRole.admin:
         if (roleData.managedShopIds.isEmpty) {
-          Logger.debug('   Admin без привязанных магазинов - все магазины');
-          return allShops;
+          // Fail-secure: if managedShopIds not loaded yet (network timeout, race condition),
+          // return empty list instead of ALL shops to prevent data leakage
+          Logger.debug('   Admin без привязанных магазинов - пустой список (fail-secure)');
+          return [];
         }
         final filtered = allShops.where((shop) =>
           roleData.managedShopIds.contains(shop.id) ||

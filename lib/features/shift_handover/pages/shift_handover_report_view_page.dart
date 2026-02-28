@@ -8,6 +8,7 @@ import '../../ai_training/services/shift_ai_verification_service.dart';
 import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 /// Страница просмотра отчета сдачи смены
@@ -41,39 +42,50 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
 
     final int rating = result;
 
-    // Получаем имя текущего авторизованного пользователя (админа)
-    // ВАЖНО: user_employee_name/user_display_name НЕ перезаписываются при просмотре чужих отчетов
-    final prefs = await SharedPreferences.getInstance();
-    final adminName = prefs.getString('user_employee_name') ??
-                      prefs.getString('user_display_name') ??
-                      prefs.getString('user_name') ??
-                      'Неизвестный';
+    try {
+      // Получаем имя текущего авторизованного пользователя (админа)
+      // ВАЖНО: user_employee_name/user_display_name НЕ перезаписываются при просмотре чужих отчетов
+      final prefs = await SharedPreferences.getInstance();
+      final adminName = prefs.getString('user_employee_name') ??
+                        prefs.getString('user_display_name') ??
+                        prefs.getString('user_name') ??
+                        'Неизвестный';
 
-    final confirmedReport = _currentReport.copyWith(
-      confirmedAt: DateTime.now(),
-      rating: rating,
-      confirmedByAdmin: adminName,
-      status: 'approved', // Для push-уведомления сотруднику
-    );
+      final confirmedReport = _currentReport.copyWith(
+        confirmedAt: DateTime.now(),
+        rating: rating,
+        confirmedByAdmin: adminName,
+        status: 'approved', // Для push-уведомления сотруднику
+      );
 
-    // Сохраняем локально
-    await ShiftHandoverReport.updateReport(confirmedReport);
+      // Сохраняем локально
+      await ShiftHandoverReport.updateReport(confirmedReport);
 
-    // Отправляем на сервер
-    final serverSuccess = await ShiftHandoverReportService.updateReport(confirmedReport);
+      // Отправляем на сервер
+      final serverSuccess = await ShiftHandoverReportService.updateReport(confirmedReport);
 
-    if (!mounted) return;
-    setState(() {
-      _currentReport = confirmedReport;
-    });
+      if (!mounted) return;
+      setState(() {
+        _currentReport = confirmedReport;
+      });
 
-    if (mounted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(serverSuccess
+                ? 'Отчет подтвержден с оценкой $rating'
+                : 'Отчет подтвержден локально с оценкой $rating'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e, st) {
+      Logger.error('Ошибка подтверждения отчета сдачи смены', e, st);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(serverSuccess
-              ? 'Отчет подтвержден с оценкой $rating'
-              : 'Отчет подтвержден локально с оценкой $rating'),
-          backgroundColor: Colors.green,
+          content: Text('Не удалось подтвердить отчет. Попробуйте ещё раз.'),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -213,7 +225,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
     if (answer.photoDriveId != null) {
       final photoUrl = answer.photoDriveId!.startsWith('http')
           ? answer.photoDriveId!
-          : 'https://arabica26.ru/shift-photos/${answer.photoDriveId}';
+          : '${ApiConstants.serverUrl}/shift-photos/${answer.photoDriveId}';
       return AppCachedImage(
         imageUrl: photoUrl,
         fit: BoxFit.cover,
@@ -280,6 +292,45 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
     }
 
     return Center(child: Icon(Icons.image, color: Colors.white.withOpacity(0.3)));
+  }
+
+  void _openPhotoFullscreen(BuildContext context, Widget photo) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (dialogContext) => GestureDetector(
+        onTap: () => Navigator.of(dialogContext).pop(),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Stack(
+            children: [
+              Center(
+                child: InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 5.0,
+                  child: photo,
+                ),
+              ),
+              Positioned(
+                top: 40,
+                right: 16,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(dialogContext).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, color: Colors.white, size: 24),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Color _getRatingColor(int rating) {
@@ -810,43 +861,49 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                   ..._currentReport.answers.asMap().entries.map((entry) {
                     final index = entry.key;
                     final answer = entry.value;
+                    final hasPhoto = answer.photoPath != null || answer.photoUrl != null || answer.photoDriveId != null;
                     return Container(
                       margin: EdgeInsets.only(bottom: 12.h),
-                      padding: EdgeInsets.all(16.w),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.06),
                         borderRadius: BorderRadius.circular(16.r),
                         border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
+                      clipBehavior: Clip.antiAlias,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Вопрос ${index + 1}: ${answer.question}',
-                            style: TextStyle(
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          if (answer.textAnswer != null)
-                            Text(
-                              'Ответ: ${answer.textAnswer}',
-                              style: TextStyle(color: Colors.white.withOpacity(0.6)),
-                            ),
-                          if (answer.numberAnswer != null)
-                            Text(
-                              'Ответ: ${answer.numberAnswer}',
-                              style: TextStyle(color: Colors.white.withOpacity(0.6)),
-                            ),
-                          if (answer.photoPath != null || answer.photoUrl != null || answer.photoDriveId != null) ...[
-                            SizedBox(height: 8),
-                            // Если есть эталонное фото, показываем две фото рядом
-                            Builder(
-                              builder: (context) {
-                                if (answer.referencePhotoUrl != null) {
-                                  return Row(
+                          Padding(
+                            padding: EdgeInsets.all(16.w),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Вопрос ${index + 1}: ${answer.question}',
+                                  style: TextStyle(
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                if (answer.textAnswer != null) ...[
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Ответ: ${answer.textAnswer}',
+                                    style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                                  ),
+                                ],
+                                if (answer.numberAnswer != null) ...[
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Ответ: ${answer.numberAnswer}',
+                                    style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                                  ),
+                                ],
+                                // Если есть эталонное фото, показываем две фото рядом
+                                if (hasPhoto && answer.referencePhotoUrl != null) ...[
+                                  SizedBox(height: 8),
+                                  Row(
                                     children: [
                                       Expanded(
                                         child: Column(
@@ -861,36 +918,48 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                               ),
                                             ),
                                             SizedBox(height: 4),
-                                            Container(
-                                              height: 200,
-                                              decoration: BoxDecoration(
-                                                borderRadius: BorderRadius.circular(12.r),
-                                                border: Border.all(color: Colors.white.withOpacity(0.15)),
-                                              ),
-                                              child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(12.r),
-                                                child: AppCachedImage(
+                                            GestureDetector(
+                                              onTap: () => _openPhotoFullscreen(
+                                                context,
+                                                AppCachedImage(
                                                   imageUrl: answer.referencePhotoUrl!,
-                                                  fit: BoxFit.cover,
-                                                  errorWidget: (context, error, stackTrace) {
-                                                    return Center(
-                                                      child: Column(
-                                                        mainAxisAlignment: MainAxisAlignment.center,
-                                                        children: [
-                                                          Icon(Icons.error, size: 48, color: Colors.white.withOpacity(0.4)),
-                                                          SizedBox(height: 8),
-                                                          Text(
-                                                            'Ошибка загрузки\nэталонного фото',
-                                                            textAlign: TextAlign.center,
-                                                            style: TextStyle(
-                                                              fontSize: 12.sp,
-                                                              color: Colors.white.withOpacity(0.4),
+                                                  fit: BoxFit.contain,
+                                                  errorWidget: (context, error, stackTrace) => Center(
+                                                    child: Icon(Icons.error, color: Colors.white54),
+                                                  ),
+                                                ),
+                                              ),
+                                              child: Container(
+                                                height: 200,
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.circular(12.r),
+                                                  border: Border.all(color: Colors.white.withOpacity(0.15)),
+                                                ),
+                                                child: ClipRRect(
+                                                  borderRadius: BorderRadius.circular(12.r),
+                                                  child: AppCachedImage(
+                                                    imageUrl: answer.referencePhotoUrl!,
+                                                    fit: BoxFit.cover,
+                                                    errorWidget: (context, error, stackTrace) {
+                                                      return Center(
+                                                        child: Column(
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          children: [
+                                                            Icon(Icons.error, size: 48, color: Colors.white.withOpacity(0.4)),
+                                                            SizedBox(height: 8),
+                                                            Text(
+                                                              'Ошибка загрузки\nэталонного фото',
+                                                              textAlign: TextAlign.center,
+                                                              style: TextStyle(
+                                                                fontSize: 12.sp,
+                                                                color: Colors.white.withOpacity(0.4),
+                                                              ),
                                                             ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    );
-                                                  },
+                                                          ],
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
                                                 ),
                                               ),
                                             ),
@@ -911,41 +980,38 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                                               ),
                                             ),
                                             SizedBox(height: 4),
-                                            Container(
-                                              height: 200,
-                                              decoration: BoxDecoration(
-                                                borderRadius: BorderRadius.circular(12.r),
-                                                border: Border.all(color: Colors.white.withOpacity(0.15)),
-                                              ),
-                                              child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(12.r),
-                                                child: _buildEmployeePhoto(answer),
+                                            GestureDetector(
+                                              onTap: () => _openPhotoFullscreen(context, _buildEmployeePhoto(answer)),
+                                              child: Container(
+                                                height: 200,
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.circular(12.r),
+                                                  border: Border.all(color: Colors.white.withOpacity(0.15)),
+                                                ),
+                                                child: ClipRRect(
+                                                  borderRadius: BorderRadius.circular(12.r),
+                                                  child: _buildEmployeePhoto(answer),
+                                                ),
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
                                     ],
-                                  );
-                                } else {
-                                  return SizedBox.shrink();
-                                }
-                              },
+                                  ),
+                                ],
+                              ],
                             ),
-                            if (answer.referencePhotoUrl == null)
-                              // Если нет эталонного фото, показываем только сделанное фото
-                              Container(
-                                height: 200,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  border: Border.all(color: Colors.white.withOpacity(0.15)),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  child: _buildEmployeePhoto(answer),
-                                ),
+                          ),
+                          // Фото без эталона — на всю ширину карточки с тапом для полного экрана
+                          if (hasPhoto && answer.referencePhotoUrl == null)
+                            GestureDetector(
+                              onTap: () => _openPhotoFullscreen(context, _buildEmployeePhoto(answer)),
+                              child: AspectRatio(
+                                aspectRatio: 4 / 3,
+                                child: _buildEmployeePhoto(answer),
                               ),
-                          ],
+                            ),
                         ],
                       ),
                     );

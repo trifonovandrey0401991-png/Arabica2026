@@ -44,7 +44,10 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
     }
 
     final prefs = await SharedPreferences.getInstance();
-    _adminName = prefs.getString('employeeName') ?? prefs.getString('name') ?? 'Администратор';
+    _adminName = prefs.getString('user_display_name') ??
+        prefs.getString('currentEmployeeName') ??
+        prefs.getString('user_name') ??
+        'Администратор';
 
     if (_employees.isEmpty && mounted) setState(() => _isLoading = true);
 

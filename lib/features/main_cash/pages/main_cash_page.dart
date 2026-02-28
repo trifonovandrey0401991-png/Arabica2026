@@ -17,6 +17,9 @@ import 'revenue_analytics_page.dart';
 import 'store_managers_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/utils/cache_manager.dart';
+import '../../envelope/models/envelope_report_model.dart';
+import '../../envelope/services/envelope_report_service.dart';
+import '../../envelope/pages/envelope_report_view_page.dart';
 
 /// Главная страница отчета по кассе
 class MainCashPage extends StatefulWidget {
@@ -31,14 +34,21 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   List<ShopCashBalance> _balances = [];
   List<Withdrawal> _withdrawals = [];
   bool _isLoading = true;
-  bool _isDeveloper = false;
+  bool _isAdminOrAbove = false; // true for admin + developer
   String? _selectedShopFilter;
   int _withdrawalTabIndex = 0; // 0 = Все, 1 = Подтвержденные
+
+  // Вкладка Конверты
+  List<EnvelopeReport> _envelopes = [];
+  String? _envelopeShopFilter;
+  final Map<String, bool> _monthExpanded = {};
+  final Map<String, bool> _weekExpanded = {};
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() { if (mounted) setState(() {}); });
     _checkRole();
     _loadData();
   }
@@ -47,7 +57,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     final roleData = await UserRoleService.loadUserRole();
     if (mounted && roleData != null) {
       if (mounted) setState(() {
-        _isDeveloper = roleData.isDeveloper;
+        _isAdminOrAbove = roleData.isAdminOrAbove; // admin + developer
       });
     }
   }
@@ -84,6 +94,8 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
       late List<ShopCashBalance> balances;
       late List<Withdrawal> allWithdrawals;
 
+      late List<EnvelopeReport> allEnvelopes;
+
       await Future.wait([
         () async {
           balances = await MainCashService.getShopBalances();
@@ -91,6 +103,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         }(),
         () async {
           allWithdrawals = await WithdrawalService.getWithdrawals();
+        }(),
+        () async {
+          allEnvelopes = await EnvelopeReportService.getReportsForCurrentUser();
+          Logger.debug('✅ Загружено конвертов: ${allEnvelopes.length}');
         }(),
       ]);
 
@@ -105,6 +121,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
       setState(() {
         _balances = balances;
         _withdrawals = withdrawals;
+        _envelopes = allEnvelopes.where((e) => e.status == 'confirmed').toList();
         _isLoading = false;
       });
 
@@ -144,15 +161,6 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     return filtered;
   }
 
-  /// Группировка балансов по магазинам
-  Map<String, ShopCashBalance> get _balancesByShop {
-    final map = <String, ShopCashBalance>{};
-    for (final balance in _balances) {
-      map[balance.shopAddress] = balance;
-    }
-    return map;
-  }
-
   List<String> get _shopAddresses {
     final addresses = <String>{};
     for (final b in _balances) {
@@ -168,7 +176,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   Future<void> _navigateToWithdrawal() async {
     // Получить имя текущего пользователя
     final prefs = await SharedPreferences.getInstance();
-    final currentUserName = prefs.getString('employeeName') ?? 'Администратор';
+    final currentUserName = prefs.getString('user_display_name') ??
+        prefs.getString('currentEmployeeName') ??
+        prefs.getString('user_name') ??
+        'Администратор';
 
     if (!mounted) return;
 
@@ -358,7 +369,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
 
       try {
         final prefs = await SharedPreferences.getInstance();
-        final adminName = prefs.getString('employeeName') ?? 'Администратор';
+        final adminName = prefs.getString('user_display_name') ??
+            prefs.getString('currentEmployeeName') ??
+            prefs.getString('user_name') ??
+            'Администратор';
         final amount = double.parse(amountController.text);
 
         final deposit = Withdrawal(
@@ -605,7 +619,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
 
       try {
         final prefs = await SharedPreferences.getInstance();
-        final adminName = prefs.getString('employeeName') ?? 'Администратор';
+        final adminName = prefs.getString('user_display_name') ??
+            prefs.getString('currentEmployeeName') ??
+            prefs.getString('user_name') ??
+            'Администратор';
         final amount = double.parse(amountController.text);
 
         // Определяем тип (откуда снимаем)
@@ -726,7 +743,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         ),
                       ),
                     ),
-                    if (_isDeveloper) ...[
+                    if (_isAdminOrAbove) ...[
                       GestureDetector(
                         onTap: () {
                           Navigator.push(
@@ -766,59 +783,71 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 ),
               ),
 
-              // TabBar
-              Container(
-                margin: EdgeInsets.symmetric(horizontal: 16.w),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
-                ),
-                child: TabBar(
-                  controller: _tabController,
-                  indicatorColor: AppColors.gold,
-                  indicatorWeight: 3,
-                  labelColor: AppColors.gold,
-                  unselectedLabelColor: Colors.white.withOpacity(0.5),
-                  labelStyle: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  unselectedLabelStyle: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  dividerHeight: 0,
-                  tabs: [
-                    Tab(
+              // TabBar — row 1: Касса / Выемки / Аналитика
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
+                child: Column(
+                  children: [
+                    // Первый ряд: 3 основных вкладки
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      ),
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.account_balance_wallet, size: 18),
-                          SizedBox(width: 4),
-                          Flexible(child: Text('Касса', overflow: TextOverflow.ellipsis)),
+                          _buildTabButton(0, Icons.account_balance_wallet, 'Касса',
+                              leftRounded: true),
+                          _buildTabButton(1, Icons.upload, 'Выемки'),
+                          _buildTabButton(2, Icons.bar_chart, 'Аналитика',
+                              rightRounded: true),
                         ],
                       ),
                     ),
-                    Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.upload, size: 18),
-                          SizedBox(width: 4),
-                          Flexible(child: Text('Выемки', overflow: TextOverflow.ellipsis)),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.bar_chart, size: 18),
-                          SizedBox(width: 4),
-                          Flexible(child: Text('Аналитика', overflow: TextOverflow.ellipsis)),
-                        ],
+                    SizedBox(height: 6.h),
+                    // Второй ряд: Конверты — на всю ширину
+                    GestureDetector(
+                      onTap: () => _tabController.animateTo(3),
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(vertical: 10.h),
+                        decoration: BoxDecoration(
+                          color: _tabController.index == 3
+                              ? AppColors.gold.withOpacity(0.15)
+                              : Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(
+                            color: _tabController.index == 3
+                                ? AppColors.gold.withOpacity(0.5)
+                                : Colors.white.withOpacity(0.1),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.mail_outline,
+                              size: 18,
+                              color: _tabController.index == 3
+                                  ? AppColors.gold
+                                  : Colors.white.withOpacity(0.5),
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'Конверты',
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                fontWeight: _tabController.index == 3
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: _tabController.index == 3
+                                    ? AppColors.gold
+                                    : Colors.white.withOpacity(0.5),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -836,9 +865,47 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                           _buildCashTab(),
                           _buildWithdrawalsTab(),
                           RevenueAnalyticsPage(),
+                          _buildEnvelopesTab(),
                         ],
                       ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabButton(int index, IconData icon, String label,
+      {bool leftRounded = false, bool rightRounded = false}) {
+    final isActive = _tabController.index == index;
+    final radius = Radius.circular(12.r);
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _tabController.animateTo(index),
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 10.h),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.gold.withOpacity(0.15) : Colors.transparent,
+            borderRadius: BorderRadius.only(
+              topLeft: leftRounded ? radius : Radius.zero,
+              bottomLeft: leftRounded ? radius : Radius.zero,
+              topRight: rightRounded ? radius : Radius.zero,
+              bottomRight: rightRounded ? radius : Radius.zero,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16,
+                  color: isActive ? AppColors.gold : Colors.white.withOpacity(0.5)),
+              SizedBox(width: 4),
+              Text(label,
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                    color: isActive ? AppColors.gold : Colors.white.withOpacity(0.5),
+                  )),
             ],
           ),
         ),
@@ -1875,7 +1942,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
       try {
         // Получить имя текущего пользователя
         final prefs = await SharedPreferences.getInstance();
-        final currentUserName = prefs.getString('employeeName') ?? 'Администратор';
+        final currentUserName = prefs.getString('user_display_name') ??
+            prefs.getString('currentEmployeeName') ??
+            prefs.getString('user_name') ??
+            'Администратор';
 
         final result = await WithdrawalService.cancelWithdrawal(
           id: withdrawal.id,
@@ -1927,5 +1997,322 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     if (count == 1) return '';
     if (count >= 2 && count <= 4) return 'а';
     return 'ов';
+  }
+
+  // ==================== ВКЛАДКА КОНВЕРТЫ ====================
+
+  String _envWeekKey(DateTime d) {
+    final monday = d.subtract(Duration(days: d.weekday - 1));
+    return '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+  }
+
+  String _envMonthKey(DateTime d) {
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}';
+  }
+
+  String _envFormatMonth(int year, int month) {
+    const names = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    return '${names[month]} $year';
+  }
+
+  String _envShortMonth(int month) {
+    const names = ['', 'янв', 'фев', 'мар', 'апр', 'май', 'июн',
+      'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+    return names[month];
+  }
+
+  String _envCountLabel(int count) {
+    final mod10 = count % 10;
+    final mod100 = count % 100;
+    if (mod10 == 1 && mod100 != 11) return 'конверт';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'конверта';
+    return 'конвертов';
+  }
+
+  String _envFormatAmount(double amount) {
+    if (amount >= 1000000) return '${(amount / 1000000).toStringAsFixed(1)}М';
+    if (amount >= 1000) return '${(amount / 1000).toStringAsFixed(0)}k';
+    return amount.toStringAsFixed(0);
+  }
+
+  String _envShortName(String fullName) {
+    final parts = fullName.trim().split(' ');
+    if (parts.length >= 2 && parts[1].isNotEmpty) {
+      return '${parts[0]} ${parts[1][0]}.';
+    }
+    return fullName;
+  }
+
+  Widget _buildEnvelopesTab() {
+    // Confirmed envelopes with shop filter applied
+    final confirmed = _envelopes
+        .where((e) => _envelopeShopFilter == null || e.shopAddress == _envelopeShopFilter)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    // All unique shops for dropdown (from all confirmed envelopes, not just filtered)
+    final allShops = _envelopes
+        .map((e) => e.shopAddress)
+        .toSet()
+        .toList()
+      ..sort();
+
+    // Group by month
+    final byMonth = <String, List<EnvelopeReport>>{};
+    for (final env in confirmed) {
+      final mk = _envMonthKey(env.createdAt);
+      byMonth.putIfAbsent(mk, () => []).add(env);
+    }
+    final months = byMonth.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    // Most recent week key (first envelope, since sorted desc) for auto-expand
+    final mostRecentWeek = confirmed.isNotEmpty ? _envWeekKey(confirmed.first.createdAt) : null;
+
+    return Column(
+      children: [
+        // Shop filter dropdown
+        Padding(
+          padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(color: Colors.white.withOpacity(0.15)),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                value: _envelopeShopFilter,
+                isExpanded: true,
+                dropdownColor: AppColors.night,
+                style: TextStyle(color: Colors.white, fontSize: 14.sp),
+                icon: Icon(Icons.keyboard_arrow_down, color: Colors.white.withOpacity(0.5)),
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                items: [
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Все магазины',
+                        style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14.sp)),
+                  ),
+                  ...allShops.map((shop) => DropdownMenuItem<String?>(
+                    value: shop,
+                    child: Text(shop,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 14.sp)),
+                  )),
+                ],
+                onChanged: (val) => setState(() => _envelopeShopFilter = val),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: 8.h),
+
+        // Hierarchical list
+        Expanded(
+          child: confirmed.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.mail_outline, size: 48, color: Colors.white.withOpacity(0.3)),
+                      SizedBox(height: 12),
+                      Text('Нет подтверждённых конвертов',
+                          style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.5))),
+                    ],
+                  ),
+                )
+              : ListView(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  children: [
+                    for (final mk in months) ...[
+                      _buildEnvelopeMonthHeader(mk, byMonth[mk]!),
+                      if (_monthExpanded[mk] != false)
+                        ..._buildEnvelopeWeeks(byMonth[mk]!, mostRecentWeek),
+                    ],
+                    SizedBox(height: 80.h),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEnvelopeMonthHeader(String monthKey, List<EnvelopeReport> envelopes) {
+    final isExpanded = _monthExpanded[monthKey] != false; // default true
+    final parts = monthKey.split('-');
+    final year = int.parse(parts[0]);
+    final month = int.parse(parts[1]);
+    final total = envelopes.fold<double>(0, (sum, e) => sum + e.totalEnvelopeAmount);
+
+    return GestureDetector(
+      onTap: () => setState(() => _monthExpanded[monthKey] = !isExpanded),
+      child: Container(
+        margin: EdgeInsets.only(top: 12.h, bottom: 4.h),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+        decoration: BoxDecoration(
+          color: AppColors.emerald.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(color: Colors.white.withOpacity(0.15)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+              color: AppColors.gold,
+              size: 20,
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _envFormatMonth(year, month),
+                style: TextStyle(
+                    fontSize: 15.sp, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('${envelopes.length} ${_envCountLabel(envelopes.length)}',
+                    style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.6))),
+                Text('${_envFormatAmount(total)} ₽',
+                    style: TextStyle(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.gold)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildEnvelopeWeeks(List<EnvelopeReport> envelopes, String? mostRecentWeek) {
+    // Group by week (key = monday YYYY-MM-DD)
+    final byWeek = <String, List<EnvelopeReport>>{};
+    for (final env in envelopes) {
+      byWeek.putIfAbsent(_envWeekKey(env.createdAt), () => []).add(env);
+    }
+    final weeks = byWeek.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    final widgets = <Widget>[];
+    for (final wk in weeks) {
+      final weekEnvs = byWeek[wk]!
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      // Most recent week is expanded by default, others collapsed
+      final isExpanded = _weekExpanded[wk] ?? (wk == mostRecentWeek);
+      widgets.add(_buildEnvelopeWeekRow(wk, weekEnvs, isExpanded));
+      if (isExpanded) {
+        for (final env in weekEnvs) {
+          widgets.add(_buildEnvelopeRow(env));
+        }
+      }
+    }
+    return widgets;
+  }
+
+  Widget _buildEnvelopeWeekRow(
+      String weekKey, List<EnvelopeReport> envelopes, bool isExpanded) {
+    final parts = weekKey.split('-');
+    final monday = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+    final sunday = monday.add(const Duration(days: 6));
+    final total = envelopes.fold<double>(0, (sum, e) => sum + e.totalEnvelopeAmount);
+
+    final rangeLabel = monday.month == sunday.month
+        ? '${monday.day}–${sunday.day} ${_envShortMonth(monday.month)}'
+        : '${monday.day} ${_envShortMonth(monday.month)}–${sunday.day} ${_envShortMonth(sunday.month)}';
+
+    return GestureDetector(
+      onTap: () => setState(() => _weekExpanded[weekKey] = !isExpanded),
+      child: Container(
+        margin: EdgeInsets.only(top: 5.h),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+              color: Colors.white.withOpacity(0.4),
+              size: 18,
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(rangeLabel,
+                  style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withOpacity(0.8))),
+            ),
+            Text('${envelopes.length} ${_envCountLabel(envelopes.length)}',
+                style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5))),
+            SizedBox(width: 10),
+            Text('${_envFormatAmount(total)} ₽',
+                style: TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withOpacity(0.9))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEnvelopeRow(EnvelopeReport env) {
+    final d = env.createdAt;
+    final dateStr =
+        '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}';
+    final shift = env.shiftType == 'morning' ? '☀' : '🌙';
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EnvelopeReportViewPage(report: env, isAdmin: _isAdminOrAbove),
+        ),
+      ),
+      child: Container(
+        margin: EdgeInsets.only(top: 3.h),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 9.h),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(color: Colors.white.withOpacity(0.06)),
+        ),
+        child: Row(
+          children: [
+            SizedBox(width: 26), // indent under chevron
+            Text('$dateStr $shift',
+                style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withOpacity(0.6))),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                env.shopAddress,
+                style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.8)),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            SizedBox(width: 6),
+            Text(_envShortName(env.employeeName),
+                style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5))),
+            SizedBox(width: 8),
+            Text('${_envFormatAmount(env.totalEnvelopeAmount)} ₽',
+                style: TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.gold.withOpacity(0.9))),
+            SizedBox(width: 4),
+            Icon(Icons.chevron_right, size: 16, color: Colors.white.withOpacity(0.3)),
+          ],
+        ),
+      ),
+    );
   }
 }

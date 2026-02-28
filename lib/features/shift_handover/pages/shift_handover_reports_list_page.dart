@@ -13,6 +13,7 @@ import '../../efficiency/models/points_settings_model.dart';
 import '../../efficiency/services/points_settings_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/widgets/report_list_widgets.dart';
 import '../widgets/handover_report_card.dart';
 import '../widgets/pending_shifts_list.dart';
 import '../widgets/overdue_shifts_list.dart';
@@ -53,7 +54,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
-  Future<List<String>>? _shopsFuture;
   String? _selectedShop;
   String? _selectedEmployee;
   DateTime? _selectedDate;
@@ -91,27 +91,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
-  }
-
-  Future<List<String>> _loadShopAddresses() async {
-    try {
-      final serverReports = await ShiftHandoverReportService.getReportsForCurrentUser();
-      final localReports = await ShiftHandoverReport.loadAllLocal();
-
-      final addresses = <String>{};
-      for (var report in serverReports) {
-        if (report.shopAddress.trim().isNotEmpty) addresses.add(report.shopAddress);
-      }
-      for (var report in localReports) {
-        if (report.shopAddress.trim().isNotEmpty) addresses.add(report.shopAddress);
-      }
-
-      final addressList = addresses.toList()..sort();
-      return addressList;
-    } catch (e) {
-      Logger.error('Ошибка загрузки адресов магазинов', e);
-      return await ShiftHandoverReport.getUniqueShopAddresses();
-    }
   }
 
   /// Определить тип смены по времени отчёта
@@ -336,8 +315,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     _allShops = shops;
     _expiredReports = expiredReports;
 
-    _shopsFuture = _loadShopAddresses();
-
     // Merge server + local reports
     final Map<String, ShiftHandoverReport> reportsMap = {};
     for (var report in localReports) {
@@ -395,6 +372,10 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     final now = DateTime.now();
     final pending = _allReports.where((r) {
       if (r.isConfirmed) return false;
+      // Exclude scheduler-created records (no employee name)
+      if (r.employeeName.isEmpty) return false;
+      // Exclude pending/failed/rejected/expired records
+      if (r.status == 'pending' || r.status == 'failed' || r.status == 'rejected' || r.status == 'expired') return false;
       // Показываем только отчёты, которые ожидают менее 5 часов
       final hours = now.difference(r.createdAt).inHours;
       return hours < 5;
@@ -407,6 +388,10 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     final now = DateTime.now();
     return _allReports.where((r) {
       if (r.isConfirmed) return false;
+      // Exclude scheduler-created records (no employee name)
+      if (r.employeeName.isEmpty) return false;
+      // Exclude pending/failed/rejected/expired records
+      if (r.status == 'pending' || r.status == 'failed' || r.status == 'rejected' || r.status == 'expired') return false;
       final hours = now.difference(r.createdAt).inHours;
       return hours >= 5;
     }).toList();
@@ -418,26 +403,20 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     return _applyFilters(confirmed);
   }
 
+  List<String> get _uniqueShops {
+    final shops = <String>{};
+    for (var r in _allReports) {
+      if (r.shopAddress.trim().isNotEmpty) shops.add(r.shopAddress);
+    }
+    return shops.toList()..sort();
+  }
+
   List<String> get _uniqueEmployees {
     final employees = <String>{};
     for (var r in _allReports) {
-      employees.add(r.employeeName);
+      if (r.employeeName.trim().isNotEmpty) employees.add(r.employeeName);
     }
     return employees.toList()..sort();
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(Duration(days: 7)),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null && mounted) {
-      if (mounted) setState(() {
-        _selectedDate = picked;
-      });
-    }
   }
 
   @override
@@ -565,20 +544,56 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
           // Первый ряд: 3 вкладки
           Row(
             children: [
-              _buildTabButton(0, Icons.schedule, 'Не пройдены', _pendingHandovers.length, Colors.orange),
+              ReportTabButton(
+                isSelected: _tabController.index == 0,
+                onTap: () { _tabController.animateTo(0); if (mounted) setState(() {}); },
+                icon: Icons.schedule,
+                label: 'Не пройдены',
+                count: _pendingHandovers.length,
+                accentColor: Colors.orange,
+              ),
               SizedBox(width: 6),
-              _buildTabButton(1, Icons.warning_amber, 'Не в срок', _overdueHandovers.length, Colors.red, badge: _overdueUnviewedBadge),
+              ReportTabButton(
+                isSelected: _tabController.index == 1,
+                onTap: () { _tabController.animateTo(1); if (mounted) setState(() {}); },
+                icon: Icons.warning_amber,
+                label: 'Не в срок',
+                count: _overdueHandovers.length,
+                accentColor: Colors.red,
+                badge: _overdueUnviewedBadge,
+              ),
               SizedBox(width: 6),
-              _buildTabButton(2, Icons.hourglass_empty, 'Ожидают', _awaitingReports.length, Colors.blue),
+              ReportTabButton(
+                isSelected: _tabController.index == 2,
+                onTap: () { _tabController.animateTo(2); if (mounted) setState(() {}); },
+                icon: Icons.hourglass_empty,
+                label: 'Ожидают',
+                count: _awaitingReports.length,
+                accentColor: Colors.blue,
+              ),
             ],
           ),
           SizedBox(height: 6),
           // Второй ряд: 2 вкладки
           Row(
             children: [
-              _buildTabButton(3, Icons.check_circle, 'Подтверждённые', _allReports.where((r) => r.isConfirmed).length, Colors.green),
+              ReportTabButton(
+                isSelected: _tabController.index == 3,
+                onTap: () { _tabController.animateTo(3); if (mounted) setState(() {}); },
+                icon: Icons.check_circle,
+                label: 'Подтверждённые',
+                count: _allReports.where((r) => r.isConfirmed).length,
+                accentColor: Colors.green,
+              ),
               SizedBox(width: 6),
-              _buildTabButton(4, Icons.cancel, 'Отклонённые', _expiredReports.length + _overdueUnconfirmedReports.length, Colors.grey),
+              ReportTabButton(
+                isSelected: _tabController.index == 4,
+                onTap: () { _tabController.animateTo(4); if (mounted) setState(() {}); },
+                icon: Icons.cancel,
+                label: 'Отклонённые',
+                count: _expiredReports.length + _overdueUnconfirmedReports.length,
+                accentColor: Colors.grey,
+              ),
             ],
           ),
         ],
@@ -586,271 +601,28 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     );
   }
 
-  /// Построение одной кнопки-вкладки
-  Widget _buildTabButton(int index, IconData icon, String label, int count, Color accentColor, {int badge = 0}) {
-    final isSelected = _tabController.index == index;
-
-    return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            _tabController.animateTo(index);
-            if (mounted) setState(() {});
-          },
-          borderRadius: BorderRadius.circular(10.r),
-          child: Container(
-            padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 4.w),
-            decoration: BoxDecoration(
-              gradient: isSelected
-                  ? LinearGradient(
-                      colors: [accentColor.withOpacity(0.8), accentColor],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-              color: isSelected ? null : Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(10.r),
-              border: Border.all(
-                color: isSelected ? accentColor : Colors.white.withOpacity(0.15),
-                width: isSelected ? 2 : 1,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 14,
-                  color: isSelected ? Colors.white : Colors.white70,
-                ),
-                SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 10.sp,
-                      color: isSelected ? Colors.white : Colors.white70,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                SizedBox(width: 4),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.white.withOpacity(0.3) : accentColor.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(6.r),
-                  ),
-                  child: Text(
-                    '$count',
-                    style: TextStyle(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.white : accentColor,
-                    ),
-                  ),
-                ),
-                if (badge > 0) ...[
-                  SizedBox(width: 2),
-                  Container(
-                    padding: EdgeInsets.all(4.w),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '$badge',
-                      style: TextStyle(
-                        fontSize: 8.sp,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Секция фильтров (компактная)
+  /// Секция фильтров (компактная) — использует общий ReportFiltersWidget
   Widget _buildFiltersSection() {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: Column(
-        children: [
-          // Компактная строка фильтров
-          Row(
-            children: [
-              // Магазин
-              Expanded(
-                child: _shopsFuture != null
-                    ? FutureBuilder<List<String>>(
-                        future: _shopsFuture,
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData) {
-                            return _buildCompactDropdown(
-                              icon: Icons.store,
-                              value: _selectedShop,
-                              hint: 'Магазин',
-                              items: snapshot.data!,
-                              onChanged: (v) => setState(() => _selectedShop = v),
-                            );
-                          }
-                          return SizedBox();
-                        },
-                      )
-                    : SizedBox(),
-              ),
-              SizedBox(width: 8),
-              // Дата
-              _buildDateButton(),
-            ],
-          ),
-          SizedBox(height: 8),
-          // Сотрудник + сброс
-          Row(
-            children: [
-              Expanded(
-                child: _buildCompactDropdown(
-                  icon: Icons.person,
-                  value: _selectedEmployee,
-                  hint: 'Сотрудник',
-                  items: _uniqueEmployees,
-                  onChanged: (v) => setState(() => _selectedEmployee = v),
-                ),
-              ),
-              if (_selectedShop != null || _selectedEmployee != null || _selectedDate != null) ...[
-                SizedBox(width: 8),
-                _buildResetButton(),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Компактный dropdown
-  Widget _buildCompactDropdown({
-    required IconData icon,
-    required String? value,
-    required String hint,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: Colors.white.withOpacity(0.15)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          dropdownColor: AppColors.emeraldDark,
-          icon: Icon(Icons.arrow_drop_down, color: AppColors.gold),
-          hint: Row(
-            children: [
-              Icon(icon, size: 18, color: Colors.white.withOpacity(0.5)),
-              SizedBox(width: 8),
-              Text(hint, style: TextStyle(fontSize: 13.sp, color: Colors.white.withOpacity(0.5))),
-            ],
-          ),
-          selectedItemBuilder: (context) {
-            return [
-              Row(
-                children: [
-                  Icon(icon, size: 18, color: AppColors.gold),
-                  SizedBox(width: 8),
-                  Expanded(child: Text('Все', style: TextStyle(fontSize: 13.sp, color: Colors.white))),
-                ],
-              ),
-              ...items.map((item) => Row(
-                children: [
-                  Icon(icon, size: 18, color: AppColors.gold),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      item,
-                      style: TextStyle(fontSize: 13.sp, color: Colors.white),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              )),
-            ];
-          },
-          items: [
-            DropdownMenuItem<String>(value: null, child: Text('Все $hint', style: TextStyle(color: Colors.white))),
-            ...items.map((item) => DropdownMenuItem(value: item, child: Text(item, style: TextStyle(color: Colors.white)))),
-          ],
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка выбора даты
-  Widget _buildDateButton() {
-    return InkWell(
-      onTap: () => _selectDate(context),
-      borderRadius: BorderRadius.circular(10.r),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(10.r),
-          border: Border.all(color: Colors.white.withOpacity(0.15)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.calendar_today, size: 18, color: AppColors.gold),
-            SizedBox(width: 8),
-            Text(
-              _selectedDate == null
-                  ? 'Дата'
-                  : '${_selectedDate!.day}.${_selectedDate!.month}',
-              style: TextStyle(fontSize: 13.sp, color: Colors.white),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка сброса фильтров
-  Widget _buildResetButton() {
-    return InkWell(
-      onTap: () {
-        if (mounted) setState(() {
-          _selectedShop = null;
-          _selectedEmployee = null;
-          _selectedDate = null;
-        });
-      },
-      borderRadius: BorderRadius.circular(10.r),
-      child: Container(
-        padding: EdgeInsets.all(10.w),
-        decoration: BoxDecoration(
-          color: Colors.red.withOpacity(0.8),
-          borderRadius: BorderRadius.circular(10.r),
-        ),
-        child: Icon(Icons.clear, size: 20, color: Colors.white),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      child: ReportFiltersWidget(
+        shops: _uniqueShops,
+        employees: _uniqueEmployees,
+        selectedShop: _selectedShop,
+        selectedEmployee: _selectedEmployee,
+        selectedDate: _selectedDate,
+        onShopChanged: (v) { if (mounted) setState(() => _selectedShop = v); },
+        onEmployeeChanged: (v) { if (mounted) setState(() => _selectedEmployee = v); },
+        onDateChanged: (v) { if (mounted) setState(() => _selectedDate = v); },
+        onReset: () {
+          if (mounted) {
+            setState(() {
+              _selectedShop = null;
+              _selectedEmployee = null;
+              _selectedDate = null;
+            });
+          }
+        },
       ),
     );
   }
@@ -1106,22 +878,9 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     final groups = _groupHandoverReports(reports, prefix);
 
     if (groups.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isConfirmed ? Icons.check_circle_outline : Icons.cancel_outlined,
-              size: 64,
-              color: Colors.white.withOpacity(0.3),
-            ),
-            SizedBox(height: 16),
-            Text(
-              isConfirmed ? 'Нет подтверждённых отчётов' : 'Нет не подтверждённых отчётов',
-              style: TextStyle(color: Colors.white, fontSize: 18.sp),
-            ),
-          ],
-        ),
+      return ReportEmptyState(
+        icon: isConfirmed ? Icons.check_circle_outline : Icons.cancel_outlined,
+        title: isConfirmed ? 'Нет подтверждённых отчётов' : 'Нет неподтверждённых отчётов',
       );
     }
 
@@ -1176,12 +935,11 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                   report: child,
                   onTap: () async {
                     final allReports = await ShiftHandoverReport.loadAllLocal();
-                    if (!context.mounted) return;
+                    if (!mounted) return;
                     final updatedReport = allReports.firstWhere(
                       (r) => r.id == child.id,
                       orElse: () => child,
                     );
-                    if (!context.mounted) return;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -1206,9 +964,11 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
 
     return GestureDetector(
       onTap: () {
-        if (mounted) setState(() {
-          _expandedGroups[group.key] = !isExpanded;
-        });
+        if (mounted) {
+          setState(() {
+            _expandedGroups[group.key] = !isExpanded;
+          });
+        }
       },
       child: Container(
         margin: EdgeInsets.only(bottom: 8.h),

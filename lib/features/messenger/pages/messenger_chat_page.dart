@@ -58,16 +58,20 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
 
   StreamSubscription? _newMessageSub;
   StreamSubscription? _typingSub;
+  StreamSubscription? _onlineStatusSub;
   StreamSubscription? _messageDeletedSub;
   StreamSubscription? _reactionAddedSub;
   StreamSubscription? _reactionRemovedSub;
   StreamSubscription? _readReceiptSub;
+
+  bool _isOtherOnline = false;
 
   Timer? _typingTimer;
 
   @override
   void initState() {
     super.initState();
+    MessengerWsService.setActiveConversation(widget.conversation.id);
     _loadMessages();
     _setupWebSocket();
     _markAsRead();
@@ -88,8 +92,10 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
 
   @override
   void dispose() {
+    MessengerWsService.setActiveConversation(null);
     _newMessageSub?.cancel();
     _typingSub?.cancel();
+    _onlineStatusSub?.cancel();
     _messageDeletedSub?.cancel();
     _reactionAddedSub?.cancel();
     _reactionRemovedSub?.cancel();
@@ -104,6 +110,11 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
 
   void _setupWebSocket() {
     final ws = MessengerWsService.instance;
+
+    // Ensure WS is connected even if chat opened directly (bypassing list page)
+    if (!ws.isConnected) {
+      ws.connect(widget.userPhone);
+    }
 
     _newMessageSub = ws.onNewMessage.listen((event) {
       if (event.conversationId == widget.conversation.id && mounted) {
@@ -124,6 +135,19 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
         }
       }
     });
+
+    // Online status for private chats
+    if (widget.conversation.type == ConversationType.private_) {
+      final otherPhone = widget.conversation.otherPhone(widget.userPhone);
+      if (otherPhone != null) {
+        if (mounted) setState(() => _isOtherOnline = ws.isPhoneOnline(otherPhone));
+        _onlineStatusSub = ws.onOnlineStatus.listen((event) {
+          if (event.phone == otherPhone && mounted) {
+            setState(() => _isOtherOnline = event.isOnline);
+          }
+        });
+      }
+    }
 
     _messageDeletedSub = ws.onMessageDeleted.listen((event) {
       if (event.conversationId == widget.conversation.id && mounted) {
@@ -656,6 +680,14 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
                       Text(
                         '${widget.conversation.participants.length} участников',
                         style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
+                      )
+                    else if (_isOtherOnline)
+                      Text(
+                        'онлайн',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.turquoise.withOpacity(0.8),
+                        ),
                       ),
                   ],
                 ),

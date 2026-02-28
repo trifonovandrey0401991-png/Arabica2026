@@ -43,12 +43,27 @@ class DataManagementPage extends StatelessWidget {
             children: [
               _buildAppBar(context),
               Expanded(
-                child: GridView.count(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 8.w,
-                  mainAxisSpacing: 8.h,
-                  padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 20.h),
-                  children: items,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    const cols = 4;
+                    const rows = 5; // ceil(17/4)
+                    const hPad = 32.0;
+                    const vPad = 24.0;
+                    const spacing = 8.0;
+
+                    final tileW = (constraints.maxWidth - hPad - spacing * (cols - 1)) / cols;
+                    final tileH = (constraints.maxHeight - vPad - spacing * (rows - 1)) / rows;
+
+                    return GridView.count(
+                      crossAxisCount: cols,
+                      crossAxisSpacing: spacing,
+                      mainAxisSpacing: spacing,
+                      childAspectRatio: tileW / tileH,
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: items,
+                    );
+                  },
                 ),
               ),
             ],

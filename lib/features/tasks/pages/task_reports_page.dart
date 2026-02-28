@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/task_model.dart';
+import '../models/recurring_task_model.dart';
 import '../services/task_service.dart';
+import '../services/recurring_task_service.dart';
 import 'task_detail_page.dart';
 import 'task_analytics_page.dart';
 import '../../employees/services/user_role_service.dart';
@@ -22,6 +24,7 @@ class TaskReportsPage extends StatefulWidget {
 class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<TaskAssignment> _allAssignments = [];
+  List<RecurringTaskInstance> _allInstances = [];
   bool _isLoading = true;
   String? _error;
   int _unviewedExpiredCount = 0;
@@ -120,6 +123,16 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
         });
       }
     }
+
+    // Step 4: Load recurring task instances (current month)
+    try {
+      final now = DateTime.now();
+      final monthStr = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+      final instances = await RecurringTaskService.getAllInstances(yearMonth: monthStr);
+      if (mounted) setState(() { _allInstances = instances; });
+    } catch (e) {
+      // Non-critical: show regular assignments even if instances fail
+    }
   }
 
   List<TaskAssignment> _filterByStatuses(List<TaskStatus> statuses) {
@@ -127,6 +140,14 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
         .where((a) => statuses.contains(a.status))
         .toList();
     // Сортировка: новые первыми (по дате создания descending)
+    filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return filtered;
+  }
+
+  List<RecurringTaskInstance> _filterInstancesByStatuses(List<String> statuses) {
+    final filtered = _allInstances
+        .where((i) => statuses.contains(i.status))
+        .toList();
     filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return filtered;
   }
@@ -289,11 +310,13 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                               _buildAssignmentsList(
                                 _filterByStatuses([TaskStatus.pending, TaskStatus.submitted]),
                                 emptyMessage: 'Нет задач в ожидании',
+                                instances: _filterInstancesByStatuses(['pending']),
                               ),
-                              // Выполнено (approved)
+                              // Выполнено (approved + completed recurring)
                               _buildAssignmentsList(
                                 _filterByStatuses([TaskStatus.approved]),
                                 emptyMessage: 'Нет выполненных задач',
+                                instances: _filterInstancesByStatuses(['completed']),
                               ),
                               // Отказано (rejected + declined)
                               _buildAssignmentsList(
@@ -304,6 +327,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                               _buildAssignmentsList(
                                 _filterByStatuses([TaskStatus.expired]),
                                 emptyMessage: 'Нет просроченных задач',
+                                instances: _filterInstancesByStatuses(['expired']),
                               ),
                             ],
                           ),
@@ -315,8 +339,13 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
     );
   }
 
-  Widget _buildAssignmentsList(List<TaskAssignment> assignments, {required String emptyMessage}) {
-    if (assignments.isEmpty) {
+  Widget _buildAssignmentsList(
+    List<TaskAssignment> assignments, {
+    required String emptyMessage,
+    List<RecurringTaskInstance> instances = const [],
+  }) {
+    final total = assignments.length + instances.length;
+    if (total == 0) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -346,11 +375,134 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
       backgroundColor: AppColors.emeraldDark,
       child: ListView.builder(
         padding: EdgeInsets.all(16.w),
-        itemCount: assignments.length,
+        itemCount: assignments.length + instances.length,
         itemBuilder: (context, index) {
-          final assignment = assignments[index];
-          return _buildAssignmentCard(assignment);
+          if (index < assignments.length) {
+            return _buildAssignmentCard(assignments[index]);
+          } else {
+            return _buildInstanceCard(instances[index - assignments.length]);
+          }
         },
+      ),
+    );
+  }
+
+  Widget _buildInstanceCard(RecurringTaskInstance instance) {
+    final Color statusColor;
+    final String statusLabel;
+    switch (instance.status) {
+      case 'completed':
+        statusColor = Colors.green;
+        statusLabel = 'Выполнено';
+        break;
+      case 'expired':
+        statusColor = Colors.grey;
+        statusLabel = 'Просрочено';
+        break;
+      default:
+        statusColor = Colors.blue;
+        statusLabel = 'В работе';
+    }
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 12.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.replay, size: 16, color: Colors.blue.withOpacity(0.7)),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    instance.title,
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.replay, size: 12, color: statusColor),
+                      SizedBox(width: 4),
+                      Text(
+                        statusLabel,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Divider(color: Colors.white.withOpacity(0.1), height: 1),
+            SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.person, size: 16, color: Colors.white.withOpacity(0.3)),
+                SizedBox(width: 4),
+                Text(
+                  instance.assigneeName,
+                  style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                ),
+              ],
+            ),
+            SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.access_time,
+                  size: 16,
+                  color: _isOverdue(instance.deadline) && instance.status == 'pending'
+                      ? Colors.red[300]
+                      : Colors.white.withOpacity(0.3),
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'До: ${_formatDateTime(instance.deadline)}',
+                  style: TextStyle(
+                    color: _isOverdue(instance.deadline) && instance.status == 'pending'
+                        ? Colors.red[300]
+                        : Colors.white.withOpacity(0.5),
+                  ),
+                ),
+              ],
+            ),
+            if (instance.completedAt != null) ...[
+              SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.check_circle, size: 16, color: Colors.green[300]),
+                  SizedBox(width: 4),
+                  Text(
+                    'Выполнено: ${_formatDateTime(instance.completedAt!)}',
+                    style: TextStyle(color: Colors.green[300], fontSize: 12.sp),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

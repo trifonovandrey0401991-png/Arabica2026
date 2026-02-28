@@ -17,6 +17,7 @@ const db = require('../utils/db');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const { requireAuth } = require('../utils/session_middleware');
 const { notifyCounterUpdate } = require('./counters_websocket');
+const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_RECOUNT === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -718,7 +719,7 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         const exists = penalties.some(p => p.sourceId === sourceId);
         if (!exists) {
           const penalty = {
-            id: `ep_${Date.now()}`,
+            id: generateId('ep'),
             type: 'employee',
             entityId: report.employeePhone || report.employeeId,
             entityName: report.employeeName,

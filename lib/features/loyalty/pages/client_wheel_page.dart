@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/loyalty_gamification_model.dart';
-import '../services/loyalty_gamification_service.dart';
+import '../services/loyalty_gamification_service.dart' show LoyaltyGamificationService, PendingPrizeException;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Премиум страница колеса удачи для клиента
@@ -101,29 +101,52 @@ class _ClientWheelPageState extends State<ClientWheelPage>
 
     if (mounted) setState(() => _isSpinning = true);
 
-    final result = await LoyaltyGamificationService.spinWheel(widget.phone);
+    try {
+      final result = await LoyaltyGamificationService.spinWheel(widget.phone);
 
-    if (result != null) {
-      _lastResult = result;
-      _animateToSector(result.sectorIndex);
-      if (mounted) setState(() => _spinsLeft--);
-    } else {
+      if (result != null) {
+        _lastResult = result;
+        _animateToSector(result.sectorIndex);
+        if (mounted) setState(() => _spinsLeft--);
+      } else {
+        if (mounted) setState(() => _isSpinning = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('Ошибка прокрутки. Попробуйте позже.')),
+                ],
+              ),
+              backgroundColor: Colors.red[700],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            ),
+          );
+        }
+      }
+    } on PendingPrizeException {
       if (mounted) setState(() => _isSpinning = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                Icon(Icons.error_outline, color: Colors.white),
+                Icon(Icons.card_giftcard, color: Colors.white),
                 SizedBox(width: 12),
-                Text('Ошибка прокрутки. Попробуйте позже.'),
+                Expanded(child: Text('Сначала получите ваш предыдущий приз!')),
               ],
             ),
-            backgroundColor: Colors.red[700],
+            backgroundColor: Colors.orange[700],
             behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
         );
+        // Возвращаемся на страницу лояльности, где показывается кнопка "Получить приз"
+        Navigator.of(context).pop();
       }
     }
   }

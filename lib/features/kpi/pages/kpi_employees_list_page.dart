@@ -62,11 +62,12 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
           _isLoading = false;
         });
 
-        // Загружаем статистику сотрудников ПОСЛЕДОВАТЕЛЬНО (по одному)
-        // чтобы не перегружать сервер (каждый сотрудник = 6-9 API вызовов)
-        for (var i = 0; i < employees.length; i++) {
+        // Загружаем статистику сотрудников параллельно по 3
+        // (каждый сотрудник = 6-9 API вызовов, поэтому не больше 3 за раз)
+        for (var i = 0; i < employees.length; i += 3) {
           if (!mounted) break;
-          await _loadMonthlyStats(employees[i]);
+          final batch = employees.skip(i).take(3);
+          await Future.wait(batch.map((e) => _loadMonthlyStats(e)));
         }
 
         // Step 3: Save to cache (after all stats loaded)

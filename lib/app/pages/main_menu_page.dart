@@ -63,10 +63,13 @@ import '../../features/work_schedule/services/work_schedule_service.dart';
 import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../core/services/app_update_service.dart';
 import '../../core/services/counters_ws_service.dart';
+import '../../features/efficiency/models/efficiency_data_model.dart';
 import '../../features/efficiency/services/efficiency_data_service.dart';
 import '../../features/network_management/pages/network_management_page.dart';
 import '../../features/network_management/services/network_management_service.dart';
 import 'manager_grid_page.dart';
+import 'developer_reports_page.dart';
+import 'staff_efficiency_page.dart';
 import '../../features/main_cash/pages/main_cash_page.dart';
 import '../../features/execution_chain/services/execution_chain_service.dart';
 import '../../features/execution_chain/models/execution_chain_model.dart';
@@ -110,6 +113,11 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
 
   // Баллы эффективности за текущий месяц
   double? _efficiencyPoints;
+
+  // Данные магазина для заведующей
+  double? _shopEfficiencyPoints;
+  int? _shopRatingPosition;
+  int? _shopRatingTotal;
 
   // Кэш цепочки выполнений (обновляется каждые 30 секунд)
   ExecutionChainStatus? _chainStatus;
@@ -197,8 +205,71 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
       if (mounted) {
         setState(() => _efficiencyPoints = employeeSummary.totalPoints);
       }
+
+      // Для заведующей — загружаем данные по магазину
+      final effectiveRole = widget.forceRole ?? _userRole?.role;
+      if (effectiveRole == UserRole.manager && data.byShop.isNotEmpty) {
+        await _loadShopStats(data);
+      }
     } catch (e) {
       Logger.warning('Ошибка загрузки эффективности: $e');
+    }
+  }
+
+  /// Загрузить эффективность и рейтинг магазина для заведующей
+  /// data.byShop отфильтрован по роли (у заведующей — только её магазин),
+  /// поэтому для рейтинга агрегируем allRecords по ВСЕМ магазинам.
+  Future<void> _loadShopStats(EfficiencyData data) async {
+    try {
+      // Магазин заведующей определяется через primaryShopId
+      final shopId = _userRole?.primaryShopId;
+      if (shopId == null || shopId.isEmpty) return;
+
+      // Преобразуем shop ID → адрес через список ВСЕХ магазинов
+      final shops = await ShopService.getShops();
+      final allAddresses = shops.map((s) => s.address).toSet();
+      String? shopAddress;
+      for (final shop in shops) {
+        if (shop.id == shopId || shop.address == shopId) {
+          shopAddress = shop.address;
+          break;
+        }
+      }
+
+      if (shopAddress == null || shopAddress.isEmpty) return;
+
+      // Агрегируем allRecords по ВСЕМ магазинам (без фильтрации по роли)
+      final Map<String, List<EfficiencyRecord>> byShopMap = {};
+      for (final record in data.allRecords) {
+        if (record.shopAddress.isEmpty) continue;
+        if (!allAddresses.contains(record.shopAddress)) continue;
+        byShopMap.putIfAbsent(record.shopAddress, () => []);
+        byShopMap[record.shopAddress]!.add(record);
+      }
+
+      final allShopSummaries = byShopMap.entries.map((entry) {
+        return EfficiencySummary.fromRecords(
+          entityId: entry.key,
+          entityName: entry.key,
+          records: entry.value,
+        );
+      }).toList()
+        ..sort((a, b) => b.totalPoints.compareTo(a.totalPoints));
+
+      for (int i = 0; i < allShopSummaries.length; i++) {
+        if (allShopSummaries[i].entityName == shopAddress) {
+          if (mounted) {
+            setState(() {
+              _shopEfficiencyPoints = allShopSummaries[i].totalPoints;
+              _shopRatingPosition = i + 1;
+              _shopRatingTotal = allShopSummaries.length;
+            });
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      Logger.warning('Ошибка загрузки статистики магазина: $e');
     }
   }
 
@@ -597,8 +668,9 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
     // forceRole позволяет девелоперу открыть экран в режиме другой роли
     final role = widget.forceRole ?? (_userRole?.role ?? UserRole.client);
 
-    // Админ и управляющий сразу видят ManagerGridPage (только если не forceRole)
-    if (widget.forceRole == null && (role == UserRole.admin || role == UserRole.manager)) {
+    // Только admin (управляющий) видит ManagerGridPage как главный экран (если не forceRole)
+    // manager (заведующая) видит экран сотрудника с кнопкой Касса
+    if (widget.forceRole == null && role == UserRole.admin) {
       return ManagerGridPage(
         isHomePage: true,
         userName: _userName,
@@ -639,6 +711,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
       case UserRole.employee:
         return _buildEmployeeMenu();
       case UserRole.manager:
+        return _buildEmployeeMenu(); // Заведующая видит экран сотрудника + кнопка Касса
       case UserRole.admin:
         return _buildAdminMenu();
       case UserRole.developer:
@@ -938,7 +1011,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
               ),
               onTap: () {
                 Navigator.pop(ctx);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => ManagerGridPage()));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => MainMenuPage(forceRole: UserRole.manager)));
               },
             ),
             ListTile(
@@ -975,8 +1048,8 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         builder: (context, constraints) {
           final availableHeight = constraints.maxHeight;
 
-          // 8 кнопок + 7 отступов между ними
-          final buttonCount = 8;
+          // 9 кнопок + 8 отступов между ними
+          final buttonCount = 9;
           final spacing = 8.0;
           final totalSpacing = spacing * (buttonCount - 1);
           final buttonHeight = (availableHeight - totalSpacing) / buttonCount;
@@ -1006,10 +1079,18 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                 'Аналитика и статистика',
                 buttonHeight,
                 () async {
-                  await Navigator.push(context, MaterialPageRoute(builder: (_) => ManagerGridPage()));
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperReportsPage()));
                   _loadTotalReportsCount();
                 },
                 badge: _totalReportsCount,
+              ),
+              SizedBox(height: spacing),
+              _buildAdminRow(
+                Icons.bar_chart_rounded,
+                'Эффективность сотрудников',
+                'Управляющие, заведующие, сотрудники',
+                buttonHeight,
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffEfficiencyPage())),
               ),
               SizedBox(height: spacing),
               // Чат — золотая кнопка
@@ -1194,13 +1275,14 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
 
           final sections = _getEmployeeSections();
 
+          final effectiveRole = widget.forceRole ?? _userRole?.role;
+          final showMainCash = effectiveRole == UserRole.manager;
+
           // 3 равные секции + кнопка ИИ
           final totalGridHeight = availableHeight - (headerHeight * 3) - aiButtonHeight - aiButtonTopMargin;
           final sectionSpacing = totalGridHeight * 0.03;
           final gridHeight = totalGridHeight - (sectionSpacing * 2);
           final sectionHeight = gridHeight / 3 + headerHeight;
-
-          final showMainCash = _userRole?.isManager == true && _userRole!.managedShopIds.isNotEmpty;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1216,7 +1298,9 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                 ),
               ],
               SizedBox(height: aiButtonTopMargin),
-              if (showMainCash)
+              if (showMainCash && _isWholesaleAuthorized)
+                _buildAITrainingWithCashAndWholesaleRow(aiButtonHeight)
+              else if (showMainCash)
                 _buildAITrainingWithCashRow(aiButtonHeight)
               else if (_isWholesaleAuthorized)
                 _buildAITrainingWithWholesaleRow(aiButtonHeight)
@@ -1370,125 +1454,263 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
     );
   }
 
-  /// Строка: 50% Обучение ИИ + 50% золотая Главная касса
+  /// Строка для заведующей: ИИ (33%) | Касса золотая (33%) | Магазин (33%)
   Widget _buildAITrainingWithCashRow(double height) {
-    return Row(
-      children: [
-        // Обучение ИИ — 50%
-        Expanded(
-          child: Container(
-            height: height,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.emeraldLight.withOpacity(0.8),
-                  AppColors.emerald,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(
-                color: AppColors.turquoise.withOpacity(0.6),
-                width: 1.5,
-              ),
+    Widget buildBtn({
+      required IconData icon,
+      required String label,
+      required VoidCallback onTap,
+      required List<Color> gradientColors,
+      required Color borderColor,
+      String? badge,
+      Color badgeColor = AppColors.turquoise,
+    }) {
+      return Expanded(
+        child: Container(
+          height: height,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradientColors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: Material(
-              color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16.r),
+            border: Border.all(color: borderColor, width: 1.5),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16.r),
+            child: InkWell(
+              onTap: onTap,
               borderRadius: BorderRadius.circular(16.r),
-              child: InkWell(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => AITrainingPage()));
-                },
-                borderRadius: BorderRadius.circular(16.r),
-                splashColor: Colors.white.withOpacity(0.2),
-                highlightColor: Colors.white.withOpacity(0.1),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.smart_toy_outlined, color: Colors.white.withOpacity(0.9), size: 20),
-                    SizedBox(width: 6),
-                    Text(
-                      'ИИ',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.95),
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
+              splashColor: Colors.white.withOpacity(0.2),
+              highlightColor: Colors.white.withOpacity(0.1),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: Colors.white.withOpacity(0.9), size: 18),
+                  SizedBox(width: 5),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.95),
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w500,
                     ),
-                    SizedBox(width: 6),
+                  ),
+                  if (badge != null) ...[
+                    SizedBox(width: 4),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
+                      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
                       decoration: BoxDecoration(
-                        color: AppColors.turquoise.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(6.r),
-                        border: Border.all(
-                          color: AppColors.turquoise.withOpacity(0.5),
-                          width: 1,
-                        ),
+                        color: badgeColor.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(5.r),
+                        border: Border.all(color: badgeColor.withOpacity(0.5), width: 1),
                       ),
                       child: Text(
-                        'AI',
+                        badge,
                         style: TextStyle(
-                          color: AppColors.turquoise,
-                          fontSize: 10.sp,
+                          color: badgeColor,
+                          fontSize: 9.sp,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
             ),
           ),
         ),
+      );
+    }
+
+    return Row(
+      children: [
+        // ИИ — изумрудный
+        buildBtn(
+          icon: Icons.smart_toy_outlined,
+          label: 'ИИ',
+          badge: 'AI',
+          badgeColor: AppColors.turquoise,
+          gradientColors: [AppColors.emeraldLight.withOpacity(0.8), AppColors.emerald],
+          borderColor: AppColors.turquoise.withOpacity(0.6),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AITrainingPage())),
+        ),
         SizedBox(width: 8),
-        // Главная касса — 50%, золотой
-        Expanded(
-          child: Container(
+        // Касса — золотой (только для заведующей)
+        buildBtn(
+          icon: Icons.account_balance_outlined,
+          label: 'Касса',
+          gradientColors: [AppColors.gold.withOpacity(0.9), AppColors.darkGold],
+          borderColor: AppColors.gold.withOpacity(0.7),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MainCashPage())),
+        ),
+        SizedBox(width: 8),
+        // Магазин — изумрудный тёмный
+        buildBtn(
+          icon: Icons.storefront_outlined,
+          label: 'Магазин',
+          gradientColors: [AppColors.emerald, AppColors.emeraldDark],
+          borderColor: AppColors.emerald.withOpacity(0.5),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ShopCatalogPage())),
+        ),
+      ],
+    );
+  }
+
+  /// Строка для заведующей с оптом: ИИ (25%) | Касса золотая (25%) | Магазин (25%) | Опт (25%)
+  Widget _buildAITrainingWithCashAndWholesaleRow(double height) {
+    Widget buildBtn({
+      required IconData icon,
+      required String label,
+      required VoidCallback onTap,
+      required List<Color> gradientColors,
+      required Color borderColor,
+      String? badge,
+      Color badgeColor = AppColors.turquoise,
+      Widget? counter,
+    }) {
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
             height: height,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  AppColors.gold.withOpacity(0.9),
-                  AppColors.darkGold,
-                ],
+                colors: gradientColors,
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(
-                color: AppColors.gold.withOpacity(0.7),
-                width: 1.5,
-              ),
+              border: Border.all(color: borderColor, width: 1.5),
             ),
             child: Material(
               color: Colors.transparent,
               borderRadius: BorderRadius.circular(16.r),
               child: InkWell(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => MainCashPage()));
-                },
+                onTap: onTap,
                 borderRadius: BorderRadius.circular(16.r),
                 splashColor: Colors.white.withOpacity(0.2),
                 highlightColor: Colors.white.withOpacity(0.1),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.account_balance_outlined, color: Colors.white, size: 20),
-                    SizedBox(width: 6),
+                    Icon(icon, color: Colors.white.withOpacity(0.9), size: 16),
+                    SizedBox(width: 3),
                     Text(
-                      'Касса',
+                      label,
                       style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withOpacity(0.95),
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
+                    if (badge != null) ...[
+                      SizedBox(width: 2),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(4.r),
+                          border: Border.all(color: badgeColor.withOpacity(0.5), width: 1),
+                        ),
+                        child: Text(
+                          badge,
+                          style: TextStyle(
+                            color: badgeColor,
+                            fontSize: 8.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ),
+          ),
+          if (counter != null) counter,
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        // ИИ — изумрудный
+        Expanded(
+          child: buildBtn(
+            icon: Icons.smart_toy_outlined,
+            label: 'ИИ',
+            badge: 'AI',
+            badgeColor: AppColors.turquoise,
+            gradientColors: [AppColors.emeraldLight.withOpacity(0.8), AppColors.emerald],
+            borderColor: AppColors.turquoise.withOpacity(0.6),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AITrainingPage())),
+          ),
+        ),
+        SizedBox(width: 6),
+        // Касса — золотой
+        Expanded(
+          child: buildBtn(
+            icon: Icons.account_balance_outlined,
+            label: 'Касса',
+            gradientColors: [AppColors.gold.withOpacity(0.9), AppColors.darkGold],
+            borderColor: AppColors.gold.withOpacity(0.7),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MainCashPage())),
+          ),
+        ),
+        SizedBox(width: 6),
+        // Магазин — изумрудный тёмный
+        Expanded(
+          child: buildBtn(
+            icon: Icons.storefront_outlined,
+            label: 'Магазин',
+            gradientColors: [AppColors.emerald, AppColors.emeraldDark],
+            borderColor: AppColors.emerald.withOpacity(0.5),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ShopCatalogPage())),
+          ),
+        ),
+        SizedBox(width: 6),
+        // Опт — с счётчиком
+        Expanded(
+          child: buildBtn(
+            icon: Icons.inventory_2_outlined,
+            label: 'Опт',
+            badge: 'ОПТ',
+            badgeColor: AppColors.gold,
+            gradientColors: [AppColors.emeraldLight.withOpacity(0.7), AppColors.deepEmerald],
+            borderColor: AppColors.turquoise.withOpacity(0.35),
+            onTap: () async {
+              if (mounted) setState(() => _wholesalePendingCount = 0);
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => WholesaleOrdersPage(employeePhone: _phone ?? '')),
+              );
+              _loadWholesalePendingCount();
+            },
+            counter: _wholesalePendingCount > 0
+                ? Positioned(
+                    top: -6,
+                    right: -6,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10.r),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                      child: Text(
+                        _wholesalePendingCount > 99 ? '99+' : '$_wholesalePendingCount',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
           ),
         ),
       ],
@@ -1646,6 +1868,9 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
   }
 
   Widget _buildHeader() {
+    final isManager = _userRole?.role == UserRole.manager;
+    final showManagerBadges = isManager && widget.forceRole == null && _efficiencyPoints != null;
+
     final showRating = _employeeRating != null &&
         _employeeRating!.position > 0 &&
         (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer);
@@ -1653,10 +1878,11 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
     final showEfficiency = _efficiencyPoints != null &&
         (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer);
 
-    final isEmployee = _userRole?.role == UserRole.employee;
+    final isEmployee = _userRole?.role == UserRole.employee || isManager;
     final btnSize = isEmployee ? 32.0 : 38.0;
     final iconSize = isEmployee ? 16.0 : 18.0;
     final btnGap = isEmployee ? 8.0 : 10.0;
+    final headerRowHeight = showManagerBadges ? btnSize + 24.0 : btnSize;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(24, isEmployee ? 8 : 16, 24, isEmployee ? 8 : 20),
@@ -1664,7 +1890,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         children: [
           // Строка шапки: логотип ВСЕГДА строго по центру, бейджи и кнопки по краям
           SizedBox(
-            height: btnSize,
+            height: headerRowHeight,
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -1680,6 +1906,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                 // Бейджи (левый край) и кнопки (правый край) поверх логотипа
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // Левая часть — кнопка назад (режим предпросмотра) или бейджи
                     if (widget.forceRole != null)
@@ -1696,6 +1923,8 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                           child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white.withOpacity(0.9), size: iconSize),
                         ),
                       )
+                    else if (showManagerBadges)
+                      _buildManagerHeaderBadges()
                     else if (showRating || showEfficiency)
                       Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1962,6 +2191,104 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                   ? AppColors.successLight
                   : Colors.orange.shade300,
               fontSize: 11.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 4 бейджа для заведующей в шапке (2×2 сетка в левом верхнем углу)
+  Widget _buildManagerHeaderBadges() {
+    final personalEff = _efficiencyPoints;
+    final shopEff = _shopEfficiencyPoints;
+    final personalRating = _employeeRating;
+    final shopPos = _shopRatingPosition;
+    final shopTotal = _shopRatingTotal;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Row 1: эффективность личная + магазина
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildMiniBadge(
+              icon: Icons.trending_up_outlined,
+              value: personalEff != null
+                  ? '${personalEff >= 0 ? '+' : ''}${personalEff.toStringAsFixed(1)}'
+                  : '—',
+              color: personalEff != null && personalEff >= 0
+                  ? AppColors.success
+                  : Colors.orange.shade300,
+              filled: true,
+            ),
+            SizedBox(width: 4),
+            _buildMiniBadge(
+              icon: Icons.store_outlined,
+              value: shopEff != null
+                  ? '${shopEff >= 0 ? '+' : ''}${shopEff.toStringAsFixed(0)}'
+                  : '—',
+              color: shopEff != null && shopEff >= 0
+                  ? AppColors.success
+                  : Colors.orange.shade300,
+              filled: true,
+            ),
+          ],
+        ),
+        SizedBox(height: 3),
+        // Row 2: рейтинг личный + магазина
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildMiniBadge(
+              icon: Icons.leaderboard_outlined,
+              value: personalRating != null && personalRating.position > 0
+                  ? '${personalRating.position}/${personalRating.totalEmployees}'
+                  : '—',
+              color: Colors.white.withOpacity(0.8),
+              filled: false,
+            ),
+            SizedBox(width: 4),
+            _buildMiniBadge(
+              icon: Icons.emoji_events_outlined,
+              value: shopPos != null ? '$shopPos/$shopTotal' : '—',
+              color: shopPos != null && shopPos <= 3
+                  ? AppColors.gold
+                  : Colors.white.withOpacity(0.8),
+              filled: false,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniBadge({
+    required IconData icon,
+    required String value,
+    required Color color,
+    required bool filled,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12.r),
+        color: filled ? color.withOpacity(0.15) : Colors.transparent,
+        border: Border.all(color: color.withOpacity(filled ? 0.4 : 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 12),
+          SizedBox(width: 3),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 10.sp,
               fontWeight: FontWeight.w600,
             ),
           ),

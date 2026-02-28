@@ -14,6 +14,7 @@ const { calculateFullEfficiency, initBatchCache, clearBatchCache, calculateFullE
 const { withLock } = require('../utils/file_lock');
 const { requireAuth } = require('../utils/session_middleware');
 const { getMoscowDateString } = require('../utils/moscow_time');
+const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_RATING_WHEEL === 'true';
 
@@ -1079,7 +1080,7 @@ module.exports = function setupRatingWheelAPI(app) {
         }
 
         const spinRecord = {
-          id: `spin_${Date.now()}`,
+          id: generateId('spin'),
           employeeId,
           employeeName: employeeName || 'Сотрудник',
           rewardMonth: spinMonth,

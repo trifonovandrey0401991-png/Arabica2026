@@ -497,7 +497,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                               savedSupplier = await SupplierService.createSupplier(newSupplier);
                             }
 
-                            if (!context.mounted) return;
+                            if (!mounted) return;
 
                             if (savedSupplier != null) {
                               if (savedSupplier.shopDeliveries != null && savedSupplier.shopDeliveries!.isNotEmpty) {
@@ -530,8 +530,10 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                                 }
                               }
 
+                              if (!mounted || !context.mounted) return;
                               Navigator.pop(context, true);
                             } else {
+                              if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Row(

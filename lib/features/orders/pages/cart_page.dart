@@ -1,16 +1,49 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/constants/api_constants.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/providers/order_provider.dart';
-import '../../menu/pages/menu_page.dart';
+import '../../shops/models/shop_model.dart';
 import 'orders_page.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница корзины (Dark Emerald тема)
-class CartPage extends StatelessWidget {
+class CartPage extends StatefulWidget {
   const CartPage({super.key});
+
+  @override
+  State<CartPage> createState() => _CartPageState();
+}
+
+class _CartPageState extends State<CartPage> {
+  List<Shop> _shops = [];
+  String? _lastShopAddress;
+  bool _isCreatingOrder = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadShops();
+    _loadLastShop();
+  }
+
+  Future<void> _loadShops() async {
+    final shops = await Shop.loadShopsFromServer();
+    if (mounted) setState(() => _shops = shops);
+  }
+
+  Future<void> _loadLastShop() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastShop = prefs.getString('last_shop_order_address');
+    if (mounted) setState(() => _lastShopAddress = lastShop);
+  }
+
+  Future<void> _saveLastShop(String address) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_shop_order_address', address);
+    if (mounted) setState(() => _lastShopAddress = address);
+  }
 
   Widget _buildNoPhotoPlaceholder({bool isShopProduct = false}) {
     return Container(
@@ -502,7 +535,13 @@ class CartPage extends StatelessWidget {
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: () => _showPickupTimeDialog(context, cart, null),
+                  onTap: () {
+                    if (cart.hasShopProducts) {
+                      _showShopSelectionDialog(context, cart, null);
+                    } else {
+                      _showPickupTimeDialog(context, cart, null);
+                    }
+                  },
                   child: Container(
                     padding: EdgeInsets.symmetric(vertical: 14.h),
                     decoration: BoxDecoration(
@@ -566,134 +605,6 @@ class CartPage extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  /// Диалог оформления заказа (не используется, оставлен для совместимости)
-  void _showOrderDialog(BuildContext context, CartProvider cart) {
-    final orderProvider = OrderProvider.of(context);
-    String? comment;
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (builderContext, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15.r),
-          ),
-          title: Text(
-            'Оформление заказа',
-            style: TextStyle(
-              fontSize: 20.sp,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    _showCommentDialog(builderContext, comment, (newComment) {
-                      setState(() {
-                        comment = newComment;
-                      });
-                    });
-                  },
-                  icon: Icon(Icons.comment_outlined),
-                  label: Text(
-                    comment == null || comment!.isEmpty
-                        ? 'Указать комментарий'
-                        : 'Изменить комментарий',
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[200],
-                    foregroundColor: Colors.black87,
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                  ),
-                ),
-              ),
-              if (comment != null && comment!.isNotEmpty) ...[
-                SizedBox(height: 8),
-                Container(
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          comment!,
-                          style: TextStyle(fontSize: 14.sp),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      await orderProvider.createOrder(
-                        cart.items,
-                        cart.totalPrice,
-                        comment: comment,
-                        shopAddress: cart.selectedShopAddress,
-                      );
-
-                      cart.clear();
-                      if (builderContext.mounted) {
-                        Navigator.of(dialogContext).pop();
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Заказ успешно оформлен!'),
-                            backgroundColor: AppColors.primaryGreen,
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      }
-                    } catch (e) {
-                      if (builderContext.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Ошибка создания заказа: $e'),
-                            backgroundColor: Colors.red,
-                            duration: Duration(seconds: 3),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
-                    padding: EdgeInsets.symmetric(vertical: 16.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                  ),
-                  child: Text(
-                    'Заказать',
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -819,6 +730,8 @@ class CartPage extends StatelessWidget {
     String? comment,
     int pickupMinutes,
   ) async {
+    if (_isCreatingOrder) return; // Prevent double-tap
+    setState(() => _isCreatingOrder = true);
     try {
       final orderProvider = OrderProvider.of(context);
 
@@ -870,6 +783,8 @@ class CartPage extends StatelessWidget {
           duration: Duration(seconds: 3),
         ),
       );
+    } finally {
+      if (mounted) setState(() => _isCreatingOrder = false);
     }
   }
 
@@ -949,7 +864,11 @@ class CartPage extends StatelessWidget {
                           final comment = controller.text.trim().isEmpty
                               ? null
                               : controller.text.trim();
-                          _showPickupTimeDialog(context, cart, comment);
+                          if (cart.hasShopProducts) {
+                            _showShopSelectionDialog(context, cart, comment);
+                          } else {
+                            _showPickupTimeDialog(context, cart, comment);
+                          }
                         },
                         child: Container(
                           height: 46,
@@ -1003,7 +922,7 @@ class CartPage extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ).then((_) => controller.dispose());
   }
 
   void _showCommentDialog(
@@ -1048,6 +967,225 @@ class CartPage extends StatelessWidget {
           ),
         ],
       ),
+    ).then((_) => controller.dispose());
+  }
+
+  void _showShopSelectionDialog(BuildContext context, CartProvider cart, String? comment) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.75,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.emeraldDark,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Center(
+              child: Container(
+                margin: EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            // Title
+            Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 12.h),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8.w),
+                    decoration: BoxDecoration(
+                      color: AppColors.gold.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                    child: Icon(Icons.store_rounded, color: AppColors.gold, size: 22),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Выберите магазин',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(color: Colors.white.withOpacity(0.1), height: 1),
+            // Shops list or loading indicator
+            if (_shops.isEmpty)
+              Padding(
+                padding: EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(color: AppColors.gold),
+                    SizedBox(height: 12),
+                    Text(
+                      'Загружаем список магазинов...',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                  itemCount: _shops.length,
+                  itemBuilder: (_, index) {
+                    final shop = _shops[index];
+                    final isSelected = shop.address == _lastShopAddress;
+                    return GestureDetector(
+                      onTap: () async {
+                        Navigator.of(sheetCtx).pop();
+                        cart.setShopAddress(shop.address);
+                        await _saveLastShop(shop.address);
+                        if (context.mounted) {
+                          await _createOrderForShop(context, cart, comment, shop.address);
+                        }
+                      },
+                      child: Container(
+                        margin: EdgeInsets.only(bottom: 8.h),
+                        padding: EdgeInsets.all(14.w),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.gold.withOpacity(0.12)
+                              : Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(14.r),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.gold.withOpacity(0.5)
+                                : Colors.white.withOpacity(0.1),
+                            width: isSelected ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppColors.gold.withOpacity(0.15)
+                                    : Colors.white.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(10.r),
+                              ),
+                              child: Icon(
+                                Icons.store_rounded,
+                                color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.5),
+                                size: 20,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    shop.name,
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontSize: 15.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (shop.address.isNotEmpty) ...[
+                                    SizedBox(height: 2),
+                                    Text(
+                                      shop.address,
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.4),
+                                        fontSize: 12.sp,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            if (isSelected)
+                              Icon(Icons.check_circle_rounded, color: AppColors.gold, size: 22),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            SizedBox(height: 12),
+          ],
+        ),
+      ),
     );
+  }
+
+  Future<void> _createOrderForShop(
+    BuildContext context,
+    CartProvider cart,
+    String? comment,
+    String shopAddress,
+  ) async {
+    if (_isCreatingOrder) return; // Prevent double-tap
+    setState(() => _isCreatingOrder = true);
+    try {
+      final orderProvider = OrderProvider.of(context);
+      await orderProvider.createOrder(
+        cart.items,
+        cart.totalPrice,
+        comment: comment,
+        shopAddress: shopAddress,
+      );
+      if (!context.mounted) return;
+      cart.clear();
+      Navigator.of(context).pop();
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => OrdersPage()),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Text('Заказ успешно создан!'),
+            ],
+          ),
+          backgroundColor: AppColors.emerald,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          margin: EdgeInsets.all(16.w),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка создания заказа: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isCreatingOrder = false);
+    }
   }
 }

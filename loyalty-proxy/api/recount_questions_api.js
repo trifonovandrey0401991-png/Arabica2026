@@ -12,6 +12,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_RECOUNT_QUESTIONS === 'true';
 
@@ -82,7 +83,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
     try {
       console.log('POST /api/recount-questions:', JSON.stringify(req.body).substring(0, 200));
 
-      const questionId = req.body.id || `recount_question_${Date.now()}`;
+      const questionId = req.body.id || generateId('recount_question');
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
 

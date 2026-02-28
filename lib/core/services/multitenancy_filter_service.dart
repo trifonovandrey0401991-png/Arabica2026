@@ -34,8 +34,10 @@ class MultitenancyFilterService {
     final roleData = await UserRoleService.loadUserRole();
 
     if (roleData == null) {
-      Logger.debug('⚠️ Роль не загружена, фильтрация отключена');
-      return null; // Видит всё
+      // Fail-closed: if role cannot be loaded, deny access to all shops.
+      // Returning null would grant access to everything (fail-open), which is a security risk.
+      Logger.warning('⚠️ Роль не загружена — доступ к магазинам закрыт (fail-closed)');
+      return []; // Empty list = sees nothing
     }
 
     Logger.debug('🔍 Определение разрешённых магазинов для роли: ${roleData.role.name}');
@@ -74,7 +76,10 @@ class MultitenancyFilterService {
           _cacheTime = DateTime.now();
           return addresses;
         }
-        return null;
+        // Fail-closed: manager without a primaryShopId and without canSeeAllManagerShops
+        // should not see everything — deny access until a shop is assigned.
+        Logger.warning('   Manager без primaryShopId и без canSeeAllManagerShops — доступ закрыт (fail-closed)');
+        return [];
 
       case UserRole.employee:
         if (roleData.primaryShopId != null) {
@@ -84,7 +89,9 @@ class MultitenancyFilterService {
           _cacheTime = DateTime.now();
           return addresses;
         }
-        return null;
+        // Fail-closed: employee without a primaryShopId should not see all shops.
+        Logger.warning('   Employee без primaryShopId — доступ к магазинам закрыт (fail-closed)');
+        return [];
     }
   }
 

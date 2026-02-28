@@ -152,6 +152,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
         if (updated != null) {
           if (mounted) setState(() => _chat = updated);
         }
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Добавлено участников: ${result.length}'),
@@ -212,6 +213,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
         if (updated != null) {
           if (mounted) setState(() => _chat = updated);
         }
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Участник удалён'),

@@ -45,7 +45,6 @@ class _LoyaltyGamificationSettingsPageState
 
   // Премиум цвета
   static final _primaryColor = AppColors.primaryGreen;
-  static final _accentColor = Color(0xFF00897B);
   static final _goldColor = Color(0xFFFFD700);
 
   @override
@@ -110,13 +109,15 @@ class _LoyaltyGamificationSettingsPageState
       for (final level in settings.levels) {
         _levelNameControllers
             .add(TextEditingController(text: level.name));
-        _levelMinDrinksControllers
-            .add(TextEditingController(text: level.minFreeDrinks.toString()));
+        _levelMinDrinksControllers.add(TextEditingController(
+            text: (level.minTotalPoints > 0
+                ? level.minTotalPoints
+                : level.minFreeDrinks * 10).toString()));
       }
 
       // Инициализируем колесо
       _freeDrinksPerSpinController.text =
-          settings.wheel.freeDrinksPerSpin.toString();
+          settings.wheel.effectivePointsPerSpin.toString();
       for (final sector in settings.wheel.sectors) {
         _sectorTextControllers.add(TextEditingController(text: sector.text));
         _sectorProbControllers.add(TextEditingController(
@@ -178,8 +179,9 @@ class _LoyaltyGamificationSettingsPageState
     for (int i = 0; i < _levels.length; i++) {
       updatedLevels.add(_levels[i].copyWith(
         name: _levelNameControllers[i].text,
-        minFreeDrinks:
+        minTotalPoints:
             int.tryParse(_levelMinDrinksControllers[i].text) ?? 0,
+        minFreeDrinks: 0,
       ));
     }
 
@@ -205,8 +207,9 @@ class _LoyaltyGamificationSettingsPageState
     final updatedSettings = GamificationSettings(
       levels: updatedLevels,
       wheel: _wheelSettings.copyWith(
-        freeDrinksPerSpin:
-            int.tryParse(_freeDrinksPerSpinController.text) ?? 5,
+        pointsPerSpin:
+            int.tryParse(_freeDrinksPerSpinController.text) ?? 50,
+        freeDrinksPerSpin: 0,
         sectors: updatedSectors,
       ),
     );
@@ -568,7 +571,7 @@ class _LoyaltyGamificationSettingsPageState
                         ),
                       ),
                       Text(
-                        'от ${_levelMinDrinksControllers[index].text} напитков',
+                        'от ${_levelMinDrinksControllers[index].text} баллов',
                         style: TextStyle(
                           fontSize: 12.sp,
                           color: Colors.white.withOpacity(0.5),
@@ -624,7 +627,7 @@ class _LoyaltyGamificationSettingsPageState
                     keyboardType: TextInputType.number,
                     style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      labelText: 'Мин. напитков',
+                      labelText: 'Мин. баллов',
                       labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.r),
@@ -635,7 +638,7 @@ class _LoyaltyGamificationSettingsPageState
                         borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
                       ),
                       isDense: true,
-                      prefixIcon: Icon(Icons.local_cafe_outlined, color: Colors.white.withOpacity(0.5)),
+                      prefixIcon: Icon(Icons.star_outline, color: Colors.white.withOpacity(0.5)),
                     ),
                   ),
                 ),
@@ -839,6 +842,7 @@ class _LoyaltyGamificationSettingsPageState
     );
 
     if (image == null) return;
+    if (!mounted) return;
 
     // Открываем редактор кадрирования (как в Telegram)
     final croppedFile = await ImageCropper().cropImage(
@@ -1154,15 +1158,15 @@ class _LoyaltyGamificationSettingsPageState
               ),
             ),
             SizedBox(height: 16),
-            // Напитков для прокрутки
+            // Баллов для прокрутки
             TextField(
               controller: _freeDrinksPerSpinController,
               keyboardType: TextInputType.number,
               style: TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                labelText: 'Напитков для прокрутки',
+                labelText: 'Баллов для прокрутки',
                 labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                helperText: 'Сколько бесплатных напитков нужно для 1 спина',
+                helperText: 'Сколько баллов нужно накопить для 1 прокрутки колеса',
                 helperStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.r),
@@ -1172,7 +1176,7 @@ class _LoyaltyGamificationSettingsPageState
                   borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide(color: AppColors.emerald.withOpacity(0.5)),
                 ),
-                prefixIcon: Icon(Icons.local_cafe, color: Colors.white.withOpacity(0.5)),
+                prefixIcon: Icon(Icons.stars, color: Colors.white.withOpacity(0.5)),
               ),
             ),
           ],

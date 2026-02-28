@@ -31,6 +31,7 @@ import '../../features/coffee_machine/pages/coffee_machine_reports_list_page.dar
 import '../../features/coffee_machine/services/coffee_machine_report_service.dart';
 import '../../features/work_schedule/pages/shift_transfer_requests_page.dart';
 import '../../features/work_schedule/services/shift_transfer_service.dart';
+import '../../core/services/multitenancy_filter_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/employees/services/employee_registration_service.dart';
 import '../../core/utils/logger.dart';
@@ -114,8 +115,12 @@ class _ReportsPageState extends State<ReportsPage> {
         timeout: ApiConstants.longTimeout,
       );
       if (result != null && result['success'] == true) {
-        final withdrawals = result['withdrawals'] as List<dynamic>? ?? [];
-        final unconfirmedCount = withdrawals.where((w) => w['confirmed'] != true).length;
+        final all = result['withdrawals'] as List<dynamic>? ?? [];
+        final filtered = await MultitenancyFilterService.filterByShopAddress(
+          all.map((w) => w as Map<String, dynamic>).toList(),
+          (w) => w['shopAddress']?.toString() ?? '',
+        );
+        final unconfirmedCount = filtered.where((w) => w['confirmed'] != true).length;
         if (mounted) setState(() => _unconfirmedWithdrawalsCount = unconfirmedCount);
       }
     } catch (e) {
@@ -524,6 +529,7 @@ class _ReportsPageState extends State<ReportsPage> {
         badge: _unviewedExpiredTasksCount,
         onTap: () async {
           await TaskService.markExpiredAsViewed();
+          if (!mounted) return;
           await Navigator.push(context, MaterialPageRoute(builder: (_) => TaskReportsPage()));
           _loadUnviewedExpiredTasksCount();
         },
@@ -551,6 +557,7 @@ class _ReportsPageState extends State<ReportsPage> {
         badge: _referralsUnviewedCount,
         onTap: () async {
           await ReferralService.markAsViewed();
+          if (!mounted) return;
           await Navigator.push(context, MaterialPageRoute(builder: (_) => ReferralsReportPage()));
           _loadReferralsUnviewedCount();
         },

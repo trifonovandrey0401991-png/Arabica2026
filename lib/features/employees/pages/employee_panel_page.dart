@@ -519,7 +519,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
 
         try {
           final hasAttendance = await AttendanceService.hasAttendanceToday(employeeName);
-          if (!context.mounted) return;
+          if (!mounted) return;
           if (hasAttendance) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -533,14 +533,14 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
           Logger.warning('Ошибка проверки отметки: $e');
         }
 
-        if (!context.mounted) return;
-        await _markAttendanceAutomatically(context, employeeName);
+        if (!mounted) return;
+        await _markAttendanceAutomatically(employeeName);
       }),
       // 2. Пересменка
       _buildCompactTile(Icons.swap_horiz_rounded, 'Пересменка', () async {
         final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
         final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        if (!context.mounted) return;
+        if (!mounted) return;
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -552,7 +552,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
       _buildCompactTile(Icons.check_circle_outline_rounded, 'Сдать смену', () async {
         final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
         final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        if (!context.mounted) return;
+        if (!mounted) return;
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -574,7 +574,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
           final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
 
           if (phone == null || phone.isEmpty) {
-            if (context.mounted) {
+            if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Не удалось определить телефон сотрудника'),
@@ -589,7 +589,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
           final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
 
           if (registration == null || !registration.isVerified) {
-            if (context.mounted) {
+            if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Только верифицированные сотрудники могут создавать РКО'),
@@ -600,14 +600,14 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
             return;
           }
 
-          if (!context.mounted) return;
+          if (!mounted) return;
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => RKOTypeSelectionPage()),
           );
         } catch (e) {
           Logger.error('Ошибка проверки верификации', e);
-          if (context.mounted) {
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Ошибка: $e'),
@@ -623,7 +623,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
         final employeeId = await EmployeesPage.getCurrentEmployeeId();
         final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
 
-        if (!context.mounted) return;
+        if (!mounted) return;
         await Navigator.push(
           context,
           MaterialPageRoute(
@@ -661,7 +661,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
         final employeeName = await EmployeesPage.getCurrentEmployeeName() ??
             _userRole?.displayName ?? _userName ?? 'Сотрудник';
 
-        if (!context.mounted) return;
+        if (!mounted) return;
         await Navigator.push(
           context,
           MaterialPageRoute(
@@ -1001,7 +1001,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
   // ЛОГИКА ПОСЕЩАЕМОСТИ (GPS)
   // ═══════════════════════════════════════════════════════════════
 
-  Future<void> _markAttendanceAutomatically(BuildContext context, String employeeName) async {
+  Future<void> _markAttendanceAutomatically(String employeeName) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1030,7 +1030,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
       final position = await AttendanceService.getCurrentLocation();
       final shops = await Shop.loadShopsFromServer();
 
-      if (!context.mounted) return;
+      if (!mounted) return;
 
       final nearestShop = AttendanceService.findNearestShop(
         position.latitude,
@@ -1070,7 +1070,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
       }
 
       final employeeId = await EmployeesPage.getCurrentEmployeeId();
-      if (!context.mounted) return;
+      if (!mounted) return;
 
       bool hasScheduledShift = false;
       String? scheduledShopAddress;
@@ -1080,7 +1080,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
         try {
           final today = DateTime.now();
           final schedule = await WorkScheduleService.getEmployeeSchedule(employeeId, today);
-          if (!context.mounted) return;
+          if (!mounted) return;
 
           for (var entry in schedule.entries) {
             if (entry.date.year == today.year &&
@@ -1098,27 +1098,27 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
       }
 
       if (!hasScheduledShift) {
-        if (!context.mounted) return;
+        if (!mounted) return;
         final shouldContinue = await _showNoScheduleWarning(context, nearestShop.name);
-        if (!context.mounted) return;
+        if (!mounted) return;
         if (!shouldContinue) return;
       }
 
       if (hasScheduledShift &&
           scheduledShopAddress != null &&
           scheduledShopAddress != nearestShop.address) {
-        if (!context.mounted) return;
+        if (!mounted) return;
         final shouldContinue = await _showWrongShopWarning(
           context,
           nearestShop.name,
           scheduledShopAddress,
           scheduledShiftType ?? '',
         );
-        if (!context.mounted) return;
+        if (!mounted) return;
         if (!shouldContinue) return;
       }
 
-      if (!context.mounted) return;
+      if (!mounted) return;
       final distance = AttendanceService.calculateDistance(
         position.latitude,
         position.longitude,
@@ -1134,10 +1134,10 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> with WidgetsBindi
         distance: distance,
       );
 
-      if (!context.mounted) return;
+      if (!mounted) return;
       _showAttendanceResultDialog(context, result, nearestShop.name);
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         Navigator.pop(context);
         _showErrorDialog(context, 'Ошибка: $e');
       }

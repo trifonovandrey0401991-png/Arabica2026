@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/contact_model.dart';
 import '../services/messenger_service.dart';
@@ -55,8 +56,8 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
         // Используем список из телефонной книги (уже отфильтрованный на сервере)
         contacts = widget.matchedContacts!;
       } else {
-        // Нет разрешения на контакты — загружаем всех зарегистрированных пользователей
-        contacts = await MessengerService.searchContacts('');
+        // Нет разрешения на контакты — список пуст, покажем экран с запросом
+        contacts = [];
       }
 
       if (mounted) {
@@ -468,11 +469,41 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
       );
     }
 
-    // Нет разрешения — список пуст
+    // Нет разрешения на контакты
     return Center(
-      child: Text(
-        'Нет контактов',
-        style: TextStyle(color: Colors.white.withOpacity(0.35)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.contacts_outlined, size: 64, color: Colors.white.withOpacity(0.12)),
+            const SizedBox(height: 20),
+            Text(
+              'Нет доступа к контактам',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withOpacity(0.7),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Чтобы находить коллег в мессенджере, разрешите приложению доступ к контактам телефона',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.35)),
+            ),
+            const SizedBox(height: 28),
+            TextButton.icon(
+              onPressed: () => openAppSettings(),
+              icon: Icon(Icons.settings_outlined, color: AppColors.turquoise, size: 18),
+              label: const Text(
+                'Открыть настройки',
+                style: TextStyle(color: AppColors.turquoise, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

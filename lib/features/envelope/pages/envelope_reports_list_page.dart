@@ -9,6 +9,7 @@ import '../../employees/models/user_role_model.dart';
 import 'envelope_report_view_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/widgets/report_list_widgets.dart';
 
 /// Страница со списком отчетов по конвертам
 class EnvelopeReportsListPage extends StatefulWidget {
@@ -21,6 +22,7 @@ class EnvelopeReportsListPage extends StatefulWidget {
 class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  int _selectedTab = 0;
   String? _selectedShop;
   String? _selectedEmployee;
   DateTime? _selectedDate;
@@ -34,7 +36,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(() {
-      if (mounted) setState(() {});
+      if (mounted) setState(() => _selectedTab = _tabController.index);
     });
     _detectRole();
     _loadData();
@@ -187,20 +189,6 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     return _allReports.map((r) => r.employeeName).toSet().toList()..sort();
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(Duration(days: 90)),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      if (mounted) setState(() {
-        _selectedDate = picked;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -276,20 +264,35 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                   children: [
                     // Первый ряд
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Expanded(child: _buildTabButton(0, 'В Очереди', _queueReports.length)),
-                        Expanded(child: _buildTabButton(1, 'Не Сданы', _notSubmittedReports.length)),
-                        Expanded(child: _buildTabButton(2, 'Ожидают', _awaitingReports.length)),
+                        for (int i = 0; i < 3; i++)
+                          ReportTabButton(
+                            isSelected: _selectedTab == i,
+                            onTap: () {
+                              _tabController.animateTo(i);
+                              if (mounted) setState(() {});
+                            },
+                            label: ['Не пройдены', 'Не в срок', 'Ожидают'][i],
+                            count: [_queueReports.length, _notSubmittedReports.length, _awaitingReports.length][i],
+                            accentColor: AppColors.gold,
+                          ),
                       ],
                     ),
                     SizedBox(height: 8),
                     // Второй ряд
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Expanded(child: _buildTabButton(3, 'Подтверждены', _confirmedReports.length)),
-                        Expanded(child: _buildTabButton(4, 'Отклонены', _rejectedReports.length)),
+                        for (int i = 3; i < 5; i++)
+                          ReportTabButton(
+                            isSelected: _selectedTab == i,
+                            onTap: () {
+                              _tabController.animateTo(i);
+                              if (mounted) setState(() {});
+                            },
+                            label: ['', '', '', 'Подтверждены', 'Отклонены'][i],
+                            count: [0, 0, 0, _confirmedReports.length, _rejectedReports.length][i],
+                            accentColor: AppColors.gold,
+                          ),
                       ],
                     ),
                   ],
@@ -297,99 +300,24 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
               ),
 
               // Фильтры
-              Container(
-                padding: EdgeInsets.all(12.w),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.04),
-                  border: Border(
-                    bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    // Фильтр по магазину
-                    _buildDarkDropdown<String>(
-                      value: _selectedShop,
-                      hint: 'Все магазины',
-                      icon: Icons.store,
-                      items: _uniqueShops.map((shop) => DropdownMenuItem(
-                        value: shop,
-                        child: Text(shop, overflow: TextOverflow.ellipsis),
-                      )).toList(),
-                      onChanged: (value) {
-                        if (mounted) setState(() => _selectedShop = value);
-                      },
-                    ),
-                    SizedBox(height: 8),
-                    // Фильтр по сотруднику
-                    _buildDarkDropdown<String>(
-                      value: _selectedEmployee,
-                      hint: 'Все сотрудники',
-                      icon: Icons.person,
-                      items: _uniqueEmployees.map((emp) => DropdownMenuItem(
-                        value: emp,
-                        child: Text(emp),
-                      )).toList(),
-                      onChanged: (value) {
-                        if (mounted) setState(() => _selectedEmployee = value);
-                      },
-                    ),
-                    SizedBox(height: 8),
-                    // Фильтр по дате + кнопка сброса
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => _selectDate(context),
-                            child: Container(
-                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(10.r),
-                                border: Border.all(color: Colors.white.withOpacity(0.1)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.calendar_today, size: 18, color: AppColors.gold),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    _selectedDate == null
-                                        ? 'Все даты'
-                                        : '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}',
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
-                                      fontSize: 14.sp,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (_selectedShop != null || _selectedEmployee != null || _selectedDate != null) ...[
-                          SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () {
-                              if (mounted) setState(() {
-                                _selectedShop = null;
-                                _selectedEmployee = null;
-                                _selectedDate = null;
-                              });
-                            },
-                            child: Container(
-                              padding: EdgeInsets.all(12.w),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(10.r),
-                                border: Border.all(color: Colors.red.withOpacity(0.3)),
-                              ),
-                              child: Icon(Icons.clear, color: Colors.red, size: 18),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+                child: ReportFiltersWidget(
+                  shops: _uniqueShops,
+                  employees: _uniqueEmployees,
+                  selectedShop: _selectedShop,
+                  selectedEmployee: _selectedEmployee,
+                  selectedDate: _selectedDate,
+                  onShopChanged: (v) => setState(() => _selectedShop = v),
+                  onEmployeeChanged: (v) => setState(() => _selectedEmployee = v),
+                  onDateChanged: (v) {
+                    if (mounted) setState(() => _selectedDate = v);
+                  },
+                  onReset: () => setState(() {
+                    _selectedShop = null;
+                    _selectedEmployee = null;
+                    _selectedDate = null;
+                  }),
                 ),
               ),
 
@@ -400,8 +328,8 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                     : TabBarView(
                         controller: _tabController,
                         children: [
-                          _buildPendingReportsList(_queueReports, 'В очереди отчетов нет'),
-                          _buildPendingReportsList(_notSubmittedReports, 'Несданных отчетов нет'),
+                          _buildPendingReportsList(_queueReports, 'Не пройденных отчетов нет'),
+                          _buildPendingReportsList(_notSubmittedReports, 'Просроченных отчетов нет'),
                           _buildReportsList(_awaitingReports, 'Ожидающих отчетов нет'),
                           _buildReportsList(_confirmedReports, 'Подтвержденных отчетов нет'),
                           _buildReportsList(_rejectedReports, 'Отклоненных отчетов нет'),
@@ -415,144 +343,11 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     );
   }
 
-  Widget _buildDarkDropdown<T>({
-    required T? value,
-    required String hint,
-    required IconData icon,
-    required List<DropdownMenuItem<T>> items,
-    required ValueChanged<T?> onChanged,
-  }) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          value: value,
-          isExpanded: true,
-          dropdownColor: AppColors.emeraldDark,
-          icon: Icon(Icons.arrow_drop_down, color: AppColors.gold),
-          hint: Row(
-            children: [
-              Icon(icon, size: 18, color: AppColors.gold),
-              SizedBox(width: 8),
-              Text(hint, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14.sp)),
-            ],
-          ),
-          selectedItemBuilder: (context) => [
-            ...items.map((item) => Row(
-              children: [
-                Icon(icon, size: 18, color: AppColors.gold),
-                SizedBox(width: 8),
-                Expanded(
-                  child: DefaultTextStyle(
-                    style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
-                    overflow: TextOverflow.ellipsis,
-                    child: item.child,
-                  ),
-                ),
-              ],
-            )),
-          ],
-          items: [
-            DropdownMenuItem<T>(
-              value: null,
-              child: Text(hint, style: TextStyle(color: Colors.white.withOpacity(0.5))),
-            ),
-            ...items,
-          ],
-          onChanged: onChanged,
-          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14.sp),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabButton(int index, String label, int count) {
-    final isSelected = _tabController.index == index;
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 3.w),
-      child: GestureDetector(
-        onTap: () {
-          if (mounted) setState(() {
-            _tabController.animateTo(index);
-          });
-        },
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.gold.withOpacity(0.2) : Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(10.r),
-            border: Border.all(
-              color: isSelected ? AppColors.gold.withOpacity(0.5) : Colors.white.withOpacity(0.1),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 12.sp,
-                    color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.6),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ),
-              if (count > 0) ...[
-                SizedBox(width: 4),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                  child: Text(
-                    '$count',
-                    style: TextStyle(
-                      color: isSelected ? AppColors.night : Colors.white.withOpacity(0.7),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11.sp,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildReportsList(List<EnvelopeReport> reports, String emptyMessage) {
     if (reports.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.mail_outline, size: 40, color: Colors.white.withOpacity(0.3)),
-            ),
-            SizedBox(height: 16),
-            Text(
-              emptyMessage,
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
-            ),
-          ],
-        ),
+      return ReportEmptyState(
+        icon: Icons.mail_outline,
+        title: emptyMessage,
       );
     }
 
@@ -811,26 +606,9 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
 
   Widget _buildPendingReportsList(List<PendingEnvelopeReport> reports, String emptyMessage) {
     if (reports.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.mail_outline, size: 40, color: Colors.white.withOpacity(0.3)),
-            ),
-            SizedBox(height: 16),
-            Text(
-              emptyMessage,
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
-            ),
-          ],
-        ),
+      return ReportEmptyState(
+        icon: Icons.mail_outline,
+        title: emptyMessage,
       );
     }
 

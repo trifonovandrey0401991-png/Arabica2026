@@ -74,11 +74,14 @@ class BaseHttpService {
   static bool _isHandlingUnauthorized = false;
 
   static void _handleUnauthorized() {
+    // If no callback is registered, don't set the flag — it would block the next 401
+    // for 5 seconds, even after the callback gets registered (race at app startup).
+    if (onUnauthorized == null) return;
     if (_isHandlingUnauthorized) return;
     _isHandlingUnauthorized = true;
 
     ApiConstants.sessionToken = null;
-    onUnauthorized?.call();
+    onUnauthorized!.call();
 
     // Сброс флага через 5 секунд (защита от повторных вызовов)
     Future.delayed(const Duration(seconds: 5), () {
@@ -92,7 +95,11 @@ class BaseHttpService {
   static void _logHttpError(int statusCode, String endpoint, String body) {
     if (statusCode == 401) {
       Logger.error('🔒 Требуется авторизация: $endpoint (токен: ${ApiConstants.sessionToken != null ? "есть" : "НЕТ"})');
-      _handleUnauthorized();
+      // Trigger logout only if user HAD a token — 401 without a token is expected
+      // during login/registration flows (unauthenticated requests are normal there).
+      if (ApiConstants.sessionToken != null) {
+        _handleUnauthorized();
+      }
     } else if (statusCode == 403) {
       Logger.error('🚫 Недостаточно прав: $endpoint');
     } else {
@@ -299,6 +306,7 @@ class BaseHttpService {
         final result = jsonDecode(response.body);
         return result['success'] == true;
       }
+      _logHttpError(response.statusCode, endpoint, response.body);
       return false;
     } catch (e) {
       Logger.error('❌ Request failed for $endpoint', e);
@@ -335,6 +343,8 @@ class BaseHttpService {
         if (result['success'] == true) {
           return result as Map<String, dynamic>;
         }
+      } else {
+        _logHttpError(response.statusCode, endpoint, response.body);
       }
       return null;
     } catch (e) {
@@ -460,6 +470,8 @@ class BaseHttpService {
         if (result['success'] == true) {
           return result as Map<String, dynamic>;
         }
+      } else {
+        _logHttpError(response.statusCode, endpoint, response.body);
       }
       return null;
     } catch (e) {
@@ -509,7 +521,8 @@ class BaseHttpService {
       }
 
       // Для 400 и других ошибок - возвращаем сообщение от сервера
-      Logger.debug('❌ HTTP ${response.statusCode} on $endpoint: ${result['error']}');
+      // _logHttpError обрабатывает 401 (auto-logout), 403 и прочие коды
+      _logHttpError(response.statusCode, endpoint, response.body);
       return HttpResult(
         success: false,
         error: result['error'] as String? ?? 'HTTP ${response.statusCode}',
@@ -637,6 +650,8 @@ class BaseHttpService {
         if (result['success'] == true) {
           return result as Map<String, dynamic>;
         }
+      } else {
+        _logHttpError(response.statusCode, endpoint, response.body);
       }
       return null;
     } catch (e) {
@@ -684,7 +699,11 @@ class BaseHttpService {
           }
           Logger.debug('✅ Patched item at $endpoint');
           return fromJson(rawItem);
+        } else {
+          Logger.error('❌ API error: ${result['error']}');
         }
+      } else {
+        _logHttpError(response.statusCode, endpoint, response.body);
       }
       return null;
     } catch (e) {
@@ -720,6 +739,8 @@ class BaseHttpService {
         if (result['success'] == true) {
           return result as Map<String, dynamic>;
         }
+      } else {
+        _logHttpError(response.statusCode, endpoint, response.body);
       }
       return null;
     } catch (e) {
@@ -877,6 +898,8 @@ class BaseHttpService {
         if (result['success'] == true) {
           return result as Map<String, dynamic>;
         }
+      } else {
+        _logHttpError(response.statusCode, endpoint, response.body);
       }
       return null;
     } catch (e) {

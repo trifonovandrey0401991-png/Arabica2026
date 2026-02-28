@@ -14,6 +14,7 @@ const { isPaginationRequested, createPaginatedResponse, createDbPaginatedRespons
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
+const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_TRAINING === 'true';
 
@@ -109,7 +110,7 @@ function setupTrainingAPI(app) {
   app.post('/api/training-articles', requireAuth, async (req, res) => {
     try {
       const article = {
-        id: `training_article_${Date.now()}`,
+        id: generateId('training_article'),
         group: req.body.group,
         title: req.body.title,
         content: req.body.content || '',

@@ -7,6 +7,7 @@ import '../models/contact_model.dart';
 import '../services/messenger_service.dart';
 import '../../employees/models/user_role_model.dart';
 import '../../employees/services/user_role_service.dart';
+import '../../../core/utils/logger.dart';
 import 'messenger_list_page.dart';
 
 /// Полноэкранная обёртка мессенджера.
@@ -50,7 +51,7 @@ class _MessengerShellPageState extends State<MessengerShellPage> {
             displayName = profileName;
           }
         }
-      } catch (_) {}
+      } catch (e) { Logger.error('MessengerShell', 'Failed to load profile', e); }
     }
 
     // 2. Проверяем роль пользователя (из кэша — мгновенно)
@@ -99,10 +100,17 @@ class _MessengerShellPageState extends State<MessengerShellPage> {
     // Читаем контакты телефона
     final deviceContacts = await FlutterContacts.getContacts(withProperties: true);
     final phones = <String>[];
+    // Карта: нормализованный номер → имя из телефонной книги
+    final phoneBookNames = <String, String>{};
     for (final c in deviceContacts) {
       for (final p in c.phones) {
         final normalized = _normalizePhone(p.number);
-        if (normalized != null) phones.add(normalized);
+        if (normalized != null) {
+          phones.add(normalized);
+          if (c.displayName.isNotEmpty && !phoneBookNames.containsKey(normalized)) {
+            phoneBookNames[normalized] = c.displayName;
+          }
+        }
       }
     }
 
@@ -113,10 +121,20 @@ class _MessengerShellPageState extends State<MessengerShellPage> {
       final matched = await MessengerService.matchPhones(phones);
       if (mounted) {
         setState(() {
-          _matchedContacts = matched.where((c) => c.phone != myPhone).toList();
+          // Подставляем имя из телефонной книги вместо системного имени
+          _matchedContacts = matched
+              .where((c) => c.phone != myPhone)
+              .map((c) {
+                final bookName = phoneBookNames[c.phone];
+                if (bookName != null && bookName.isNotEmpty) {
+                  return MessengerContact(phone: c.phone, name: bookName, userType: c.userType);
+                }
+                return c;
+              })
+              .toList();
         });
       }
-    } catch (_) {}
+    } catch (e) { Logger.error('MessengerShell', 'Failed to match contacts', e); }
   }
 
   /// Нормализует номер в формат 7XXXXXXXXXX (11 цифр без +)

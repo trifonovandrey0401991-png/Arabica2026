@@ -225,7 +225,7 @@ class CoffeeMachineReport {
       case 'confirmed':
         return 'Подтверждён';
       case 'failed':
-        return 'Не сдан';
+        return 'Не в срок';
       case 'expired':
         return 'Просрочен';
       default:

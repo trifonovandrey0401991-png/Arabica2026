@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
 import '../../../core/services/report_notification_service.dart';
+import '../../../shared/widgets/report_list_widgets.dart';
 import '../models/recount_report_model.dart';
 import '../models/pending_recount_model.dart';
 import '../models/recount_pivot_model.dart';
@@ -87,7 +88,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   List<PendingRecount> _pendingRecounts = []; // Ожидающие пересчёты (время ещё не истекло)
   List<PendingRecount> _failedRecounts = []; // Просроченные непройденные пересчёты
   List<RecountReport> _expiredReports = [];
-  int _failedRecountsBadgeCount = 0; // Badge для вкладки "Не прошли"
+  int _failedRecountsBadgeCount = 0; // Badge для вкладки "Не в срок"
   int _summaryBadgeCount = 0; // Badge для вкладки "Отчёт" (непросмотренные)
   List<RecountSummaryItem> _summaryItems = []; // Сводные данные за 30 дней
 
@@ -120,7 +121,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   }
 
   void _onTabChanged() {
-    // Когда открываем вкладку "Не прошли" (index 1), обнуляем счётчик
+    // Когда открываем вкладку "Не в срок" (index 1), обнуляем счётчик
     if (_tabController.index == 1 && _failedRecountsBadgeCount > 0) {
       if (mounted) setState(() {
         _failedRecountsBadgeCount = 0;
@@ -730,7 +731,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
               // Кастомные вкладки 2x2
               _buildCustomTabs(),
 
-              // Фильтры (только для вкладок с отчётами, не для "Ожидают" и "Не прошли")
+              // Фильтры (только для вкладок с отчётами, не для "Не пройдены" и "Не в срок")
               if (_tabController.index >= 2)
                 RecountFiltersSection(
                   selectedShop: _selectedShop,
@@ -786,27 +787,71 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
           // Первый ряд: 3 вкладки
           Row(
             children: [
-              _buildTabButton(0, Icons.schedule_rounded, 'Ожидают', _pendingRecounts.length, Colors.orange),
+              ReportTabButton(
+                isSelected: _tabController.index == 0,
+                onTap: () { _tabController.animateTo(0); if (mounted) setState(() {}); },
+                label: 'Не пройдены',
+                count: _pendingRecounts.length,
+                accentColor: Colors.orange,
+                icon: Icons.schedule_rounded,
+              ),
               SizedBox(width: 6),
-              _buildTabButton(1, Icons.warning_amber_rounded, 'Не прошли', _failedRecounts.length, Colors.red, badge: _failedRecountsBadgeCount),
+              ReportTabButton(
+                isSelected: _tabController.index == 1,
+                onTap: () { _tabController.animateTo(1); if (mounted) setState(() {}); },
+                label: 'Не в срок',
+                count: _failedRecounts.length,
+                accentColor: Colors.red,
+                icon: Icons.warning_amber_rounded,
+                badge: _failedRecountsBadgeCount,
+              ),
               SizedBox(width: 6),
-              _buildTabButton(2, Icons.hourglass_empty_rounded, 'Проверка', _awaitingReports.length, Colors.blue),
+              ReportTabButton(
+                isSelected: _tabController.index == 2,
+                onTap: () { _tabController.animateTo(2); if (mounted) setState(() {}); },
+                label: 'Ожидают',
+                count: _awaitingReports.length,
+                accentColor: Colors.blue,
+                icon: Icons.hourglass_empty_rounded,
+              ),
             ],
           ),
           SizedBox(height: 6),
           // Второй ряд: 2 вкладки
           Row(
             children: [
-              _buildTabButton(3, Icons.check_circle_rounded, 'Проверено', _allReports.where((r) => r.isRated).length, Colors.green),
+              ReportTabButton(
+                isSelected: _tabController.index == 3,
+                onTap: () { _tabController.animateTo(3); if (mounted) setState(() {}); },
+                label: 'Проверено',
+                count: _allReports.where((r) => r.isRated).length,
+                accentColor: Colors.green,
+                icon: Icons.check_circle_rounded,
+              ),
               SizedBox(width: 6),
-              _buildTabButton(4, Icons.cancel_rounded, 'Отклонённые', _expiredReports.length + _overdueUnratedReports.length, Colors.grey),
+              ReportTabButton(
+                isSelected: _tabController.index == 4,
+                onTap: () { _tabController.animateTo(4); if (mounted) setState(() {}); },
+                label: 'Отклонённые',
+                count: _expiredReports.length + _overdueUnratedReports.length,
+                accentColor: Colors.grey,
+                icon: Icons.cancel_rounded,
+              ),
             ],
           ),
           SizedBox(height: 6),
           // Третий ряд: 1 вкладка "Отчёт" (pivot-таблица)
           Row(
             children: [
-              _buildTabButton(5, Icons.table_chart_rounded, 'Отчёт', _summaryItems.where((i) => i.passedCount > 0).length, Colors.deepPurple, badge: _summaryBadgeCount),
+              ReportTabButton(
+                isSelected: _tabController.index == 5,
+                onTap: () { _tabController.animateTo(5); if (mounted) setState(() {}); },
+                label: 'Отчёт',
+                count: _summaryItems.where((i) => i.passedCount > 0).length,
+                accentColor: Colors.deepPurple,
+                icon: Icons.table_chart_rounded,
+                badge: _summaryBadgeCount,
+              ),
             ],
           ),
         ],
@@ -814,149 +859,16 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     );
   }
 
-  /// Построение одной кнопки-вкладки с опциональным badge
-  Widget _buildTabButton(int index, IconData icon, String label, int count, Color accentColor, {int badge = 0}) {
-    final isSelected = _tabController.index == index;
-
-    return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            _tabController.animateTo(index);
-            if (mounted) setState(() {});
-          },
-          borderRadius: BorderRadius.circular(10.r),
-          child: Container(
-            padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 4.w),
-            decoration: BoxDecoration(
-              gradient: isSelected
-                  ? LinearGradient(
-                      colors: [accentColor.withOpacity(0.8), accentColor],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-              color: isSelected ? null : Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(10.r),
-              border: Border.all(
-                color: isSelected ? accentColor : Colors.white.withOpacity(0.1),
-                width: isSelected ? 2 : 1,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 14,
-                  color: isSelected ? Colors.white : Colors.white70,
-                ),
-                SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 10.sp,
-                      color: isSelected ? Colors.white : Colors.white70,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                SizedBox(width: 4),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.h),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.white.withOpacity(0.3) : accentColor.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(6.r),
-                  ),
-                  child: Text(
-                    '$count',
-                    style: TextStyle(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.white : accentColor,
-                    ),
-                  ),
-                ),
-                if (badge > 0) ...[
-                  SizedBox(width: 2),
-                  Container(
-                    padding: EdgeInsets.all(4.w),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '$badge',
-                      style: TextStyle(
-                        fontSize: 8.sp,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
 
-  /// Виджет пустого состояния
-  Widget _buildEmptyState({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-  }) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 40, color: Colors.white.withOpacity(0.3)),
-          ),
-          SizedBox(height: 16),
-          Text(
-            title,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18.sp,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
-              fontSize: 14.sp,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   /// Виджет для списка непройденных пересчётов
   Widget _buildPendingRecountsList() {
     if (_pendingRecounts.isEmpty) {
-      return _buildEmptyState(
+      return ReportEmptyState(
         icon: Icons.check_circle_outline,
         title: 'Все пересчёты пройдены!',
         subtitle: 'Нет непройденных пересчётов на данный момент',
-        color: Colors.green,
       );
     }
 
@@ -978,11 +890,10 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   /// Виджет для списка просроченных (непройденных) пересчётов
   Widget _buildFailedRecountsList() {
     if (_failedRecounts.isEmpty) {
-      return _buildEmptyState(
+      return ReportEmptyState(
         icon: Icons.thumb_up_rounded,
         title: 'Нет просроченных пересчётов',
         subtitle: 'Все пересчёты пройдены вовремя',
-        color: Colors.green,
       );
     }
 
@@ -1025,11 +936,10 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   /// Построить группированный список просроченных отчётов
   Widget _buildGroupedExpiredList(List<RecountReportGroup> groups) {
     if (groups.isEmpty) {
-      return _buildEmptyState(
+      return ReportEmptyState(
         icon: Icons.thumb_up_rounded,
         title: 'Нет не оценённых отчётов',
         subtitle: 'Все отчёты были оценены вовремя',
-        color: Colors.green,
       );
     }
 
@@ -1360,11 +1270,10 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   /// Построить группированный список
   Widget _buildGroupedList(List<RecountReportGroup> groups, String emptyMessage) {
     if (groups.isEmpty) {
-      return _buildEmptyState(
+      return ReportEmptyState(
         icon: Icons.inbox_rounded,
         title: emptyMessage,
         subtitle: 'Отчёты появятся здесь после загрузки',
-        color: Colors.grey,
       );
     }
 
@@ -1521,11 +1430,10 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   /// Построить список сводных отчётов (иерархический)
   Widget _buildSummaryReportsList() {
     if (_summaryItems.isEmpty) {
-      return _buildEmptyState(
+      return ReportEmptyState(
         icon: Icons.table_chart_outlined,
         title: 'Нет данных за последние 30 дней',
         subtitle: 'Сводные отчёты появятся здесь',
-        color: Colors.deepPurple,
       );
     }
 

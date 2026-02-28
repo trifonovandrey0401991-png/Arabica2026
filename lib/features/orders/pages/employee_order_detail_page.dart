@@ -4,6 +4,8 @@ import '../../../core/theme/app_colors.dart';
 import '../services/order_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../messenger/services/messenger_service.dart';
+import '../../messenger/pages/messenger_chat_page.dart';
 
 class EmployeeOrderDetailPage extends StatefulWidget {
   final Map<String, dynamic> orderData;
@@ -250,6 +252,59 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
     }
   }
 
+  Future<void> _openClientChat() async {
+    final clientPhone = (widget.orderData['clientPhone'] ?? '').toString();
+    if (clientPhone.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Телефон клиента не указан')),
+        );
+      }
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final myPhone = prefs.getString('user_phone') ?? '';
+    final myName = prefs.getString('employee_name') ?? prefs.getString('user_name') ?? 'Сотрудник';
+    if (myPhone.isEmpty || !mounted) return;
+
+    final clientName = (widget.orderData['clientName'] ?? 'Клиент').toString();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final conversation = await MessengerService.getOrCreatePrivateChat(
+      phone1: myPhone,
+      phone2: clientPhone,
+      name1: myName,
+      name2: clientName,
+    );
+
+    if (!mounted) return;
+    Navigator.pop(context); // close loading
+
+    if (conversation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('Не удалось открыть чат'), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MessengerChatPage(
+          conversation: conversation,
+          userPhone: myPhone,
+          userName: myName,
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeader(String? orderNumber) {
     return Padding(
       padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 16.h),
@@ -437,7 +492,7 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
                     borderRadius: BorderRadius.circular(6.r),
                   ),
                   child: Text(
-                    '$price \u20BD \u00D7 $quantity',
+                    '$price руб \u00D7 $quantity',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.45),
                       fontSize: 12.sp,
@@ -454,7 +509,7 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
               borderRadius: BorderRadius.circular(8.r),
             ),
             child: Text(
-              '$total \u20BD',
+              '$total руб',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14.sp,
@@ -516,7 +571,7 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
             ),
           ),
           Text(
-            '${_formatPrice(totalPrice)} \u20BD',
+            '${_formatPrice(totalPrice)} руб',
             style: TextStyle(
               fontSize: 24.sp,
               fontWeight: FontWeight.bold,
@@ -536,84 +591,121 @@ class _EmployeeOrderDetailPageState extends State<EmployeeOrderDetailPage> {
         border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
       ),
       child: SafeArea(
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: _isProcessing ? null : _rejectOrder,
-                child: Container(
-                  height: 52.h,
-                  decoration: BoxDecoration(
-                    color: AppColors.error.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(14.r),
-                    border: Border.all(color: AppColors.error.withOpacity(0.3)),
-                  ),
-                  child: Center(
-                    child: _isProcessing
-                        ? SizedBox(
-                            height: 20, width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.error),
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.close_rounded, color: AppColors.error, size: 20),
-                              SizedBox(width: 8.w),
-                              Text(
-                                'Отказать',
-                                style: TextStyle(
-                                  color: AppColors.error,
-                                  fontSize: 15.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
+            // "Написать клиенту" — верхняя строка
+            GestureDetector(
+              onTap: _isProcessing ? null : _openClientChat,
+              child: Container(
+                width: double.infinity,
+                height: 46.h,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(14.r),
+                  border: Border.all(color: Colors.white.withOpacity(0.18)),
+                ),
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.chat_outlined, color: Colors.white.withOpacity(0.75), size: 18),
+                      SizedBox(width: 8.w),
+                      Text(
+                        'Написать клиенту',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.75),
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: GestureDetector(
-                onTap: _isProcessing ? null : _acceptOrder,
-                child: Container(
-                  height: 52.h,
-                  decoration: BoxDecoration(
-                    color: AppColors.gold.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(14.r),
-                    border: Border.all(color: AppColors.gold.withOpacity(0.4)),
-                  ),
-                  child: Center(
-                    child: _isProcessing
-                        ? SizedBox(
-                            height: 20, width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.check_rounded, color: AppColors.gold, size: 20),
-                              SizedBox(width: 8.w),
-                              Text(
-                                'Принять',
-                                style: TextStyle(
-                                  color: AppColors.gold,
-                                  fontSize: 15.sp,
-                                  fontWeight: FontWeight.w600,
+            SizedBox(height: 10.h),
+            // "Отказать" и "Принять" — нижняя строка
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _isProcessing ? null : _rejectOrder,
+                    child: Container(
+                      height: 52.h,
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                      ),
+                      child: Center(
+                        child: _isProcessing
+                            ? SizedBox(
+                                height: 20, width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.error),
                                 ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.close_rounded, color: AppColors.error, size: 20),
+                                  SizedBox(width: 8.w),
+                                  Text(
+                                    'Отказать',
+                                    style: TextStyle(
+                                      color: AppColors.error,
+                                      fontSize: 15.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _isProcessing ? null : _acceptOrder,
+                    child: Container(
+                      height: 52.h,
+                      decoration: BoxDecoration(
+                        color: AppColors.gold.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(color: AppColors.gold.withOpacity(0.4)),
+                      ),
+                      child: Center(
+                        child: _isProcessing
+                            ? SizedBox(
+                                height: 20, width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.check_rounded, color: AppColors.gold, size: 20),
+                                  SizedBox(width: 8.w),
+                                  Text(
+                                    'Принять',
+                                    style: TextStyle(
+                                      color: AppColors.gold,
+                                      fontSize: 15.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

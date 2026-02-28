@@ -9,6 +9,12 @@ class DashboardCounters {
   final int wholesalePendingOrders;
   final int activeTaskAssignments;
   final int unreadReviews;
+  // 5 counters that were previously missing from the batch (showed 0 on startup)
+  final int coffeeMachineReports;
+  final int unreadProductQuestions;
+  final int shiftTransferRequests;
+  final int jobApplications;
+  final int reportNotifications;
 
   const DashboardCounters({
     this.totalPendingReports = 0,
@@ -16,6 +22,11 @@ class DashboardCounters {
     this.wholesalePendingOrders = 0,
     this.activeTaskAssignments = 0,
     this.unreadReviews = 0,
+    this.coffeeMachineReports = 0,
+    this.unreadProductQuestions = 0,
+    this.shiftTransferRequests = 0,
+    this.jobApplications = 0,
+    this.reportNotifications = 0,
   });
 }
 
@@ -48,6 +59,11 @@ class DashboardBatchService {
         wholesalePendingOrders: (counters['wholesalePendingOrders'] as num?)?.toInt() ?? 0,
         activeTaskAssignments: (counters['activeTaskAssignments'] as num?)?.toInt() ?? 0,
         unreadReviews: (counters['unreadReviews'] as num?)?.toInt() ?? 0,
+        coffeeMachineReports: (counters['coffeeMachineReports'] as num?)?.toInt() ?? 0,
+        unreadProductQuestions: (counters['unreadProductQuestions'] as num?)?.toInt() ?? 0,
+        shiftTransferRequests: (counters['shiftTransferRequests'] as num?)?.toInt() ?? 0,
+        jobApplications: (counters['jobApplications'] as num?)?.toInt() ?? 0,
+        reportNotifications: (counters['reportNotifications'] as num?)?.toInt() ?? 0,
       );
     } catch (e) {
       Logger.warning('Dashboard batch error: $e');

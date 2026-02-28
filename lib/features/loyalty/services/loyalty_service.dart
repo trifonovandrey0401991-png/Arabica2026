@@ -13,7 +13,7 @@ class LoyaltyPromoSettings {
     this.promoText = '',
     required this.pointsRequired,
     required this.drinksToGive,
-    this.pointsPerScan = 10,
+    this.pointsPerScan = 1,
   });
 
   /// Пустые настройки (используется только при ошибке загрузки)
@@ -21,7 +21,7 @@ class LoyaltyPromoSettings {
     promoText: '',
     pointsRequired: 0,
     drinksToGive: 0,
-    pointsPerScan: 10,
+    pointsPerScan: 1,
   );
 
   factory LoyaltyPromoSettings.fromJson(Map<String, dynamic> json) {
@@ -29,7 +29,7 @@ class LoyaltyPromoSettings {
       promoText: (json['promoText'] ?? '').toString(),
       pointsRequired: int.tryParse(json['pointsRequired']?.toString() ?? '') ?? 0,
       drinksToGive: int.tryParse(json['drinksToGive']?.toString() ?? '') ?? 0,
-      pointsPerScan: int.tryParse(json['pointsPerScan']?.toString() ?? '') ?? 10,
+      pointsPerScan: int.tryParse(json['pointsPerScan']?.toString() ?? '') ?? 1,
     );
   }
 }
@@ -170,6 +170,7 @@ class LoyaltyService {
     required int pointsRequired,
     required int drinksToGive,
     required String employeePhone,
+    int pointsPerScan = 1,
   }) async {
     try {
       final normalizedPhone = employeePhone.replaceAll(RegExp(r'[\s\+]'), '');
@@ -179,6 +180,7 @@ class LoyaltyService {
           'promoText': promoText,
           'pointsRequired': pointsRequired,
           'drinksToGive': drinksToGive,
+          'pointsPerScan': pointsPerScan,
           'employeePhone': normalizedPhone,
         },
       );
@@ -254,35 +256,42 @@ class LoyaltyService {
 
       Logger.debug('Пользователь найден: ${result['client']['name']}');
 
-      // Загружаем настройки акции и баланс кошелька параллельно
-      final settingsFuture = fetchPromoSettings();
-      final walletFuture = BaseHttpService.getRaw(
-        endpoint: '/api/loyalty/balance/$normalizedPhone',
-        timeout: ApiConstants.defaultTimeout,
-      );
-
-      final settings = await settingsFuture;
       final clientJson = Map<String, dynamic>.from(result['client']);
+      LoyaltyPromoSettings settings = LoyaltyPromoSettings.empty;
 
-      // Merge wallet data (isWholesale, loyaltyPoints, totalPointsEarned) from our DB
-      try {
-        final wallet = await walletFuture;
-        if (wallet != null && wallet['success'] == true) {
-          clientJson['isWholesale'] = wallet['isWholesale'] ?? false;
-          if (wallet['loyaltyPoints'] != null) clientJson['loyaltyPoints'] = wallet['loyaltyPoints'];
-          if (wallet['totalPointsEarned'] != null) clientJson['totalPointsEarned'] = wallet['totalPointsEarned'];
+      // Only call authenticated endpoints if we have a session token
+      if (ApiConstants.sessionToken != null) {
+        // Загружаем настройки акции и баланс кошелька параллельно
+        final settingsFuture = fetchPromoSettings();
+        final walletFuture = BaseHttpService.getRaw(
+          endpoint: '/api/loyalty/balance/$normalizedPhone',
+          timeout: ApiConstants.defaultTimeout,
+        );
+
+        settings = await settingsFuture;
+
+        // Merge wallet data (isWholesale, loyaltyPoints, totalPointsEarned) from our DB
+        try {
+          final wallet = await walletFuture;
+          if (wallet != null && wallet['success'] == true) {
+            clientJson['isWholesale'] = wallet['isWholesale'] ?? false;
+            if (wallet['loyaltyPoints'] != null) clientJson['loyaltyPoints'] = wallet['loyaltyPoints'];
+            if (wallet['totalPointsEarned'] != null) clientJson['totalPointsEarned'] = wallet['totalPointsEarned'];
+          }
+        } catch (e) {
+          Logger.error('Ошибка загрузки кошелька', e);
         }
-      } catch (e) {
-        Logger.error('Ошибка загрузки кошелька', e);
       }
 
       final info = LoyaltyInfo.fromJson(clientJson, settings: settings);
 
-      // Синхронизируем freeDrinksGiven в нашей базе клиентов
-      try {
-        await syncFreeDrinksGiven(normalizedPhone, info.freeDrinks);
-      } catch (e) {
-        Logger.error('Ошибка синхронизации freeDrinksGiven', e);
+      // Синхронизируем freeDrinksGiven в нашей базе клиентов (only when authenticated)
+      if (ApiConstants.sessionToken != null) {
+        try {
+          await syncFreeDrinksGiven(normalizedPhone, info.freeDrinks);
+        } catch (e) {
+          Logger.error('Ошибка синхронизации freeDrinksGiven', e);
+        }
       }
 
       return info;
@@ -425,8 +434,8 @@ class LoyaltyService {
     final result = await BaseHttpService.postRaw(
       endpoint: '/api/loyalty/add-points',
       body: {
-        'clientPhone': clientPhone.replaceAll(RegExp(r'[\s\+]'), ''),
-        'amount': amount,
+        'phone': clientPhone.replaceAll(RegExp(r'[\s\+]'), ''),
+        'points': amount,
         'employeePhone': employeePhone.replaceAll(RegExp(r'[\s\+]'), ''),
         'description': description,
         'sourceType': sourceType,
@@ -449,8 +458,8 @@ class LoyaltyService {
     final result = await BaseHttpService.postRaw(
       endpoint: '/api/loyalty/spend-points',
       body: {
-        'clientPhone': clientPhone.replaceAll(RegExp(r'[\s\+]'), ''),
-        'amount': amount,
+        'phone': clientPhone.replaceAll(RegExp(r'[\s\+]'), ''),
+        'points': amount,
         'description': description,
         'sourceType': sourceType,
         if (sourceId != null) 'sourceId': sourceId,
@@ -475,7 +484,7 @@ class LoyaltyService {
         'clientPhone': clientPhone.replaceAll(RegExp(r'[\s\+]'), ''),
         'recipeId': recipeId,
         'recipeName': recipeName,
-        'amount': pointsPrice,
+        'pointsPrice': pointsPrice,
       },
     );
     if (result == null || result['success'] != true) {
@@ -502,18 +511,67 @@ class LoyaltyService {
   static Future<Map<String, dynamic>> confirmRedemption({
     required String redemptionId,
     String? employeePhone,
+    String? shopAddress,
   }) async {
     final result = await BaseHttpService.postRaw(
       endpoint: '/api/loyalty/confirm-redemption',
       body: {
         'redemptionId': redemptionId,
         if (employeePhone != null) 'employeePhone': employeePhone.replaceAll(RegExp(r'[\s\+]'), ''),
+        if (shopAddress != null) 'shopAddress': shopAddress,
       },
     );
     if (result == null || result['success'] != true) {
       throw Exception(result?['error'] ?? 'Ошибка подтверждения');
     }
     return result;
+  }
+
+  /// Получить список выданных бонусов (для отчёта)
+  static Future<List<Map<String, dynamic>>> fetchRedemptions({
+    String? period,
+    List<String>? shopAddresses,
+  }) async {
+    final params = <String>[];
+    if (period != null) params.add('period=$period');
+    if (shopAddresses != null && shopAddresses.isNotEmpty) {
+      params.add('shops=${Uri.encodeQueryComponent(shopAddresses.join(','))}');
+    }
+    final query = params.isNotEmpty ? '?${params.join('&')}' : '';
+    final result = await BaseHttpService.getRaw(
+      endpoint: '/api/loyalty/redemptions$query',
+    );
+    if (result == null || result['success'] != true) {
+      throw Exception(result?['error'] ?? 'Ошибка получения данных');
+    }
+    return List<Map<String, dynamic>>.from(result['redemptions'] ?? []);
+  }
+
+  /// Получить сводку по клиентам (для вкладки "По клиентам")
+  static Future<List<Map<String, dynamic>>> fetchRedemptionsByClient({
+    List<String>? shopAddresses,
+  }) async {
+    String url = '/api/loyalty/redemptions/by-client';
+    if (shopAddresses != null && shopAddresses.isNotEmpty) {
+      url += '?shops=${Uri.encodeQueryComponent(shopAddresses.join(','))}';
+    }
+    final result = await BaseHttpService.getRaw(endpoint: url);
+    if (result == null || result['success'] != true) {
+      throw Exception(result?['error'] ?? 'Ошибка получения данных');
+    }
+    return List<Map<String, dynamic>>.from(result['clients'] ?? []);
+  }
+
+  /// Получить историю выдачи бонусов конкретному клиенту
+  static Future<List<Map<String, dynamic>>> fetchClientRedemptionHistory(String phone) async {
+    final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+    final result = await BaseHttpService.getRaw(
+      endpoint: '/api/loyalty/redemptions/history/$normalizedPhone',
+    );
+    if (result == null || result['success'] != true) {
+      throw Exception(result?['error'] ?? 'Ошибка получения истории');
+    }
+    return List<Map<String, dynamic>>.from(result['redemptions'] ?? []);
   }
 
   /// Получить историю транзакций клиента

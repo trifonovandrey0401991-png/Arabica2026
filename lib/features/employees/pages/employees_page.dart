@@ -222,8 +222,10 @@ class EmployeesPage extends StatefulWidget {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // 1. Пытаемся получить сохраненное имя
-      final savedName = prefs.getString('currentEmployeeName');
+      // 1. Пытаемся получить сохраненное имя (цепочка fallback по всем возможным ключам)
+      final savedName = prefs.getString('currentEmployeeName') ??
+          prefs.getString('user_employee_name') ??
+          prefs.getString('user_name');
       if (savedName != null && savedName.isNotEmpty) {
         Logger.success('Найдено сохраненное имя сотрудника: $savedName');
         return savedName;

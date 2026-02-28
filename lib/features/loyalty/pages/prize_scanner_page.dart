@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/loyalty_gamification_model.dart';
 import '../services/loyalty_gamification_service.dart';
+import '../services/loyalty_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница сканирования QR-кода приза клиента (для сотрудников)
@@ -19,6 +20,7 @@ class PrizeScannerPage extends StatefulWidget {
 class _PrizeScannerPageState extends State<PrizeScannerPage> {
   final MobileScannerController _controller = MobileScannerController();
   Map<String, dynamic>? _scannedPrize;
+  Map<String, dynamic>? _scannedRedemption;
   bool _isProcessing = false;
   String? _errorMessage;
   String? _lastQr;
@@ -26,6 +28,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
   // Данные сотрудника
   String? _employeePhone;
   String? _employeeName;
+  String? _shopAddress;
 
   // Цвета
   static final _primaryColor = AppColors.emerald;
@@ -44,6 +47,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
     setState(() {
       _employeePhone = prefs.getString('user_phone');
       _employeeName = prefs.getString('user_name') ?? 'Сотрудник';
+      _shopAddress = prefs.getString('selected_shop_address');
     });
   }
 
@@ -59,16 +63,18 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
     if (code == null || code.isEmpty || code == _lastQr) {
       return;
     }
-    // Проверяем, что это QR-токен приза (начинается с qr_)
-    if (!code.startsWith('qr_')) {
-      if (mounted) setState(() {
-        _errorMessage = 'Это не QR-код приза';
-        _scannedPrize = null;
-      });
-      return;
-    }
     _lastQr = code;
-    _processScan(code);
+    if (code.startsWith('qr_')) {
+      _processScan(code);
+    } else if (code.startsWith('redemption_')) {
+      _processDrinkScan(code);
+    } else {
+      if (mounted) setState(() {
+        _errorMessage = 'Неизвестный QR-код';
+        _scannedPrize = null;
+        _scannedRedemption = null;
+      });
+    }
   }
 
   Future<void> _processScan(String qrToken) async {
@@ -236,9 +242,83 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
     }
   }
 
+  Future<void> _processDrinkScan(String qrToken) async {
+    if (mounted) setState(() {
+      _isProcessing = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await LoyaltyService.scanRedemption(qrToken: qrToken);
+      if (mounted) {
+        setState(() {
+          _scannedRedemption = result['redemption'] as Map<String, dynamic>?;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _scannedRedemption = null;
+      });
+    } finally {
+      if (mounted) setState(() { _isProcessing = false; });
+    }
+  }
+
+  Future<void> _confirmDrinkRedemption() async {
+    if (_scannedRedemption == null) return;
+    if (mounted) setState(() { _isProcessing = true; });
+
+    try {
+      await LoyaltyService.confirmRedemption(
+        redemptionId: _scannedRedemption!['id'],
+        employeePhone: _employeePhone,
+        shopAddress: _shopAddress,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8.w),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Icon(Icons.local_cafe, color: Colors.white),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Напиток выдан!',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: _successGradient[0],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            margin: EdgeInsets.all(16.w),
+          ),
+        );
+        _resetScanner();
+      }
+    } catch (e) {
+      if (mounted) setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+    } finally {
+      if (mounted) setState(() { _isProcessing = false; });
+    }
+  }
+
   void _resetScanner() {
     if (mounted) setState(() {
       _scannedPrize = null;
+      _scannedRedemption = null;
       _errorMessage = null;
       _lastQr = null;
     });
@@ -283,7 +363,9 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
                   child: Text(
                     _scannedPrize != null
                         ? 'Приз отсканирован'
-                        : 'Наведите на QR-код приза клиента',
+                        : _scannedRedemption != null
+                        ? 'Напиток отсканирован'
+                        : 'Наведите на QR-код клиента',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 16.sp,
@@ -296,7 +378,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
           ),
 
           // Рамка сканирования
-          if (_scannedPrize == null)
+          if (_scannedPrize == null && _scannedRedemption == null)
             Center(
               child: Container(
                 width: 260,
@@ -325,6 +407,10 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
           // Карточка приза (после сканирования)
           if (_scannedPrize != null)
             _buildPrizeCard(),
+
+          // Карточка напитка за баллы
+          if (_scannedRedemption != null)
+            _buildDrinkRedemptionCard(),
 
           // Ошибка
           if (_errorMessage != null)
@@ -507,6 +593,131 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
             SizedBox(height: 16),
 
             // Кнопка отмены
+            TextButton(
+              onPressed: _resetScanner,
+              child: Text(
+                'Сканировать другой QR',
+                style: TextStyle(color: Colors.white.withOpacity(0.6)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrinkRedemptionCard() {
+    final r = _scannedRedemption!;
+    const drinkColor = Color(0xFF00b09b);
+
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        padding: EdgeInsets.all(24.w),
+        decoration: BoxDecoration(
+          color: AppColors.emeraldDark,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 20,
+              offset: Offset(0, -5),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [drinkColor, drinkColor.withOpacity(0.7)],
+                    ),
+                    borderRadius: BorderRadius.circular(14.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: drinkColor.withOpacity(0.4),
+                        blurRadius: 12,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.local_cafe, color: Colors.white, size: 28),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Напиток за баллы',
+                        style: TextStyle(fontSize: 14.sp, color: Colors.white54),
+                      ),
+                      Text(
+                        r['recipeName'] ?? '',
+                        style: TextStyle(
+                          fontSize: 20.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: 20),
+
+            Container(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Column(
+                children: [
+                  _infoRow(
+                    'Клиент',
+                    (r['clientName'] as String?)?.isNotEmpty == true
+                        ? r['clientName']
+                        : _formatPhone(r['clientPhone'] ?? ''),
+                  ),
+                  SizedBox(height: 8),
+                  _infoRow('Телефон', _formatPhone(r['clientPhone'] ?? '')),
+                  SizedBox(height: 8),
+                  _infoRow('Стоимость', '${r['pointsPrice']} баллов'),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 24),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isProcessing ? null : _confirmDrinkRedemption,
+                icon: Icon(Icons.check_circle),
+                label: Text('Выдать напиток'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                ),
+              ),
+            ),
+
+            SizedBox(height: 16),
+
             TextButton(
               onPressed: _resetScanner,
               child: Text(

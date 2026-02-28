@@ -181,7 +181,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
     }
     // Получаем телефон из SharedPreferences (для случая, когда сотрудник регистрирует себя)
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('userPhone');
+    return prefs.getString('user_phone') ?? prefs.getString('userPhone');
   }
 
   /// Создать или обновить запись сотрудника с указанной ролью

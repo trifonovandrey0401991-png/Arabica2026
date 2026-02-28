@@ -18,6 +18,7 @@ const { notifyCounterUpdate } = require('./counters_websocket');
 const db = require('../utils/db');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const { requireAuth } = require('../utils/session_middleware');
+const { generateId } = require('../utils/id_generator');
 
 const USE_DB_HANDOVER = process.env.USE_DB_SHIFT_HANDOVER === 'true';
 const USE_DB_SHIFTS = process.env.USE_DB_SHIFTS === 'true';
@@ -706,7 +707,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
             if (!exists) {
               const employeePhone = existingReport.employeePhone || existingReport.phone;
               const penalty = {
-                id: `ep_${Date.now()}`,
+                id: generateId('ep'),
                 type: 'employee',
                 entityId: employeePhone || existingReport.employeeId,
                 entityName: existingReport.employeeName,

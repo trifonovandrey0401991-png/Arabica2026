@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../services/order_service.dart';
 import '../../messenger/services/messenger_service.dart';
 import '../../messenger/pages/messenger_chat_page.dart';
+import 'employee_order_detail_page.dart';
 
 /// Страница опт-заказов для авторизованных сотрудников
 /// Вкладка 1: Активные (pending) — можно принять и написать клиенту
@@ -26,6 +27,7 @@ class _WholesaleOrdersPageState extends State<WholesaleOrdersPage>
   List<Map<String, dynamic>> _activeOrders = [];
   List<Map<String, dynamic>> _confirmedOrders = [];
   bool _isLoading = true;
+  bool _isAcceptingOrder = false;
   String? _employeeName;
   Timer? _refreshTimer;
 
@@ -71,24 +73,30 @@ class _WholesaleOrdersPageState extends State<WholesaleOrdersPage>
   }
 
   Future<void> _acceptOrder(Map<String, dynamic> order) async {
-    final orderId = order['id'] as String?;
-    if (orderId == null) return;
+    if (_isAcceptingOrder) return; // Prevent double-tap
+    setState(() => _isAcceptingOrder = true);
+    try {
+      final orderId = order['id'] as String?;
+      if (orderId == null) return;
 
-    final ok = await OrderService.updateOrderStatus(
-      orderId: orderId,
-      status: 'accepted',
-      acceptedBy: widget.employeePhone,
-    );
-
-    if (ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Заказ #${order['orderNumber']} принят'),
-          backgroundColor: Colors.green.shade700,
-          behavior: SnackBarBehavior.floating,
-        ),
+      final ok = await OrderService.updateOrderStatus(
+        orderId: orderId,
+        status: 'accepted',
+        acceptedBy: widget.employeePhone,
       );
-      _loadOrders();
+
+      if (ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Заказ #${order['orderNumber']} принят'),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _loadOrders();
+      }
+    } finally {
+      if (mounted) setState(() => _isAcceptingOrder = false);
     }
   }
 
@@ -321,13 +329,23 @@ class _WholesaleOrdersPageState extends State<WholesaleOrdersPage>
     final createdAt = order['createdAt'];
     final timeAgo = _formatTime(createdAt);
 
-    return Container(
-      margin: EdgeInsets.only(bottom: showActions ? 6.h : 12.h),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: Colors.orange.withOpacity(0.2)),
-      ),
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EmployeeOrderDetailPage(orderData: order),
+          ),
+        );
+        if (result == true && mounted) _loadOrders();
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: showActions ? 6.h : 12.h),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: Colors.orange.withOpacity(0.2)),
+        ),
       child: Padding(
         padding: EdgeInsets.all(14.w),
         child: Row(
@@ -382,7 +400,7 @@ class _WholesaleOrdersPageState extends State<WholesaleOrdersPage>
                         ],
                       ),
                       Text(
-                        '${_formatPrice(totalPrice)} \u20BD',
+                        '${_formatPrice(totalPrice)} руб',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16.sp,
@@ -479,6 +497,7 @@ class _WholesaleOrdersPageState extends State<WholesaleOrdersPage>
             ),
           ],
         ),
+      ),
       ),
     );
   }

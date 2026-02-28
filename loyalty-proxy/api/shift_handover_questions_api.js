@@ -12,6 +12,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { invalidateShiftHandoverQuestions } = require('../utils/data_cache');
 const { compressUpload } = require('../utils/image_compress');
 const { requireAuth } = require('../utils/session_middleware');
+const { generateId } = require('../utils/id_generator');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SHIFT_HANDOVER_QUESTIONS_DIR = `${DATA_DIR}/shift-handover-questions`;
@@ -108,7 +109,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
     try {
       console.log('POST /api/shift-handover-questions:', JSON.stringify(req.body).substring(0, 200));
 
-      const questionId = req.body.id || `shift_handover_question_${Date.now()}`;
+      const questionId = req.body.id || generateId('shift_handover_question');
       const sanitizedId = sanitizeId(questionId);
       const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 

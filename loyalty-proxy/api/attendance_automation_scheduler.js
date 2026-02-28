@@ -20,6 +20,7 @@ const { getMoscowTime, getMoscowDateString, MOSCOW_OFFSET_HOURS } = require('../
 const BaseReportScheduler = require('../utils/base_report_scheduler');
 const db = require('../utils/db');
 const dataCache = require('../utils/data_cache');
+const { generateId } = require('../utils/id_generator');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const USE_DB = process.env.USE_DB_ATTENDANCE === 'true';
@@ -124,7 +125,7 @@ class AttendanceScheduler extends BaseReportScheduler {
     }
 
     const now = new Date();
-    const reportId = `pending_attendance_${shiftType}_${shop.address.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
+    const reportId = generateId(`pending_attendance_${shiftType}_${shop.address.replace(/[^a-zA-Z0-9]/g, '_')}`);
     const filePath = path.join(this.ATTENDANCE_PENDING_DIR, `${reportId}.json`);
 
     const report = {

@@ -4,7 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../models/pending_recount_model.dart';
 import '../../efficiency/models/points_settings_model.dart';
 
-/// Карточка просроченного (непройденного) пересчёта (таб "Не прошли")
+/// Карточка просроченного (непройденного) пересчёта (таб "Не в срок")
 class FailedRecountCard extends StatelessWidget {
   final PendingRecount failed;
   final RecountPointsSettings? recountSettings;

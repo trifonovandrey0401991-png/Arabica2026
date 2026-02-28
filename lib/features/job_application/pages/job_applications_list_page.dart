@@ -39,7 +39,10 @@ class _JobApplicationsListPageState extends State<JobApplicationsListPage> {
     }
 
     final prefs = await SharedPreferences.getInstance();
-    _adminName = prefs.getString('employeeName') ?? prefs.getString('name') ?? 'Администратор';
+    _adminName = prefs.getString('user_display_name') ??
+        prefs.getString('currentEmployeeName') ??
+        prefs.getString('user_name') ??
+        'Администратор';
 
     if (_applications.isEmpty && mounted) setState(() => _isLoading = true);
 

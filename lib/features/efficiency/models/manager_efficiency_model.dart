@@ -100,6 +100,9 @@ class ShopEfficiencyItem {
   /// Название магазина
   final String shopName;
 
+  /// Адрес магазина (совпадает с entityId в EfficiencySummary)
+  final String shopAddress;
+
   /// Общие баллы сотрудников магазина
   final double totalPoints;
 
@@ -121,6 +124,7 @@ class ShopEfficiencyItem {
   ShopEfficiencyItem({
     required this.shopId,
     required this.shopName,
+    this.shopAddress = '',
     required this.totalPoints,
     this.earnedPoints = 0,
     this.lostPoints = 0,
@@ -133,6 +137,7 @@ class ShopEfficiencyItem {
     return ShopEfficiencyItem(
       shopId: json['shopId'] ?? '',
       shopName: json['shopName'] ?? 'Магазин',
+      shopAddress: json['shopAddress'] ?? '',
       totalPoints: (json['totalPoints'] ?? 0.0).toDouble(),
       earnedPoints: (json['earnedPoints'] ?? 0.0).toDouble(),
       lostPoints: (json['lostPoints'] ?? 0.0).toDouble(),
@@ -145,6 +150,7 @@ class ShopEfficiencyItem {
   Map<String, dynamic> toJson() => {
         'shopId': shopId,
         'shopName': shopName,
+        'shopAddress': shopAddress,
         'totalPoints': totalPoints,
         'earnedPoints': earnedPoints,
         'lostPoints': lostPoints,
@@ -154,59 +160,66 @@ class ShopEfficiencyItem {
       };
 }
 
-/// Разбивка баллов по категориям отчётов
+/// Разбивка баллов по категориям (суммарно по всем сотрудникам магазинов управляющей)
 class CategoryBreakdown {
-  /// Баллы за пересменки
   final double shiftPoints;
-
-  /// Баллы за пересчёты
   final double recountPoints;
-
-  /// Баллы за сдачу смены
   final double shiftHandoverPoints;
-
-  /// Баллы за задачи
   final double tasksPoints;
-
-  /// Изменение по сравнению с прошлым месяцем для каждой категории
-  final double? shiftChange;
-  final double? recountChange;
-  final double? shiftHandoverChange;
-  final double? tasksChange;
+  final double attendancePoints;
+  final double reviewsPoints;
+  final double rkoPoints;
+  final double coffeeMachinePoints;
+  final double envelopePoints;
+  final double productSearchPoints;
+  final double orderPoints;
+  final double referralPoints;
 
   CategoryBreakdown({
     required this.shiftPoints,
     required this.recountPoints,
     required this.shiftHandoverPoints,
     required this.tasksPoints,
-    this.shiftChange,
-    this.recountChange,
-    this.shiftHandoverChange,
-    this.tasksChange,
+    this.attendancePoints = 0,
+    this.reviewsPoints = 0,
+    this.rkoPoints = 0,
+    this.coffeeMachinePoints = 0,
+    this.envelopePoints = 0,
+    this.productSearchPoints = 0,
+    this.orderPoints = 0,
+    this.referralPoints = 0,
   });
 
   factory CategoryBreakdown.fromJson(Map<String, dynamic> json) {
     return CategoryBreakdown(
-      shiftPoints: (json['shiftPoints'] ?? json['shift'] ?? 0.0).toDouble(),
-      recountPoints: (json['recountPoints'] ?? json['recount'] ?? 0.0).toDouble(),
-      shiftHandoverPoints: (json['shiftHandoverPoints'] ?? json['shiftHandover'] ?? 0.0).toDouble(),
-      tasksPoints: (json['tasksPoints'] ?? json['tasks'] ?? 0.0).toDouble(),
-      shiftChange: json['shiftChange']?.toDouble(),
-      recountChange: json['recountChange']?.toDouble(),
-      shiftHandoverChange: json['shiftHandoverChange']?.toDouble(),
-      tasksChange: json['tasksChange']?.toDouble(),
+      shiftPoints:          (json['shiftPoints'] ?? 0.0).toDouble(),
+      recountPoints:        (json['recountPoints'] ?? 0.0).toDouble(),
+      shiftHandoverPoints:  (json['shiftHandoverPoints'] ?? 0.0).toDouble(),
+      tasksPoints:          (json['tasksPoints'] ?? 0.0).toDouble(),
+      attendancePoints:     (json['attendancePoints'] ?? 0.0).toDouble(),
+      reviewsPoints:        (json['reviewsPoints'] ?? 0.0).toDouble(),
+      rkoPoints:            (json['rkoPoints'] ?? 0.0).toDouble(),
+      coffeeMachinePoints:  (json['coffeeMachinePoints'] ?? 0.0).toDouble(),
+      envelopePoints:       (json['envelopePoints'] ?? 0.0).toDouble(),
+      productSearchPoints:  (json['productSearchPoints'] ?? 0.0).toDouble(),
+      orderPoints:          (json['orderPoints'] ?? 0.0).toDouble(),
+      referralPoints:       (json['referralPoints'] ?? 0.0).toDouble(),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'shiftPoints': shiftPoints,
-        'recountPoints': recountPoints,
+        'shiftPoints':         shiftPoints,
+        'recountPoints':       recountPoints,
         'shiftHandoverPoints': shiftHandoverPoints,
-        'tasksPoints': tasksPoints,
-        if (shiftChange != null) 'shiftChange': shiftChange,
-        if (recountChange != null) 'recountChange': recountChange,
-        if (shiftHandoverChange != null) 'shiftHandoverChange': shiftHandoverChange,
-        if (tasksChange != null) 'tasksChange': tasksChange,
+        'tasksPoints':         tasksPoints,
+        'attendancePoints':    attendancePoints,
+        'reviewsPoints':       reviewsPoints,
+        'rkoPoints':           rkoPoints,
+        'coffeeMachinePoints': coffeeMachinePoints,
+        'envelopePoints':      envelopePoints,
+        'productSearchPoints': productSearchPoints,
+        'orderPoints':         orderPoints,
+        'referralPoints':      referralPoints,
       };
 
   factory CategoryBreakdown.empty() {
@@ -218,9 +231,10 @@ class CategoryBreakdown {
     );
   }
 
-  /// Общее количество баллов
   double get totalPoints =>
-      shiftPoints + recountPoints + shiftHandoverPoints + tasksPoints;
+      shiftPoints + recountPoints + shiftHandoverPoints + tasksPoints +
+      attendancePoints + reviewsPoints + rkoPoints + coffeeMachinePoints +
+      envelopePoints + productSearchPoints + orderPoints + referralPoints;
 }
 
 /// Сравнение с прошлым месяцем

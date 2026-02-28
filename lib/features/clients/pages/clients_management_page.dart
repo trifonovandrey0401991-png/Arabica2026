@@ -582,10 +582,10 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                               final hasUnread = client.hasUnreadFromClient || client.hasUnreadManagement;
 
                               return Container(
-                                margin: EdgeInsets.only(bottom: 10.h),
+                                margin: EdgeInsets.only(bottom: 5.h),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.06),
-                                  borderRadius: BorderRadius.circular(14.r),
+                                  borderRadius: BorderRadius.circular(10.r),
                                   border: Border.all(
                                     color: hasUnread
                                         ? Colors.red.withOpacity(0.4)
@@ -595,12 +595,12 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                 ),
                                 child: Material(
                                   color: Colors.transparent,
-                                  borderRadius: BorderRadius.circular(14.r),
+                                  borderRadius: BorderRadius.circular(10.r),
                                   child: InkWell(
-                                    borderRadius: BorderRadius.circular(14.r),
+                                    borderRadius: BorderRadius.circular(10.r),
                                     onTap: () => _showClientActions(client),
                                     child: Padding(
-                                      padding: EdgeInsets.all(14.w),
+                                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                                       child: Row(
                                         children: [
                                           // Аватар
@@ -608,8 +608,8 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                             clipBehavior: Clip.none,
                                             children: [
                                               Container(
-                                                width: 50,
-                                                height: 50,
+                                                width: 32,
+                                                height: 32,
                                                 decoration: BoxDecoration(
                                                   shape: BoxShape.circle,
                                                   gradient: LinearGradient(
@@ -623,7 +623,7 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                     color: hasUnread
                                                         ? Colors.red.withOpacity(0.5)
                                                         : AppColors.gold.withOpacity(0.3),
-                                                    width: 1.5,
+                                                    width: 1,
                                                   ),
                                                 ),
                                                 child: Center(
@@ -633,49 +633,46 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                         : client.phone.isNotEmpty ? client.phone[0] : '?',
                                                     style: TextStyle(
                                                       color: hasUnread ? Colors.white : AppColors.gold,
-                                                      fontSize: 20.sp,
+                                                      fontSize: 13.sp,
                                                       fontWeight: FontWeight.bold,
                                                     ),
                                                   ),
                                                 ),
                                               ),
-                                              // Индикатор непрочитанных
                                               if (client.hasUnreadFromClient)
                                                 Positioned(
                                                   right: -2,
                                                   top: -2,
                                                   child: Container(
-                                                    width: 20,
-                                                    height: 20,
+                                                    width: 12,
+                                                    height: 12,
                                                     decoration: BoxDecoration(
                                                       color: Colors.red,
                                                       shape: BoxShape.circle,
-                                                      border: Border.all(color: AppColors.emeraldDark, width: 2),
+                                                      border: Border.all(color: AppColors.emeraldDark, width: 1.5),
                                                     ),
                                                     child: Center(
-                                                      child: Icon(
-                                                        Icons.mail,
-                                                        color: Colors.white,
-                                                        size: 10,
-                                                      ),
+                                                      child: Icon(Icons.mail, color: Colors.white, size: 7),
                                                     ),
                                                   ),
                                                 ),
                                             ],
                                           ),
-                                          SizedBox(width: 14),
-                                          // Информация о клиенте
+                                          SizedBox(width: 8),
+                                          // Информация
                                           Expanded(
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
                                               children: [
+                                                // Имя + бейдж руководства
                                                 Row(
                                                   children: [
                                                     Expanded(
                                                       child: Text(
                                                         client.name.isNotEmpty ? client.name : 'Без имени',
                                                         style: TextStyle(
-                                                          fontSize: 15.sp,
+                                                          fontSize: 12.sp,
                                                           fontWeight: FontWeight.bold,
                                                           color: hasUnread ? Colors.red[300] : Colors.white.withOpacity(0.9),
                                                         ),
@@ -685,55 +682,38 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                     ),
                                                     if (client.hasUnreadManagement)
                                                       Container(
-                                                        padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
-                                                        margin: EdgeInsets.only(left: 8.w),
+                                                        padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.h),
+                                                        margin: EdgeInsets.only(left: 4.w),
                                                         decoration: BoxDecoration(
                                                           color: Colors.blue.withOpacity(0.2),
-                                                          borderRadius: BorderRadius.circular(8.r),
+                                                          borderRadius: BorderRadius.circular(5.r),
                                                           border: Border.all(color: Colors.blue.withOpacity(0.4)),
                                                         ),
-                                                        child: Row(
-                                                          mainAxisSize: MainAxisSize.min,
-                                                          children: [
-                                                            Icon(Icons.business, size: 11, color: Color(0xFF64B5F6)),
-                                                            SizedBox(width: 3),
-                                                            Text(
-                                                              'Рук.',
-                                                              style: TextStyle(
-                                                                color: Color(0xFF64B5F6),
-                                                                fontSize: 10.sp,
-                                                                fontWeight: FontWeight.bold,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
+                                                        child: Icon(Icons.business, size: 9, color: Color(0xFF64B5F6)),
                                                       ),
                                                   ],
                                                 ),
-                                                SizedBox(height: 5),
+                                                SizedBox(height: 2),
+                                                // Телефон + бейджи
                                                 Row(
                                                   children: [
-                                                    Icon(
-                                                      Icons.phone_rounded,
-                                                      size: 14,
-                                                      color: Colors.white.withOpacity(0.35),
-                                                    ),
-                                                    SizedBox(width: 5),
-                                                    Text(
-                                                      client.phone,
-                                                      style: TextStyle(
-                                                        fontSize: 13.sp,
-                                                        color: Colors.white.withOpacity(0.5),
+                                                    Icon(Icons.phone_rounded, size: 11, color: Colors.white.withOpacity(0.35)),
+                                                    SizedBox(width: 3),
+                                                    Flexible(
+                                                      child: Text(
+                                                        client.phone,
+                                                        style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5)),
+                                                        overflow: TextOverflow.ellipsis,
                                                       ),
                                                     ),
-                                                    SizedBox(width: 10),
+                                                    SizedBox(width: 6),
                                                     Container(
-                                                      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+                                                      padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.h),
                                                       decoration: BoxDecoration(
                                                         color: client.freeDrinksGiven > 0
                                                             ? AppColors.gold.withOpacity(0.15)
                                                             : Colors.white.withOpacity(0.06),
-                                                        borderRadius: BorderRadius.circular(8.r),
+                                                        borderRadius: BorderRadius.circular(5.r),
                                                         border: Border.all(
                                                           color: client.freeDrinksGiven > 0
                                                               ? AppColors.gold.withOpacity(0.3)
@@ -743,21 +723,18 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                       child: Row(
                                                         mainAxisSize: MainAxisSize.min,
                                                         children: [
-                                                          Icon(
-                                                            Icons.local_cafe,
-                                                            size: 11,
-                                                            color: client.freeDrinksGiven > 0
-                                                                ? AppColors.gold
-                                                                : Colors.white.withOpacity(0.4),
-                                                          ),
-                                                          SizedBox(width: 3),
+                                                          Icon(Icons.local_cafe, size: 9,
+                                                              color: client.freeDrinksGiven > 0
+                                                                  ? AppColors.gold
+                                                                  : Colors.white.withOpacity(0.4)),
+                                                          SizedBox(width: 2),
                                                           Text(
                                                             '${client.freeDrinksGiven}',
                                                             style: TextStyle(
                                                               color: client.freeDrinksGiven > 0
                                                                   ? AppColors.gold
                                                                   : Colors.white.withOpacity(0.4),
-                                                              fontSize: 11.sp,
+                                                              fontSize: 9.sp,
                                                               fontWeight: FontWeight.bold,
                                                             ),
                                                           ),
@@ -765,77 +742,41 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                                                       ),
                                                     ),
                                                     if (client.isWholesale) ...[
-                                                      SizedBox(width: 6),
+                                                      SizedBox(width: 4),
                                                       Container(
-                                                        padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+                                                        padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.h),
                                                         decoration: BoxDecoration(
                                                           color: Colors.orange.withOpacity(0.15),
-                                                          borderRadius: BorderRadius.circular(8.r),
+                                                          borderRadius: BorderRadius.circular(5.r),
                                                           border: Border.all(color: Colors.orange.withOpacity(0.3)),
                                                         ),
                                                         child: Row(
                                                           mainAxisSize: MainAxisSize.min,
                                                           children: [
-                                                            Icon(Icons.storefront, size: 11, color: Colors.orange),
-                                                            SizedBox(width: 3),
-                                                            Text(
-                                                              'Опт',
-                                                              style: TextStyle(
-                                                                color: Colors.orange,
-                                                                fontSize: 11.sp,
-                                                                fontWeight: FontWeight.bold,
-                                                              ),
-                                                            ),
+                                                            Icon(Icons.storefront, size: 9, color: Colors.orange),
+                                                            SizedBox(width: 2),
+                                                            Text('Опт',
+                                                              style: TextStyle(color: Colors.orange, fontSize: 9.sp, fontWeight: FontWeight.bold)),
                                                           ],
                                                         ),
                                                       ),
                                                     ],
                                                   ],
                                                 ),
-                                                if (hasUnread) ...[
-                                                  SizedBox(height: 6),
-                                                  Container(
-                                                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.red.withOpacity(0.15),
-                                                      borderRadius: BorderRadius.circular(6.r),
-                                                      border: Border.all(color: Colors.red.withOpacity(0.3)),
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        Icon(Icons.mark_email_unread, size: 12, color: Colors.red[300]),
-                                                        SizedBox(width: 4),
-                                                        Text(
-                                                          'Новое сообщение',
-                                                          style: TextStyle(
-                                                            fontSize: 11.sp,
-                                                            color: Colors.red[300],
-                                                            fontWeight: FontWeight.w600,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ],
                                               ],
                                             ),
                                           ),
-                                          SizedBox(width: 8),
+                                          SizedBox(width: 6),
                                           // Стрелка
                                           Container(
-                                            width: 32,
-                                            height: 32,
+                                            width: 24,
+                                            height: 24,
                                             decoration: BoxDecoration(
                                               color: Colors.white.withOpacity(0.06),
-                                              borderRadius: BorderRadius.circular(8.r),
+                                              borderRadius: BorderRadius.circular(6.r),
                                               border: Border.all(color: Colors.white.withOpacity(0.08)),
                                             ),
-                                            child: Icon(
-                                              Icons.chevron_right_rounded,
-                                              color: Colors.white.withOpacity(0.3),
-                                              size: 20,
-                                            ),
+                                            child: Icon(Icons.chevron_right_rounded, color: Colors.white.withOpacity(0.3), size: 16),
                                           ),
                                         ],
                                       ),
