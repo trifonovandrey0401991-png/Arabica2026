@@ -32,9 +32,22 @@ const SHIFT_REPORTS_DIR = `${DATA_DIR}/shift-reports`;
 const RECOUNT_REPORTS_DIR = `${DATA_DIR}/recount-reports`;
 const SHIFT_HANDOVER_DIR = `${DATA_DIR}/shift-handover-reports`;
 const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
+const REVIEWS_DIR = `${DATA_DIR}/reviews`;
+const RKO_DIR = `${DATA_DIR}/rko`;
+const COFFEE_MACHINE_REPORTS_DIR = `${DATA_DIR}/coffee-machine-reports`;
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
 const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
 const SHOP_MANAGERS_FILE = `${DATA_DIR}/shop-managers.json`;
+
+/** Month range helper: '2026-02' → { start: '2026-02-01', end: '2026-03-01' } */
+function getMonthRange(month) {
+  const [year, mon] = month.split('-').map(Number);
+  const start = `${month}-01`;
+  const nextMon = mon === 12 ? 1 : mon + 1;
+  const nextYear = mon === 12 ? year + 1 : year;
+  const end = `${nextYear}-${String(nextMon).padStart(2, '0')}-01`;
+  return { start, end };
+}
 
 
 /**
@@ -233,7 +246,7 @@ async function loadPenaltiesDB(month) {
   const start = `${month}-01`;
   const end = `${year}-${String(monthNum + 1).padStart(2, '0')}-01`;
   const result = await db.query(
-    'SELECT shop_address, entity_name, employee_name, points FROM efficiency_penalties WHERE date >= $1::date AND date < $2::date',
+    'SELECT shop_address, entity_name, employee_name, points, category FROM efficiency_penalties WHERE date >= $1::date AND date < $2::date',
     [start, end]
   );
   return result.rows.map(r => ({
@@ -241,6 +254,7 @@ async function loadPenaltiesDB(month) {
     entityName: r.entity_name || r.employee_name || '',
     employeeName: r.employee_name || '',
     points: parseFloat(r.points) || 0,
+    penaltyCategory: r.category || '',
   }));
 }
 
@@ -248,11 +262,25 @@ async function loadPenaltiesDB(month) {
  * Load points settings
  */
 async function loadPointsSettings() {
+  const [shift, recount, handover, attendance, reviews, rko, coffeeMachine, referrals] = await Promise.all([
+    loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'shift_points_settings.json')),
+    loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'recount_points_settings.json')),
+    loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'shift_handover_points_settings.json')),
+    loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'attendance_points_settings.json')),
+    loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'reviews_points_settings.json')),
+    loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'rko_points_settings.json')),
+    loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'coffee_machine_points_settings.json')),
+    loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'referrals.json')),
+  ]);
   return {
-    shift: await loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'shift_points_settings.json')) || {},
-    recount: await loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'recount_points_settings.json')) || {},
-    handover: await loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'shift_handover_points_settings.json')) || {},
-    attendance: await loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'attendance_points_settings.json')) || {}
+    shift: shift || {},
+    recount: recount || {},
+    handover: handover || {},
+    attendance: attendance || {},
+    reviews: reviews || {},
+    rko: rko || {},
+    coffeeMachine: coffeeMachine || { submittedPoints: 1.0, notSubmittedPoints: -3.0 },
+    referrals: referrals || { basePoints: 1 },
   };
 }
 
@@ -476,13 +504,209 @@ async function calculateManagerEfficiency(phone, month) {
 
     if (!validAddresses.has(shopAddress)) continue;
 
+    // Route specific penalty categories to their own buckets
+    const pCat = penalty.penaltyCategory || penalty.category || '';
+    let effCategory;
+    if (pCat === 'envelope_missed_penalty') {
+      effCategory = 'envelope';
+    } else if (pCat === 'product_question_penalty' || pCat === 'product_question_bonus') {
+      effCategory = 'product_search';
+    } else if (pCat === 'missed_order') {
+      effCategory = 'order';
+    } else {
+      effCategory = 'penalty';
+    }
+
     allRecords.push({
       shopAddress,
       employeeName: penalty.entityName || penalty.employeeName || '',
-      category: 'penalty',
+      category: effCategory,
       points: penalty.points || 0,
       status: 'penalty'
     });
+  }
+
+  // 5. Load attendance records (filtered by shop_address)
+  const validAddressesArray = [...validAddresses];
+  const { start: mStart, end: mEnd } = getMonthRange(month);
+  try {
+    if (USE_DB_EFFICIENCY) {
+      const attRes = await db.query(
+        'SELECT shop_address, is_on_time FROM attendance WHERE shop_address = ANY($1) AND created_at >= $2::timestamptz AND created_at < $3::timestamptz',
+        [validAddressesArray, mStart, mEnd]
+      );
+      const attSettings = settings.attendance;
+      for (const row of attRes.rows) {
+        const pts = row.is_on_time ? (attSettings.onTimePoints || 1) : (attSettings.latePoints || -1);
+        allRecords.push({ shopAddress: row.shop_address, employeeName: '', category: 'attendance', points: pts });
+      }
+      console.log(`Loaded ${attRes.rows.length} attendance records from DB`);
+    } else {
+      if (await fileExists(ATTENDANCE_DIR)) {
+        const files = await fsp.readdir(ATTENDANCE_DIR);
+        const attSettings = settings.attendance;
+        let count = 0;
+        for (const file of files) {
+          if (!file.endsWith('.json')) continue;
+          try {
+            const content = await fsp.readFile(path.join(ATTENDANCE_DIR, file), 'utf8');
+            const rec = JSON.parse(content);
+            const recDate = rec.timestamp || rec.createdAt || '';
+            if (!recDate.startsWith(month)) continue;
+            const shopAddr = rec.shopAddress || '';
+            if (!validAddresses.has(shopAddr)) continue;
+            const pts = rec.isOnTime ? (attSettings.onTimePoints || 1) : (attSettings.latePoints || -1);
+            allRecords.push({ shopAddress: shopAddr, employeeName: rec.employeeName || '', category: 'attendance', points: pts });
+            count++;
+          } catch (e) { /* skip */ }
+        }
+        console.log(`Loaded ${count} attendance records from files`);
+      }
+    }
+  } catch (e) {
+    console.error('Error loading attendance for manager:', e.message);
+  }
+
+  // 6. Load reviews (filtered by shop_address)
+  try {
+    if (USE_DB_EFFICIENCY) {
+      const revRes = await db.query(
+        'SELECT shop_address, review_type FROM reviews WHERE shop_address = ANY($1) AND created_at >= $2::timestamptz AND created_at < $3::timestamptz',
+        [validAddressesArray, mStart, mEnd]
+      );
+      const revSettings = settings.reviews;
+      for (const row of revRes.rows) {
+        const pts = row.review_type === 'positive' ? (revSettings.positivePoints || 1) : (revSettings.negativePoints || -1);
+        allRecords.push({ shopAddress: row.shop_address, employeeName: '', category: 'review', points: pts });
+      }
+      console.log(`Loaded ${revRes.rows.length} review records from DB`);
+    } else {
+      if (await fileExists(REVIEWS_DIR)) {
+        const files = await fsp.readdir(REVIEWS_DIR);
+        const revSettings = settings.reviews;
+        let count = 0;
+        for (const file of files) {
+          if (!file.endsWith('.json')) continue;
+          try {
+            const content = await fsp.readFile(path.join(REVIEWS_DIR, file), 'utf8');
+            const rec = JSON.parse(content);
+            if (!(rec.createdAt || '').startsWith(month)) continue;
+            const shopAddr = rec.shopAddress || '';
+            if (!validAddresses.has(shopAddr)) continue;
+            const pts = rec.reviewType === 'positive' ? (revSettings.positivePoints || 1) : (revSettings.negativePoints || -1);
+            allRecords.push({ shopAddress: shopAddr, employeeName: '', category: 'review', points: pts });
+            count++;
+          } catch (e) { /* skip */ }
+        }
+        console.log(`Loaded ${count} review records from files`);
+      }
+    }
+  } catch (e) {
+    console.error('Error loading reviews for manager:', e.message);
+  }
+
+  // 7. Load RKO reports (filtered by shop_address)
+  try {
+    if (USE_DB_EFFICIENCY) {
+      const rkoRes = await db.query(
+        'SELECT shop_address FROM rko_reports WHERE shop_address = ANY($1) AND date >= $2::date AND date < $3::date',
+        [validAddressesArray, mStart, mEnd]
+      );
+      const rkoSettings = settings.rko;
+      for (const row of rkoRes.rows) {
+        const pts = rkoSettings.hasRkoPoints || 1;
+        allRecords.push({ shopAddress: row.shop_address, employeeName: '', category: 'rko', points: pts });
+      }
+      console.log(`Loaded ${rkoRes.rows.length} RKO records from DB`);
+    } else {
+      if (await fileExists(RKO_DIR)) {
+        const files = await fsp.readdir(RKO_DIR);
+        const rkoSettings = settings.rko;
+        let count = 0;
+        for (const file of files) {
+          if (!file.endsWith('.json')) continue;
+          try {
+            const content = await fsp.readFile(path.join(RKO_DIR, file), 'utf8');
+            const rec = JSON.parse(content);
+            if (!(rec.date || '').startsWith(month)) continue;
+            const shopAddr = rec.shopAddress || '';
+            if (!validAddresses.has(shopAddr)) continue;
+            const pts = rkoSettings.hasRkoPoints || 1;
+            allRecords.push({ shopAddress: shopAddr, employeeName: '', category: 'rko', points: pts });
+            count++;
+          } catch (e) { /* skip */ }
+        }
+        console.log(`Loaded ${count} RKO records from files`);
+      }
+    }
+  } catch (e) {
+    console.error('Error loading RKO for manager:', e.message);
+  }
+
+  // 8. Load coffee machine reports (filtered by shop_address)
+  try {
+    if (USE_DB_EFFICIENCY) {
+      const cmRes = await db.query(
+        "SELECT shop_address FROM coffee_machine_reports WHERE shop_address = ANY($1) AND date >= $2::date AND date < $3::date AND status = 'confirmed'",
+        [validAddressesArray, mStart, mEnd]
+      );
+      const cmSettings = settings.coffeeMachine;
+      for (const row of cmRes.rows) {
+        allRecords.push({ shopAddress: row.shop_address, employeeName: '', category: 'coffee_machine', points: cmSettings.submittedPoints || 1 });
+      }
+      console.log(`Loaded ${cmRes.rows.length} coffee machine records from DB`);
+    } else {
+      if (await fileExists(COFFEE_MACHINE_REPORTS_DIR)) {
+        const files = await fsp.readdir(COFFEE_MACHINE_REPORTS_DIR);
+        const cmSettings = settings.coffeeMachine;
+        let count = 0;
+        for (const file of files) {
+          if (!file.endsWith('.json')) continue;
+          try {
+            const content = await fsp.readFile(path.join(COFFEE_MACHINE_REPORTS_DIR, file), 'utf8');
+            const rec = JSON.parse(content);
+            if (rec.status !== 'confirmed') continue;
+            if (!(rec.date || rec.createdAt || '').startsWith(month)) continue;
+            const shopAddr = rec.shopAddress || '';
+            if (!validAddresses.has(shopAddr)) continue;
+            allRecords.push({ shopAddress: shopAddr, employeeName: rec.employeeName || '', category: 'coffee_machine', points: cmSettings.submittedPoints || 1 });
+            count++;
+          } catch (e) { /* skip */ }
+        }
+        console.log(`Loaded ${count} coffee machine records from files`);
+      }
+    }
+  } catch (e) {
+    console.error('Error loading coffee machine for manager:', e.message);
+  }
+
+  // 9. Load referral points (clients invited by employees of managed shops)
+  try {
+    if (USE_DB_EFFICIENCY) {
+      const refSettings = settings.referrals;
+      const basePoints = refSettings.basePoints !== undefined ? refSettings.basePoints : 1;
+      // Join employees with clients on referred_by = referral_code::text
+      const refRes = await db.query(
+        `SELECT e.shop_address, COUNT(*) AS cnt
+         FROM employees e
+         INNER JOIN clients c ON c.referred_by = e.referral_code::text
+         WHERE e.shop_address = ANY($1)
+           AND e.referral_code IS NOT NULL
+           AND e.referral_code > 0
+           AND c.created_at >= $2::timestamptz
+           AND c.created_at < $3::timestamptz
+         GROUP BY e.shop_address`,
+        [validAddressesArray, mStart, mEnd]
+      );
+      for (const row of refRes.rows) {
+        const pts = parseInt(row.cnt, 10) * basePoints;
+        allRecords.push({ shopAddress: row.shop_address, employeeName: '', category: 'referral', points: pts });
+      }
+      console.log(`Loaded ${refRes.rows.length} referral shop groups from DB`);
+    }
+    // File mode skipped: loading all clients for aggregate referral view is expensive
+  } catch (e) {
+    console.error('Error loading referrals for manager:', e.message);
   }
 
   console.log(`Total records after filtering: ${allRecords.length}`);
@@ -506,23 +730,31 @@ async function calculateManagerEfficiency(phone, month) {
     shiftPoints: 0,
     recountPoints: 0,
     shiftHandoverPoints: 0,
-    tasksPoints: 0
+    tasksPoints: 0,
+    attendancePoints: 0,
+    reviewsPoints: 0,
+    rkoPoints: 0,
+    coffeeMachinePoints: 0,
+    envelopePoints: 0,
+    productSearchPoints: 0,
+    orderPoints: 0,
+    referralPoints: 0,
   };
 
   for (const record of allRecords) {
     switch (record.category) {
-      case 'shift':
-        categoryBreakdown.shiftPoints += record.points;
-        break;
-      case 'recount':
-        categoryBreakdown.recountPoints += record.points;
-        break;
-      case 'handover':
-        categoryBreakdown.shiftHandoverPoints += record.points;
-        break;
-      case 'task':
-        categoryBreakdown.tasksPoints += record.points;
-        break;
+      case 'shift':          categoryBreakdown.shiftPoints += record.points; break;
+      case 'recount':        categoryBreakdown.recountPoints += record.points; break;
+      case 'handover':       categoryBreakdown.shiftHandoverPoints += record.points; break;
+      case 'task':           categoryBreakdown.tasksPoints += record.points; break;
+      case 'attendance':     categoryBreakdown.attendancePoints += record.points; break;
+      case 'review':         categoryBreakdown.reviewsPoints += record.points; break;
+      case 'rko':            categoryBreakdown.rkoPoints += record.points; break;
+      case 'coffee_machine': categoryBreakdown.coffeeMachinePoints += record.points; break;
+      case 'envelope':       categoryBreakdown.envelopePoints += record.points; break;
+      case 'product_search': categoryBreakdown.productSearchPoints += record.points; break;
+      case 'order':          categoryBreakdown.orderPoints += record.points; break;
+      case 'referral':       categoryBreakdown.referralPoints += record.points; break;
     }
   }
 
@@ -637,10 +869,18 @@ async function calculateManagerEfficiency(phone, month) {
     totalPoints: Math.round(totalPoints * 10) / 10,
     shopBreakdown: formattedShopBreakdown,
     categoryBreakdown: {
-      shiftPoints: Math.round(categoryBreakdown.shiftPoints * 10) / 10,
-      recountPoints: Math.round(categoryBreakdown.recountPoints * 10) / 10,
-      shiftHandoverPoints: Math.round(categoryBreakdown.shiftHandoverPoints * 10) / 10,
-      tasksPoints: Math.round(categoryBreakdown.tasksPoints * 10) / 10
+      shiftPoints:          Math.round(categoryBreakdown.shiftPoints * 10) / 10,
+      recountPoints:        Math.round(categoryBreakdown.recountPoints * 10) / 10,
+      shiftHandoverPoints:  Math.round(categoryBreakdown.shiftHandoverPoints * 10) / 10,
+      tasksPoints:          Math.round(categoryBreakdown.tasksPoints * 10) / 10,
+      attendancePoints:     Math.round(categoryBreakdown.attendancePoints * 10) / 10,
+      reviewsPoints:        Math.round(categoryBreakdown.reviewsPoints * 10) / 10,
+      rkoPoints:            Math.round(categoryBreakdown.rkoPoints * 10) / 10,
+      coffeeMachinePoints:  Math.round(categoryBreakdown.coffeeMachinePoints * 10) / 10,
+      envelopePoints:       Math.round(categoryBreakdown.envelopePoints * 10) / 10,
+      productSearchPoints:  Math.round(categoryBreakdown.productSearchPoints * 10) / 10,
+      orderPoints:          Math.round(categoryBreakdown.orderPoints * 10) / 10,
+      referralPoints:       Math.round(categoryBreakdown.referralPoints * 10) / 10,
     }
   };
 }
@@ -688,6 +928,88 @@ function setupManagerEfficiencyAPI(app) {
         success: false,
         error: error.message
       });
+    }
+  });
+
+  // GET /api/manager-efficiency/team-task-penalties - штрафы команды за задачи за месяц
+  app.get('/api/manager-efficiency/team-task-penalties', requireAuth, async (req, res) => {
+    try {
+      const { month } = req.query;
+      const managerPhone = (req.session?.userPhone || req.session?.phone || '').replace(/\D/g, '');
+
+      if (!managerPhone) {
+        return res.status(400).json({ success: false, error: 'Manager phone not in session' });
+      }
+
+      const targetMonth = month || (() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      })();
+
+      const { start, end } = getMonthRange(targetMonth);
+
+      // 1. Load shop_managers to find this manager's employee list
+      let shopManagersData = [];
+      try {
+        const content = await fsp.readFile(SHOP_MANAGERS_FILE, 'utf8');
+        shopManagersData = JSON.parse(content);
+      } catch (e) {
+        return res.json({ success: true, data: { month: targetMonth, totalCount: 0, totalPoints: 0, employees: [] } });
+      }
+
+      const managerEntry = shopManagersData.find(m =>
+        (m.phone || m.managerPhone || '').replace(/\D/g, '') === managerPhone
+      );
+
+      if (!managerEntry || !Array.isArray(managerEntry.employees) || managerEntry.employees.length === 0) {
+        return res.json({ success: true, data: { month: targetMonth, totalCount: 0, totalPoints: 0, employees: [] } });
+      }
+
+      const employeePhones = managerEntry.employees.map(p => p.replace(/\D/g, ''));
+
+      // 2. Get entity_ids for these employees from DB
+      const empResult = await db.query(
+        `SELECT id FROM employees WHERE phone = ANY($1)`,
+        [employeePhones]
+      );
+
+      if (!empResult.rows || empResult.rows.length === 0) {
+        return res.json({ success: true, data: { month: targetMonth, totalCount: 0, totalPoints: 0, employees: [] } });
+      }
+
+      const entityIds = empResult.rows.map(r => r.id);
+
+      // 3. Query task penalties grouped by employee
+      const penResult = await db.query(
+        `SELECT entity_id, entity_name,
+                COUNT(*)::int AS count,
+                SUM(points)::int AS total_points
+         FROM efficiency_penalties
+         WHERE entity_id = ANY($1)
+           AND category IN ('regular_task_penalty', 'recurring_task_penalty')
+           AND date >= $2 AND date < $3
+         GROUP BY entity_id, entity_name
+         ORDER BY total_points ASC`,
+        [entityIds, start, end]
+      );
+
+      const employees = (penResult.rows || []).map(r => ({
+        entityId: r.entity_id,
+        name: r.entity_name,
+        count: r.count,
+        totalPoints: r.total_points,
+      }));
+
+      const totalCount = employees.reduce((s, e) => s + e.count, 0);
+      const totalPoints = employees.reduce((s, e) => s + e.totalPoints, 0);
+
+      res.json({
+        success: true,
+        data: { month: targetMonth, totalCount, totalPoints, employees },
+      });
+    } catch (error) {
+      console.error('Error fetching team task penalties:', error);
+      res.status(500).json({ success: false, error: error.message });
     }
   });
 

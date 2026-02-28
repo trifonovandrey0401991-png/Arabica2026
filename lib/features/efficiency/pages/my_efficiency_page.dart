@@ -16,6 +16,7 @@ import '../../referrals/models/referral_stats_model.dart';
 import '../../referrals/services/referral_service.dart';
 import '../../rating/pages/my_rating_page.dart';
 import '../../tests/services/test_result_service.dart';
+import 'shop_efficiency_detail_page.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
 import '../../../core/theme/app_colors.dart';
@@ -46,7 +47,9 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
   // Manager efficiency data (для admin с managedShopIds)
   UserRoleData? _userRole;
   ManagerEfficiencyData? _managerEfficiency;
+  EfficiencyData? _efficiencyData; // Full data for shop detail navigation
   bool _isManagerWithShops = false; // true если admin с managedShopIds
+  Map<String, dynamic>? _teamTaskPenalties; // Штрафы команды за задачи
 
   late TabController _tabController;
   int _currentTabIndex = 0; // 0 = текущий месяц, 1 = прошлый месяц
@@ -105,6 +108,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
         _isManagerWithShops = cached['isManagerWithShops'] as bool? ?? false;
         _employeeName = cached['employeeName'] as String?;
         _employeeId = cached['employeeId'] as String?;
+        _teamTaskPenalties = cached['teamTaskPenalties'] as Map<String, dynamic>?;
         _isLoading = false;
         _error = null;
       });
@@ -208,21 +212,36 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
       final data = results[0];
       final prevData = results[1];
 
-      // Находим данные текущего сотрудника за выбранный месяц
+      // Build personal summary from allRecords (unfiltered by managed shops).
+      // byEmployee is filtered by the user's managed shops, which can exclude
+      // records from shops the employee worked at but doesn't manage.
+      final lowerEmployeeName = employeeName?.trim().toLowerCase() ?? '';
       EfficiencySummary? mySummary;
-      for (final summary in data.byEmployee) {
-        if (summary.entityName == employeeName) {
-          mySummary = summary;
-          break;
+      if (lowerEmployeeName.isNotEmpty) {
+        final myRecords = data.allRecords
+            .where((r) => r.employeeName.trim().toLowerCase() == lowerEmployeeName)
+            .toList();
+        if (myRecords.isNotEmpty) {
+          mySummary = EfficiencySummary.fromRecords(
+            entityId: lowerEmployeeName,
+            entityName: employeeName ?? lowerEmployeeName,
+            records: myRecords,
+          );
         }
       }
 
-      // Находим данные за предыдущий месяц (для сравнения)
+      // Build previous month summary the same way
       EfficiencySummary? prevSummary;
-      for (final summary in prevData.byEmployee) {
-        if (summary.entityName == employeeName) {
-          prevSummary = summary;
-          break;
+      if (lowerEmployeeName.isNotEmpty) {
+        final prevRecords = prevData.allRecords
+            .where((r) => r.employeeName.trim().toLowerCase() == lowerEmployeeName)
+            .toList();
+        if (prevRecords.isNotEmpty) {
+          prevSummary = EfficiencySummary.fromRecords(
+            entityId: lowerEmployeeName,
+            entityName: employeeName ?? lowerEmployeeName,
+            records: prevRecords,
+          );
         }
       }
 
@@ -298,14 +317,29 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     try {
       final month = '$_selectedYear-${_selectedMonth.toString().padLeft(2, '0')}';
 
-      final efficiency = await ManagerEfficiencyService.getManagerEfficiencyWithComparison(
-        phone: phone,
-        currentMonth: month,
-      );
+      // Load manager summary, full efficiency data, and team task penalties in parallel
+      final results = await Future.wait([
+        ManagerEfficiencyService.getManagerEfficiencyWithComparison(
+          phone: phone,
+          currentMonth: month,
+        ),
+        EfficiencyDataService.loadMonthData(
+          _selectedYear,
+          _selectedMonth,
+          forceRefresh: false,
+        ),
+        ManagerEfficiencyService.getTeamTaskPenalties(month: month),
+      ]);
+
+      final efficiency = results[0] as ManagerEfficiencyData?;
+      final efficiencyData = results[1] as EfficiencyData;
+      final teamPenalties = results[2] as Map<String, dynamic>?;
 
       if (!mounted) return;
       setState(() {
         _managerEfficiency = efficiency ?? ManagerEfficiencyData.empty();
+        _efficiencyData = efficiencyData;
+        _teamTaskPenalties = teamPenalties;
         _employeeName = _userRole?.displayName;
         _isLoading = false;
       });
@@ -322,6 +356,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
         'isManagerWithShops': true,
         'employeeName': _userRole?.displayName,
         'employeeId': null,
+        'teamTaskPenalties': teamPenalties,
       });
     } catch (e) {
       if (!mounted) return;
@@ -1606,6 +1641,9 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
             SizedBox(height: 10),
             // Магазины в виде сетки
             _buildManagerShopsGrid(efficiency),
+            SizedBox(height: 10),
+            // Штрафы команды за задачи
+            _buildTeamTaskPenaltiesCard(),
           ],
         ),
       ),
@@ -1837,6 +1875,153 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
   }
 
   /// Магазины в виде сетки (2 в ряд)
+  /// Карточка штрафов команды управляющего за невыполненные задачи
+  Widget _buildTeamTaskPenaltiesCard() {
+    final data = _teamTaskPenalties;
+    final employees = data != null ? (data['employees'] as List<dynamic>? ?? []) : <dynamic>[];
+
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Color(0xFFEF5350).withOpacity(0.3), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Заголовок
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(6.w),
+                decoration: BoxDecoration(
+                  color: Color(0xFFEF5350).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Icon(Icons.assignment_late, color: Color(0xFFEF5350), size: 18),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Штрафы команды за задачи',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (data != null && employees.isNotEmpty)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFEF5350).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Text(
+                    '${data['totalPoints'] ?? 0} б.',
+                    style: TextStyle(
+                      color: Color(0xFFEF5350),
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (data == null) ...[
+            SizedBox(height: 12),
+            Center(
+              child: Text(
+                'Нет данных',
+                style: TextStyle(color: Colors.white54, fontSize: 13.sp),
+              ),
+            ),
+          ] else if (employees.isEmpty) ...[
+            SizedBox(height: 12),
+            Center(
+              child: Text(
+                'Штрафов за задачи нет',
+                style: TextStyle(color: Colors.white54, fontSize: 13.sp),
+              ),
+            ),
+          ] else ...[
+            SizedBox(height: 8),
+            // Итоговая строка
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    'Сотрудников: ${employees.length}',
+                    style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+                  ),
+                  Spacer(),
+                  Text(
+                    'Штрафов: ${data['totalCount'] ?? 0}',
+                    style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 6),
+            // Список сотрудников (до 10)
+            ...employees.take(10).map((e) {
+              final emp = e as Map<String, dynamic>;
+              final name = emp['name'] as String? ?? '';
+              final count = emp['count'] as int? ?? 0;
+              final pts = emp['totalPoints'] as int? ?? 0;
+              final parts = name.split(' ');
+              final shortName = parts.length >= 2
+                  ? '${parts[0]} ${parts.skip(1).map((p) => p.isNotEmpty ? '${p[0]}.' : '').join()}'
+                  : name;
+              return Padding(
+                padding: EdgeInsets.only(bottom: 4.h),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        shortName,
+                        style: TextStyle(color: Colors.white, fontSize: 12.sp),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      '$count шт.',
+                      style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      '$pts б.',
+                      style: TextStyle(
+                        color: Color(0xFFEF5350),
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            if (employees.length > 10)
+              Padding(
+                padding: EdgeInsets.only(top: 4.h),
+                child: Text(
+                  'и ещё ${employees.length - 10} сотрудников...',
+                  style: TextStyle(color: Colors.white38, fontSize: 11.sp),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildManagerShopsGrid(ManagerEfficiencyData efficiency) {
     if (efficiency.shopBreakdown.isEmpty) {
       return SizedBox.shrink();
@@ -1918,7 +2103,45 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
       shortName = shortName.split(',').first;
     }
 
-    return Container(
+    // Find matching EfficiencySummary for detail navigation.
+    // entityId in byShop is lowercase (normalized by efficiency_data_service),
+    // but shopAddress from server may be original case — compare case-insensitively.
+    final normalizedShopAddress = shop.shopAddress.trim().toLowerCase();
+    final normalizedShopName = shop.shopName.trim().toLowerCase();
+    final summary = _efficiencyData?.byShop.firstWhere(
+      (s) => s.entityId.trim().toLowerCase() == normalizedShopAddress ||
+             s.entityName.trim().toLowerCase() == normalizedShopName,
+      orElse: () => EfficiencySummary(
+        entityId: shop.shopAddress.isNotEmpty ? shop.shopAddress : shop.shopId,
+        entityName: shop.shopName,
+        earnedPoints: shop.earnedPoints,
+        lostPoints: shop.lostPoints,
+        totalPoints: shop.totalPoints,
+        recordsCount: shop.recordsCount,
+        records: [],
+        categorySummaries: [],
+      ),
+    );
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(10.r),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10.r),
+        onTap: summary != null
+            ? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ShopEfficiencyDetailPage(
+                      summary: summary,
+                      monthName: EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
+                    ),
+                  ),
+                );
+              }
+            : null,
+        child: Container(
       padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
@@ -1983,12 +2206,30 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
           ),
         ],
       ),
+        ),
+      ),
     );
   }
 
   /// Компактные категории в одной карточке
   Widget _buildManagerCategoriesCompact(ManagerEfficiencyData efficiency) {
-    final categories = efficiency.categoryBreakdown;
+    final c = efficiency.categoryBreakdown;
+
+    // All 12 categories with icon, name, points, color
+    final items = [
+      (Icons.swap_horiz,           'Пересменка',   c.shiftPoints,          const Color(0xFFf093fb)),
+      (Icons.inventory_2,          'Пересчёт',     c.recountPoints,        const Color(0xFF4facfe)),
+      (Icons.assignment_turned_in, 'Сдать смену',  c.shiftHandoverPoints,  const Color(0xFF30cfd0)),
+      (Icons.assignment,           'Задачи',       c.tasksPoints,          const Color(0xFF7E57C2)),
+      (Icons.access_time,          'Посещаемость', c.attendancePoints,     const Color(0xFFf7971e)),
+      (Icons.star_outline,         'Отзывы',       c.reviewsPoints,        const Color(0xFF56ab2f)),
+      (Icons.receipt_long,         'РКО',          c.rkoPoints,            const Color(0xFFe96c1e)),
+      (Icons.coffee,               'Кофемашина',   c.coffeeMachinePoints,  const Color(0xFF8B5E3C)),
+      (Icons.mail_outline,         'Конверты',     c.envelopePoints,       const Color(0xFFe040fb)),
+      (Icons.search,               'Поиск товара', c.productSearchPoints,  const Color(0xFF00bcd4)),
+      (Icons.shopping_cart,        'Заказы',       c.orderPoints,          const Color(0xFF43a047)),
+      (Icons.person_add,           'Приглашения',  c.referralPoints,       const Color(0xFF26C6DA)),
+    ];
 
     return Container(
       padding: EdgeInsets.all(12.w),
@@ -2015,47 +2256,27 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
             ],
           ),
           SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildCompactCategoryItem(
-                  Icons.swap_horiz,
-                  'Пересменка',
-                  categories.shiftPoints,
-                  Color(0xFFf093fb),
+          // Grid 2 columns
+          for (int i = 0; i < items.length; i += 2) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactCategoryItem(
+                    items[i].$1, items[i].$2, items[i].$3, items[i].$4,
+                  ),
                 ),
-              ),
-              Expanded(
-                child: _buildCompactCategoryItem(
-                  Icons.inventory_2,
-                  'Пересчёт',
-                  categories.recountPoints,
-                  Color(0xFF4facfe),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildCompactCategoryItem(
-                  Icons.assignment_turned_in,
-                  'Сдать смену',
-                  categories.shiftHandoverPoints,
-                  Color(0xFF30cfd0),
-                ),
-              ),
-              Expanded(
-                child: _buildCompactCategoryItem(
-                  Icons.assignment,
-                  'Задачи',
-                  categories.tasksPoints,
-                  Color(0xFF7E57C2),
-                ),
-              ),
-            ],
-          ),
+                if (i + 1 < items.length)
+                  Expanded(
+                    child: _buildCompactCategoryItem(
+                      items[i + 1].$1, items[i + 1].$2, items[i + 1].$3, items[i + 1].$4,
+                    ),
+                  )
+                else
+                  const Expanded(child: SizedBox()),
+              ],
+            ),
+            if (i + 2 < items.length) SizedBox(height: 8),
+          ],
         ],
       ),
     );

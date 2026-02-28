@@ -106,27 +106,18 @@ class ManagerEfficiencyService {
         return ShopEfficiencyItem(
           shopId: shop.shopId,
           shopName: shop.shopName,
+          shopAddress: shop.shopAddress,
           totalPoints: shop.totalPoints,
+          earnedPoints: shop.earnedPoints,
+          lostPoints: shop.lostPoints,
+          recordsCount: shop.recordsCount,
           percentage: shop.percentage,
           previousMonthChange: shop.totalPoints - previousShop.totalPoints,
         );
       }).toList();
 
-      // Добавляем изменения по категориям
-      final categoryBreakdownWithChanges = CategoryBreakdown(
-        shiftPoints: current.categoryBreakdown.shiftPoints,
-        recountPoints: current.categoryBreakdown.recountPoints,
-        shiftHandoverPoints: current.categoryBreakdown.shiftHandoverPoints,
-        tasksPoints: current.categoryBreakdown.tasksPoints,
-        shiftChange: current.categoryBreakdown.shiftPoints -
-            previous.categoryBreakdown.shiftPoints,
-        recountChange: current.categoryBreakdown.recountPoints -
-            previous.categoryBreakdown.recountPoints,
-        shiftHandoverChange: current.categoryBreakdown.shiftHandoverPoints -
-            previous.categoryBreakdown.shiftHandoverPoints,
-        tasksChange: current.categoryBreakdown.tasksPoints -
-            previous.categoryBreakdown.tasksPoints,
-      );
+      // Передаём категории текущего месяца как есть (изменения не используются в UI)
+      final categoryBreakdownWithChanges = current.categoryBreakdown;
 
       return ManagerEfficiencyData(
         totalPercentage: current.totalPercentage,
@@ -141,6 +132,24 @@ class ManagerEfficiencyService {
       );
     } catch (e) {
       Logger.error('Error fetching manager efficiency with comparison: $e');
+      return null;
+    }
+  }
+
+  /// Загрузить штрафы команды управляющего за задачи
+  ///
+  /// Возвращает Map с полями: month, totalCount, totalPoints, employees[]
+  static Future<Map<String, dynamic>?> getTeamTaskPenalties({required String month}) async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '/api/manager-efficiency/team-task-penalties?month=$month',
+      );
+      if (result != null && result['success'] == true) {
+        return result['data'] as Map<String, dynamic>?;
+      }
+      return null;
+    } catch (e) {
+      Logger.error('Error fetching team task penalties: $e');
       return null;
     }
   }
