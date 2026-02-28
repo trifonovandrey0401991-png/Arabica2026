@@ -1006,7 +1006,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                 'Аналитика и статистика',
                 buttonHeight,
                 () async {
-                  await Navigator.push(context, MaterialPageRoute(builder: (_) => ReportsPage()));
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => ManagerGridPage()));
                   _loadTotalReportsCount();
                 },
                 badge: _totalReportsCount,
