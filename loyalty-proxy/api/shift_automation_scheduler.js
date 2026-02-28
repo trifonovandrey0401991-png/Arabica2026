@@ -250,6 +250,24 @@ class ShiftScheduler extends BaseReportScheduler {
       await this.sendAdminFailedNotification(failedCount, failedShops);
     }
 
+    // Cleanup: fail any stale pending records in DB older than today
+    // (can happen if server was down when deadline passed)
+    if (USE_DB) {
+      try {
+        const today = getMoscowDateString();
+        const staleResult = await db.query(
+          `UPDATE shift_reports SET status = 'failed', failed_at = NOW(), updated_at = NOW()
+           WHERE status = 'pending' AND date < $1`,
+          [today]
+        );
+        if (staleResult.rowCount > 0) {
+          console.log(`${this.tag} Cleaned up ${staleResult.rowCount} stale pending records from previous days`);
+        }
+      } catch (dbErr) {
+        console.error(`${this.tag} DB stale pending cleanup error:`, dbErr.message);
+      }
+    }
+
     return failedCount;
   }
 

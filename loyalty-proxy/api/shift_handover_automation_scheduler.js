@@ -193,9 +193,11 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
     // DB path: один SQL-запрос вместо readdir + readFile для каждого файла
     if (USE_DB) {
       try {
+        // Only look for actually submitted reports (not pending/failed placeholders)
         const result = await db.query(
           `SELECT id FROM shift_handover_reports
            WHERE shop_address = $1 AND date = $2 AND shift_type = $3
+           AND status NOT IN ('pending', 'failed')
            LIMIT 1`,
           [shopAddress, today, shiftType]
         );
@@ -205,6 +207,7 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
         const result2 = await db.query(
           `SELECT id, created_at FROM shift_handover_reports
            WHERE shop_address = $1 AND date = $2 AND shift_type IS NULL
+           AND status NOT IN ('pending', 'failed')
            LIMIT 10`,
           [shopAddress, today]
         );
