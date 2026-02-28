@@ -121,6 +121,17 @@ function setupShopsAPI(app) {
 
       let shop;
 
+      shop = {
+        id,
+        name: name || '',
+        address: address || '',
+        icon: icon || 'store_outlined',
+        latitude: latitude || null,
+        longitude: longitude || null,
+        createdAt: now,
+        updatedAt: now,
+      };
+
       if (USE_DB) {
         const row = await db.insert('shops', {
           id,
@@ -132,19 +143,11 @@ function setupShopsAPI(app) {
           updated_at: now
         });
         shop = dbShopToCamel(row);
-      } else {
-        shop = {
-          id,
-          name: name || '',
-          address: address || '',
-          icon: icon || 'store_outlined',
-          latitude: latitude || null,
-          longitude: longitude || null,
-          createdAt: now,
-        };
-        const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-        await writeJsonFile(shopFile, shop);
       }
+
+      // Dual-write: always keep JSON file in sync (schedulers read from files)
+      const shopFile = path.join(SHOPS_DIR, `${id}.json`);
+      await writeJsonFile(shopFile, shop);
 
       dataCache.invalidateShops();
       console.log('✅ Магазин создан:', id);
@@ -189,9 +192,12 @@ function setupShopsAPI(app) {
         if (updates.longitude !== undefined) shop.longitude = updates.longitude;
         if (updates.icon !== undefined) shop.icon = updates.icon;
         shop.updatedAt = new Date().toISOString();
-
-        await writeJsonFile(shopFile, shop);
       }
+
+      // Dual-write: always keep JSON file in sync (schedulers read from files)
+      const shopFile = path.join(SHOPS_DIR, `${id}.json`);
+      shop.updatedAt = shop.updatedAt || new Date().toISOString();
+      await writeJsonFile(shopFile, shop);
 
       dataCache.invalidateShops();
       console.log('✅ Магазин обновлен:', id);
@@ -216,6 +222,11 @@ function setupShopsAPI(app) {
         if (!await fileExists(shopFile)) {
           return res.status(404).json({ success: false, error: 'Магазин не найден' });
         }
+      }
+
+      // Dual-write: always remove JSON file in sync (schedulers read from files)
+      const shopFile = path.join(SHOPS_DIR, `${id}.json`);
+      if (await fileExists(shopFile)) {
         await fsp.unlink(shopFile);
       }
 
