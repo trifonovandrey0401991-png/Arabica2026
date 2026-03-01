@@ -733,7 +733,7 @@ class _CartPageState extends State<CartPage> {
     if (_isCreatingOrder) return; // Prevent double-tap
     setState(() => _isCreatingOrder = true);
     try {
-      final orderProvider = OrderProvider.of(context);
+      final orderProvider = OrderProvider.read(context);
 
       final pickupComment = 'Заберу через $pickupMinutes мин';
       final fullComment = comment != null && comment.isNotEmpty
@@ -791,7 +791,7 @@ class _CartPageState extends State<CartPage> {
   void _showCommentDialogWithOrder(BuildContext context, CartProvider cart) {
     final TextEditingController controller = TextEditingController();
 
-    showDialog(
+    showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
@@ -860,15 +860,17 @@ class _CartPageState extends State<CartPage> {
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
-                          Navigator.of(dialogContext).pop();
-                          final comment = controller.text.trim().isEmpty
-                              ? null
-                              : controller.text.trim();
-                          if (cart.hasShopProducts) {
-                            _showShopSelectionDialog(context, cart, comment);
-                          } else {
-                            _showPickupTimeDialog(context, cart, comment);
-                          }
+                          final text = controller.text.trim();
+                          // Dismiss keyboard first, then pop dialog in
+                          // the next frame — avoids _dependents.isEmpty
+                          // assertion when InheritedWidgets deactivate
+                          // while keyboard dismissal is still in progress.
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop(text);
+                            }
+                          });
                         },
                         child: Container(
                           height: 46,
@@ -894,7 +896,14 @@ class _CartPageState extends State<CartPage> {
                     SizedBox(width: 10),
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => Navigator.of(dialogContext).pop(),
+                        onTap: () {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop();
+                            }
+                          });
+                        },
                         child: Container(
                           height: 46,
                           decoration: BoxDecoration(
@@ -922,7 +931,20 @@ class _CartPageState extends State<CartPage> {
           ),
         ),
       ),
-    ).then((_) => controller.dispose());
+    ).then((result) {
+      controller.dispose();
+      if (result == null) return; // User pressed "Назад"
+      final comment = result.isEmpty ? null : result;
+      // Show next dialog after current one is fully processed
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        if (cart.hasShopProducts) {
+          _showShopSelectionDialog(context, cart, comment);
+        } else {
+          _showPickupTimeDialog(context, cart, comment);
+        }
+      });
+    });
   }
 
   void _showCommentDialog(
@@ -1146,7 +1168,7 @@ class _CartPageState extends State<CartPage> {
     if (_isCreatingOrder) return; // Prevent double-tap
     setState(() => _isCreatingOrder = true);
     try {
-      final orderProvider = OrderProvider.of(context);
+      final orderProvider = OrderProvider.read(context);
       await orderProvider.createOrder(
         cart.items,
         cart.totalPrice,

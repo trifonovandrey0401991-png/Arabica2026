@@ -12,6 +12,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
 const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { getMoscowTime } = require('../utils/moscow_time');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const USE_DB = process.env.USE_DB_BONUS_PENALTIES === 'true';
@@ -46,20 +47,20 @@ function dbToCamel(row) {
   };
 }
 
-// Вспомогательная функция для получения месяца в формате YYYY-MM
+// Вспомогательная функция для получения месяца в формате YYYY-MM (московское время)
 function getCurrentMonth() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const now = getMoscowTime();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
   return `${year}-${month}`;
 }
 
-// Вспомогательная функция для получения прошлого месяца
+// Вспомогательная функция для получения прошлого месяца (московское время)
 function getPreviousMonth() {
-  const now = new Date();
-  now.setMonth(now.getMonth() - 1);
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const now = getMoscowTime();
+  now.setUTCMonth(now.getUTCMonth() - 1);
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
   return `${year}-${month}`;
 }
 

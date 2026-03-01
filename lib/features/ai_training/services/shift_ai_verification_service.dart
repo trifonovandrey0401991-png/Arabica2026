@@ -23,7 +23,7 @@ class ShiftAiVerificationService {
           'imagesBase64': imagesBase64,
           'shopAddress': shopAddress,
         }),
-      ).timeout(ApiConstants.longTimeout);
+      ).timeout(ApiConstants.uploadTimeout);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -182,7 +182,7 @@ class ShiftAiVerificationService {
           'shopAddress': shopAddress,
           'employeeName': employeeName,
         }),
-      ).timeout(ApiConstants.longTimeout);
+      ).timeout(ApiConstants.uploadTimeout);
 
       return response.statusCode == 200;
     } catch (e) {
@@ -216,7 +216,7 @@ class ShiftAiVerificationService {
           'shopAddress': shopAddress,
           'employeeName': employeeName,
         }),
-      ).timeout(ApiConstants.longTimeout);
+      ).timeout(ApiConstants.uploadTimeout);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

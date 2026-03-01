@@ -15,6 +15,7 @@ const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 const { notifyEmployeeCounter } = require('./counters_websocket');
+const { getMoscowTime } = require('../utils/moscow_time');
 
 const USE_DB = process.env.USE_DB_TASKS === 'true';
 
@@ -117,11 +118,11 @@ async function ensureDir(dir) {
   }
 }
 
-// Get month key from date (YYYY-MM)
+// Get month key from date (YYYY-MM), defaults to Moscow time
 function getMonthKey(date) {
   if (!date) {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const now = getMoscowTime();
+    return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
   }
   if (date instanceof Date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;

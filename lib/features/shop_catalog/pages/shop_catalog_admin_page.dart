@@ -461,8 +461,8 @@ class _ShopCatalogAdminPageState extends State<ShopCatalogAdminPage> with Single
                     ],
                   ),
                 ),
-              _dialogField(retailCtrl, 'Цена розница (₽)', keyboard: TextInputType.number),
-              _dialogField(wholesaleCtrl, 'Цена опт (₽)', keyboard: TextInputType.number),
+              _dialogField(retailCtrl, 'Цена розница (руб)', keyboard: TextInputType.number),
+              _dialogField(wholesaleCtrl, 'Цена опт (руб)', keyboard: TextInputType.number),
               _dialogField(pointsCtrl, 'Цена в баллах', keyboard: TextInputType.number),
               SwitchListTile(
                 title: Text('Только для опта', style: TextStyle(color: Colors.white)),
@@ -606,8 +606,8 @@ class _ShopCatalogAdminPageState extends State<ShopCatalogAdminPage> with Single
                     ],
                   ),
                 ),
-              _dialogField(retailCtrl, 'Цена розница (₽)', keyboard: TextInputType.number),
-              _dialogField(wholesaleCtrl, 'Цена опт (₽)', keyboard: TextInputType.number),
+              _dialogField(retailCtrl, 'Цена розница (руб)', keyboard: TextInputType.number),
+              _dialogField(wholesaleCtrl, 'Цена опт (руб)', keyboard: TextInputType.number),
               _dialogField(pointsCtrl, 'Цена в баллах', keyboard: TextInputType.number),
               SizedBox(height: 8),
               SwitchListTile(

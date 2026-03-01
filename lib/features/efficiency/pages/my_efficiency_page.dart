@@ -216,11 +216,29 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
       // byEmployee is filtered by the user's managed shops, which can exclude
       // records from shops the employee worked at but doesn't manage.
       final lowerEmployeeName = employeeName?.trim().toLowerCase() ?? '';
+      // Нормализуем телефон: оставляем только цифры
+      final normalizedPhone = (roleData?.phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+
+      // Фильтрация: по телефону (надёжнее) с fallback по имени
+      bool isMyRecord(EfficiencyRecord r) {
+        // Приоритет 1: сравнение по телефону (оба не пустые)
+        if (normalizedPhone.isNotEmpty && r.employeePhone.isNotEmpty) {
+          final recordPhone = r.employeePhone.replaceAll(RegExp(r'[^0-9]'), '');
+          if (recordPhone == normalizedPhone) return true;
+        }
+        // Приоритет 2: fallback по имени
+        if (lowerEmployeeName.isNotEmpty && r.employeeName.trim().toLowerCase() == lowerEmployeeName) {
+          return true;
+        }
+        return false;
+      }
+
+      Logger.debug('MyEfficiency: фильтрация по phone=$normalizedPhone, name=$lowerEmployeeName');
+
       EfficiencySummary? mySummary;
-      if (lowerEmployeeName.isNotEmpty) {
-        final myRecords = data.allRecords
-            .where((r) => r.employeeName.trim().toLowerCase() == lowerEmployeeName)
-            .toList();
+      if (lowerEmployeeName.isNotEmpty || normalizedPhone.isNotEmpty) {
+        final myRecords = data.allRecords.where(isMyRecord).toList();
+        Logger.debug('MyEfficiency: найдено ${myRecords.length} записей из ${data.allRecords.length}');
         if (myRecords.isNotEmpty) {
           mySummary = EfficiencySummary.fromRecords(
             entityId: lowerEmployeeName,
@@ -232,10 +250,8 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
 
       // Build previous month summary the same way
       EfficiencySummary? prevSummary;
-      if (lowerEmployeeName.isNotEmpty) {
-        final prevRecords = prevData.allRecords
-            .where((r) => r.employeeName.trim().toLowerCase() == lowerEmployeeName)
-            .toList();
+      if (lowerEmployeeName.isNotEmpty || normalizedPhone.isNotEmpty) {
+        final prevRecords = prevData.allRecords.where(isMyRecord).toList();
         if (prevRecords.isNotEmpty) {
           prevSummary = EfficiencySummary.fromRecords(
             entityId: lowerEmployeeName,

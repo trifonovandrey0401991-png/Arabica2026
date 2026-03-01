@@ -176,7 +176,7 @@ class _WholesaleOrdersPageState extends State<WholesaleOrdersPage>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Активные'),
+                  Flexible(child: Text('Активные', overflow: TextOverflow.ellipsis)),
                   if (_activeOrders.isNotEmpty) ...[
                     SizedBox(width: 6.w),
                     Container(
@@ -198,7 +198,7 @@ class _WholesaleOrdersPageState extends State<WholesaleOrdersPage>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Подтверждённые'),
+                  Flexible(child: Text('Подтверждённые', overflow: TextOverflow.ellipsis)),
                   if (_confirmedOrders.isNotEmpty) ...[
                     SizedBox(width: 6.w),
                     Container(

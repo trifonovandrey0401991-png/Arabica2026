@@ -116,7 +116,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     final prefs = await SharedPreferences.getInstance();
     final shopAddress = prefs.getString('selectedShopAddress');
 
-    // Загружаем магазины для диалога выбора
+    // Загружаем магазины (ShopService кэширует на диск + в память)
     final shops = await ShopService.getShops();
 
     if (mounted) {
@@ -3376,21 +3376,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   // Проверяем выбран ли магазин
                   if (!hasShop) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Row(
-                          children: [
-                            Icon(Icons.warning_amber, color: Colors.white, size: 20),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Text('Выберите магазин для загрузки фото выкладки'),
-                            ),
-                          ],
-                        ),
-                        backgroundColor: _orangeGradient[0],
-                        duration: Duration(seconds: 3),
-                      ),
-                    );
+                    _showShopSelectionDialog();
                     return;
                   }
                   Navigator.pop(context);
@@ -3545,7 +3531,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
     if (!mounted) return;
 
-    final result = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => PhotoTemplatesPage(
@@ -3557,10 +3543,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       ),
     );
 
-    // Если были изменения — обновляем данные
-    if (result == true && mounted) {
-      _loadData();
-    }
+    // Перезагружаем всегда — шаблоны могли быть добавлены
+    if (mounted) _loadData();
   }
 
   /// Сделать фото и открыть экран разметки

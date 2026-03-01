@@ -89,6 +89,31 @@ class RecountAnswer {
     );
   }
 
+  /// Создать ответ "Ввод количества" — когда DBF отключена (>20 мин), без остатков
+  factory RecountAnswer.manualCount({
+    required String question,
+    required int grade,
+    required int quantity,
+    String? photoPath,
+    String? photoUrl,
+    bool photoRequired = false,
+  }) {
+    return RecountAnswer(
+      question: question,
+      grade: grade,
+      answer: 'ввод количества',
+      quantity: quantity,
+      programBalance: null,
+      actualBalance: quantity,
+      difference: null,
+      moreBy: null,
+      lessBy: null,
+      photoPath: photoPath,
+      photoUrl: photoUrl,
+      photoRequired: photoRequired,
+    );
+  }
+
   /// Создать ответ "Не сходится" с указанием расхождения
   factory RecountAnswer.notMatching({
     required String question,

@@ -9,7 +9,7 @@ const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_MENU === 'true';
 
@@ -116,7 +116,7 @@ function setupMenuAPI(app) {
   });
 
   // POST /api/menu - создать позицию меню
-  app.post('/api/menu', requireAuth, async (req, res) => {
+  app.post('/api/menu', requireAdmin, async (req, res) => {
     try {
       const item = req.body;
       console.log('POST /api/menu:', item.name);
@@ -142,7 +142,7 @@ function setupMenuAPI(app) {
   });
 
   // PUT /api/menu/:id - обновить позицию меню
-  app.put('/api/menu/:id', requireAuth, async (req, res) => {
+  app.put('/api/menu/:id', requireAdmin, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       const updates = req.body;
@@ -179,7 +179,7 @@ function setupMenuAPI(app) {
   });
 
   // DELETE /api/menu/:id - удалить позицию меню
-  app.delete('/api/menu/:id', requireAuth, async (req, res) => {
+  app.delete('/api/menu/:id', requireAdmin, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/menu/:id', id);

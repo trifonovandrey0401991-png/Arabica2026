@@ -109,7 +109,9 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
             _radiusController.text = (settings['radiusMeters'] ?? 500).toString();
             _titleController.text = settings['notificationTitle'] ?? 'Arabica рядом!';
             _bodyController.text = settings['notificationBody'] ?? 'Вы рядом с нашей кофейней. Заходите за ароматным кофе!';
-            _cooldownHours = settings['cooldownHours'] ?? 24;
+            final loadedCooldown = settings['cooldownHours'] ?? 24;
+            const allowedCooldowns = [1, 2, 4, 6, 12, 24, 48, 72];
+            _cooldownHours = allowedCooldowns.contains(loadedCooldown) ? loadedCooldown : 24;
           });
         }
       }
@@ -467,7 +469,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                           children: [
                             Icon(Icons.store, size: 20),
                             SizedBox(width: 8),
-                            Text('Магазины'),
+                            Flexible(child: Text('Магазины', overflow: TextOverflow.ellipsis)),
                           ],
                         ),
                       ),
@@ -477,7 +479,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                           children: [
                             Icon(Icons.notifications_active, size: 20),
                             SizedBox(width: 8),
-                            Text('Настройки'),
+                            Flexible(child: Text('Настройки', overflow: TextOverflow.ellipsis)),
                           ],
                         ),
                       ),
@@ -1127,6 +1129,9 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                   contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                 ),
                 items: [
+                  DropdownMenuItem(value: 1, child: Text('1 час')),
+                  DropdownMenuItem(value: 2, child: Text('2 часа')),
+                  DropdownMenuItem(value: 4, child: Text('4 часа')),
                   DropdownMenuItem(value: 6, child: Text('6 часов')),
                   DropdownMenuItem(value: 12, child: Text('12 часов')),
                   DropdownMenuItem(value: 24, child: Text('24 часа')),

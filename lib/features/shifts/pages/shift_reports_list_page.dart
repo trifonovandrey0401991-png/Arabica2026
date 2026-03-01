@@ -498,13 +498,15 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     return _applyFilters(pending);
   }
 
-  /// Отчёты, которые ожидают более 5 часов (не подтверждённые)
+  /// Просроченные отчёты (rejected + ожидающие более 5 часов)
   List<ShiftReport> get _overdueUnconfirmedReports {
     final now = DateTime.now();
     return _allReports.where((r) {
       if (r.isConfirmed) return false;
-      // Исключаем pending/failed/rejected/expired отчёты
-      if (r.status == 'pending' || r.status == 'failed' || r.status == 'rejected' || r.status == 'expired') return false;
+      // rejected-отчёты всегда показываем в «Просроченные»
+      if (r.status == 'rejected') return true;
+      // Исключаем pending/failed/expired отчёты
+      if (r.status == 'pending' || r.status == 'failed' || r.status == 'expired') return false;
       // Исключаем отчёты с пустым именем сотрудника
       if (r.employeeName.isEmpty) return false;
       // Используем submittedAt для подсчёта времени ожидания
@@ -635,10 +637,10 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
               ReportTabButton(
                 isSelected: _tabController.index == 4,
                 onTap: () { _tabController.animateTo(4); if (mounted) setState(() {}); },
-                label: 'Отклонённые',
+                label: 'Просроченные',
                 count: _expiredReports.length + _overdueUnconfirmedReports.length,
-                accentColor: Colors.grey,
-                icon: Icons.cancel,
+                accentColor: Colors.orange.shade700,
+                icon: Icons.timer_off,
               ),
             ],
           ),

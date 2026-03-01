@@ -15,17 +15,22 @@ import '../services/voice_recorder_service.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input_bar.dart';
 import 'group_info_page.dart';
+import 'messenger_shell_page.dart';
 
 class MessengerChatPage extends StatefulWidget {
   final Conversation conversation;
   final String userPhone;
   final String userName;
+  final bool isClient;
+  final Map<String, String> phoneBookNames;
 
   const MessengerChatPage({
     super.key,
     required this.conversation,
     required this.userPhone,
     required this.userName,
+    this.isClient = false,
+    this.phoneBookNames = const {},
   });
 
   @override
@@ -642,7 +647,12 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
   @override
   Widget build(BuildContext context) {
     final isGroup = widget.conversation.type == ConversationType.group;
-    final title = widget.conversation.displayName(widget.userPhone);
+    // Privacy: for clients, replace unknown contact names with "Сотрудник"
+    final rawTitle = widget.conversation.displayName(widget.userPhone);
+    final otherPhone = widget.conversation.otherPhone(widget.userPhone);
+    final title = (otherPhone != null)
+        ? MessengerShellPage.resolveDisplayName(otherPhone, rawTitle, widget.isClient, widget.phoneBookNames)
+        : rawTitle;
 
     return Scaffold(
       backgroundColor: AppColors.night,
@@ -786,6 +796,11 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
                                 message: message,
                                 isMine: isMine,
                                 showSenderName: isGroup && !isMine,
+                                displaySenderName: (!isMine && widget.isClient)
+                                    ? MessengerShellPage.resolveDisplayName(
+                                        message.senderPhone, message.senderName,
+                                        widget.isClient, widget.phoneBookNames)
+                                    : null,
                                 onLongPress: () => _handleLongPress(message),
                                 onPlayVoice: message.type == MessageType.voice
                                     ? () => _handlePlayVoice(message)

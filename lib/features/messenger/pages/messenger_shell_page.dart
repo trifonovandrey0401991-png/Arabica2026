@@ -8,6 +8,7 @@ import '../services/messenger_service.dart';
 import '../../employees/models/user_role_model.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../../core/utils/logger.dart';
+import '../services/messenger_ws_service.dart';
 import 'messenger_list_page.dart';
 
 /// Полноэкранная обёртка мессенджера.
@@ -15,6 +16,19 @@ import 'messenger_list_page.dart';
 /// Загружает phone/name из SharedPreferences, запрашивает доступ к контактам.
 class MessengerShellPage extends StatefulWidget {
   const MessengerShellPage({super.key});
+
+  /// Определяет отображаемое имя с учётом приватности клиента.
+  /// Для клиентов: номер в контактах → имя из книги, иначе → «Сотрудник».
+  /// Для сотрудников/управляющих/разработчиков: всегда серверное имя.
+  static String resolveDisplayName(
+    String phone, String? serverName,
+    bool isClient, Map<String, String> phoneBookNames,
+  ) {
+    if (!isClient) return serverName ?? phone;
+    final bookName = phoneBookNames[phone];
+    if (bookName != null) return bookName;
+    return 'Сотрудник';
+  }
 
   @override
   State<MessengerShellPage> createState() => _MessengerShellPageState();
@@ -28,6 +42,9 @@ class _MessengerShellPageState extends State<MessengerShellPage> {
   // Контакты из телефонной книги, которые зарегистрированы в системе
   List<MessengerContact> _matchedContacts = [];
   bool _contactsGranted = false;
+  bool _isClient = false;
+  // Карта: нормализованный телефон → имя из телефонной книги устройства
+  Map<String, String> _phoneBookNames = {};
 
   @override
   void initState() {
@@ -56,19 +73,25 @@ class _MessengerShellPageState extends State<MessengerShellPage> {
 
     // 2. Проверяем роль пользователя (из кэша — мгновенно)
     bool isDeveloper = false;
+    bool isClient = false;
     if (phone.isNotEmpty) {
       try {
         final roleData = await UserRoleService.loadUserRole();
         isDeveloper = roleData?.role == UserRole.developer;
-      } catch (_) {}
+        isClient = roleData?.role == UserRole.client;
+      } catch (e) { Logger.error('Messenger: role load error', e); }
     }
 
     if (!mounted) return;
     setState(() {
       _userPhone = phone;
       _userName = displayName;
+      _isClient = isClient;
       _isLoading = false;
     });
+
+    // Сообщаем WS-сервису роль для фильтрации уведомлений
+    MessengerWsService.isClientUser = isClient;
 
     // 3. Разработчик видит всех — пропускаем фильтрацию по контактам
     if (isDeveloper) return;
@@ -100,19 +123,22 @@ class _MessengerShellPageState extends State<MessengerShellPage> {
     // Читаем контакты телефона
     final deviceContacts = await FlutterContacts.getContacts(withProperties: true);
     final phones = <String>[];
-    // Карта: нормализованный номер → имя из телефонной книги
-    final phoneBookNames = <String, String>{};
+    final bookNames = <String, String>{};
     for (final c in deviceContacts) {
       for (final p in c.phones) {
         final normalized = _normalizePhone(p.number);
         if (normalized != null) {
           phones.add(normalized);
-          if (c.displayName.isNotEmpty && !phoneBookNames.containsKey(normalized)) {
-            phoneBookNames[normalized] = c.displayName;
+          if (c.displayName.isNotEmpty && !bookNames.containsKey(normalized)) {
+            bookNames[normalized] = c.displayName;
           }
         }
       }
     }
+
+    // Сохраняем телефонную книгу для фильтрации имён
+    if (mounted) setState(() => _phoneBookNames = bookNames);
+    MessengerWsService.phoneBookPhones = bookNames.keys.toSet();
 
     if (phones.isEmpty) return;
 
@@ -125,7 +151,7 @@ class _MessengerShellPageState extends State<MessengerShellPage> {
           _matchedContacts = matched
               .where((c) => c.phone != myPhone)
               .map((c) {
-                final bookName = phoneBookNames[c.phone];
+                final bookName = bookNames[c.phone];
                 if (bookName != null && bookName.isNotEmpty) {
                   return MessengerContact(phone: c.phone, name: bookName, userType: c.userType);
                 }
@@ -277,6 +303,8 @@ class _MessengerShellPageState extends State<MessengerShellPage> {
       userName: _userName ?? _userPhone!,
       matchedContacts: _matchedContacts,
       contactsGranted: _contactsGranted,
+      isClient: _isClient,
+      phoneBookNames: _phoneBookNames,
     );
   }
 }

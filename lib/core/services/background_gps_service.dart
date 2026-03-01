@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import '../constants/api_constants.dart';
+import '../constants/prefs_keys.dart';
 import '../utils/logger.dart';
 
 /// Название задачи для WorkManager
@@ -119,6 +120,9 @@ class BackgroundGpsService {
 
       Logger.debug('[BackgroundGPS] GPS: ${position.latitude}, ${position.longitude}');
 
+      // Загружаем session token из SharedPreferences (static-переменные недоступны в фоновом изоляте)
+      final sessionToken = prefs.getString(PrefsKeys.sessionToken);
+
       // Отправляем на сервер для проверки всех условий:
       // - Ближайший магазин (< 750м)
       // - Расписание сотрудника на сегодня
@@ -127,7 +131,10 @@ class BackgroundGpsService {
       // - Кэш уведомлений (не спамить)
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/attendance/gps-check'),
-        headers: ApiConstants.headersWithApiKey,
+        headers: {
+          ...ApiConstants.apiKeyHeaders,
+          if (sessionToken != null) 'Authorization': 'Bearer $sessionToken',
+        },
         body: jsonEncode({
           'lat': position.latitude,
           'lng': position.longitude,
@@ -211,11 +218,17 @@ class BackgroundGpsService {
 
       Logger.debug('[Geofence] GPS: ${position.latitude}, ${position.longitude}');
 
+      // Загружаем session token из SharedPreferences (static-переменные недоступны в фоновом изоляте)
+      final sessionToken = prefs.getString(PrefsKeys.sessionToken);
+
       // Отправляем на сервер для проверки геозоны
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/geofence/client-check'),
-        headers: ApiConstants.headersWithApiKey,
+        headers: {
+          ...ApiConstants.apiKeyHeaders,
+          if (sessionToken != null) 'Authorization': 'Bearer $sessionToken',
+        },
         body: jsonEncode({
           'clientPhone': normalizedPhone,
           'latitude': position.latitude,

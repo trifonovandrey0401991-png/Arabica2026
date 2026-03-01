@@ -301,6 +301,39 @@ function setupAiDashboardAPI(app) {
     res.json({ success: true, started: true, state: _recountTrainState });
   });
 
+  // GET /api/ai-dashboard/ai-toggles — получить состояние переключателей ИИ
+  app.get('/api/ai-dashboard/ai-toggles', requireAuth, async (req, res) => {
+    try {
+      const row = await db.findById('app_settings', 'ai_toggles', 'key');
+      const defaults = { zReport: true, coffeeMachine: true, cigaretteVision: true, shiftAi: true };
+      const toggles = row?.data || defaults;
+      res.json({ success: true, toggles: { ...defaults, ...toggles } });
+    } catch (error) {
+      console.error('[AI Dashboard] AI toggles GET error:', error.message);
+      res.json({ success: true, toggles: { zReport: true, coffeeMachine: true, cigaretteVision: true, shiftAi: true } });
+    }
+  });
+
+  // PUT /api/ai-dashboard/ai-toggles — обновить переключатели ИИ
+  app.put('/api/ai-dashboard/ai-toggles', requireAuth, async (req, res) => {
+    try {
+      const { toggles } = req.body;
+      if (!toggles || typeof toggles !== 'object') {
+        return res.status(400).json({ success: false, error: 'toggles object required' });
+      }
+      // Merge with defaults
+      const row = await db.findById('app_settings', 'ai_toggles', 'key');
+      const current = row?.data || {};
+      const updated = { ...current, ...toggles };
+      await db.upsert('app_settings', { key: 'ai_toggles', data: updated }, 'key');
+      console.log(`[AI Dashboard] AI toggles updated:`, updated);
+      res.json({ success: true, toggles: updated });
+    } catch (error) {
+      console.error('[AI Dashboard] AI toggles PUT error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   console.log('[AI Dashboard] Инициализация завершена');
 }
 

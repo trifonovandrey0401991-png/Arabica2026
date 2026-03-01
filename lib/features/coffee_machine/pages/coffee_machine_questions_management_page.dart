@@ -11,6 +11,7 @@ import '../../shops/services/shop_service.dart';
 import 'coffee_machine_training_photos_page.dart';
 import 'coffee_machine_shop_photos_page.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Управление счётчиком кофемашин: шаблоны, привязки, обучающие фото
@@ -78,7 +79,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
         final byMachine = data['byMachine'] as Map<String, dynamic>? ?? {};
         return byMachine.map((k, v) => MapEntry(k, (v as num).toInt()));
       }
-    } catch (_) {}
+    } catch (e) { Logger.error('Coffee machine stats load error', e); }
     return {};
   }
 
@@ -90,7 +91,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
         final data = jsonDecode(response.body);
         return (data['intelligence'] as Map<String, dynamic>?) ?? {};
       }
-    } catch (_) {}
+    } catch (e) { Logger.error('Coffee machine intelligence load error', e); }
     return {};
   }
 

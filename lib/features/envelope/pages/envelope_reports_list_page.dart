@@ -176,9 +176,9 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
     return _filteredReports.where((r) => r.status == 'confirmed').toList();
   }
 
-  // Вкладка 5: Отклонены (просроченные)
+  // Вкладка 5: Просроченные (expired или rejected)
   List<EnvelopeReport> get _rejectedReports {
-    return _filteredReports.where((r) => r.isExpired).toList();
+    return _filteredReports.where((r) => r.isExpired || r.status == 'rejected').toList();
   }
 
   List<String> get _uniqueShops {
@@ -289,7 +289,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                               _tabController.animateTo(i);
                               if (mounted) setState(() {});
                             },
-                            label: ['', '', '', 'Подтверждены', 'Отклонены'][i],
+                            label: ['', '', '', 'Подтверждены', 'Просроченные'][i],
                             count: [0, 0, 0, _confirmedReports.length, _rejectedReports.length][i],
                             accentColor: AppColors.gold,
                           ),
@@ -332,7 +332,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
                           _buildPendingReportsList(_notSubmittedReports, 'Просроченных отчетов нет'),
                           _buildReportsList(_awaitingReports, 'Ожидающих отчетов нет'),
                           _buildReportsList(_confirmedReports, 'Подтвержденных отчетов нет'),
-                          _buildReportsList(_rejectedReports, 'Отклоненных отчетов нет'),
+                          _buildReportsList(_rejectedReports, 'Просроченных отчетов нет'),
                         ],
                       ),
               ),

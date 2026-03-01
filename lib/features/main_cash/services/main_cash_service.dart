@@ -3,6 +3,7 @@ import 'withdrawal_service.dart';
 import '../../envelope/services/envelope_report_service.dart';
 import '../../shops/services/shop_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/base_http_service.dart';
 
 class MainCashService {
   /// Получить балансы всех магазинов
@@ -97,11 +98,23 @@ class MainCashService {
         }
       }
 
-      // Сортируем по адресу
-      balances.sort((a, b) => a.shopAddress.compareTo(b.shopAddress));
+      // Apply corrections
+      final corrected = <ShopCashBalance>[];
+      for (final b in balances) {
+        try {
+          final correction = await getCashCorrection(b.shopAddress);
+          final hasCorrection = correction.values.any((v) => v != 0);
+          corrected.add(hasCorrection ? _applyCorrection(b, correction) : b);
+        } catch (_) {
+          corrected.add(b);
+        }
+      }
 
-      Logger.debug('Сформировано балансов: ${balances.length}');
-      return balances;
+      // Сортируем по адресу
+      corrected.sort((a, b) => a.shopAddress.compareTo(b.shopAddress));
+
+      Logger.debug('Сформировано балансов: ${corrected.length}');
+      return corrected;
     } catch (e) {
       Logger.error('Ошибка загрузки балансов магазинов', e);
       return [];
@@ -167,7 +180,7 @@ class MainCashService {
         }
       }
 
-      return ShopCashBalance(
+      var balance = ShopCashBalance(
         shopAddress: shopAddress,
         oooBalance: oooIncome + oooDeposits - oooWithdrawals,
         ipBalance: ipIncome + ipDeposits - ipWithdrawals,
@@ -176,10 +189,84 @@ class MainCashService {
         oooTotalWithdrawals: oooWithdrawals,
         ipTotalWithdrawals: ipWithdrawals,
       );
+
+      // Apply corrections if any
+      try {
+        final correction = await getCashCorrection(shopAddress);
+        final hasCorrection = correction.values.any((v) => v != 0);
+        if (hasCorrection) {
+          balance = _applyCorrection(balance, correction);
+          Logger.debug('Применена корректировка к балансу: $shopAddress');
+        }
+      } catch (e) {
+        // Ignore correction errors — show uncorrected balance
+      }
+
+      return balance;
     } catch (e) {
       Logger.error('Ошибка загрузки баланса магазина', e);
       return null;
     }
+  }
+
+  /// Загрузить корректировку для магазина
+  static Future<Map<String, double>> getCashCorrection(String shopAddress) async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '/api/main-cash/correction',
+        queryParams: {'shopAddress': shopAddress},
+      );
+      if (result != null && result['correction'] != null) {
+        final c = result['correction'] as Map<String, dynamic>;
+        return {
+          'oooIncomeDelta': (c['oooIncomeDelta'] as num?)?.toDouble() ?? 0,
+          'ipIncomeDelta': (c['ipIncomeDelta'] as num?)?.toDouble() ?? 0,
+          'oooWithdrawalsDelta': (c['oooWithdrawalsDelta'] as num?)?.toDouble() ?? 0,
+          'ipWithdrawalsDelta': (c['ipWithdrawalsDelta'] as num?)?.toDouble() ?? 0,
+        };
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки корректировки кассы', e);
+    }
+    return {'oooIncomeDelta': 0.0, 'ipIncomeDelta': 0.0, 'oooWithdrawalsDelta': 0.0, 'ipWithdrawalsDelta': 0.0};
+  }
+
+  /// Сохранить корректировку для магазина
+  static Future<bool> saveCashCorrection(String shopAddress, Map<String, double> deltas) async {
+    try {
+      final result = await BaseHttpService.postRaw(
+        endpoint: '/api/main-cash/correction',
+        body: {
+          'shopAddress': shopAddress,
+          'oooIncomeDelta': deltas['oooIncomeDelta'] ?? 0,
+          'ipIncomeDelta': deltas['ipIncomeDelta'] ?? 0,
+          'oooWithdrawalsDelta': deltas['oooWithdrawalsDelta'] ?? 0,
+          'ipWithdrawalsDelta': deltas['ipWithdrawalsDelta'] ?? 0,
+        },
+      );
+      return result != null;
+    } catch (e) {
+      Logger.error('Ошибка сохранения корректировки кассы', e);
+      return false;
+    }
+  }
+
+  /// Применить корректировку к балансу
+  static ShopCashBalance _applyCorrection(ShopCashBalance balance, Map<String, double> correction) {
+    final oooIncome = balance.oooTotalIncome + (correction['oooIncomeDelta'] ?? 0);
+    final ipIncome = balance.ipTotalIncome + (correction['ipIncomeDelta'] ?? 0);
+    final oooWithdrawals = balance.oooTotalWithdrawals + (correction['oooWithdrawalsDelta'] ?? 0);
+    final ipWithdrawals = balance.ipTotalWithdrawals + (correction['ipWithdrawalsDelta'] ?? 0);
+
+    return ShopCashBalance(
+      shopAddress: balance.shopAddress,
+      oooBalance: oooIncome - oooWithdrawals,
+      ipBalance: ipIncome - ipWithdrawals,
+      oooTotalIncome: oooIncome,
+      ipTotalIncome: ipIncome,
+      oooTotalWithdrawals: oooWithdrawals,
+      ipTotalWithdrawals: ipWithdrawals,
+    );
   }
 
   /// Получить список всех уникальных адресов магазинов из отчетов

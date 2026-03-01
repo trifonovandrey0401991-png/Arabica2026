@@ -12,7 +12,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
-const { getMoscowDateString } = require('../utils/moscow_time');
+const { getMoscowTime, getMoscowDateString } = require('../utils/moscow_time');
 const { requireAuth } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -214,8 +214,8 @@ async function calculateLateMinutes(timestamp, shiftType, shopSettings) {
 // Создать штраф за опоздание
 async function createLatePenalty(employeeName, shopAddress, lateMinutes, shiftType) {
   try {
-    const now = new Date();
-    const monthKey = now.toISOString().slice(0, 7); // YYYY-MM
+    const now = getMoscowTime();
+    const monthKey = now.toISOString().slice(0, 7); // YYYY-MM (московское время)
 
     // Загружаем настройки баллов
     const pointsSettings = await loadAttendancePointsSettings();
@@ -270,8 +270,8 @@ async function createLatePenalty(employeeName, shopAddress, lateMinutes, shiftTy
 // Создать бонус за своевременный приход
 async function createOnTimeBonus(employeeName, shopAddress, shiftType) {
   try {
-    const now = new Date();
-    const monthKey = now.toISOString().slice(0, 7); // YYYY-MM
+    const now = getMoscowTime();
+    const monthKey = now.toISOString().slice(0, 7); // YYYY-MM (московское время)
 
     // Загружаем настройки баллов
     const pointsSettings = await loadAttendancePointsSettings();

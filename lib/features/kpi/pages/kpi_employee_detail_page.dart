@@ -175,49 +175,18 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
                               subtitle: shopDay.formattedAttendanceTime != null
                                   ? Text('Приход: ${shopDay.formattedAttendanceTime}')
                                   : Text('Приход: не отмечен'),
-                              trailing: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                              trailing: Wrap(
+                                spacing: 4,
+                                runSpacing: 4,
                                 children: [
-                                  // Приход - часы
-                                  _buildIndicator(
-                                    Icons.access_time,
-                                    shopDay.attendanceTime != null,
-                                  ),
-                                  SizedBox(width: 8),
-                                  // Пересменка - рукопожатие
-                                  _buildIndicator(
-                                    Icons.handshake,
-                                    shopDay.hasShift,
-                                  ),
-                                  SizedBox(width: 8),
-                                  // Пересчет - калькулятор
-                                  _buildIndicator(
-                                    Icons.calculate,
-                                    shopDay.hasRecount,
-                                  ),
-                                  SizedBox(width: 8),
-                                  // РКО - документ
-                                  _buildIndicator(
-                                    Icons.description,
-                                    shopDay.hasRKO,
-                                  ),
-                                  SizedBox(width: 8),
-                                  // Конверт - письмо
-                                  _buildIndicator(
-                                    Icons.mail,
-                                    shopDay.hasEnvelope,
-                                  ),
-                                  SizedBox(width: 8),
-                                  // Сдача смены - деньги
-                                  _buildIndicator(
-                                    Icons.payments,
-                                    shopDay.hasShiftHandover,
-                                  ),
+                                  _buildIndicator(Icons.access_time, shopDay.attendanceTime != null),
+                                  _buildIndicator(Icons.handshake, shopDay.hasShift),
+                                  _buildIndicator(Icons.calculate, shopDay.hasRecount),
+                                  _buildIndicator(Icons.description, shopDay.hasRKO),
+                                  _buildIndicator(Icons.mail, shopDay.hasEnvelope),
+                                  _buildIndicator(Icons.payments, shopDay.hasShiftHandover),
                                 ],
                               ),
-                                ),
                             ),
                           );
                         },

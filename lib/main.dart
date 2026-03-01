@@ -22,6 +22,7 @@ import 'core/utils/logger.dart';
 import 'features/clients/services/registration_service.dart';
 import 'core/services/app_update_service.dart';
 import 'core/services/base_http_service.dart';
+import 'features/onboarding/pages/permission_onboarding_page.dart';
 
 // Условный импорт Firebase (для веб используется заглушка)
 import 'core/services/firebase_service.dart' if (dart.library.html) 'core/services/firebase_service_stub.dart';
@@ -160,7 +161,19 @@ class ArabicaApp extends StatelessWidget {
                       builder: (context) {
                         NotificationService.setGlobalContext(context);
                         FirebaseService.setGlobalContext(context);
-                        return const MainMenuPage();
+                        return PermissionOnboardingPage(
+                          onComplete: () {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (ctx) {
+                                  NotificationService.setGlobalContext(ctx);
+                                  FirebaseService.setGlobalContext(ctx);
+                                  return const MainMenuPage();
+                                },
+                              ),
+                            );
+                          },
+                        );
                       },
                     ),
               },
@@ -283,17 +296,7 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
             // Пользователь зарегистрирован, переходим в приложение
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => Builder(
-                      builder: (context) {
-                        NotificationService.setGlobalContext(context);
-                        FirebaseService.setGlobalContext(context);
-                        return const MainMenuPage();
-                      },
-                    ),
-                  ),
-                );
+                _navigateToApp();
               }
             });
           }
@@ -324,6 +327,33 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
         });
       }
     }
+  }
+
+  /// Navigate to app through permission onboarding
+  void _navigateToApp() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => Builder(
+          builder: (context) {
+            NotificationService.setGlobalContext(context);
+            FirebaseService.setGlobalContext(context);
+            return PermissionOnboardingPage(
+              onComplete: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (ctx) {
+                      NotificationService.setGlobalContext(ctx);
+                      FirebaseService.setGlobalContext(ctx);
+                      return const MainMenuPage();
+                    },
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
   }
 
   /// Проверка роли пользователя
@@ -361,17 +391,7 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
         showLogout: true,
         onSuccess: () {
           // После создания PIN переходим в приложение
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => Builder(
-                builder: (context) {
-                  NotificationService.setGlobalContext(context);
-                  FirebaseService.setGlobalContext(context);
-                  return const MainMenuPage();
-                },
-              ),
-            ),
-          );
+          _navigateToApp();
         },
       );
     }
@@ -381,17 +401,7 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
       return PinEntryPage(
         onSuccess: () {
           // После успешного ввода PIN переходим в приложение
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => Builder(
-                builder: (context) {
-                  NotificationService.setGlobalContext(context);
-                  FirebaseService.setGlobalContext(context);
-                  return const MainMenuPage();
-                },
-              ),
-            ),
-          );
+          _navigateToApp();
         },
       );
     }
@@ -415,7 +425,19 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
             AppUpdateService.checkForUpdate(context);
           });
 
-          return const MainMenuPage();
+          return PermissionOnboardingPage(
+            onComplete: () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (ctx) {
+                    NotificationService.setGlobalContext(ctx);
+                    FirebaseService.setGlobalContext(ctx);
+                    return const MainMenuPage();
+                  },
+                ),
+              );
+            },
+          );
         },
       );
     }

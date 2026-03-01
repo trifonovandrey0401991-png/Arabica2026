@@ -914,7 +914,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                 children: [
                   Icon(Icons.inventory_2_outlined, size: 20),
                   SizedBox(width: 8),
-                  Text('Товары'),
+                  Flexible(child: Text('Товары', overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),
@@ -924,7 +924,7 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
                 children: [
                   Icon(Icons.bar_chart_rounded, size: 20),
                   SizedBox(width: 8),
-                  Text('Баллы'),
+                  Flexible(child: Text('Баллы', overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),

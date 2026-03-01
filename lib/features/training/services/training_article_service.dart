@@ -11,15 +11,34 @@ import '../../../core/utils/logger.dart';
 class TrainingArticleService {
   static const String baseEndpoint = ApiConstants.trainingArticlesEndpoint;
 
-  /// Получить все статьи
-  static Future<List<TrainingArticle>> getArticles() async {
-    Logger.debug('📥 Загрузка статей обучения с сервера...');
+  // In-memory cache
+  static List<TrainingArticle>? _cachedArticles;
+  static DateTime? _cacheTime;
+  static const _cacheDuration = Duration(minutes: 5);
 
-    return await BaseHttpService.getList<TrainingArticle>(
+  /// Получить все статьи (с кэшем)
+  static Future<List<TrainingArticle>> getArticles() async {
+    if (_cachedArticles != null && _cacheTime != null &&
+        DateTime.now().difference(_cacheTime!) < _cacheDuration) {
+      Logger.debug('📦 Статьи обучения из кэша: ${_cachedArticles!.length}');
+      return _cachedArticles!;
+    }
+
+    Logger.debug('📥 Загрузка статей обучения с сервера...');
+    final articles = await BaseHttpService.getList<TrainingArticle>(
       endpoint: baseEndpoint,
       fromJson: (json) => TrainingArticle.fromJson(json),
       listKey: 'articles',
     );
+    _cachedArticles = articles;
+    _cacheTime = DateTime.now();
+    return articles;
+  }
+
+  /// Сбросить кэш статей
+  static void invalidateCache() {
+    _cachedArticles = null;
+    _cacheTime = null;
   }
 
   /// Создать новую статью
@@ -50,12 +69,14 @@ class TrainingArticleService {
       body['visibility'] = visibility;
     }
 
-    return await BaseHttpService.post<TrainingArticle>(
+    final result = await BaseHttpService.post<TrainingArticle>(
       endpoint: baseEndpoint,
       body: body,
       fromJson: (json) => TrainingArticle.fromJson(json),
       itemKey: 'article',
     );
+    if (result != null) invalidateCache();
+    return result;
   }
 
   /// Обновить статью
@@ -80,21 +101,25 @@ class TrainingArticleService {
     }
     if (visibility != null) body['visibility'] = visibility;
 
-    return await BaseHttpService.put<TrainingArticle>(
+    final result = await BaseHttpService.put<TrainingArticle>(
       endpoint: '$baseEndpoint/$id',
       body: body,
       fromJson: (json) => TrainingArticle.fromJson(json),
       itemKey: 'article',
     );
+    if (result != null) invalidateCache();
+    return result;
   }
 
   /// Удалить статью
   static Future<bool> deleteArticle(String id) async {
     Logger.debug('📤 Удаление статьи обучения: $id');
 
-    return await BaseHttpService.delete(
+    final result = await BaseHttpService.delete(
       endpoint: '$baseEndpoint/$id',
     );
+    if (result) invalidateCache();
+    return result;
   }
 
   /// Загрузить изображение для статьи

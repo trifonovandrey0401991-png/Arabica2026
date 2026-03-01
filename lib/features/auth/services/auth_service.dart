@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/api_constants.dart';
+import '../../../core/constants/prefs_keys.dart';
 import '../models/auth_session.dart';
 import '../models/auth_credentials.dart';
 import 'secure_storage_service.dart';
@@ -56,6 +59,7 @@ class AuthService {
     final session = await _storage.getSession();
     if (session != null && !session.isExpired) {
       ApiConstants.sessionToken = session.sessionToken;
+      await _saveSessionTokenToPrefs(session.sessionToken);
     }
   }
 
@@ -162,6 +166,7 @@ class AuthService {
 
         // Устанавливаем session token для всех API запросов
         ApiConstants.sessionToken = session.sessionToken;
+        await _saveSessionTokenToPrefs(session.sessionToken);
 
         // Создаём локальные credentials для офлайн-входа
         // (сервер больше не возвращает pinHash/salt — безопаснее)
@@ -217,6 +222,7 @@ class AuthService {
 
         // Устанавливаем session token для всех API запросов
         ApiConstants.sessionToken = session.sessionToken;
+        await _saveSessionTokenToPrefs(session.sessionToken);
 
         // Сохраняем credentials локально
         final credentials = AuthCredentials(
@@ -288,6 +294,7 @@ class AuthService {
 
         // Устанавливаем session token для всех API запросов
         ApiConstants.sessionToken = session.sessionToken;
+        await _saveSessionTokenToPrefs(session.sessionToken);
 
         // Создаём локальные credentials для будущего офлайн-входа
         // Используем тот же PIN для создания локального хеша
@@ -362,6 +369,7 @@ class AuthService {
 
     // Устанавливаем session token для всех API запросов
     ApiConstants.sessionToken = session.sessionToken;
+    unawaited(_saveSessionTokenToPrefs(session.sessionToken));
 
     // Обновляем lastActivity на сервере (асинхронно)
     _refreshSessionOnServer(session.sessionToken);
@@ -398,6 +406,7 @@ class AuthService {
 
     // Устанавливаем session token для всех API запросов
     ApiConstants.sessionToken = session.sessionToken;
+    unawaited(_saveSessionTokenToPrefs(session.sessionToken));
 
     // Обновляем lastActivity на сервере (асинхронно, как и в loginWithPin)
     _refreshSessionOnServer(session.sessionToken);
@@ -472,6 +481,7 @@ class AuthService {
 
     // Очищаем session token
     ApiConstants.sessionToken = null;
+    await _saveSessionTokenToPrefs(null);
 
     // Очищаем локальные данные
     await _storage.clearSession();
@@ -577,6 +587,7 @@ class AuthService {
 
         // Устанавливаем session token для всех API запросов
         ApiConstants.sessionToken = session.sessionToken;
+        await _saveSessionTokenToPrefs(session.sessionToken);
 
         return AuthResult.success(session: session, message: 'PIN-код успешно сброшен');
       } else {
@@ -645,6 +656,18 @@ class AuthService {
       ).timeout(ApiConstants.shortTimeout);
     } catch (_) {
       // Игнорируем ошибки обновления
+    }
+  }
+
+  /// Сохраняет session token в SharedPreferences для фоновых задач WorkManager.
+  /// WorkManager запускается в отдельном Dart-изоляте, где static-переменные
+  /// ApiConstants._sessionToken = null. SharedPreferences доступны из любого изолята.
+  Future<void> _saveSessionTokenToPrefs(String? token) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (token != null) {
+      await prefs.setString(PrefsKeys.sessionToken, token);
+    } else {
+      await prefs.remove(PrefsKeys.sessionToken);
     }
   }
 

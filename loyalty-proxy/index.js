@@ -109,6 +109,7 @@ const { setupExecutionChainAPI } = require("./api/execution_chain_api");
 const { setupShopsAPI } = require('./api/shops_api');
 const { setupMenuAPI } = require('./api/menu_api');
 const { setupLoyaltyPromoAPI } = require('./api/loyalty_promo_api');
+const { setupStoreLinksAPI } = require('./api/store_links_api');
 const { setupLoyaltyWalletAPI } = require('./api/loyalty_wallet_api');
 const { setupShopCatalogAPI } = require('./api/shop_catalog_api');
 const { setupShopSettingsAPI } = require('./api/shop_settings_api');
@@ -394,6 +395,9 @@ if (rateLimit) {
 
 // Статические файлы для редактора координат
 app.use('/static', express.static(`${DATA_DIR}/html`));
+
+// Privacy policy page (for Google Play / App Store)
+app.use('/privacy-policy', express.static(path.join(__dirname, 'public', 'privacy-policy.html')));
 
 // ============================================
 // SECURITY: File Type Validation для всех uploads
@@ -879,6 +883,7 @@ setupExecutionChainAPI(app);
 setupShopsAPI(app);
 setupMenuAPI(app);
 setupLoyaltyPromoAPI(app, { loadAllEmployeesForWithdrawals });
+setupStoreLinksAPI(app);
 setupLoyaltyWalletAPI(app);
 setupShopCatalogAPI(app);
 setupShopSettingsAPI(app);
@@ -1051,6 +1056,14 @@ app.post("/api/app-version", async (req, res) => {
   } catch (e) {
     console.error("Ошибка сохранения версии:", e);
     return res.status(500).json({ error: "Ошибка сохранения версии" });
+  }
+});
+
+// Global error handler — prevents stack trace leaks to clients
+app.use((err, req, res, _next) => {
+  console.error(`[GLOBAL ERROR] ${req.method} ${req.originalUrl}:`, err.message || err);
+  if (!res.headersSent) {
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

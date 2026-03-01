@@ -29,6 +29,7 @@ import '../../features/ai_training/pages/pending_codes_page.dart';
 import '../../features/tests/pages/test_notifications_page.dart';
 import '../../app/pages/reports_page.dart';
 import '../../features/efficiency/pages/my_efficiency_page.dart';
+import '../../features/shops/pages/shops_on_map_page.dart';
 import '../../features/employee_chat/pages/employee_chats_list_page.dart';
 import '../../features/employees/services/user_role_service.dart';
 import '../../features/messenger/services/messenger_service.dart';
@@ -1046,6 +1047,16 @@ class FirebaseService {
       if (conversationId != null && conversationId.isNotEmpty) {
         _openMessengerConversation(conversationId);
       }
+      return;
+    }
+
+    // Геозона: клиент рядом с магазином → открываем карту кофеен
+    if (type == 'geofence') {
+      navigatorKey.currentState!.push(
+        MaterialPageRoute(
+          builder: (context) => const ShopsOnMapPage(),
+        ),
+      );
       return;
     }
 

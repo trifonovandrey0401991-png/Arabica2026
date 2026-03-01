@@ -223,6 +223,15 @@ class CartProvider with ChangeNotifier {
     }
     return scope.cart;
   }
+
+  /// Получить провайдер без регистрации зависимости (для event handlers)
+  static CartProvider read(BuildContext context) {
+    final element = context.getElementForInheritedWidgetOfExactType<_CartProviderScope>();
+    if (element == null) {
+      throw Exception('CartProvider not found in widget tree');
+    }
+    return (element.widget as _CartProviderScope).cart;
+  }
 }
 
 /// Обертка для провайдера корзины
@@ -236,8 +245,9 @@ class _CartProviderScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(_CartProviderScope oldWidget) {
-    // Same instance, but content changed — always notify dependents
-    return true;
+    // Only notify when the provider instance itself changes.
+    // Leaf widgets use ListenableBuilder to react to data changes.
+    return cart != oldWidget.cart;
   }
 }
 
@@ -255,19 +265,7 @@ class _CartProviderScopeState extends State<CartProviderScope> {
   final CartProvider _cart = CartProvider();
 
   @override
-  void initState() {
-    super.initState();
-    // Rebuild InheritedWidget when cart notifies (e.g. item added/removed)
-    _cart.addListener(_onCartChanged);
-  }
-
-  void _onCartChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
   void dispose() {
-    _cart.removeListener(_onCartChanged);
     _cart.dispose();
     super.dispose();
   }

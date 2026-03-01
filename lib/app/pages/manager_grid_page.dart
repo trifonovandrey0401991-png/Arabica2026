@@ -75,6 +75,7 @@ import '../../features/orders/services/order_service.dart';
 import '../../features/rating/services/rating_service.dart';
 import '../../features/rating/models/employee_rating_model.dart';
 import '../../features/employees/pages/employees_page.dart';
+import '../../features/efficiency/models/efficiency_data_model.dart';
 import '../../features/efficiency/services/efficiency_data_service.dart';
 import '../../features/efficiency/services/manager_efficiency_service.dart';
 
@@ -184,10 +185,10 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
       try {
         final role = await UserRoleService.loadUserRole();
         final isManager = role?.role == UserRole.admin;
+        final prefs = await SharedPreferences.getInstance();
+        final phone = prefs.getString('user_phone') ?? '';
 
         if (isManager) {
-          final prefs = await SharedPreferences.getInstance();
-          final phone = prefs.getString('user_phone') ?? '';
           if (phone.isNotEmpty) {
             final month = ManagerEfficiencyService.getCurrentMonth();
             final data = await ManagerEfficiencyService.getManagerEfficiency(
@@ -204,13 +205,29 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
         } else {
           final employeeName = await EmployeesPage.getCurrentEmployeeName();
           if (employeeName != null && employeeName.isNotEmpty) {
+            final normalizedPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+            final lowerName = employeeName.trim().toLowerCase();
             final now = DateTime.now();
             final data = await EfficiencyDataService.loadMonthData(now.year, now.month);
-            final summary = data.byEmployee.firstWhere(
-              (s) => s.entityName == employeeName,
-              orElse: () => throw StateError('Not found'),
-            );
-            if (mounted) setState(() => _efficiencyPoints = summary.totalPoints);
+            // Фильтруем по телефону (надёжнее) с fallback по имени
+            final myRecords = data.allRecords.where((r) {
+              if (normalizedPhone.isNotEmpty && r.employeePhone.isNotEmpty) {
+                final recordPhone = r.employeePhone.replaceAll(RegExp(r'[^0-9]'), '');
+                if (recordPhone == normalizedPhone) return true;
+              }
+              if (lowerName.isNotEmpty && r.employeeName.trim().toLowerCase() == lowerName) {
+                return true;
+              }
+              return false;
+            }).toList();
+            if (myRecords.isNotEmpty && mounted) {
+              final mySummary = EfficiencySummary.fromRecords(
+                entityId: lowerName,
+                entityName: employeeName,
+                records: myRecords,
+              );
+              setState(() => _efficiencyPoints = mySummary.totalPoints);
+            }
           }
         }
       } catch (e) {
@@ -399,7 +416,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
           all.map((w) => w as Map<String, dynamic>).toList(),
           (w) => w['shopAddress']?.toString() ?? '',
         );
-        final count = filtered.where((w) => w['confirmed'] != true).length;
+        final count = filtered.where((w) => w['confirmed'] != true && w['status'] != 'cancelled').length;
         if (mounted) setState(() => _withdrawalsCount = count);
       }
     } catch (e) { Logger.error('Ошибка загрузки счётчика выемок', e); }
@@ -479,7 +496,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
               final reports = await ShiftReportService.getReportsForCurrentUser();
               count += reports.where((r) => r.status == 'review').length;
             }
-          } catch (_) {}
+          } catch (e) { Logger.error('Badge: shift reports error', e); }
         }(),
         // Отчёты пересчёта (review) — admin only
         () async {
@@ -489,7 +506,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
               final reports = await RecountService.getReportsForCurrentUser();
               count += reports.where((r) => r.status == 'review').length;
             }
-          } catch (_) {}
+          } catch (e) { Logger.error('Badge: recount reports error', e); }
         }(),
         // Конверты (pending) — admin only
         () async {
@@ -499,7 +516,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
               final reports = await EnvelopeReportService.getReportsForCurrentUser();
               count += reports.where((r) => r.status == 'pending').length;
             }
-          } catch (_) {}
+          } catch (e) { Logger.error('Badge: envelope reports error', e); }
         }(),
         // Счётчики кофемашин (pending) — admin only
         () async {
@@ -509,7 +526,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
               final reports = await CoffeeMachineReportService.getReportsForCurrentUser();
               count += reports.where((r) => r.status == 'pending').length;
             }
-          } catch (_) {}
+          } catch (e) { Logger.error('Badge: coffee machine reports error', e); }
         }(),
       ]);
 

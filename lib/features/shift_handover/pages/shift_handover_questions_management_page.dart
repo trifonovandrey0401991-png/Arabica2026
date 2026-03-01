@@ -437,7 +437,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                 children: [
                   Icon(Icons.assignment_turned_in_outlined, size: 20),
                   SizedBox(width: 8),
-                  Text('Сдача смены'),
+                  Flexible(child: Text('Сдача смены', overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),
@@ -447,7 +447,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                 children: [
                   Icon(Icons.mail_outline_rounded, size: 20),
                   SizedBox(width: 8),
-                  Text('Конверт'),
+                  Flexible(child: Text('Конверт', overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),

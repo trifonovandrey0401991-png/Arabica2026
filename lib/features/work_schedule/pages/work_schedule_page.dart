@@ -17,6 +17,7 @@ import '../services/auto_fill_schedule_service.dart';
 import '../../../shared/dialogs/shift_edit_dialog.dart';
 import '../../../shared/dialogs/schedule_errors_dialog.dart';
 import '../../../core/utils/cache_manager.dart';
+import '../../../core/utils/disk_cache.dart';
 import 'employee_bulk_schedule_dialog.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
@@ -112,7 +113,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   String get _cacheKey => 'work_schedule_${_selectedMonth.year}_${_selectedMonth.month}';
 
   Future<void> _loadData() async {
-    // Step 1: Show cached data instantly
+    // Step 1: Show memory-cached data instantly
     final cached = CacheManager.get<Map<String, dynamic>>(_cacheKey);
     if (cached != null && mounted) {
       setState(() {
@@ -126,13 +127,55 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       _validateCurrentSchedule();
     }
 
+    // Step 1b: If no memory cache, try disk cache (survives restart)
+    if (_employees.isEmpty) {
+      try {
+        final diskData = await DiskCache.read(_cacheKey);
+        if (diskData != null && mounted) {
+          final employees = (diskData['employees'] as List<dynamic>)
+              .map((e) => Employee.fromJson(e as Map<String, dynamic>))
+              .toList();
+          final shops = (diskData['shops'] as List<dynamic>)
+              .map((s) => Shop.fromJson(s as Map<String, dynamic>))
+              .toList();
+          final schedule = diskData['schedule'] != null
+              ? WorkSchedule.fromJson(diskData['schedule'] as Map<String, dynamic>)
+              : null;
+          final shopSettings = (diskData['shopSettings'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(k, ShopSettings.fromJson(v as Map<String, dynamic>)))
+              ?? <String, ShopSettings>{};
+
+          if (employees.isNotEmpty && mounted) {
+            setState(() {
+              _employees = employees;
+              _shops = shops;
+              _schedule = schedule;
+              _shopSettingsCache = shopSettings;
+              _isLoading = false;
+              _error = null;
+            });
+            // Also put into memory cache
+            CacheManager.set(_cacheKey, {
+              'employees': employees,
+              'shops': shops,
+              'schedule': schedule,
+              'shopSettings': shopSettings,
+            }, duration: const Duration(minutes: 30));
+            _validateCurrentSchedule();
+          }
+        }
+      } catch (e) {
+        Logger.error('Ошибка чтения дискового кэша графика', e);
+      }
+    }
+
     if (mounted && _employees.isEmpty) setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      // Step 2: Fetch fresh data from server
+      // Step 2: Fetch fresh data from server in background
       List<Employee> employees = [];
       List<Shop> shops = [];
       WorkSchedule? schedule;
@@ -162,13 +205,20 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           _schedule = schedule;
           _isLoading = false;
         });
-        // Step 3: Save to cache only if shops loaded (don't cache empty list)
+        // Step 3: Save to memory + disk cache
         if (shops.isNotEmpty) {
           CacheManager.set(_cacheKey, {
             'employees': employees,
             'shops': shops,
             'schedule': schedule,
             'shopSettings': _shopSettingsCache,
+          }, duration: const Duration(minutes: 30));
+          // Persist to disk (async, don't block UI)
+          DiskCache.write(_cacheKey, {
+            'employees': employees.map((e) => e.toJson()).toList(),
+            'shops': shops.map((s) => s.toJson()).toList(),
+            'schedule': schedule?.toJson(),
+            'shopSettings': _shopSettingsCache.map((k, v) => MapEntry(k, v.toJson())),
           });
         }
         // Валидация графика после загрузки

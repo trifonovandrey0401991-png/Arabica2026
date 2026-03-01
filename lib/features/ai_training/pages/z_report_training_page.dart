@@ -178,6 +178,7 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         indicatorPadding: EdgeInsets.all(4.w),
+        isScrollable: false,
         labelColor: Colors.white,
         unselectedLabelColor: Colors.white.withOpacity(0.5),
         labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.sp),
@@ -186,32 +187,32 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
         tabs: [
           Tab(
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.add_a_photo, size: 16),
                 SizedBox(width: 4),
-                Text('Обучить'),
+                Flexible(child: Text('Обучить', overflow: TextOverflow.ellipsis)),
               ],
             ),
           ),
           if (_isAdmin)
             Tab(
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.photo_library, size: 16),
                   SizedBox(width: 4),
-                  Text('Фото'),
+                  Flexible(child: Text('Фото', overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),
           Tab(
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.analytics, size: 16),
                 SizedBox(width: 4),
-                Text('Статистика'),
+                Flexible(child: Text('Статистика', overflow: TextOverflow.ellipsis)),
               ],
             ),
           ),

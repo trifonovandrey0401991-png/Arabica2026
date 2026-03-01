@@ -5,25 +5,41 @@ import '../models/shift_handover_question_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 
 // http и dart:convert оставлены для multipart загрузки эталонных фото
 
 class ShiftHandoverQuestionService {
   static const String baseEndpoint = ApiConstants.shiftHandoverQuestionsEndpoint;
+  static const String _cachePrefix = 'handover_questions';
 
-  /// Получить все вопросы
+  /// Получить все вопросы (с кэшем)
   static Future<List<ShiftHandoverQuestion>> getQuestions({String? shopAddress}) async {
+    final cacheKey = '${_cachePrefix}_${shopAddress ?? 'all'}';
+    final cached = CacheManager.get<List<ShiftHandoverQuestion>>(cacheKey);
+    if (cached != null) {
+      Logger.debug('📦 Вопросы сдачи смены из кэша: ${cached.length}');
+      return cached;
+    }
+
     Logger.debug('📥 Загрузка вопросов сдачи смены с сервера...');
     if (shopAddress != null) {
       Logger.debug('   Фильтр по магазину: $shopAddress');
     }
 
-    return await BaseHttpService.getList<ShiftHandoverQuestion>(
+    final questions = await BaseHttpService.getList<ShiftHandoverQuestion>(
       endpoint: baseEndpoint,
       fromJson: (json) => ShiftHandoverQuestion.fromJson(json),
       listKey: 'questions',
       queryParams: shopAddress != null ? {'shopAddress': shopAddress} : null,
     );
+    CacheManager.set(cacheKey, questions);
+    return questions;
+  }
+
+  /// Сбросить кэш вопросов
+  static void invalidateCache() {
+    CacheManager.clearByPattern(_cachePrefix);
   }
 
   /// Получить один вопрос по ID
@@ -57,12 +73,14 @@ class ShiftHandoverQuestionService {
     if (referencePhotos != null) requestBody['referencePhotos'] = referencePhotos;
     if (targetRole != null) requestBody['targetRole'] = targetRole;
 
-    return await BaseHttpService.post<ShiftHandoverQuestion>(
+    final result = await BaseHttpService.post<ShiftHandoverQuestion>(
       endpoint: baseEndpoint,
       body: requestBody,
       fromJson: (json) => ShiftHandoverQuestion.fromJson(json),
       itemKey: 'question',
     );
+    if (result != null) invalidateCache();
+    return result;
   }
 
   /// Обновить вопрос
@@ -85,12 +103,14 @@ class ShiftHandoverQuestionService {
     if (referencePhotos != null) body['referencePhotos'] = referencePhotos;
     if (targetRole != null) body['targetRole'] = targetRole;
 
-    return await BaseHttpService.put<ShiftHandoverQuestion>(
+    final result = await BaseHttpService.put<ShiftHandoverQuestion>(
       endpoint: '$baseEndpoint/$id',
       body: body,
       fromJson: (json) => ShiftHandoverQuestion.fromJson(json),
       itemKey: 'question',
     );
+    if (result != null) invalidateCache();
+    return result;
   }
 
   /// Загрузить эталонное фото для вопроса
@@ -168,8 +188,10 @@ class ShiftHandoverQuestionService {
   static Future<bool> deleteQuestion(String id) async {
     Logger.debug('📤 Удаление вопроса сдачи смены: $id');
 
-    return await BaseHttpService.delete(
+    final result = await BaseHttpService.delete(
       endpoint: '$baseEndpoint/$id',
     );
+    if (result) invalidateCache();
+    return result;
   }
 }

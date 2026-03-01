@@ -7,6 +7,8 @@ class MessageBubble extends StatelessWidget {
   final MessengerMessage message;
   final bool isMine;
   final bool showSenderName;
+  /// Override for sender name display (privacy filter for clients)
+  final String? displaySenderName;
   final VoidCallback? onLongPress;
   final VoidCallback? onPlayVoice;
   final bool isPlayingVoice;
@@ -16,6 +18,7 @@ class MessageBubble extends StatelessWidget {
     required this.message,
     required this.isMine,
     this.showSenderName = false,
+    this.displaySenderName,
     this.onLongPress,
     this.onPlayVoice,
     this.isPlayingVoice = false,
@@ -69,7 +72,7 @@ class MessageBubble extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
-                          message.senderName ?? message.senderPhone,
+                          displaySenderName ?? message.senderName ?? message.senderPhone,
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,

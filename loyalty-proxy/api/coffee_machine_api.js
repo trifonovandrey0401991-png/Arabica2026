@@ -14,6 +14,7 @@ const { writeJsonFile, withLock } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 const { notifyCounterUpdate } = require('./counters_websocket');
+const pushService = require('../utils/push_service');
 
 const USE_DB = process.env.USE_DB_COFFEE_MACHINE === 'true';
 
@@ -520,6 +521,15 @@ function setupCoffeeMachineAPI(app, { sendPushToPhone } = {}) {
 
       notifyCounterUpdate('coffeeMachineReports', { delta: 1 });
       res.json({ success: true, report });
+
+      // Push-уведомление администраторам (не блокирует ответ)
+      const shiftText = report.shiftType === 'morning' ? 'утренняя' : 'вечерняя';
+      pushService.sendPushToAllAdmins(
+        'Счётчик кофемашины сдан',
+        `${report.employeeName} — ${shiftText} смена\n${report.shopAddress}`,
+        { type: 'coffee_machine_submitted', reportId: report.id },
+        'reports_channel'
+      ).catch(e => console.error('[CoffeeMachine] Push error:', e.message));
 
       // Фоновое обновление intelligence (не блокирует ответ)
       buildMachineIntelligence().catch(e =>

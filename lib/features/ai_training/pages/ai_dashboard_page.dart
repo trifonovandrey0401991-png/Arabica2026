@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
+import '../services/ai_toggle_service.dart';
 
 /// Страница ДашБорд AI — метрики всех AI-систем
 class AiDashboardPage extends StatefulWidget {
@@ -31,6 +32,15 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
   bool _embeddingEnabled = false;
   bool _embeddingToggling = false;
 
+  // AI system toggles (on/off)
+  Map<String, bool> _aiToggles = {
+    'zReport': true,
+    'coffeeMachine': true,
+    'cigaretteVision': true,
+    'shiftAi': true,
+  };
+  String? _togglingKey; // which key is currently being toggled
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +48,7 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
     _loadTrainStatus();
     _loadSchedule();
     _loadCvSettings();
+    _loadAiToggles();
   }
 
   @override
@@ -246,6 +257,34 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
     }
   }
 
+  // ── AI system toggles ──
+
+  Future<void> _loadAiToggles() async {
+    try {
+      final toggles = await AiToggleService.getToggles(forceRefresh: true);
+      if (!mounted) return;
+      setState(() => _aiToggles = toggles);
+    } catch (e) {
+      Logger.error('AI toggles load error', e);
+    }
+  }
+
+  Future<void> _toggleAiSystem(String key, bool value) async {
+    if (_togglingKey != null) return;
+    setState(() => _togglingKey = key);
+    try {
+      final ok = await AiToggleService.updateToggles({key: value});
+      if (!mounted) return;
+      if (ok) {
+        setState(() => _aiToggles[key] = value);
+      }
+    } catch (e) {
+      Logger.error('AI toggle error', e);
+    } finally {
+      if (mounted) setState(() => _togglingKey = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -374,6 +413,7 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
             _metrics!['zReport'] as Map<String, dynamic>,
             Icons.receipt_long_outlined,
             [AppColors.gold, AppColors.darkGold],
+            toggleKey: 'zReport',
           ),
         SizedBox(height: 12.h),
 
@@ -383,6 +423,7 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
             _metrics!['coffeeMachine'] as Map<String, dynamic>,
             Icons.coffee_outlined,
             [AppColors.emeraldGreen, AppColors.emeraldGreenLight],
+            toggleKey: 'coffeeMachine',
           ),
         SizedBox(height: 12.h),
 
@@ -397,6 +438,7 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
             _metrics!['shiftAi'] as Map<String, dynamic>,
             Icons.verified_outlined,
             [AppColors.info, AppColors.infoLight],
+            toggleKey: 'shiftAi',
           ),
 
         // Day-of-week коэффициенты
@@ -503,8 +545,9 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
   Widget _buildSystemCard(
     Map<String, dynamic> system,
     IconData icon,
-    List<Color> gradientColors,
-  ) {
+    List<Color> gradientColors, {
+    String? toggleKey,
+  }) {
     final name = system['name'] as String? ?? 'Unknown';
     final status = system['status'] as String? ?? 'unknown';
     final accuracy = system['accuracy'];
@@ -512,6 +555,7 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
     final isActive = status == 'active';
     final statusText = _statusText(status);
     final statusColor = isActive ? AppColors.success : AppColors.warning;
+    final isToggled = toggleKey != null ? (_aiToggles[toggleKey] ?? true) : true;
 
     // Собираем метрики
     final metrics = <MapEntry<String, String>>[];
@@ -632,6 +676,47 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
               spacing: 8.w,
               runSpacing: 6.h,
               children: metrics.map((e) => _buildMetricChip(e.key, e.value, gradientColors[0])).toList(),
+            ),
+          ],
+
+          // AI toggle switch
+          if (toggleKey != null) ...[
+            SizedBox(height: 10.h),
+            Divider(color: Colors.white.withOpacity(0.08), height: 1),
+            SizedBox(height: 8.h),
+            Row(
+              children: [
+                Icon(
+                  isToggled ? Icons.power_settings_new_rounded : Icons.power_off_rounded,
+                  color: isToggled ? AppColors.success : Colors.white30,
+                  size: 16,
+                ),
+                SizedBox(width: 6.w),
+                Expanded(
+                  child: Text(
+                    isToggled ? 'Проверка включена' : 'Проверка отключена',
+                    style: TextStyle(
+                      color: isToggled ? Colors.white54 : AppColors.error.withOpacity(0.8),
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (_togglingKey == toggleKey)
+                  SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
+                else
+                  SizedBox(
+                    height: 28,
+                    child: Switch(
+                      value: isToggled,
+                      onChanged: (v) => _toggleAiSystem(toggleKey, v),
+                      activeColor: AppColors.success,
+                      activeTrackColor: AppColors.success.withOpacity(0.3),
+                      inactiveThumbColor: Colors.white24,
+                      inactiveTrackColor: Colors.white.withOpacity(0.08),
+                    ),
+                  ),
+              ],
             ),
           ],
         ],
@@ -827,6 +912,46 @@ class _AiDashboardPageState extends State<AiDashboardPage> {
             ),
 
           SizedBox(height: 14.h),
+          Divider(color: Colors.white.withOpacity(0.08), height: 1),
+          SizedBox(height: 8.h),
+
+          // ── Переключатель ИИ пересчёта ──
+          Row(
+            children: [
+              Icon(
+                (_aiToggles['cigaretteVision'] ?? true) ? Icons.power_settings_new_rounded : Icons.power_off_rounded,
+                color: (_aiToggles['cigaretteVision'] ?? true) ? AppColors.success : Colors.white30,
+                size: 16,
+              ),
+              SizedBox(width: 6.w),
+              Expanded(
+                child: Text(
+                  (_aiToggles['cigaretteVision'] ?? true) ? 'Проверка включена' : 'Проверка отключена',
+                  style: TextStyle(
+                    color: (_aiToggles['cigaretteVision'] ?? true) ? Colors.white54 : AppColors.error.withOpacity(0.8),
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (_togglingKey == 'cigaretteVision')
+                SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
+              else
+                SizedBox(
+                  height: 28,
+                  child: Switch(
+                    value: _aiToggles['cigaretteVision'] ?? true,
+                    onChanged: (v) => _toggleAiSystem('cigaretteVision', v),
+                    activeColor: AppColors.success,
+                    activeTrackColor: AppColors.success.withOpacity(0.3),
+                    inactiveThumbColor: Colors.white24,
+                    inactiveTrackColor: Colors.white.withOpacity(0.08),
+                  ),
+                ),
+            ],
+          ),
+
+          SizedBox(height: 10.h),
           Divider(color: Colors.white.withOpacity(0.08), height: 1),
           SizedBox(height: 12.h),
 

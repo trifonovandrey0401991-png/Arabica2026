@@ -227,7 +227,7 @@ function setupShopManagersAPI(app) {
     try {
       const { adminPhone, developerPhone } = req.body;
 
-      if (!(await isDeveloper(adminPhone))) {
+      if (!(await isDeveloper(req.user.phone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
@@ -253,7 +253,7 @@ function setupShopManagersAPI(app) {
       const { phone } = req.params;
       const { adminPhone } = req.query;
 
-      if (!(await isDeveloper(adminPhone))) {
+      if (!(await isDeveloper(req.user.phone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
@@ -275,7 +275,7 @@ function setupShopManagersAPI(app) {
     try {
       const { adminPhone, manager } = req.body;
 
-      if (!(await isDeveloper(adminPhone))) {
+      if (!(await isDeveloper(req.user.phone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
@@ -315,7 +315,7 @@ function setupShopManagersAPI(app) {
       const { phone } = req.params;
       const { adminPhone } = req.query;
 
-      if (!(await isDeveloper(adminPhone))) {
+      if (!(await isDeveloper(req.user.phone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
@@ -338,7 +338,7 @@ function setupShopManagersAPI(app) {
       const { phone } = req.params;
       const { adminPhone, shopIds } = req.body;
 
-      if (!(await isDeveloper(adminPhone))) {
+      if (!(await isDeveloper(req.user.phone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
@@ -367,7 +367,7 @@ function setupShopManagersAPI(app) {
       const { phone } = req.params;
       const { adminPhone, employeePhones } = req.body;
 
-      if (!(await isDeveloper(adminPhone))) {
+      if (!(await isDeveloper(req.user.phone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
@@ -395,7 +395,7 @@ function setupShopManagersAPI(app) {
     try {
       const { adminPhone, storeManager } = req.body;
 
-      if (!(await isDeveloper(adminPhone))) {
+      if (!(await isDeveloper(req.user.phone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 
@@ -436,9 +436,9 @@ function setupShopManagersAPI(app) {
         return res.status(400).json({ success: false, error: 'Phone required' });
       }
 
-      const normalizedPhone = normalizePhone(phone);
-      const isDev = await isDeveloper(normalizedPhone);
-      const managerData = await getManagerData(normalizedPhone);
+      const callerPhone = req.user.phone;
+      const isDev = await isDeveloper(callerPhone);
+      const managerData = await getManagerData(callerPhone);
 
       if (!isDev && !managerData) {
         return res.status(403).json({ success: false, error: 'Access denied' });
@@ -465,13 +465,9 @@ function setupShopManagersAPI(app) {
       const { phone } = req.params;
       const { adminPhone, managedShopIds } = req.body;
 
-      if (!adminPhone) {
-        return res.status(400).json({ success: false, error: 'adminPhone required' });
-      }
-
-      const normalizedAdminPhone = normalizePhone(adminPhone);
-      const isDev = await isDeveloper(normalizedAdminPhone);
-      const managerData = await getManagerData(normalizedAdminPhone);
+      const callerPhone = req.user.phone;
+      const isDev = await isDeveloper(callerPhone);
+      const managerData = await getManagerData(callerPhone);
 
       if (!isDev && !managerData) {
         return res.status(403).json({ success: false, error: 'Access denied' });
@@ -511,7 +507,7 @@ function setupShopManagersAPI(app) {
       const { phone } = req.params;
       const { adminPhone } = req.query;
 
-      if (!(await isDeveloper(adminPhone))) {
+      if (!(await isDeveloper(req.user.phone))) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
 

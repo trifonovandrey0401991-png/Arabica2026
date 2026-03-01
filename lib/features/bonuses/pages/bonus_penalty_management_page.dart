@@ -165,6 +165,8 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
                           ),
                           Text(
                             employee.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.9),
                               fontSize: 15.sp,

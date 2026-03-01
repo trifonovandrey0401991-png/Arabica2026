@@ -236,7 +236,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
               duration: _reportCacheDuration,
             );
             shiftHandoverPending = allReports
-                .where((r) => !r.isConfirmed && !r.isExpired && r.status != 'rejected')
+                .where((r) => !r.isConfirmed && !r.isExpired && r.status != 'rejected' && r.status != 'pending' && r.status != 'failed')
                 .toList();
             shiftHandoverPending.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           } catch (e) {

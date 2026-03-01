@@ -17,6 +17,7 @@ import '../../../core/utils/logger.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../ai_training/pages/shift_ai_verification_page.dart';
 import '../../ai_training/services/shift_ai_verification_service.dart';
+import '../../ai_training/services/ai_toggle_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница с вопросами пересменки
@@ -452,6 +453,12 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
   /// Запустить AI верификацию товаров
   Future<bool> _runAiVerification() async {
     Logger.info('[AI-Verify] START _runAiVerification, mounted=$mounted, shopAddress=${widget.shopAddress}');
+    // Проверяем переключатель ИИ
+    final aiEnabled = await AiToggleService.isEnabled('shiftAi');
+    if (!aiEnabled) {
+      Logger.info('[AI-Verify] Shift AI disabled via toggle - skipping');
+      return true;
+    }
     // Проверяем есть ли активные AI товары
     final hasAiProducts = await _hasActiveAiProducts();
     Logger.info('[AI-Verify] hasActiveAiProducts=$hasAiProducts');

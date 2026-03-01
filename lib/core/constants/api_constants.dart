@@ -37,6 +37,20 @@ class ApiConstants {
   /// Алиас для jsonHeaders (обратная совместимость)
   static Map<String, String> get headersWithApiKey => jsonHeaders;
 
+  /// Headers with only the API key, without session token.
+  /// Used in WorkManager background tasks that run in a separate Dart isolate
+  /// where static _sessionToken is always null.
+  static Map<String, String> get apiKeyHeaders {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    if (apiKey != null && apiKey!.isNotEmpty) {
+      headers['X-API-Key'] = apiKey!;
+    }
+    return headers;
+  }
+
   // Endpoints - Core
   static const String attendanceEndpoint = '/api/attendance';
   static const String clientsEndpoint = '/api/clients';

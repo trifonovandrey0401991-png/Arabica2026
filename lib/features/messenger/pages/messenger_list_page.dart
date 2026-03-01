@@ -15,6 +15,8 @@ class MessengerListPage extends StatefulWidget {
   final String userName;
   final List<MessengerContact> matchedContacts;
   final bool contactsGranted;
+  final bool isClient;
+  final Map<String, String> phoneBookNames;
 
   const MessengerListPage({
     super.key,
@@ -22,6 +24,8 @@ class MessengerListPage extends StatefulWidget {
     required this.userName,
     required this.matchedContacts,
     required this.contactsGranted,
+    this.isClient = false,
+    this.phoneBookNames = const {},
   });
 
   @override
@@ -104,6 +108,8 @@ class _MessengerListPageState extends State<MessengerListPage> {
           conversation: conversation,
           userPhone: widget.userPhone,
           userName: _userName,
+          isClient: widget.isClient,
+          phoneBookNames: widget.phoneBookNames,
         ),
       ),
     ).then((_) => _loadConversations(silent: true));
@@ -279,6 +285,8 @@ class _MessengerListPageState extends State<MessengerListPage> {
             conversation: conv,
             myPhone: widget.userPhone,
             onTap: () => _openChat(conv),
+            isClient: widget.isClient,
+            phoneBookNames: widget.phoneBookNames,
           );
         },
       ),

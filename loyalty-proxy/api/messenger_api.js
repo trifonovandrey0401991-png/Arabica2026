@@ -11,6 +11,7 @@
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 const pushService = require('../utils/push_service');
+const dataCache = require('../utils/data_cache');
 
 // WebSocket уведомления (опционально)
 let wsNotify = null;
@@ -514,10 +515,18 @@ function setupMessengerAPI(app, uploadMedia) {
 
         const pushTitle = senderName || normalizedSender;
 
+        // Privacy: hide employee names from clients
+        const employees = dataCache.getEmployees();
+        const employeePhones = employees
+          ? new Set(employees.map(e => (e.phone || '').replace(/[^\d]/g, '')).filter(Boolean))
+          : new Set();
+
         for (const p of participantsResult.rows) {
           // Не отправляем push онлайн-пользователям
           if (wsNotify && wsNotify.isUserOnline(p.phone)) continue;
-          pushService.sendPushToPhone(p.phone, pushTitle, preview, {
+          // Клиент (не сотрудник) видит "Сотрудник" вместо ФИО
+          const recipientTitle = employeePhones.has(p.phone) ? pushTitle : 'Сотрудник';
+          pushService.sendPushToPhone(p.phone, recipientTitle, preview, {
             type: 'messenger_message',
             conversationId
           }, 'messenger_channel').catch(() => {});

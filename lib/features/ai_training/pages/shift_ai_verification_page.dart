@@ -367,6 +367,75 @@ class _ShiftAiVerificationPageState extends State<ShiftAiVerificationPage> {
       );
     }
 
+    // Ошибка связи/авторизации (не путать с "модель не обучена")
+    if (!_result!.success && _result!.error != null &&
+        !_result!.error!.contains('обучена') && !_result!.error!.contains('YOLO')) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.w),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.red.withOpacity(0.3), width: 2),
+                ),
+                child: Icon(Icons.wifi_off, size: 50, color: Colors.red),
+              ),
+              SizedBox(height: 24),
+              Text(
+                'Ошибка проверки ИИ',
+                style: TextStyle(
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: 12),
+              Text(
+                _result!.error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15.sp,
+                  color: Colors.white.withOpacity(0.6),
+                ),
+              ),
+              SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _runVerification,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.emerald,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 14.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                ),
+                child: Text('Повторить', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: _skipVerification,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.gold,
+                  foregroundColor: AppColors.night,
+                  padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 14.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                ),
+                child: Text('Пропустить проверку', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (!_result!.modelTrained) {
       return Center(
         child: Padding(

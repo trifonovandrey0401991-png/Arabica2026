@@ -13,6 +13,7 @@ import '../widgets/counter_region_selector.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../ai_training/services/ai_toggle_service.dart';
 
 /// Форма сдачи показаний счётчиков кофемашин
 class CoffeeMachineFormPage extends StatefulWidget {
@@ -155,6 +156,10 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
         _machineBase64[templateId] = base64Image;
       }
     });
+
+    // Проверяем переключатель ИИ — если выключен, только фото без OCR
+    final aiEnabled = await AiToggleService.isEnabled('coffeeMachine');
+    if (!aiEnabled) return; // фото сохранено, OCR пропущен — ввод вручную
 
     // Первый вызов OCR
     final result = await _callOcr(

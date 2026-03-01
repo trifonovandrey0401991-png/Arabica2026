@@ -5,25 +5,41 @@ import '../models/shift_question_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 
 // http и dart:convert оставлены для multipart загрузки эталонных фото
 
 class ShiftQuestionService {
   static const String baseEndpoint = ApiConstants.shiftQuestionsEndpoint;
+  static const String _cachePrefix = 'shift_questions';
 
-  /// Получить все вопросы
+  /// Получить все вопросы (с кэшем)
   static Future<List<ShiftQuestion>> getQuestions({String? shopAddress}) async {
+    final cacheKey = '${_cachePrefix}_${shopAddress ?? 'all'}';
+    final cached = CacheManager.get<List<ShiftQuestion>>(cacheKey);
+    if (cached != null) {
+      Logger.debug('📦 Вопросы пересменки из кэша: ${cached.length}');
+      return cached;
+    }
+
     Logger.debug('📥 Загрузка вопросов пересменки с сервера...');
     if (shopAddress != null) {
       Logger.debug('   Фильтр по магазину: $shopAddress');
     }
 
-    return await BaseHttpService.getList<ShiftQuestion>(
+    final questions = await BaseHttpService.getList<ShiftQuestion>(
       endpoint: baseEndpoint,
       fromJson: (json) => ShiftQuestion.fromJson(json),
       listKey: 'questions',
       queryParams: shopAddress != null ? {'shopAddress': shopAddress} : null,
     );
+    CacheManager.set(cacheKey, questions);
+    return questions;
+  }
+
+  /// Сбросить кэш вопросов
+  static void invalidateCache() {
+    CacheManager.clearByPattern(_cachePrefix);
   }
   
   /// Получить один вопрос по ID
@@ -57,12 +73,14 @@ class ShiftQuestionService {
     if (referencePhotos != null) requestBody['referencePhotos'] = referencePhotos;
     if (isAiCheck != null) requestBody['isAiCheck'] = isAiCheck;
 
-    return await BaseHttpService.post<ShiftQuestion>(
+    final result = await BaseHttpService.post<ShiftQuestion>(
       endpoint: baseEndpoint,
       body: requestBody,
       fromJson: (json) => ShiftQuestion.fromJson(json),
       itemKey: 'question',
     );
+    if (result != null) invalidateCache();
+    return result;
   }
 
   /// Обновить вопрос
@@ -85,14 +103,16 @@ class ShiftQuestionService {
     if (referencePhotos != null) body['referencePhotos'] = referencePhotos;
     if (isAiCheck != null) body['isAiCheck'] = isAiCheck;
 
-    return await BaseHttpService.put<ShiftQuestion>(
+    final result = await BaseHttpService.put<ShiftQuestion>(
       endpoint: '$baseEndpoint/$id',
       body: body,
       fromJson: (json) => ShiftQuestion.fromJson(json),
       itemKey: 'question',
     );
+    if (result != null) invalidateCache();
+    return result;
   }
-  
+
   /// Загрузить эталонное фото для вопроса
   static Future<String?> uploadReferencePhoto({
     required String questionId,
@@ -168,19 +188,23 @@ class ShiftQuestionService {
   static Future<bool> reorderQuestions(List<Map<String, dynamic>> orders) async {
     Logger.debug('📤 Обновление порядка вопросов: ${orders.length} шт.');
 
-    return await BaseHttpService.simplePatch(
+    final result = await BaseHttpService.simplePatch(
       endpoint: '$baseEndpoint/reorder',
       body: {'orders': orders},
     );
+    if (result) invalidateCache();
+    return result;
   }
 
   /// Удалить вопрос
   static Future<bool> deleteQuestion(String id) async {
     Logger.debug('📤 Удаление вопроса пересменки: $id');
 
-    return await BaseHttpService.delete(
+    final result = await BaseHttpService.delete(
       endpoint: '$baseEndpoint/$id',
     );
+    if (result) invalidateCache();
+    return result;
   }
 }
 

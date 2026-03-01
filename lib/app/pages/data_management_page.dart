@@ -17,6 +17,7 @@ import '../../features/data_cleanup/pages/data_cleanup_page.dart';
 import '../../features/work_schedule/pages/work_schedule_page.dart';
 import '../../features/ai_training/pages/ai_training_page.dart';
 import '../../features/execution_chain/pages/execution_chain_page.dart';
+import '../../features/settings/pages/store_links_settings_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница управления данными (только для администраторов)
@@ -176,6 +177,12 @@ class DataManagementPage extends StatelessWidget {
         icon: Icons.delete_sweep_outlined,
         label: 'Очистка',
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DataCleanupPage())),
+      ),
+      _buildTile(
+        context,
+        icon: Icons.qr_code_rounded,
+        label: 'Ссылки',
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StoreLinksSettingsPage())),
       ),
     ];
   }

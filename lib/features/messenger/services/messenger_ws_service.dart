@@ -69,6 +69,10 @@ class MessengerWsService {
   static String? _activeConversationId;
   static void setActiveConversation(String? id) => _activeConversationId = id;
 
+  // Privacy filter: hide employee names from clients who don't have them in contacts
+  static bool isClientUser = false;
+  static Set<String> phoneBookPhones = {};
+
   // Online users cache: phone → isOnline
   final Map<String, bool> _onlineUsers = {};
 
@@ -177,7 +181,11 @@ class MessengerWsService {
             ));
             // Show local notification if user is not currently in this chat
             if (_activeConversationId != convId) {
-              final senderName = msg.senderName ?? msg.senderPhone;
+              String senderName = msg.senderName ?? msg.senderPhone;
+              // Privacy: clients see "Сотрудник" for unknown contacts
+              if (isClientUser && !phoneBookPhones.contains(msg.senderPhone)) {
+                senderName = 'Сотрудник';
+              }
               final preview = (msg.content != null && msg.content!.isNotEmpty)
                   ? msg.content!
                   : 'Новое сообщение';

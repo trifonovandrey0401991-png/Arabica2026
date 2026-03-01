@@ -18,6 +18,7 @@ import '../../efficiency/services/points_settings_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../ai_training/services/ai_toggle_service.dart';
 
 class EnvelopeFormPage extends StatefulWidget {
   final String employeeName;
@@ -332,6 +333,13 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
 
       final file = File(picked.path);
       onPhotoPicked(file);
+
+      // Проверяем переключатель ИИ — если выключен, только фото без OCR
+      final aiEnabled = await AiToggleService.isEnabled('zReport');
+      if (!aiEnabled) {
+        Logger.info('[Z-Report OCR] disabled via toggle - photo only');
+        return;
+      }
 
       // ШАГ 2: Сжатие + OCR
       _showLoadingDialog('Распознавание Z-отчёта...');

@@ -264,7 +264,7 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
                             ],
                           ),
                           Text(
-                            '${_formatPrice(totalPrice)} \u20BD',
+                            '${_formatPrice(totalPrice)} руб',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16.sp,

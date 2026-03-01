@@ -36,7 +36,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   bool _isLoading = true;
   bool _isAdminOrAbove = false; // true for admin + developer
   String? _selectedShopFilter;
-  int _withdrawalTabIndex = 0; // 0 = Все, 1 = Подтвержденные
+  int _withdrawalTabIndex = 0; // 0 = Все, 1 = Подтвержденные, 2 = Отклонённые
 
   // Вкладка Конверты
   List<EnvelopeReport> _envelopes = [];
@@ -143,14 +143,16 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   List<Withdrawal> get _filteredWithdrawals {
     var filtered = _withdrawals;
 
-    // Исключаем отменённые выемки из всех вкладок
-    filtered = filtered.where((w) => w.isActive).toList();
-
-    // Фильтр по подтверждению
+    // Фильтр по подтверждению / отклонению
     if (_withdrawalTabIndex == 0) {
-      filtered = filtered.where((w) => !w.confirmed).toList();
+      // Все = неподтверждённые и не отменённые
+      filtered = filtered.where((w) => !w.confirmed && !w.isCancelled).toList();
+    } else if (_withdrawalTabIndex == 1) {
+      // Подтверждённые
+      filtered = filtered.where((w) => w.confirmed && !w.isCancelled).toList();
     } else {
-      filtered = filtered.where((w) => w.confirmed).toList();
+      // Отклонённые (cancelled)
+      filtered = filtered.where((w) => w.isCancelled).toList();
     }
 
     // Фильтр по магазину
@@ -1224,7 +1226,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   Widget _buildWithdrawalsTab() {
     return Column(
       children: [
-        // Подвкладки: Все / Подтвержденные
+        // Подвкладки: Все / Подтвержденные / Отклонённые
         Container(
           margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
           decoration: BoxDecoration(
@@ -1279,10 +1281,6 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     padding: EdgeInsets.symmetric(vertical: 12.h),
                     decoration: BoxDecoration(
                       color: _withdrawalTabIndex == 1 ? AppColors.gold.withOpacity(0.2) : Colors.transparent,
-                      borderRadius: BorderRadius.only(
-                        topRight: Radius.circular(11.r),
-                        bottomRight: Radius.circular(11.r),
-                      ),
                       border: _withdrawalTabIndex == 1
                           ? Border.all(color: AppColors.gold.withOpacity(0.3))
                           : null,
@@ -1297,12 +1295,50 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         ),
                         SizedBox(width: 6),
                         Text(
-                          'Подтверждённые',
+                          'Подтв.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 14.sp,
                             fontWeight: _withdrawalTabIndex == 1 ? FontWeight.bold : FontWeight.w500,
                             color: _withdrawalTabIndex == 1 ? AppColors.gold : Colors.white.withOpacity(0.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _withdrawalTabIndex = 2),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    decoration: BoxDecoration(
+                      color: _withdrawalTabIndex == 2 ? Colors.red.withOpacity(0.2) : Colors.transparent,
+                      borderRadius: BorderRadius.only(
+                        topRight: Radius.circular(11.r),
+                        bottomRight: Radius.circular(11.r),
+                      ),
+                      border: _withdrawalTabIndex == 2
+                          ? Border.all(color: Colors.red.withOpacity(0.3))
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.cancel,
+                          size: 18,
+                          color: _withdrawalTabIndex == 2 ? Colors.red : Colors.white.withOpacity(0.4),
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Откл.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            fontWeight: _withdrawalTabIndex == 2 ? FontWeight.bold : FontWeight.w500,
+                            color: _withdrawalTabIndex == 2 ? Colors.red : Colors.white.withOpacity(0.4),
                           ),
                         ),
                       ],
@@ -2175,7 +2211,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               children: [
                 Text('${envelopes.length} ${_envCountLabel(envelopes.length)}',
                     style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.6))),
-                Text('${_envFormatAmount(total)} ₽',
+                Text('${_envFormatAmount(total)} руб',
                     style: TextStyle(
                         fontSize: 13.sp,
                         fontWeight: FontWeight.w600,
@@ -2251,7 +2287,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
             Text('${envelopes.length} ${_envCountLabel(envelopes.length)}',
                 style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.5))),
             SizedBox(width: 10),
-            Text('${_envFormatAmount(total)} ₽',
+            Text('${_envFormatAmount(total)} руб',
                 style: TextStyle(
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w600,
@@ -2303,7 +2339,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
             Text(_envShortName(env.employeeName),
                 style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.5))),
             SizedBox(width: 8),
-            Text('${_envFormatAmount(env.totalEnvelopeAmount)} ₽',
+            Text('${_envFormatAmount(env.totalEnvelopeAmount)} руб',
                 style: TextStyle(
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w600,

@@ -694,9 +694,9 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
       const efficiencyPoints = calculateRecountPoints ? calculateRecountPoints(rating, settings) : 0;
       console.log(`📊 Рассчитанные баллы эффективности: ${efficiencyPoints} (оценка: ${rating})`);
 
-      // Сохраняем баллы в efficiency-penalties
-      const now = new Date();
-      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      // Сохраняем баллы в efficiency-penalties (московское время)
+      const now = getMoscowTime();
+      const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
       const today = now.toISOString().split('T')[0];
       const efficiencyDir = `${DATA_DIR}/efficiency-penalties`;
 

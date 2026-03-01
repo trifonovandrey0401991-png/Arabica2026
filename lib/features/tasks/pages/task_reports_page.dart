@@ -250,7 +250,7 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('Не в срок'),
+                          Flexible(child: Text('Не в срок', overflow: TextOverflow.ellipsis)),
                           if (_unviewedExpiredCount > 0) ...[
                             SizedBox(width: 6),
                             Container(

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
 import '../../../core/services/report_notification_service.dart';
-import '../../../core/services/multitenancy_filter_service.dart';
 import '../models/test_result_model.dart';
 import '../services/test_result_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -50,11 +49,7 @@ class _TestReportPageState extends State<TestReportPage>
 
     // Step 2: Fetch fresh data
     try {
-      final allResults = await TestResultService.getResults();
-      final results = await MultitenancyFilterService.filterByShopAddress(
-        allResults,
-        (result) => result.shopAddress ?? '',
-      );
+      final results = await TestResultService.getResults();
       if (!mounted) return;
       setState(() {
         _allResults = results;

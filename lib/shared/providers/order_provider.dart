@@ -307,6 +307,15 @@ class OrderProvider with ChangeNotifier {
     }
     return scope.orderProvider;
   }
+
+  /// Получить провайдер без регистрации зависимости (для event handlers)
+  static OrderProvider read(BuildContext context) {
+    final element = context.getElementForInheritedWidgetOfExactType<_OrderProviderScope>();
+    if (element == null) {
+      throw Exception('OrderProvider not found in widget tree');
+    }
+    return (element.widget as _OrderProviderScope).orderProvider;
+  }
 }
 
 /// Обертка для провайдера заказов
@@ -320,8 +329,9 @@ class _OrderProviderScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(_OrderProviderScope oldWidget) {
-    // Same instance, but content changed — always notify dependents
-    return true;
+    // Only notify when the provider instance itself changes.
+    // Leaf widgets use ListenableBuilder to react to data changes.
+    return orderProvider != oldWidget.orderProvider;
   }
 }
 
@@ -339,19 +349,7 @@ class _OrderProviderScopeState extends State<OrderProviderScope> {
   final OrderProvider _orderProvider = OrderProvider();
 
   @override
-  void initState() {
-    super.initState();
-    // Rebuild InheritedWidget when orders change (e.g. order status updated)
-    _orderProvider.addListener(_onOrdersChanged);
-  }
-
-  void _onOrdersChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
   void dispose() {
-    _orderProvider.removeListener(_onOrdersChanged);
     _orderProvider.dispose();
     super.dispose();
   }

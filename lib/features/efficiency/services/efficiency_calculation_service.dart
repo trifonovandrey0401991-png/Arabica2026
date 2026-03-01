@@ -223,6 +223,7 @@ class EfficiencyCalculationService {
     required String id,
     required String shopAddress,
     required String employeeName,
+    String employeePhone = '',
     required DateTime date,
     required int rating,
   }) async {
@@ -234,6 +235,7 @@ class EfficiencyCalculationService {
       category: EfficiencyCategory.shift,
       shopAddress: shopAddress,
       employeeName: employeeName,
+      employeePhone: employeePhone,
       date: date,
       points: points,
       rawValue: rating,
@@ -246,6 +248,7 @@ class EfficiencyCalculationService {
     required String id,
     required String shopAddress,
     required String employeeName,
+    String employeePhone = '',
     required DateTime date,
     required int? adminRating,
   }) async {
@@ -257,6 +260,7 @@ class EfficiencyCalculationService {
       category: EfficiencyCategory.recount,
       shopAddress: shopAddress,
       employeeName: employeeName,
+      employeePhone: employeePhone,
       date: date,
       points: points,
       rawValue: adminRating,
@@ -269,6 +273,7 @@ class EfficiencyCalculationService {
     required String id,
     required String shopAddress,
     required String employeeName,
+    String employeePhone = '',
     required DateTime date,
     required int? rating,
   }) async {
@@ -280,6 +285,7 @@ class EfficiencyCalculationService {
       category: EfficiencyCategory.shiftHandover,
       shopAddress: shopAddress,
       employeeName: employeeName,
+      employeePhone: employeePhone,
       date: date,
       points: points,
       rawValue: rating,
@@ -292,6 +298,7 @@ class EfficiencyCalculationService {
     required String id,
     required String shopAddress,
     required String employeeName,
+    String employeePhone = '',
     required DateTime date,
     required bool isOnTime,
   }) async {
@@ -301,6 +308,7 @@ class EfficiencyCalculationService {
       category: EfficiencyCategory.attendance,
       shopAddress: shopAddress,
       employeeName: employeeName,
+      employeePhone: employeePhone,
       date: date,
       points: points,
       rawValue: isOnTime,

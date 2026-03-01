@@ -198,9 +198,9 @@ class _ClientWheelPrizesReportPageState extends State<ClientWheelPrizesReportPag
                     Tab(text: 'Все (${_allPrizes.length})'),
                     Tab(
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text('Ожидает'),
+                          Flexible(child: Text('Ожидает', overflow: TextOverflow.ellipsis)),
                           if (pendingCount > 0) ...[
                             SizedBox(width: 6),
                             Container(

@@ -832,10 +832,10 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
               ReportTabButton(
                 isSelected: _tabController.index == 4,
                 onTap: () { _tabController.animateTo(4); if (mounted) setState(() {}); },
-                label: 'Отклонённые',
+                label: 'Просроченные',
                 count: _expiredReports.length + _overdueUnratedReports.length,
-                accentColor: Colors.grey,
-                icon: Icons.cancel_rounded,
+                accentColor: Colors.orange.shade700,
+                icon: Icons.timer_off,
               ),
             ],
           ),

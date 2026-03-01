@@ -3,17 +3,22 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../models/conversation_model.dart';
+import '../pages/messenger_shell_page.dart';
 
 class ChatListTile extends StatelessWidget {
   final Conversation conversation;
   final String myPhone;
   final VoidCallback onTap;
+  final bool isClient;
+  final Map<String, String> phoneBookNames;
 
   const ChatListTile({
     super.key,
     required this.conversation,
     required this.myPhone,
     required this.onTap,
+    this.isClient = false,
+    this.phoneBookNames = const {},
   });
 
   Widget _buildAvatar(String displayName, bool isGroup) {
@@ -60,7 +65,12 @@ class ChatListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayName = conversation.displayName(myPhone);
+    // Privacy: for clients, replace unknown contact names with "Сотрудник"
+    final rawName = conversation.displayName(myPhone);
+    final otherPhone = conversation.otherPhone(myPhone);
+    final displayName = (otherPhone != null)
+        ? MessengerShellPage.resolveDisplayName(otherPhone, rawName, isClient, phoneBookNames)
+        : rawName;
     final lastMsg = conversation.lastMessage;
     final unread = conversation.unreadCount;
     final isGroup = conversation.type == ConversationType.group;
@@ -120,7 +130,7 @@ class ChatListTile extends StatelessWidget {
                       children: [
                         if (isGroup && lastMsg != null && !lastMsg.isDeleted)
                           Text(
-                            '${lastMsg.senderName ?? lastMsg.senderPhone}: ',
+                            '${MessengerShellPage.resolveDisplayName(lastMsg.senderPhone, lastMsg.senderName, isClient, phoneBookNames)}: ',
                             style: TextStyle(fontSize: 13, color: AppColors.turquoise.withOpacity(0.7)),
                             maxLines: 1,
                           ),

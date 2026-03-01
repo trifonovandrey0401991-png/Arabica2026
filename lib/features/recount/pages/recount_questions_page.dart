@@ -26,18 +26,21 @@ import '../../ai_training/models/cigarette_training_model.dart';
 import '../../coffee_machine/widgets/counter_region_selector.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../ai_training/services/ai_toggle_service.dart';
 
 /// Страница с вопросами пересчета
 class RecountQuestionsPage extends StatefulWidget {
   final String employeeName;
   final String shopAddress;
   final String? employeePhone;
+  final bool dbfStale;
 
   const RecountQuestionsPage({
     super.key,
     required this.employeeName,
     required this.shopAddress,
     this.employeePhone,
+    this.dbfStale = false,
   });
 
   @override
@@ -56,6 +59,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   // Контроллеры для полей "Больше на" и "Меньше на"
   final TextEditingController _moreByController = TextEditingController();
   final TextEditingController _lessByController = TextEditingController();
+  final TextEditingController _manualQuantityController = TextEditingController();
   String? _selectedAnswer; // "сходится" или "не сходится"
   String? _photoPath;
   bool _isSubmitting = false;
@@ -170,7 +174,12 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
       // Проверяем обучена ли модель ИИ (не блокируем загрузку)
       final questionsWithAi = aiActiveQuestions; // захватываем до async
-      CigaretteVisionService.isModelTrained().then((trained) {
+      AiToggleService.isEnabled('cigaretteVision').then((enabled) async {
+        if (!enabled) {
+          Logger.info('[Recount AI] Cigarette Vision disabled via toggle');
+          return;
+        }
+        final trained = await CigaretteVisionService.isModelTrained();
         if (!mounted) return;
         setState(() => _isModelTrained = trained);
         if (trained && questionsWithAi == 0) {
@@ -243,6 +252,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   void dispose() {
     _moreByController.dispose();
     _lessByController.dispose();
+    _manualQuantityController.dispose();
     super.dispose();
   }
 
@@ -411,37 +421,54 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
     final question = _selectedQuestions![_currentQuestionIndex];
     final isPhotoRequired = _photoRequiredIndices.contains(_currentQuestionIndex);
-    // Остаток из DBF
-    final stockFromDbf = question.stock;
 
     RecountAnswer answer;
 
-    if (_selectedAnswer == 'сходится') {
-      // При "Сходится" количество берётся автоматически из DBF
-      answer = RecountAnswer.matching(
+    // Режим без DBF — ответ + ручной ввод количества
+    if (widget.dbfStale) {
+      final qty = int.tryParse(_manualQuantityController.text.trim());
+      if (qty == null || qty < 0 || _selectedAnswer == null) return;
+      answer = RecountAnswer(
         question: question.question,
         grade: question.grade,
-        stockFromDbf: stockFromDbf,
-        photoPath: _photoPath,
-        photoRequired: isPhotoRequired,
-      );
-    } else if (_selectedAnswer == 'не сходится') {
-      // При "Не сходится" - указываем расхождение
-      final moreBy = int.tryParse(_moreByController.text.trim());
-      final lessBy = int.tryParse(_lessByController.text.trim());
-
-      answer = RecountAnswer.notMatching(
-        question: question.question,
-        grade: question.grade,
-        stockFromDbf: stockFromDbf,
-        moreBy: moreBy != null && moreBy > 0 ? moreBy : null,
-        lessBy: lessBy != null && lessBy > 0 ? lessBy : null,
+        answer: _selectedAnswer!,
+        quantity: qty,
+        programBalance: null,
+        actualBalance: qty,
+        difference: null,
+        moreBy: null,
+        lessBy: null,
         photoPath: _photoPath,
         photoRequired: isPhotoRequired,
       );
     } else {
-      // Ответ не выбран
-      return;
+      // Нормальный режим с остатками из DBF
+      final stockFromDbf = question.stock;
+
+      if (_selectedAnswer == 'сходится') {
+        answer = RecountAnswer.matching(
+          question: question.question,
+          grade: question.grade,
+          stockFromDbf: stockFromDbf,
+          photoPath: _photoPath,
+          photoRequired: isPhotoRequired,
+        );
+      } else if (_selectedAnswer == 'не сходится') {
+        final moreBy = int.tryParse(_moreByController.text.trim());
+        final lessBy = int.tryParse(_lessByController.text.trim());
+
+        answer = RecountAnswer.notMatching(
+          question: question.question,
+          grade: question.grade,
+          stockFromDbf: stockFromDbf,
+          moreBy: moreBy != null && moreBy > 0 ? moreBy : null,
+          lessBy: lessBy != null && lessBy > 0 ? lessBy : null,
+          photoPath: _photoPath,
+          photoRequired: isPhotoRequired,
+        );
+      } else {
+        return; // Ответ не выбран
+      }
     }
 
     _answers[_currentQuestionIndex] = answer;
@@ -463,6 +490,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
     if (!question.isAiActive || answer.photoPath == null) {
       Logger.debug('ИИ проверка пропущена: isAiActive=${question.isAiActive}, hasPhoto=${answer.photoPath != null}');
+      return;
+    }
+
+    // Проверяем глобальный переключатель ИИ
+    final aiToggleEnabled = await AiToggleService.isEnabled('cigaretteVision');
+    if (!aiToggleEnabled) {
+      Logger.info('[Recount AI] Cigarette Vision disabled via toggle - skipping');
       return;
     }
 
@@ -1008,6 +1042,15 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     required int questionIndex,
     required RecountQuestion question,
   }) async {
+    // Режим без DBF — количество уже введено вручную
+    if (widget.dbfStale) {
+      final qty = int.tryParse(_manualQuantityController.text.trim()) ?? 0;
+      _answers[questionIndex] = _answers[questionIndex].copyWith(
+        employeeConfirmedQuantity: qty,
+      );
+      return;
+    }
+
     final hasDbfStock = question.stock > 0;
 
     if (hasDbfStock && _selectedAnswer == 'сходится') {
@@ -1180,6 +1223,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
     // Если ответ еще не сохранен, проверяем только базовые поля
     if (!_answerSaved) {
+      // DBF отключена — проверяем выбор ответа + ввод количества
+      if (widget.dbfStale) {
+        if (_selectedAnswer == null) return false;
+        final qty = int.tryParse(_manualQuantityController.text.trim());
+        return qty != null && qty >= 0;
+      }
+
       if (_selectedAnswer == null) {
         return false;
       }
@@ -1270,6 +1320,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         _selectedAnswer = null;
         _moreByController.clear();
         _lessByController.clear();
+        _manualQuantityController.clear();
         _photoPath = null;
         _answerSaved = false; // Сбрасываем флаг для нового вопроса
         _selectedRegion = null; // Сбрасываем регион для нового вопроса
@@ -1284,6 +1335,9 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
             if (savedAnswer.answer == 'не сходится') {
               _moreByController.text = savedAnswer.moreBy?.toString() ?? '';
               _lessByController.text = savedAnswer.lessBy?.toString() ?? '';
+            }
+            if (savedAnswer.answer == 'ввод количества') {
+              _manualQuantityController.text = savedAnswer.quantity?.toString() ?? '';
             }
             _photoPath = savedAnswer.photoPath;
           }
@@ -1795,31 +1849,59 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                 ],
                               ),
                               SizedBox(height: 16),
-                              // Остаток из DBF
-                              Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 16.w),
-                                decoration: BoxDecoration(
-                                  color: AppColors.gold.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(14.r),
-                                  border: Border.all(color: AppColors.gold.withOpacity(0.25)),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.inventory_2_rounded, color: AppColors.gold, size: 22),
-                                    SizedBox(width: 10),
-                                    Text(
-                                      'По программе: ${question.stock} шт',
-                                      style: TextStyle(
-                                        fontSize: 20.sp,
-                                        fontWeight: FontWeight.w700,
-                                        color: _goldLight,
+                              // Остаток из DBF или предупреждение о недоступности
+                              if (widget.dbfStale)
+                                Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(14.r),
+                                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 22),
+                                      SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'DBF не обновлялась более 20 мин.\nВведите фактическое количество.',
+                                          style: TextStyle(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.orange,
+                                            height: 1.4,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
+                                )
+                              else
+                                Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 16.w),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.gold.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(14.r),
+                                    border: Border.all(color: AppColors.gold.withOpacity(0.25)),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.inventory_2_rounded, color: AppColors.gold, size: 22),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        'По программе: ${question.stock} шт',
+                                        style: TextStyle(
+                                          fontSize: 20.sp,
+                                          fontWeight: FontWeight.w700,
+                                          color: _goldLight,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
                               SizedBox(height: 16),
                               // Название товара + фото / заглушка
                               Row(
@@ -1868,66 +1950,128 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                         ),
                       ),
                       SizedBox(height: 16),
-                      // Выбор ответа
+                      // Кнопки «Сходится» / «Не сходится» — в обоих режимах
                       Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(16.r),
-                          border: Border.all(color: Colors.white.withOpacity(0.1)),
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.all(16.w),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                'Ответ:',
-                                style: TextStyle(
-                                  fontSize: 15.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white.withOpacity(0.6),
-                                  letterSpacing: 0.5,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(16.r),
+                            border: Border.all(color: Colors.white.withOpacity(0.1)),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(16.w),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  'Ответ:',
+                                  style: TextStyle(
+                                    fontSize: 15.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withOpacity(0.6),
+                                    letterSpacing: 0.5,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _buildAnswerButton(
-                                      label: 'Сходится',
-                                      icon: Icons.check_circle_rounded,
-                                      isSelected: _selectedAnswer == 'сходится',
-                                      color: AppColors.success,
-                                      onPressed: _answerSaved ? null : () {
-                                        if (mounted) setState(() {
-                                          _selectedAnswer = 'сходится';
-                                        });
-                                      },
+                                SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildAnswerButton(
+                                        label: 'Сходится',
+                                        icon: Icons.check_circle_rounded,
+                                        isSelected: _selectedAnswer == 'сходится',
+                                        color: AppColors.success,
+                                        onPressed: _answerSaved ? null : () {
+                                          if (mounted) setState(() {
+                                            _selectedAnswer = 'сходится';
+                                          });
+                                        },
+                                      ),
                                     ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Expanded(
-                                    child: _buildAnswerButton(
-                                      label: 'Не сходится',
-                                      icon: Icons.cancel_rounded,
-                                      isSelected: _selectedAnswer == 'не сходится',
-                                      color: Color(0xFFEF5350),
-                                      onPressed: _answerSaved ? null : () {
-                                        if (mounted) setState(() {
-                                          _selectedAnswer = 'не сходится';
-                                        });
-                                      },
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildAnswerButton(
+                                        label: 'Не сходится',
+                                        icon: Icons.cancel_rounded,
+                                        isSelected: _selectedAnswer == 'не сходится',
+                                        color: Color(0xFFEF5350),
+                                        onPressed: _answerSaved ? null : () {
+                                          if (mounted) setState(() {
+                                            _selectedAnswer = 'не сходится';
+                                          });
+                                        },
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
                       SizedBox(height: 12),
-                      // При "Сходится" - подтверждение
-                      if (_selectedAnswer == 'сходится')
+                      // Режим без DBF — поле ввода количества (после выбора ответа)
+                      if (widget.dbfStale && _selectedAnswer != null)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(16.r),
+                            border: Border.all(color: Colors.white.withOpacity(0.1)),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(16.w),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  'Количество на полке:',
+                                  style: TextStyle(
+                                    fontSize: 15.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withOpacity(0.6),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                SizedBox(height: 12),
+                                TextField(
+                                  controller: _manualQuantityController,
+                                  keyboardType: TextInputType.number,
+                                  enabled: !_answerSaved,
+                                  style: TextStyle(
+                                    fontSize: 24.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  decoration: InputDecoration(
+                                    hintText: '0',
+                                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 24.sp),
+                                    filled: true,
+                                    fillColor: Colors.white.withOpacity(0.06),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.r),
+                                      borderSide: BorderSide(color: AppColors.gold.withOpacity(0.3)),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.r),
+                                      borderSide: BorderSide(color: AppColors.gold.withOpacity(0.3)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.r),
+                                      borderSide: BorderSide(color: AppColors.gold, width: 2),
+                                    ),
+                                    suffixText: 'шт',
+                                    suffixStyle: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16.sp),
+                                    contentPadding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 16.w),
+                                  ),
+                                  onChanged: (_) {
+                                    if (mounted) setState(() {});
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      // При "Сходится" - подтверждение (только в нормальном режиме)
+                      if (!widget.dbfStale && _selectedAnswer == 'сходится')
                         Container(
                           padding: EdgeInsets.all(16.w),
                           decoration: BoxDecoration(
@@ -1952,8 +2096,8 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                             ],
                           ),
                         ),
-                      // При "Не сходится" - поля расхождений
-                      if (_selectedAnswer == 'не сходится')
+                      // При "Не сходится" - поля расхождений (только в нормальном режиме)
+                      if (!widget.dbfStale && _selectedAnswer == 'не сходится')
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.06),
@@ -2135,6 +2279,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                               _selectedAnswer = null;
                               _moreByController.clear();
                               _lessByController.clear();
+                              _manualQuantityController.clear();
                               _photoPath = null;
                               _answerSaved = false;
 
@@ -2146,6 +2291,9 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                   if (savedAnswer.answer == 'не сходится') {
                                     _moreByController.text = savedAnswer.moreBy?.toString() ?? '';
                                     _lessByController.text = savedAnswer.lessBy?.toString() ?? '';
+                                  }
+                                  if (savedAnswer.answer == 'ввод количества') {
+                                    _manualQuantityController.text = savedAnswer.quantity?.toString() ?? '';
                                   }
                                   _photoPath = savedAnswer.photoPath;
                                 }

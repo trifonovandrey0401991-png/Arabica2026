@@ -1,7 +1,7 @@
 # Arabica - Полная архитектурная документация
 
-**Версия:** 2.7.2
-**Дата обновления:** 2026-02-24
+**Версия:** 2.8.0
+**Дата обновления:** 2026-03-01
 **Автор:** Claude Code (полный архитектурный анализ + аудит безопасности + полный аудит 09.02.2026)
 **Назначение:** Исчерпывающая документация для любого IT-специалиста
 
@@ -12,7 +12,7 @@
 1. [Общая архитектура системы](#1-общая-архитектура-системы)
 2. [Запуск приложения (App Flow)](#2-запуск-приложения)
 3. [Система авторизации](#3-система-авторизации)
-4. [Flutter модули (36 штук)](#4-flutter-модули)
+4. [Flutter модули (38 штук)](#4-flutter-модули)
 5. [Сервер (loyalty-proxy)](#5-сервер-loyalty-proxy)
 6. [Потоки данных](#6-потоки-данных)
 7. [Автоматизация (Schedulers)](#7-автоматизация-schedulers)
@@ -110,11 +110,13 @@ arabica2026/
 │   │   ├── pages/
 │   │   │   ├── client_functions_page.dart
 │   │   │   ├── data_management_page.dart
+│   │   │   ├── developer_reports_page.dart
 │   │   │   ├── main_menu_page.dart
 │   │   │   ├── manager_grid_page.dart
 │   │   │   ├── my_dialogs_page.dart
 │   │   │   ├── reports_page.dart
-│   │   │   └── role_test_page.dart
+│   │   │   ├── role_test_page.dart
+│   │   │   └── staff_efficiency_page.dart
 │   │   └── services/
 │   │       ├── dashboard_batch_service.dart
 │   │       ├── my_dialogs_counter_service.dart
@@ -123,7 +125,8 @@ arabica2026/
 │   │   ├── constants/
 │   │   │   ├── api_constants.dart  # URL сервера, таймауты
 │   │   │   ├── api_key.dart        # API ключ
-│   │   │   └── app_constants.dart  # Константы приложения
+│   │   │   ├── app_constants.dart  # Константы приложения
+│   │   │   └── prefs_keys.dart    # Ключи SharedPreferences
 │   │   ├── services/
 │   │   │   ├── app_update_service.dart        # Проверка обновлений
 │   │   │   ├── background_gps_service.dart    # Геофенсинг
@@ -145,26 +148,29 @@ arabica2026/
 │   │   ├── utils/
 │   │   │   ├── cache_manager.dart
 │   │   │   ├── date_formatter.dart
+│   │   │   ├── disk_cache.dart       # Дисковый кэш для офлайн
 │   │   │   ├── error_handler.dart    # Обработка ошибок
 │   │   │   ├── logger.dart
 │   │   │   └── phone_normalizer.dart # Нормализация телефонов
 │   │   └── widgets/
 │   │       └── shop_icon.dart        # Иконка магазина
-│   ├── features/                   # 36 функциональных модулей
+│   ├── features/                   # 38 функциональных модулей
 │   │   ├── auth/                   # Авторизация
 │   │   ├── attendance/             # Посещаемость
 │   │   ├── shifts/                 # Пересменки
 │   │   ├── messenger/              # Мессенджер (чаты, группы, WebSocket)
+│   │   ├── onboarding/             # Онбординг (разрешения при первом запуске)
+│   │   ├── shop_catalog/           # Каталог товаров магазинов
 │   │   ├── ... (ещё 32 модуля)
 │   │   └── ai_training/            # ИИ распознавание (Z-отчёты, сигареты, YOLO)
-│   └── shared/                     # Общие компоненты (17 файлов)
+│   └── shared/                     # Общие компоненты (18 файлов)
 │       ├── dialogs/                # 8 диалогов (расписание, уведомления, и др.)
 │       ├── models/                 # unified_dialog_message_model.dart
 │       ├── providers/              # cart_provider.dart, order_provider.dart
-│       └── widgets/                # 6 виджетов (report_list, shop_selection, и др.)
+│       └── widgets/                # 7 виджетов (report_list, shop_selection, и др.)
 ├── loyalty-proxy/                  # Node.js сервер
 │   ├── index.js                    # Точка входа (middleware, schedulers, routes)
-│   ├── api/                        # 71 API модулей
+│   ├── api/                        # 75 API файлов (63 обработчика + 9 планировщиков + 3 WebSocket)
 │   ├── modules/                    # Вспомогательные модули (9 файлов)
 │   ├── ml/                         # ML/AI модули (YOLO inference, server)
 │   ├── services/                   # Сервисы (Telegram bot)
@@ -584,7 +590,7 @@ class AuthCredentials {
 
 # 4. FLUTTER МОДУЛИ
 
-## 4.1 Обзор модулей (37 штук)
+## 4.1 Обзор модулей (39 штук)
 
 | # | Модуль | Директория | Роли | Статус | Описание |
 |---|--------|------------|------|--------|----------|
@@ -624,6 +630,9 @@ class AuthCredentials {
 | 34 | Кофемашины | `coffee_machine/` | Сотрудник, Админ | Работает | OCR счётчиков, шаблоны, автоматизация |
 | 35 | Цепочки выполнения | `execution_chain/` | Админ | Работает | Цепочки задач для автоматизации |
 | 36 | Мессенджер | `messenger/` | Все сотрудники | В разработке | Чаты, группы, WebSocket, голосовые |
+| 37 | Каталог магазина | `shop_catalog/` | Админ | Работает | Товары по магазинам, группы, фото |
+| 38 | Онбординг | `onboarding/` | Все | Работает | Разрешения при первом запуске |
+| 39 | Настройки | `settings/` | Developer | Работает | Ссылки на магазины (QR-коды) |
 
 > **Примечание:** Передача смен (`shift_transfers`) — НЕ отдельный модуль, а часть `work_schedule/` (shift_transfer_model.dart, shift_transfer_service.dart, shift_transfer_requests_page.dart).
 
@@ -1124,6 +1133,65 @@ messenger/
 
 ---
 
+### МОДУЛЬ: shop_catalog (Каталог магазина)
+
+**Директория:** `lib/features/shop_catalog/`
+
+```
+shop_catalog/
+├── models/
+│   ├── shop_product.dart              # Модель товара
+│   └── shop_product_group.dart        # Модель группы товаров
+├── services/
+│   └── shop_catalog_service.dart      # Сервис каталога
+├── pages/
+│   ├── shop_catalog_admin_page.dart   # Управление каталогом (админ)
+│   └── shop_catalog_page.dart         # Просмотр каталога
+└── widgets/
+    └── photo_carousel.dart            # Карусель фото товаров
+```
+
+**Роли:** Админ (управление), Сотрудник (просмотр)
+
+**Файлов:** 6
+
+**Ключевые особенности:**
+- Группировка товаров по категориям
+- Фото товаров с каруселью
+- Управление каталогом конкретного магазина
+
+**API Endpoints:**
+
+| Method | Path | Описание |
+|--------|------|----------|
+| GET | `/api/shop-catalog/:shopId` | Каталог магазина |
+| POST | `/api/shop-catalog/:shopId` | Добавить товар |
+| PUT | `/api/shop-catalog/:shopId/:productId` | Обновить товар |
+| DELETE | `/api/shop-catalog/:shopId/:productId` | Удалить товар |
+
+---
+
+### МОДУЛЬ: onboarding (Онбординг)
+
+**Директория:** `lib/features/onboarding/`
+
+```
+onboarding/
+└── pages/
+    └── permission_onboarding_page.dart  # Запрос разрешений при первом запуске
+```
+
+**Роли:** Все
+
+**Файлов:** 1
+
+**Ключевые особенности:**
+- Запрос разрешений (камера, геолокация, уведомления) при первом запуске
+- Показывается один раз после регистрации/входа
+- Интеграция в main.dart: RegistrationPage → PinSetupPage → **PermissionOnboardingPage** → MainMenuPage
+
+---
+
 # 5. СЕРВЕР (loyalty-proxy)
 
 ## 5.1 Структура сервера
@@ -1132,7 +1200,7 @@ messenger/
 loyalty-proxy/
 ├── index.js                              # Точка входа (middleware, schedulers, routes, PUBLIC_WRITE_PATHS)
 │
-├── api/                                  # 74 API модуля (включая schedulers и notifications)
+├── api/                                  # 75 API файлов (63 обработчика + 9 планировщиков + 3 WebSocket)
 │   │
 │   │── CORE API ──────────────────────────────────────────────────
 │   ├── auth_api.js                       # Авторизация
@@ -1194,6 +1262,11 @@ loyalty-proxy/
 │   ├── messenger_api.js                  # Мессенджер (REST API)
 │   ├── messenger_websocket.js            # Мессенджер (WebSocket)
 │   ├── ai_dashboard_api.js              # ИИ дашборд (статистика, обучение, retry, Telegram notify, internal API)
+│   ├── counters_websocket.js             # WebSocket для счётчиков кофемашин
+│   ├── health_monitor_api.js             # Мониторинг здоровья сервера
+│   ├── loyalty_wallet_api.js             # Кошелёк клиента
+│   ├── review_api.js                     # Отзывы
+│   ├── shop_catalog_api.js               # Каталог товаров магазина
 │   │
 │   │── AUTOMATION SCHEDULERS ──────────────────────────────────────
 │   ├── attendance_automation_scheduler.js   # Посещаемость
@@ -1263,13 +1336,14 @@ loyalty-proxy/
 
 **Общая статистика:**
 - ~42000 строк JavaScript кода
-- 71 API файлов в api/ + 1 в корне (efficiency_calc.js)
+- 75 API файлов в api/ (63 обработчика + 9 планировщиков + 3 WebSocket) + 1 в корне (efficiency_calc.js)
 - 9 модулей в modules/ (OCR, vision, orders, z-report intelligence)
-- 3 ML файла в ml/ (YOLO inference, server, wrapper)
+- 5 ML файлов в ml/ (YOLO inference, server, wrapper, embedding_catalog, build_reference_catalog)
 - 15 утилит в utils/ (включая db.js, db_schema.sql, push_service, pending_notify)
-- 11 Scheduler'ов (8 именованных + order_timeout + auto_cleanup + yolo_retrain)
-- 503+ endpoints
+- 11 Scheduler'ов (7 отчётных + product_questions_penalty + order_timeout + auto_cleanup + yolo_retrain)
+- 610+ endpoints
 - PostgreSQL: ~44 таблицы, 10400+ записей, 17MB данных
+- 517 Dart файлов во Flutter-приложении
 
 ## 5.2 ПОЛНАЯ ТАБЛИЦА API ENDPOINTS (240+)
 
@@ -1840,6 +1914,15 @@ AI верификация проверяет фото товаров на соо
 | GET | `/api/clients/:phone/messages` | Сообщения | ✅ |
 | POST | `/api/clients/:phone/messages` | Отправить | ✅ |
 | POST | `/api/clients/messages/broadcast` | Рассылка | ✅ |
+
+### STORE LINKS API (Ссылки на магазины приложений)
+
+| Method | Path | Описание | Auth |
+|--------|------|----------|------|
+| GET | `/api/app-settings/store-links` | Получить ссылки Google Play / App Store | ✅ |
+| POST | `/api/app-settings/store-links` | Сохранить ссылки (только админ) | ✅ Admin |
+
+> Файл: `store_links_api.js`. Хранит в `app_settings` с ключом `store_links`. Dual-write JSON + DB. Используется для генерации QR-кодов в диалоге «Код приглашения».
 
 ### FCM TOKENS API (Push токены)
 
@@ -3248,13 +3331,13 @@ async function checkManagerAccess(phone, shopAddress) {
 | N3 | Все API файлы | Нет проверки `req.user.isAdmin` на write-операциях | 🔴 |
 | N4 | `auth_api.js:282` | Регистрация возвращает `pinHash` и `salt` в ответе | 🔴 |
 | N5 | `auth_api.js:657` | GET `/api/auth/session/:phone` без аутентификации | 🔴 |
-| N6 | `product_questions_penalty_scheduler.js` | `getHours()` = LOCAL time, не Moscow — неправильные штрафы | 🔴 |
+| N6 | ~~`product_questions_penalty_scheduler.js`~~ | ~~`getHours()` = LOCAL time~~ | ✅ **ИСПРАВЛЕНО** (2026-02-24): использует getMoscowTime() |
 | N7 | `clients_api.js` | Broadcast body mismatch: Flutter → `{text, imageUrl}`, сервер ← `{message, phones}` | 🔴 |
 | N8 | `auth_service.dart` | Вызывает `/api/auth/refresh-session` — endpoint НЕ существует на сервере | 🔴 |
 | N9 | `admin_cache.js:80` | Синхронные `readdirSync`/`readFileSync` блокируют event loop | 🔴 |
-| N10 | `efficiency_calc.js:301` | ~6500 файловых чтений на single-employee запрос | 🔴 |
-| N11 | 15+ API файлов | Нет пагинации — эндпоинты возвращают ВСЕ записи | 🔴 |
-| N12 | `efficiency_calc.js` | 5 из 10 категорий не работают (envelope, reviews, orders, productSearch, tasks) | 🔴 |
+| N10 | ~~`efficiency_calc.js:301`~~ | ~~~6500 файловых чтений~~ | ✅ **ИСПРАВЛЕНО** (2026-02-24): переписано на PostgreSQL, 12 SQL-запросов за ~31мс |
+| N11 | ~~15+ API файлов~~ | ~~Нет пагинации~~ | ✅ **ИСПРАВЛЕНО** (2026-02-24): pagination.js утилита + SQL-пагинация в 7 из 10 основных API |
+| N12 | ~~`efficiency_calc.js`~~ | ~~5 из 10 категорий не работают~~ | ✅ **ИСПРАВЛЕНО** (2026-02-24): 9 из 13 категорий работают, 4 = 0 (нет данных/настройки) |
 
 ## 11.2 Безопасность
 
@@ -3313,6 +3396,14 @@ async function checkManagerAccess(phone, shopAddress) {
 | 3 | DB миграция 3 AI модулей (z-report, cigarette-vision, shift-ai) | ✅ 4 таблицы + 3 singleton |
 | 4 | 44 таблицы в PostgreSQL, все модули на dual-write | ✅ |
 | 5 | Inline `if (!req.user)` проверки заменены на middleware | ✅ 49 проверок удалено |
+| 6 | efficiency_calc.js переписан на PostgreSQL | ✅ 12 SQL-запросов, ~31мс, 9/13 категорий |
+| 7 | Scheduler'ы исправлены (recount, shift_handover) | ✅ dual-write pending→DB, checkPendingDeadlines→BEFORE generate |
+| 8 | product_questions_penalty getHours() → getMoscowTime() | ✅ |
+| 9 | shifts_api.js deadlock — writeJsonFile внутри withLock с useLock:false | ✅ |
+| 10 | checkIfShiftHandoverSubmitted — фильтр status NOT IN (pending, failed) | ✅ |
+| 11 | Stale pending shift_reports — cleanup записей с date < today | ✅ |
+| 12 | shops_api.js dual-write JSON для schedulers | ✅ POST/PUT/DELETE → JSON |
+| 13 | Геозона — кулдаун 4ч глобально (не по магазину) | ✅ |
 
 ## 11.6 Результаты критического анализа (19.02.2026)
 
@@ -3492,6 +3583,12 @@ async function checkManagerAccess(phone, shopAddress) {
 │  data_cleanup/          GET/POST /api/admin/* → (очистка файлов)           │
 │  kpi/                   (Flutter + SharedPreferences offline кэш)           │
 │  ai_training/           POST /api/z-report-* + /api/cigarette-vision/*     │
+│  shop_catalog/          GET/POST/PUT/DELETE /api/shop-catalog/:shopId      │
+│  geofence/              POST /api/geofence/check + /api/geofence/background│
+│  onboarding/            (нет API — только Flutter)                         │
+│  messenger/             REST + WS /ws/messenger → messenger-data/         │
+│  network_management/    GET/POST /api/network-settings → settings          │
+│  execution_chain/       GET/POST /api/execution-chains → execution-chains/│
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -3514,11 +3611,11 @@ Client broadcast ──────────────┘
 
 | Метрика | Значение |
 |---------|----------|
-| 🔴 Критических проблем | 12 |
-| 🟠 Важных проблем | 24 |
+| 🔴 Критических проблем | 12 (из них 4 ИСПРАВЛЕНО: N6, N10, N11, N12) |
+| 🟠 Важных проблем | 24 (из них 5+ ИСПРАВЛЕНО) |
 | 🟡 Рекомендаций | 31 |
-| ✅ Модулей без проблем | 22 / 36 |
-| flutter analyze | 0 ошибок, 45 warnings, 135 infos |
+| ✅ Модулей без проблем | 26 / 38 |
+| flutter analyze | 0 ошибок |
 
 ## 13.2 Цепочки данных (35 модулей)
 
@@ -3571,7 +3668,7 @@ Client broadcast ──────────────┘
 | 5 | attendance | UTC+3 ✅ | -2 | Robust | 🟡 Hour overflow (23+3=26) |
 | 6 | envelope | UTC+3 ✅ | -5 | Moderate | 🟠 5-мин окно генерации |
 | 7 | coffee_machine | UTC+3 ✅ | -3 | Moderate | 🟠 5-мин окно генерации |
-| 8 | product_questions | ❌ LOCAL | -1 | Robust | 🔴 `getHours()` = LOCAL time! |
+| 8 | product_questions | ✅ UTC+3 | -1 | Robust | ✅ Исправлено: getMoscowTime() |
 | 9 | order_timeout | UTC+3 ✅ | штраф | Moderate | 🟡 Скрытый в order_timeout_api.js |
 | 10 | auto_cleanup | UTC+3 ✅ | N/A | Robust | 🟡 Скрытый в data_cleanup_api.js |
 
@@ -3581,26 +3678,29 @@ Client broadcast ──────────────┘
 |-----------|--------|-------------|
 | shifts | ✅ Работает | Да |
 | recount | ✅ Работает | Да |
-| envelope | ❌ Не загружается | Нет |
+| shiftHandover | ✅ Работает | Да |
+| envelope | ✅ Работает | Да (= 0 если нет настроек) |
 | attendance | ✅ Работает | Да |
-| reviews | ❌ Неправильное поле | Нет |
+| reviews | ✅ Работает | Да |
 | rko | ✅ Работает | Да |
-| orders | ❌ Неправильная структура | Нет |
-| productSearch | ❌ Неправильные поля | Нет |
+| coffeeMachine | ✅ Работает | Да |
 | tests | ✅ Работает | Да |
-| tasks | ❌ Баллы не записываются | Нет |
+| orders | ⚠️ = 0 | Нет (TODO: интеграция с Lichi) |
+| productSearch | ⚠️ = 0 | Нет (через штрафы) |
+| tasks | ⚠️ = 0 | Нет (нет approved задач) |
+| penalties | ✅ Работает | Да |
 
-**Результат:** Рейтинг считается по 5 из 10 категорий — несправедливо для сотрудников.
+**Результат:** Рейтинг считается по 9 из 13 категорий. 4 = 0 корректно (нет данных/настройки).
 
 ## 13.5 Масштабируемость
 
 | # | Проблема | Уровень | При 100 магазинах |
 |---|----------|---------|-------------------|
-| 1 | Файловая система как БД | 🔴 | ~5 сек на список, блокировка event loop |
-| 2 | Нет кэширования employees/shops | 🟠 | Тысячи лишних чтений/мин |
-| 3 | 197 writeFile без блокировки | 🔴 | Гарантированная порча данных |
+| 1 | ~~Файловая система как БД~~ | ✅ | ИСПРАВЛЕНО: PostgreSQL (44 таблицы, dual-write) |
+| 2 | ~~Нет кэширования employees/shops~~ | ✅ | ИСПРАВЛЕНО: data_cache.js + admin_cache.js |
+| 3 | 197 writeFile без блокировки | 🟠 | Частично: async_fs.js с file_lock.js используется |
 | 4 | Нет автоматической очистки | 🟠 | 500K+ файлов через 12 месяцев |
-| 5 | 2GB RAM + 2GB swap | 🟠 | OOM при batch efficiency |
+| 5 | 12GB RAM + 2GB swap | ✅ | Апгрейд выполнен |
 | 6 | 8 schedulers × 5 мин одновременно | 🟡 | ~800 файл.операций/5мин |
 | 7 | WebSocket broadcast O(N) | 🟡 | O(N²) distribution |
 | 8 | Upload 10-20MB без проверки | 🟡 | Диск заполнится |
@@ -3610,11 +3710,11 @@ Client broadcast ──────────────┘
 | # | Уровень | Файл | Описание |
 |---|---------|------|----------|
 | B-1 | 🔴 | `admin_cache.js:80-103` | Sync I/O при cache miss блокирует event loop |
-| B-6 | 🔴 | `efficiency_calc.js:301-826` | ~6500 файловых чтений на single-employee |
-| B-7 | 🟠 | `efficiency_calc.js:1077` | Batch cache не покрывает 4 категории |
+| B-6 | ✅ | ~~`efficiency_calc.js:301-826`~~ | ✅ ИСПРАВЛЕНО: переписано на PostgreSQL, 12 SQL за ~31мс |
+| B-7 | ✅ | ~~`efficiency_calc.js:1077`~~ | ✅ ИСПРАВЛЕНО: batch cache покрывает все категории через initBatchCache() |
 | B-9 | 🟠 | `tasks_api.js:54-77` | getEmployeePhoneById сканирует ВСЕХ |
 | B-10 | 🟠 | `clients_api.js:571` | Broadcast пишет по 1 файлу (100 = 10 сек) |
-| B-11 | 🔴 | 15+ API файлов | Нет пагинации — ВСЕ записи |
+| B-11 | ✅ | ~~15+ API файлов~~ | ✅ ИСПРАВЛЕНО: pagination.js + SQL LIMIT/OFFSET в 7 из 10 основных API |
 | B-12 | 🟠 | `pending_api.js:511` | generateDailyPendingShifts на КАЖДОМ GET |
 | B-13 | 🟠 | `shifts_api.js:298` | PUT сканирует ВСЕ daily файлы |
 
@@ -3638,10 +3738,10 @@ Client broadcast ──────────────┘
 | 2. Пересменка → Фото → Отправить | ✅ | Работает |
 | 3. Пересчёт → Заполнить → Штраф | ✅ | Работает |
 | 4. Клиент → Бонусы → QR | ✅ | Работает |
-| 5. Задача → Выполнить → Баллы | ⚠️ | Баллы не записываются при approve |
+| 5. Задача → Выполнить → Баллы | ⚠️ | Баллы = 0 (нет approved задач) |
 | 6. Расписание → Авто → Публикация | ✅ | Работает |
 | 7. Кофемашина → OCR → Отчёт | ✅ | Работает |
-| 8. Эффективность → KPI → Рейтинг | ⚠️ | 5 из 10 категорий не работают |
+| 8. Эффективность → KPI → Рейтинг | ✅ | 9 из 13 категорий работают (PostgreSQL) |
 
 ## 13.9 Нагрузочные тесты
 
@@ -3712,7 +3812,7 @@ Client broadcast ──────────────┘
 
 **Конец документации**
 
-*Последнее обновление: 2026-02-17*
+*Последнее обновление: 2026-03-01*
 *Автор: Claude Code*
 *Версия: 2.5.0 (аудит файлового инвентаря 17.02.2026: api/ 49→67, schedulers 8→10, /var/www/ dirs ~55→104, lib/core/ + lib/app/ полное обновление)*
 

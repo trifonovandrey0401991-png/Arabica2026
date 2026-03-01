@@ -464,6 +464,65 @@ function setupWithdrawalsAPI(app) {
     }
   });
 
+  // ===== MAIN CASH CORRECTIONS (developer only) =====
+
+  // GET /api/main-cash/correction?shopAddress=...
+  app.get('/api/main-cash/correction', requireAuth, async (req, res) => {
+    try {
+      if (!req.user.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Доступ запрещён' });
+      }
+      const { shopAddress } = req.query;
+      if (!shopAddress) {
+        return res.status(400).json({ success: false, error: 'shopAddress required' });
+      }
+
+      const key = `cash_correction_${shopAddress}`;
+      const row = await db.findById('app_settings', key, 'key');
+      const correction = row?.data || {
+        oooIncomeDelta: 0,
+        ipIncomeDelta: 0,
+        oooWithdrawalsDelta: 0,
+        ipWithdrawalsDelta: 0,
+      };
+      res.json({ success: true, correction });
+    } catch (error) {
+      console.error('Error getting cash correction:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/main-cash/correction
+  app.post('/api/main-cash/correction', requireAuth, async (req, res) => {
+    try {
+      if (!req.user.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Доступ запрещён' });
+      }
+      const { shopAddress, oooIncomeDelta, ipIncomeDelta, oooWithdrawalsDelta, ipWithdrawalsDelta } = req.body;
+      if (!shopAddress) {
+        return res.status(400).json({ success: false, error: 'shopAddress required' });
+      }
+
+      const key = `cash_correction_${shopAddress}`;
+      const data = {
+        shopAddress,
+        oooIncomeDelta: oooIncomeDelta || 0,
+        ipIncomeDelta: ipIncomeDelta || 0,
+        oooWithdrawalsDelta: oooWithdrawalsDelta || 0,
+        ipWithdrawalsDelta: ipWithdrawalsDelta || 0,
+        updatedAt: new Date().toISOString(),
+        updatedBy: req.user.phone,
+      };
+
+      await db.upsert('app_settings', { key, data }, 'key');
+      console.log(`✏️ Cash correction saved for ${shopAddress} by ${maskPhone(req.user.phone)}`);
+      res.json({ success: true, correction: data });
+    } catch (error) {
+      console.error('Error saving cash correction:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   console.log(`✅ Withdrawals API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 

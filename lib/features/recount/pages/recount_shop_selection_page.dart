@@ -32,8 +32,11 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
   RecountPointsSettings? _recountSettings; // Настройки интервалов
   Map<String, int> _shopAiCounts = {}; // Кол-во AI-товаров per shop (загружается фоном)
 
-  /// Таймаут для определения устаревших данных (5 минут)
+  /// Таймаут для определения устаревших данных (5 минут) — жёлтое предупреждение
   static final Duration _staleDataTimeout = Duration(minutes: 5);
+
+  /// Критический таймаут (20 минут) — DBF отключена, остатки не показываем
+  static final Duration _criticalStaleTimeout = Duration(minutes: 20);
 
   @override
   void initState() {
@@ -286,6 +289,17 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
     return timeSinceSync > _staleDataTimeout;
   }
 
+  /// Проверить, критически ли устарели данные DBF (более 20 минут — остатки ненадёжны)
+  bool _isDbfCriticallyStale(String shopId) {
+    final syncInfo = _shopsSyncInfo[shopId];
+    if (syncInfo == null || syncInfo.lastSync == null) {
+      return true;
+    }
+    final now = DateTime.now();
+    final timeSinceSync = now.difference(syncInfo.lastSync!);
+    return timeSinceSync > _criticalStaleTimeout;
+  }
+
   /// Получить время с последней синхронизации в читаемом формате
   String _getTimeSinceSync(String shopId) {
     final syncInfo = _shopsSyncInfo[shopId];
@@ -367,6 +381,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
     final hasPending = _hasPendingRecount(shop.address);
     final hasDbf = _hasDbfData(shop.id);
     final isStale = hasDbf && _isDbfDataStale(shop.id);
+    final isCriticallyStale = hasDbf && _isDbfCriticallyStale(shop.id);
     final shopAiCount = _shopAiCounts[shop.id]; // null = ещё грузится
 
     return Padding(
@@ -388,6 +403,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                   employeeName: _employeeName!,
                   shopAddress: shop.address,
                   employeePhone: _employeePhone,
+                  dbfStale: hasDbf && _isDbfCriticallyStale(shop.id),
                 ),
               ),
             );
@@ -445,14 +461,24 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                         spacing: 6.w,
                         runSpacing: 4.h,
                         children: [
-                          // DBF бейдж
+                          // DBF бейдж (3 уровня: актуален / устарел / отключена)
                           if (hasDbf)
                             _buildBadge(
-                              icon: isStale ? Icons.warning_amber_rounded : Icons.check_circle_outline,
-                              text: isStale
-                                  ? 'DBF: ${_getTimeSinceSync(shop.id)}'
-                                  : 'DBF актуален',
-                              color: isStale ? Colors.redAccent : Colors.green,
+                              icon: isCriticallyStale
+                                  ? Icons.cancel_rounded
+                                  : isStale
+                                      ? Icons.warning_amber_rounded
+                                      : Icons.check_circle_outline,
+                              text: isCriticallyStale
+                                  ? 'DBF отключена'
+                                  : isStale
+                                      ? 'DBF: ${_getTimeSinceSync(shop.id)}'
+                                      : 'DBF актуален',
+                              color: isCriticallyStale
+                                  ? Colors.redAccent
+                                  : isStale
+                                      ? Colors.orange
+                                      : Colors.green,
                             ),
                           // AI-статус бейдж (per-shop: количество AI-товаров)
                           if (hasDbf && shopAiCount != null)

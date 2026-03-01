@@ -210,7 +210,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
   }
 
   /// Отображение фото сотрудника с приоритетом серверного URL
-  Widget _buildEmployeePhoto(dynamic answer) {
+  Widget _buildEmployeePhoto(dynamic answer, {BoxFit fit = BoxFit.cover}) {
     // Приоритет 1: photoDriveId — серверный URL (работает на любом устройстве)
     if (answer.photoDriveId != null) {
       final photoUrl = answer.photoDriveId!.startsWith('http')
@@ -218,7 +218,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
           : PhotoUploadService.getPhotoUrl(answer.photoDriveId!);
       return AppCachedImage(
         imageUrl: photoUrl,
-        fit: BoxFit.cover,
+        fit: fit,
         errorWidget: (context, error, stackTrace) {
           Logger.error('Ошибка загрузки фото сотрудника: URL: $photoUrl', error);
           return Center(
@@ -243,14 +243,14 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
       if (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http')) {
         return AppCachedImage(
           imageUrl: answer.photoPath!,
-          fit: BoxFit.cover,
+          fit: fit,
           errorWidget: (context, error, stackTrace) {
             return Center(child: Icon(Icons.error, color: Colors.red.withOpacity(0.7)));
           },
         );
       }
       // Приоритет 3: photoPath — локальный файл (только на том же устройстве)
-      return Image.file(File(answer.photoPath!), fit: BoxFit.cover,
+      return Image.file(File(answer.photoPath!), fit: fit,
         errorBuilder: (context, error, stackTrace) {
           return Center(
             child: Column(
@@ -480,7 +480,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                 },
               ),
               if (answer.referencePhotoUrl == null)
-                // Если нет эталонного фото, показываем только сделанное фото
+                // Если нет эталонного фото, показываем фото на всю ширину
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -494,14 +494,15 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                     );
                   },
                   child: Container(
-                    height: 200,
+                    width: double.infinity,
+                    constraints: BoxConstraints(maxHeight: 400.h),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(color: Colors.white.withOpacity(0.15)),
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12.r),
-                      child: _buildEmployeePhoto(answer),
+                      child: _buildEmployeePhoto(answer, fit: BoxFit.contain),
                     ),
                   ),
                 ),

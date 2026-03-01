@@ -149,17 +149,45 @@ function normalizePhone(phone) {
 }
 
 /**
+ * Ищет имя пользователя по номеру телефона (сотрудники → клиенты → JSON pin file)
+ */
+async function resolveUserName(phone) {
+  // 1. Сотрудники (из кэша в памяти — быстро)
+  const employees = dataCache.getEmployees();
+  if (employees) {
+    const emp = employees.find(e => (e.phone || '').replace(/[^\d]/g, '') === phone);
+    if (emp && emp.name) return emp.name;
+  }
+  // 2. Клиенты (из базы)
+  try {
+    const client = await db.findById('clients', phone, 'phone');
+    if (client && client.name) return client.name;
+  } catch (_) {}
+  // 3. JSON pin file (хранит name с регистрации)
+  try {
+    const filePath = path.join(PINS_DIR, `${phone}.json`);
+    const data = await fs.readFile(filePath, 'utf8');
+    const json = JSON.parse(data);
+    if (json.name) return json.name;
+  } catch (_) {}
+  return null;
+}
+
+/**
  * Получает данные PIN по номеру телефона
  */
 async function getPinData(phone) {
   if (USE_DB) {
     const row = await db.findById('auth_pins', phone, 'phone');
     if (!row) return null;
+    // Name is not stored in auth_pins table, resolve it separately
+    const name = await resolveUserName(phone);
     // Map real DB columns to the expected JSON format used throughout auth_api.js
     return {
       pinHash: row.pin_hash,
       hashType: row.hash_type || 'bcrypt',
       salt: row.salt || null,
+      name,
       failedAttempts: row.failed_attempts || 0,
       lockedUntil: row.locked_until ? new Date(row.locked_until).getTime() : null,
     };

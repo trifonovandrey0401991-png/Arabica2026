@@ -104,6 +104,7 @@ class EfficiencyRecord {
   final EfficiencyCategory category;
   final String shopAddress;
   final String employeeName;
+  final String employeePhone; // Телефон сотрудника для надёжной фильтрации
   final DateTime date;
   final double points;
   final dynamic rawValue; // Исходное значение (rating, isOnTime, score, etc.)
@@ -114,6 +115,7 @@ class EfficiencyRecord {
     required this.category,
     required this.shopAddress,
     required this.employeeName,
+    this.employeePhone = '',
     required this.date,
     required this.points,
     required this.rawValue,
@@ -198,6 +200,7 @@ class EfficiencyRecord {
     'category': category.code,
     'shopAddress': shopAddress,
     'employeeName': employeeName,
+    'employeePhone': employeePhone,
     'date': date.toIso8601String(),
     'points': points,
     'rawValue': rawValue,
@@ -210,6 +213,7 @@ class EfficiencyRecord {
       category: EfficiencyCategoryExtension.fromCode(json['category'] ?? 'shift'),
       shopAddress: json['shopAddress'] ?? '',
       employeeName: json['employeeName'] ?? '',
+      employeePhone: json['employeePhone'] ?? '',
       date: DateTime.tryParse(json['date'] ?? '') ?? DateTime.now(),
       points: (json['points'] ?? 0).toDouble(),
       rawValue: json['rawValue'],

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:async';
+import 'package:qr_flutter/qr_flutter.dart';
+import '../../core/services/base_http_service.dart';
+import '../../core/constants/api_constants.dart';
 import '../../features/menu/pages/menu_groups_page.dart';
 import '../../features/orders/pages/cart_page.dart';
 import '../../features/employees/pages/employees_page.dart';
@@ -107,6 +111,8 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
   int _shiftTransferUnreadCount = 0;
   int _messengerUnreadCount = 0;
   int? _referralCode;
+  String _storeAndroidUrl = '';
+  String _storeIosUrl = '';
 
   // Флаг доступности обновления
   bool _isUpdateAvailable = false;
@@ -122,6 +128,9 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
   // Кэш цепочки выполнений (обновляется каждые 30 секунд)
   ExecutionChainStatus? _chainStatus;
   DateTime? _chainStatusLoadedAt;
+
+  // Геолокация для лояльности
+  bool _geoPermissionGranted = true; // default true — no badge flash on load
 
   // Авторизация для опт-заказов
   bool _isWholesaleAuthorized = false;
@@ -152,6 +161,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         _loadMyDialogsCount();
         _loadMessengerUnreadCount();
         _loadEmployeeCounters();
+        _checkGeoPermission();
       }
     }
   }
@@ -169,6 +179,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
     _loadMessengerUnreadCount();
     _loadEmployeeCounters();
     _loadWholesaleAuth();
+    _checkGeoPermission();
 
     // ФАЗА 3: Фоновые данные (не видны сразу)
     await Future.delayed(Duration(milliseconds: 300));
@@ -186,24 +197,120 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
     }
   }
 
+  Future<void> _checkGeoPermission() async {
+    try {
+      final status = await Geolocator.checkPermission();
+      final granted = status == LocationPermission.always ||
+          status == LocationPermission.whileInUse;
+      if (mounted && _geoPermissionGranted != granted) {
+        setState(() => _geoPermissionGranted = granted);
+      }
+    } catch (e) {
+      // On error, assume granted (don't block loyalty)
+    }
+  }
+
+  /// Show dialog asking for geolocation permission (for loyalty feature)
+  Future<bool> _showGeoRequiredDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.location_off_rounded, color: AppColors.warning, size: 24.sp),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Text(
+                'Геолокация не разрешена',
+                style: TextStyle(color: Colors.white, fontSize: 16.sp),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'К сожалению, эта функция временно заблокирована.\n\n'
+          'Разрешите доступ к геоданным, и программа лояльности станет доступна.',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.7),
+            fontSize: 14.sp,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Не сейчас',
+              style: TextStyle(color: Colors.white.withOpacity(0.4)),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.turquoise, AppColors.emerald],
+              ),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text(
+                'Разрешить',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (result != true) return false;
+
+    // Request actual OS permission
+    final permission = await Geolocator.requestPermission();
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
+  }
+
   Future<void> _loadEfficiencyPoints() async {
     try {
       // Получаем имя текущего сотрудника
       final employeeName = await EmployeesPage.getCurrentEmployeeName();
       if (employeeName == null || employeeName.isEmpty) return;
 
+      // Получаем телефон для надёжной фильтрации
+      final prefs = await SharedPreferences.getInstance();
+      final normalizedPhone = (
+        _phone ?? prefs.getString('user_phone') ?? ''
+      ).replaceAll(RegExp(r'[^0-9]'), '');
+      final lowerName = employeeName.trim().toLowerCase();
+
       // Загружаем данные эффективности за текущий месяц
       final now = DateTime.now();
       final data = await EfficiencyDataService.loadMonthData(now.year, now.month);
 
-      // Ищем сотрудника в данных
-      final employeeSummary = data.byEmployee.firstWhere(
-        (summary) => summary.entityName == employeeName,
-        orElse: () => throw StateError('Employee not found'),
-      );
+      // Фильтруем записи по телефону (надёжнее) с fallback по имени
+      final myRecords = data.allRecords.where((r) {
+        if (normalizedPhone.isNotEmpty && r.employeePhone.isNotEmpty) {
+          final recordPhone = r.employeePhone.replaceAll(RegExp(r'[^0-9]'), '');
+          if (recordPhone == normalizedPhone) return true;
+        }
+        if (lowerName.isNotEmpty && r.employeeName.trim().toLowerCase() == lowerName) {
+          return true;
+        }
+        return false;
+      }).toList();
 
-      if (mounted) {
-        setState(() => _efficiencyPoints = employeeSummary.totalPoints);
+      if (myRecords.isNotEmpty && mounted) {
+        final mySummary = EfficiencySummary.fromRecords(
+          entityId: lowerName,
+          entityName: employeeName,
+          records: myRecords,
+        );
+        setState(() => _efficiencyPoints = mySummary.totalPoints);
       }
 
       // Для заведующей — загружаем данные по магазину
@@ -404,6 +511,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
     _loadAvailableSpins(employeeId);
     _loadShiftTransferUnreadCount(employeeId);
     _loadReferralCode(employeeId);
+    _loadStoreLinks();
   }
 
   Future<void> _loadPendingOrdersCount() async {
@@ -483,6 +591,23 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
       }
     } catch (e) {
       Logger.error('Ошибка загрузки referralCode', e);
+    }
+  }
+
+  Future<void> _loadStoreLinks() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '/api/app-settings/store-links',
+        timeout: ApiConstants.defaultTimeout,
+      );
+      if (result != null && mounted) {
+        setState(() {
+          _storeAndroidUrl = result['android_url'] ?? '';
+          _storeIosUrl = result['ios_url'] ?? '';
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки store links', e);
     }
   }
 
@@ -1042,105 +1167,97 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
 
   /// Меню для разработчиков - админ меню + "Управление сетью"
   Widget _buildDeveloperMenu() {
+    const spacing = 8.0;
+    const buttonHeight = 60.0;
+
     return Padding(
       padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 20.h),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final availableHeight = constraints.maxHeight;
-
-          // 9 кнопок + 8 отступов между ними
-          final buttonCount = 9;
-          final spacing = 8.0;
-          final totalSpacing = spacing * (buttonCount - 1);
-          final buttonHeight = (availableHeight - totalSpacing) / buttonCount;
-
-          return Column(
-            children: [
-              // Специальная кнопка "Управление сетью" для разработчика
-              _buildAdminRow(
-                Icons.hub_outlined,
-                'Управление сетью',
-                'Разработчики, управляющие, магазины',
-                buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => NetworkManagementPage())),
-              ),
-              SizedBox(height: spacing),
-              _buildAdminRow(
-                Icons.tune_rounded,
-                'Управление',
-                'Настройки системы и данные',
-                buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => DataManagementPage())),
-              ),
-              SizedBox(height: spacing),
-              _buildAdminRow(
-                Icons.analytics_outlined,
-                'Отчёты',
-                'Аналитика и статистика',
-                buttonHeight,
-                () async {
-                  await Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperReportsPage()));
-                  _loadTotalReportsCount();
-                },
-                badge: _totalReportsCount,
-              ),
-              SizedBox(height: spacing),
-              _buildAdminRow(
-                Icons.bar_chart_rounded,
-                'Эффективность сотрудников',
-                'Управляющие, заведующие, сотрудники',
-                buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffEfficiencyPage())),
-              ),
-              SizedBox(height: spacing),
-              // Чат — золотая кнопка
-              _buildAdminRow(
-                Icons.chat_rounded,
-                'Чат',
-                'Сообщения и обсуждения',
-                buttonHeight,
-                () async {
-                  await Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage()));
-                  _loadMessengerUnreadCount();
-                },
-                isGold: true,
-                badge: _messengerUnreadCount,
-              ),
-              SizedBox(height: spacing),
-              _buildAdminRow(
-                Icons.manage_accounts_outlined,
-                'Управляющая(ий)',
-                'Отчёты и управление',
-                buttonHeight,
-                () => _openManagerPicker(),
-              ),
-              SizedBox(height: spacing),
-              _buildAdminRow(
-                Icons.grid_view_rounded,
-                'Панель сотрудника',
-                'Функции сотрудника',
-                buttonHeight,
-                () => _openEmployeePanelPicker(),
-              ),
-              SizedBox(height: spacing),
-              _buildAdminRow(
-                Icons.person_outline,
-                'Клиент',
-                'Клиентские функции',
-                buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => MainMenuPage(forceRole: UserRole.client))),
-              ),
-              SizedBox(height: spacing),
-              _buildAdminRow(
-                Icons.smart_toy_outlined,
-                'ДашБорд AI',
-                'Метрики AI-систем',
-                buttonHeight,
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AiDashboardPage())),
-              ),
-            ],
-          );
-        },
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          // Специальная кнопка "Управление сетью" для разработчика
+          _buildAdminRow(
+            Icons.hub_outlined,
+            'Управление сетью',
+            'Разработчики, управляющие, магазины',
+            buttonHeight,
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => NetworkManagementPage())),
+          ),
+          SizedBox(height: spacing),
+          _buildAdminRow(
+            Icons.tune_rounded,
+            'Управление',
+            'Настройки системы и данные',
+            buttonHeight,
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => DataManagementPage())),
+          ),
+          SizedBox(height: spacing),
+          _buildAdminRow(
+            Icons.analytics_outlined,
+            'Отчёты',
+            'Аналитика и статистика',
+            buttonHeight,
+            () async {
+              await Navigator.push(context, MaterialPageRoute(builder: (_) => const DeveloperReportsPage()));
+              _loadTotalReportsCount();
+            },
+            badge: _totalReportsCount,
+          ),
+          SizedBox(height: spacing),
+          _buildAdminRow(
+            Icons.bar_chart_rounded,
+            'Эффективность сотрудников',
+            'Управляющие, заведующие, сотрудники',
+            buttonHeight,
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffEfficiencyPage())),
+          ),
+          SizedBox(height: spacing),
+          // Чат — золотая кнопка
+          _buildAdminRow(
+            Icons.chat_rounded,
+            'Чат',
+            'Сообщения и обсуждения',
+            buttonHeight,
+            () async {
+              await Navigator.push(context, MaterialPageRoute(builder: (_) => const MessengerShellPage()));
+              _loadMessengerUnreadCount();
+            },
+            isGold: true,
+            badge: _messengerUnreadCount,
+          ),
+          SizedBox(height: spacing),
+          _buildAdminRow(
+            Icons.manage_accounts_outlined,
+            'Управляющая(ий)',
+            'Отчёты и управление',
+            buttonHeight,
+            () => _openManagerPicker(),
+          ),
+          SizedBox(height: spacing),
+          _buildAdminRow(
+            Icons.grid_view_rounded,
+            'Панель сотрудника',
+            'Функции сотрудника',
+            buttonHeight,
+            () => _openEmployeePanelPicker(),
+          ),
+          SizedBox(height: spacing),
+          _buildAdminRow(
+            Icons.person_outline,
+            'Клиент',
+            'Клиентские функции',
+            buttonHeight,
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => MainMenuPage(forceRole: UserRole.client))),
+          ),
+          SizedBox(height: spacing),
+          _buildAdminRow(
+            Icons.smart_toy_outlined,
+            'ДашБорд AI',
+            'Метрики AI-систем',
+            buttonHeight,
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AiDashboardPage())),
+          ),
+        ],
       ),
     );
   }
@@ -2316,6 +2433,16 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         Navigator.push(context, MaterialPageRoute(builder: (_) => ShopsOnMapPage()));
       }),
       _buildCompactTile(Icons.card_membership_outlined, 'Лояльность', () async {
+        // Check geolocation permission first
+        if (!_geoPermissionGranted && mounted) {
+          final granted = await _showGeoRequiredDialog();
+          if (granted && mounted) {
+            setState(() => _geoPermissionGranted = true);
+          } else {
+            return;
+          }
+        }
+        // Then check notifications
         final enabled = await FirebaseService.areNotificationsEnabled();
         if (!enabled && mounted) {
           final result = await NotificationRequiredDialog.show(context);
@@ -2330,7 +2457,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         }
         if (!mounted) return;
         Navigator.push(context, MaterialPageRoute(builder: (_) => LoyaltyPage()));
-      }),
+      }, warningBadge: !_geoPermissionGranted),
       _buildCompactTile(Icons.star_outline_rounded, 'Отзывы', () {
         Navigator.push(context, MaterialPageRoute(builder: (_) => ReviewTypeSelectionPage()));
       }),
@@ -2789,41 +2916,137 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
 
   /// Диалог показа кода приглашения
   void _showReferralCodeDialog(int code) {
+    String? activeQr; // null = no QR, 'android' or 'ios'
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.emeraldDark,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final hasAndroid = _storeAndroidUrl.isNotEmpty;
+          final hasIos = _storeIosUrl.isNotEmpty;
+          final qrUrl = activeQr == 'android' ? _storeAndroidUrl : activeQr == 'ios' ? _storeIosUrl : '';
+
+          return AlertDialog(
+            backgroundColor: AppColors.emeraldDark,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.r),
+              side: BorderSide(color: Colors.white.withOpacity(0.15)),
+            ),
+            title: Text('Код приглашения', style: TextStyle(color: Colors.white)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$code',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 36.sp,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 4,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Поделитесь этим кодом с клиентом',
+                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14.sp),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 16),
+                // Store buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildStoreButton(
+                      icon: Icons.android,
+                      label: 'Android',
+                      isActive: activeQr == 'android',
+                      isEnabled: hasAndroid,
+                      onTap: () => setDialogState(() {
+                        activeQr = activeQr == 'android' ? null : 'android';
+                      }),
+                    ),
+                    SizedBox(width: 12.w),
+                    _buildStoreButton(
+                      icon: Icons.apple,
+                      label: 'iOS',
+                      isActive: activeQr == 'ios',
+                      isEnabled: hasIos,
+                      onTap: () => setDialogState(() {
+                        activeQr = activeQr == 'ios' ? null : 'ios';
+                      }),
+                    ),
+                  ],
+                ),
+                // QR code
+                if (activeQr != null && qrUrl.isNotEmpty) ...[
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(8.w),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: QrImageView(
+                      data: qrUrl,
+                      version: QrVersions.auto,
+                      size: 180.w,
+                      backgroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('Закрыть', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStoreButton({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required bool isEnabled,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: isEnabled ? onTap : null,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppColors.gold.withOpacity(0.2)
+              : isEnabled
+                  ? Colors.white.withOpacity(0.1)
+                  : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(
+            color: isActive
+                ? AppColors.gold
+                : isEnabled
+                    ? Colors.white.withOpacity(0.3)
+                    : Colors.white.withOpacity(0.1),
+          ),
         ),
-        title: Text('Код приглашения', style: TextStyle(color: Colors.white)),
-        content: Column(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Icon(icon, color: isEnabled ? Colors.white : Colors.white.withOpacity(0.3), size: 20.sp),
+            SizedBox(width: 6.w),
             Text(
-              '$code',
+              label,
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 36.sp,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 4,
+                color: isEnabled ? Colors.white : Colors.white.withOpacity(0.3),
+                fontSize: 14.sp,
               ),
-            ),
-            SizedBox(height: 12),
-            Text(
-              'Поделитесь этим кодом с клиентом',
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14.sp),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Закрыть', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }
@@ -3175,7 +3398,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
   /// ═══════════════════════════════════════════════════════════════
   /// КОМПАКТНАЯ ПЛИТКА ДЛЯ КЛИЕНТОВ - помещается на экран
   /// ═══════════════════════════════════════════════════════════════
-  Widget _buildCompactTile(IconData icon, String label, VoidCallback onTap, {int? badge}) {
+  Widget _buildCompactTile(IconData icon, String label, VoidCallback onTap, {int? badge, bool warningBadge = false}) {
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -3260,6 +3483,30 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                   color: AppColors.emerald,
                   fontSize: 10.sp,
                   fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        // Warning badge "!"
+        if (warningBadge)
+          Positioned(
+            top: 4.h,
+            right: 4.w,
+            child: Container(
+              width: 20.w,
+              height: 20.w,
+              decoration: BoxDecoration(
+                color: AppColors.warning,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '!',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),

@@ -9,7 +9,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireAuth, requireAdmin } = require('../utils/session_middleware');
 const { getMoscowDateString, getMoscowTime } = require('../utils/moscow_time');
 
 // Директории хранения данных
@@ -246,7 +246,7 @@ function setupGeofenceAPI(app, sendPushToPhone) {
   });
 
   // POST /api/geofence-settings - обновить настройки (только админ)
-  app.post('/api/geofence-settings', requireAuth, async (req, res) => {
+  app.post('/api/geofence-settings', requireAdmin, async (req, res) => {
     try {
       const { enabled, radiusMeters, notificationTitle, notificationBody, cooldownHours } = req.body;
 

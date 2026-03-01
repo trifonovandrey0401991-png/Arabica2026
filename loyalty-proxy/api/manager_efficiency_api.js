@@ -17,6 +17,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
 const { requireAuth } = require('../utils/session_middleware');
+const { getMoscowTime } = require('../utils/moscow_time');
 const db = require('../utils/db');
 
 // Feature flags
@@ -901,10 +902,10 @@ function setupManagerEfficiencyAPI(app) {
         });
       }
 
-      // Default to current month if not specified
+      // Default to current month if not specified (московское время)
       const targetMonth = month || (() => {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const now = getMoscowTime();
+        return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
       })();
 
       console.log(`Calculating manager efficiency for ${maskPhone(phone)}, month: ${targetMonth}`);
@@ -942,8 +943,8 @@ function setupManagerEfficiencyAPI(app) {
       }
 
       const targetMonth = month || (() => {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const now = getMoscowTime();
+        return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
       })();
 
       const { start, end } = getMonthRange(targetMonth);

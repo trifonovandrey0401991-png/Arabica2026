@@ -309,7 +309,7 @@ class _LoyaltyGamificationSettingsPageState
                                       children: [
                                         Icon(Icons.workspace_premium, size: 20),
                                         SizedBox(width: 8),
-                                        Text('Уровни'),
+                                        Flexible(child: Text('Уровни', overflow: TextOverflow.ellipsis)),
                                       ],
                                     ),
                                   ),
@@ -319,7 +319,7 @@ class _LoyaltyGamificationSettingsPageState
                                       children: [
                                         Icon(Icons.casino, size: 20),
                                         SizedBox(width: 8),
-                                        Text('Колесо'),
+                                        Flexible(child: Text('Колесо', overflow: TextOverflow.ellipsis)),
                                       ],
                                     ),
                                   ),

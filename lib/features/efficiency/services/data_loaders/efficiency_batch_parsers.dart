@@ -37,6 +37,7 @@ Future<List<EfficiencyRecord>> parseShiftReportsFromBatch(
         id: json['id'] ?? 'unknown',
         shopAddress: json['shopAddress'] ?? '',
         employeeName: json['employeeName'] ?? '',
+        employeePhone: json['employeePhone'] ?? '',
         date: json['confirmedAt'] != null ? DateTime.parse(json['confirmedAt']) : reportDate,
         rating: rating,
       );
@@ -82,6 +83,7 @@ Future<List<EfficiencyRecord>> parseRecountReportsFromBatch(
         id: json['id'] ?? 'unknown',
         shopAddress: json['shopAddress'] ?? '',
         employeeName: json['employeeName'] ?? '',
+        employeePhone: json['employeePhone'] ?? '',
         date: json['ratedAt'] != null ? DateTime.parse(json['ratedAt']) : reportDate,
         adminRating: adminRating,
       );
@@ -125,6 +127,7 @@ Future<List<EfficiencyRecord>> parseHandoverReportsFromBatch(
         id: json['id'] ?? 'unknown',
         shopAddress: json['shopAddress'] ?? '',
         employeeName: json['employeeName'] ?? '',
+        employeePhone: json['employeePhone'] ?? '',
         date: json['confirmedAt'] != null ? DateTime.parse(json['confirmedAt']) : createdAt,
         rating: rating,
       );
@@ -171,6 +174,7 @@ Future<List<EfficiencyRecord>> parseAttendanceFromBatch(
         id: json['id'] ?? 'unknown',
         shopAddress: json['shopAddress'] ?? '',
         employeeName: json['employeeName'] ?? '',
+        employeePhone: json['employeePhone'] ?? '',
         date: recordDate,
         isOnTime: isOnTime,
       );

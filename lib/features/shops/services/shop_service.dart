@@ -3,19 +3,79 @@ import '../models/shop_settings_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/disk_cache.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../employees/models/user_role_model.dart';
 
 class ShopService {
-  /// Получить все магазины
-  static Future<List<Shop>> getShops() async {
-    Logger.debug('📥 Загрузка магазинов с сервера...');
+  // In-memory cache for shops (instant access within session)
+  static List<Shop>? _cachedShops;
 
-    return await BaseHttpService.getList<Shop>(
+  /// Получить все магазины (с кэшем: диск → память → сервер)
+  static Future<List<Shop>> getShops() async {
+    // 1. Memory cache — мгновенно
+    if (_cachedShops != null && _cachedShops!.isNotEmpty) {
+      Logger.debug('🏪 Магазины из памяти: ${_cachedShops!.length}');
+      // Обновляем с сервера в фоне (не блокируем)
+      _refreshShopsInBackground();
+      return _cachedShops!;
+    }
+
+    // 2. Disk cache — быстро, переживает перезапуск
+    try {
+      final diskData = await DiskCache.read('shops_list');
+      if (diskData != null && diskData['shops'] != null) {
+        final shops = (diskData['shops'] as List<dynamic>)
+            .map((s) => Shop.fromJson(s as Map<String, dynamic>))
+            .toList();
+        if (shops.isNotEmpty) {
+          _cachedShops = shops;
+          Logger.debug('🏪 Магазины с диска: ${shops.length}');
+          // Обновляем с сервера в фоне
+          _refreshShopsInBackground();
+          return shops;
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка чтения кэша магазинов', e);
+    }
+
+    // 3. Server — первая загрузка или кэш пуст
+    return await _fetchShopsFromServer();
+  }
+
+  /// Загрузить магазины с сервера и обновить кэш
+  static Future<List<Shop>> _fetchShopsFromServer() async {
+    Logger.debug('📥 Загрузка магазинов с сервера...');
+    final shops = await BaseHttpService.getList<Shop>(
       endpoint: ApiConstants.shopsEndpoint,
       fromJson: (json) => Shop.fromJson(json),
       listKey: 'shops',
     );
+    if (shops.isNotEmpty) {
+      _cachedShops = shops;
+      DiskCache.write('shops_list', {
+        'shops': shops.map((s) => s.toJson()).toList(),
+      });
+    }
+    return shops;
+  }
+
+  /// Фоновое обновление с сервера (не блокирует вызывающий код)
+  static bool _isRefreshing = false;
+  static Future<void> _refreshShopsInBackground() async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
+    try {
+      await _fetchShopsFromServer();
+    } catch (_) {} finally {
+      _isRefreshing = false;
+    }
+  }
+
+  /// Сбросить кэш магазинов (вызывать при создании/удалении магазина)
+  static void invalidateCache() {
+    _cachedShops = null;
   }
 
   /// Получить магазин по ID
@@ -43,12 +103,14 @@ class ShopService {
     if (latitude != null) requestBody['latitude'] = latitude;
     if (longitude != null) requestBody['longitude'] = longitude;
 
-    return await BaseHttpService.post<Shop>(
+    final result = await BaseHttpService.post<Shop>(
       endpoint: ApiConstants.shopsEndpoint,
       body: requestBody,
       fromJson: (json) => Shop.fromJson(json),
       itemKey: 'shop',
     );
+    if (result != null) invalidateCache();
+    return result;
   }
 
   /// Обновить магазин
@@ -67,21 +129,25 @@ class ShopService {
     if (latitude != null) body['latitude'] = latitude;
     if (longitude != null) body['longitude'] = longitude;
 
-    return await BaseHttpService.put<Shop>(
+    final result = await BaseHttpService.put<Shop>(
       endpoint: '${ApiConstants.shopsEndpoint}/$id',
       body: body,
       fromJson: (json) => Shop.fromJson(json),
       itemKey: 'shop',
     );
+    if (result != null) invalidateCache();
+    return result;
   }
 
   /// Удалить магазин
   static Future<bool> deleteShop(String id) async {
     Logger.debug('📤 Удаление магазина: $id');
 
-    return await BaseHttpService.delete(
+    final result = await BaseHttpService.delete(
       endpoint: '${ApiConstants.shopsEndpoint}/$id',
     );
+    if (result) invalidateCache();
+    return result;
   }
 
   /// Найти магазин по адресу

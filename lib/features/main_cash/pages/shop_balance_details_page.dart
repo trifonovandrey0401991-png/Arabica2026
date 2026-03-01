@@ -5,6 +5,8 @@ import '../models/shop_cash_balance_model.dart';
 import '../services/main_cash_service.dart';
 import '../widgets/turnover_calendar.dart';
 import '../../../core/utils/cache_manager.dart';
+import '../../employees/services/user_role_service.dart';
+import '../../employees/models/user_role_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница деталей магазина (баланс и оборот)
@@ -25,12 +27,21 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
   late TabController _tabController;
   ShopCashBalance? _balance;
   bool _isLoading = true;
+  bool _isDeveloper = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadBalance();
+    _checkRole();
+  }
+
+  Future<void> _checkRole() async {
+    final role = await UserRoleService.loadUserRole();
+    if (mounted && role != null) {
+      setState(() => _isDeveloper = role.isDeveloper);
+    }
   }
 
   @override
@@ -132,7 +143,25 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    SizedBox(width: 12),
+                    SizedBox(width: 8),
+                    if (_isDeveloper)
+                      GestureDetector(
+                        onTap: _showCorrectionDialog,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          child: Icon(
+                            Icons.edit,
+                            color: AppColors.gold.withOpacity(0.9),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    SizedBox(width: 8),
                     GestureDetector(
                       onTap: _loadBalance,
                       child: Container(
@@ -192,6 +221,138 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _showCorrectionDialog() async {
+    if (_balance == null) return;
+
+    final oooIncomeCtrl = TextEditingController(text: _balance!.oooTotalIncome.toStringAsFixed(0));
+    final ipIncomeCtrl = TextEditingController(text: _balance!.ipTotalIncome.toStringAsFixed(0));
+    final oooWithdrawalsCtrl = TextEditingController(text: _balance!.oooTotalWithdrawals.toStringAsFixed(0));
+    final ipWithdrawalsCtrl = TextEditingController(text: _balance!.ipTotalWithdrawals.toStringAsFixed(0));
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.emeraldDark,
+        title: Text(
+          'Корректировка баланса',
+          style: TextStyle(color: Colors.white, fontSize: 18.sp),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.shopAddress,
+                style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13.sp),
+              ),
+              SizedBox(height: 16.h),
+              _buildCorrectionField(oooIncomeCtrl, 'Поступления ООО'),
+              SizedBox(height: 12.h),
+              _buildCorrectionField(oooWithdrawalsCtrl, 'Выемки ООО'),
+              SizedBox(height: 12.h),
+              _buildCorrectionField(ipIncomeCtrl, 'Поступления ИП'),
+              SizedBox(height: 12.h),
+              _buildCorrectionField(ipWithdrawalsCtrl, 'Выемки ИП'),
+              SizedBox(height: 16.h),
+              Text(
+                'Введите желаемые итоговые суммы.\nСистема рассчитает корректировку автоматически.',
+                style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12.sp),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Сохранить', style: TextStyle(color: AppColors.gold)),
+          ),
+        ],
+      ),
+    );
+
+    if (result != true) {
+      oooIncomeCtrl.dispose();
+      ipIncomeCtrl.dispose();
+      oooWithdrawalsCtrl.dispose();
+      ipWithdrawalsCtrl.dispose();
+      return;
+    }
+
+    // Calculate deltas
+    final newOooIncome = double.tryParse(oooIncomeCtrl.text) ?? _balance!.oooTotalIncome;
+    final newIpIncome = double.tryParse(ipIncomeCtrl.text) ?? _balance!.ipTotalIncome;
+    final newOooWithdrawals = double.tryParse(oooWithdrawalsCtrl.text) ?? _balance!.oooTotalWithdrawals;
+    final newIpWithdrawals = double.tryParse(ipWithdrawalsCtrl.text) ?? _balance!.ipTotalWithdrawals;
+
+    oooIncomeCtrl.dispose();
+    ipIncomeCtrl.dispose();
+    oooWithdrawalsCtrl.dispose();
+    ipWithdrawalsCtrl.dispose();
+
+    // Load existing correction to compute the raw (uncorrected) values
+    final existingCorrection = await MainCashService.getCashCorrection(widget.shopAddress);
+    final rawOooIncome = _balance!.oooTotalIncome - (existingCorrection['oooIncomeDelta'] ?? 0);
+    final rawIpIncome = _balance!.ipTotalIncome - (existingCorrection['ipIncomeDelta'] ?? 0);
+    final rawOooWithdrawals = _balance!.oooTotalWithdrawals - (existingCorrection['oooWithdrawalsDelta'] ?? 0);
+    final rawIpWithdrawals = _balance!.ipTotalWithdrawals - (existingCorrection['ipWithdrawalsDelta'] ?? 0);
+
+    final deltas = {
+      'oooIncomeDelta': newOooIncome - rawOooIncome,
+      'ipIncomeDelta': newIpIncome - rawIpIncome,
+      'oooWithdrawalsDelta': newOooWithdrawals - rawOooWithdrawals,
+      'ipWithdrawalsDelta': newIpWithdrawals - rawIpWithdrawals,
+    };
+
+    final success = await MainCashService.saveCashCorrection(widget.shopAddress, deltas);
+    if (success) {
+      // Invalidate cache and reload
+      CacheManager.remove(_cacheKey);
+      await _loadBalance();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Корректировка сохранена'),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+      }
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка сохранения корректировки'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
+  }
+
+  Widget _buildCorrectionField(TextEditingController controller, String label) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      style: TextStyle(color: Colors.white, fontSize: 16.sp),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+          borderRadius: BorderRadius.circular(8.r),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: AppColors.gold),
+          borderRadius: BorderRadius.circular(8.r),
+        ),
+        suffixText: 'руб',
+        suffixStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
       ),
     );
   }

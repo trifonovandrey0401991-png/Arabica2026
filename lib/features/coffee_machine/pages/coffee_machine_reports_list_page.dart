@@ -179,7 +179,7 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
   }
 
   Widget _buildTabs() {
-    final tabNames = ['Не пройдены', 'Не в срок', 'Ожидают', 'Подтверждены', 'Отклонены'];
+    final tabNames = ['Не пройдены', 'Не в срок', 'Ожидают', 'Подтверждены', 'Просроченные'];
     final counts = [
       _filterPending('pending').length,
       _filterPending('failed').length,
