@@ -397,7 +397,9 @@ if (rateLimit) {
 app.use('/static', express.static(`${DATA_DIR}/html`));
 
 // Privacy policy page (for Google Play / App Store)
-app.use('/privacy-policy', express.static(path.join(__dirname, 'public', 'privacy-policy.html')));
+app.get('/privacy-policy', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'privacy-policy.html'));
+});
 
 // ============================================
 // SECURITY: File Type Validation для всех uploads
