@@ -26,12 +26,15 @@ const dataCache = require('../utils/data_cache');
 const db = require('../utils/db');
 
 const USE_DB = process.env.USE_DB_AUTH === 'true';
+const DEVICE_BINDING_ENABLED = process.env.DEVICE_BINDING_ENABLED === 'true';
 
 // Конфигурация
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SESSIONS_DIR = path.join(DATA_DIR, 'auth-sessions');
 const PINS_DIR = path.join(DATA_DIR, 'auth-pins');
 const OTP_DIR = path.join(DATA_DIR, 'auth-otp');
+const TRUSTED_DEVICES_DIR = path.join(DATA_DIR, 'trusted-devices');
+const DEVICE_APPROVAL_DIR = path.join(DATA_DIR, 'device-approval-requests');
 
 // Время жизни сессии (7 дней)
 const SESSION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
@@ -45,6 +48,8 @@ async function initDirs() {
   await fs.mkdir(SESSIONS_DIR, { recursive: true });
   await fs.mkdir(PINS_DIR, { recursive: true });
   await fs.mkdir(OTP_DIR, { recursive: true });
+  await fs.mkdir(TRUSTED_DEVICES_DIR, { recursive: true });
+  await fs.mkdir(DEVICE_APPROVAL_DIR, { recursive: true });
 }
 initDirs().catch(console.error);
 
@@ -306,6 +311,66 @@ async function deleteSession(phone) {
   }
 }
 
+// ============================================
+// Device Binding: Trusted Device helpers
+// ============================================
+
+/**
+ * Получает данные доверенного устройства пользователя
+ */
+async function getTrustedDevice(phone) {
+  if (USE_DB) {
+    try {
+      const row = await db.findById('trusted_devices', phone, 'phone');
+      if (row) return { phone: row.phone, device_id: row.device_id, device_name: row.device_name, trusted_at: row.trusted_at, trusted_via: row.trusted_via };
+    } catch (e) {
+      console.error('[Auth] DB getTrustedDevice error:', e.message);
+    }
+  }
+  const filePath = path.join(TRUSTED_DEVICES_DIR, `${phone}.json`);
+  try {
+    const data = await fs.readFile(filePath, 'utf8');
+    return JSON.parse(data);
+  } catch (e) {
+    if (e.code === 'ENOENT') return null;
+    throw e;
+  }
+}
+
+/**
+ * Сохраняет доверенное устройство (dual-write: JSON + DB)
+ */
+async function saveTrustedDevice(phone, deviceId, deviceName, trustedVia = 'auto') {
+  const data = {
+    phone,
+    device_id: deviceId,
+    device_name: deviceName || 'Unknown Device',
+    trusted_at: new Date().toISOString(),
+    trusted_via: trustedVia,
+  };
+  await writeJsonFile(path.join(TRUSTED_DEVICES_DIR, `${phone}.json`), data);
+  if (USE_DB) {
+    try { await db.upsert('trusted_devices', data, 'phone'); }
+    catch (e) { console.error('[Auth] DB saveTrustedDevice error:', e.message); }
+  }
+}
+
+/**
+ * Получает телефоны разработчиков (для push-уведомлений о новых устройствах)
+ */
+async function getDeveloperPhones() {
+  const phones = [];
+  const employees = dataCache.getEmployees();
+  if (employees) {
+    for (const emp of employees) {
+      if (emp.role === 'developer' && emp.phone) {
+        phones.push((emp.phone || '').replace(/[^\d]/g, ''));
+      }
+    }
+  }
+  return phones;
+}
+
 /**
  * POST /api/auth/register
  * Простая регистрация с PIN (без OTP)
@@ -409,6 +474,12 @@ router.post('/register', async (req, res) => {
     await saveSession(normalizedPhone, session);
     addTokenToIndex(sessionToken, normalizedPhone, name, session.expiresAt);
 
+    // Device binding: auto-trust device on registration
+    if (DEVICE_BINDING_ENABLED) {
+      await saveTrustedDevice(normalizedPhone, deviceId || 'unknown', deviceName || 'Unknown Device', 'auto');
+      console.log(`[Auth] Device auto-trusted on registration: ${maskPhone(normalizedPhone)}`);
+    }
+
     console.log(`✅ User registered: ${normalizedPhone}`);
 
     res.json({
@@ -496,6 +567,29 @@ router.post('/login', async (req, res) => {
     // Обработка результата из lock-блока
     if (result.status !== 200) {
       return res.status(result.status).json(result.body);
+    }
+
+    // === DEVICE BINDING CHECK ===
+    if (DEVICE_BINDING_ENABLED) {
+      const trustedDevice = await getTrustedDevice(normalizedPhone);
+      const currentDeviceId = deviceId || 'unknown';
+
+      if (!trustedDevice) {
+        // Migration: first login after feature enabled → auto-trust
+        await saveTrustedDevice(normalizedPhone, currentDeviceId, deviceName || 'Unknown Device', 'migration');
+        console.log(`[Auth] Device auto-trusted (migration): ${maskPhone(normalizedPhone)}`);
+      } else if (trustedDevice.device_id !== currentDeviceId) {
+        // NEW DEVICE DETECTED → block login
+        console.log(`[Auth] New device detected for ${maskPhone(normalizedPhone)}: expected=${trustedDevice.device_id.substring(0, 8)}..., got=${currentDeviceId.substring(0, 8)}...`);
+        return res.status(403).json({
+          error: 'Обнаружено новое устройство. Подтвердите вход.',
+          code: 'NEW_DEVICE_DETECTED',
+          phone: normalizedPhone,
+          deviceId: currentDeviceId,
+          deviceName: deviceName || 'Unknown Device',
+        });
+      }
+      // else: same device → proceed normally
     }
 
     // Создаём или обновляем сессию
@@ -662,6 +756,12 @@ router.post('/reset-pin', async (req, res) => {
 
     await saveSession(normalizedPhone, session);
     addTokenToIndex(sessionToken, normalizedPhone, pinData.name, session.expiresAt);
+
+    // Device binding: update trusted device after PIN reset (user proved identity via OTP)
+    if (DEVICE_BINDING_ENABLED) {
+      await saveTrustedDevice(normalizedPhone, deviceId || 'unknown', deviceName || 'Unknown Device', 'otp');
+      console.log(`[Auth] Device trusted after PIN reset: ${maskPhone(normalizedPhone)}`);
+    }
 
     console.log(`✅ PIN reset for: ${normalizedPhone}`);
 
@@ -973,6 +1073,349 @@ router.post('/change-pin', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Change PIN error:', error);
     res.status(500).json({ error: 'Ошибка смены PIN' });
+  }
+});
+
+// ============================================
+// Device Binding: New endpoints
+// ============================================
+
+/**
+ * POST /api/auth/verify-device-otp
+ * Подтверждение нового устройства через OTP (Telegram)
+ * Body: { phone, code, deviceId, deviceName, pin }
+ */
+router.post('/verify-device-otp', async (req, res) => {
+  try {
+    const { phone, code, deviceId, deviceName, pin } = req.body;
+    if (!phone || !code || !deviceId || !pin) {
+      return res.status(400).json({ error: 'Требуются phone, code, deviceId и pin' });
+    }
+
+    const normalizedPhone = normalizePhone(phone);
+
+    // Verify OTP
+    const telegramService = require('../services/telegram_bot_service');
+    const otpResult = await telegramService.verifyOtp(normalizedPhone, code);
+    if (!otpResult.success) {
+      return res.status(400).json({ error: otpResult.error });
+    }
+
+    // Re-verify PIN (security: don't trust that PIN was valid from a previous request)
+    const pinData = await getPinData(normalizedPhone);
+    if (!pinData) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+    const { valid } = await verifyPin(pin, pinData);
+    if (!valid) {
+      return res.status(401).json({ error: 'Неверный PIN-код' });
+    }
+
+    // Trust the new device
+    await saveTrustedDevice(normalizedPhone, deviceId, deviceName || 'Unknown Device', 'otp');
+
+    // Delete OTP after use
+    await telegramService.deleteOtp(normalizedPhone);
+
+    // Create session (same as login)
+    const sessionToken = generateSessionToken();
+    const session = {
+      sessionToken,
+      phone: normalizedPhone,
+      name: pinData.name,
+      deviceId,
+      deviceName: deviceName || 'Unknown Device',
+      createdAt: Date.now(),
+      expiresAt: Date.now() + SESSION_LIFETIME_MS,
+      isVerified: true
+    };
+
+    await saveSession(normalizedPhone, session);
+    addTokenToIndex(sessionToken, normalizedPhone, pinData.name, session.expiresAt);
+
+    console.log(`✅ Device trusted via OTP: ${maskPhone(normalizedPhone)}`);
+
+    res.json({
+      success: true,
+      sessionToken,
+      expiresAt: session.expiresAt,
+      name: pinData.name,
+      biometricEnabled: pinData.biometricEnabled
+    });
+  } catch (error) {
+    console.error('Verify device OTP error:', error);
+    res.status(500).json({ error: 'Ошибка верификации устройства' });
+  }
+});
+
+/**
+ * POST /api/auth/request-device-approval
+ * Запрос подтверждения нового устройства от разработчика
+ * Body: { phone, deviceId, deviceName }
+ */
+router.post('/request-device-approval', async (req, res) => {
+  try {
+    const { phone, deviceId, deviceName } = req.body;
+    if (!phone || !deviceId) {
+      return res.status(400).json({ error: 'Требуются phone и deviceId' });
+    }
+
+    const normalizedPhone = normalizePhone(phone);
+    const userName = await resolveUserName(normalizedPhone);
+
+    // Check if there's already a pending request for this phone
+    if (USE_DB) {
+      try {
+        const existing = await db.query(
+          "SELECT id FROM device_approval_requests WHERE phone = $1 AND status = 'pending' LIMIT 1",
+          [normalizedPhone]
+        );
+        if (existing.rows && existing.rows.length > 0) {
+          return res.json({
+            success: true,
+            requestId: existing.rows[0].id,
+            message: 'Запрос уже отправлен. Ожидайте подтверждения.'
+          });
+        }
+      } catch (e) {
+        console.error('[Auth] DB check pending request error:', e.message);
+      }
+    }
+
+    const requestId = `devreq_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    const requestData = {
+      id: requestId,
+      phone: normalizedPhone,
+      device_id: deviceId,
+      device_name: deviceName || 'Unknown Device',
+      user_name: userName || normalizedPhone,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    };
+
+    // Dual-write
+    await writeJsonFile(path.join(DEVICE_APPROVAL_DIR, `${requestId}.json`), requestData);
+    if (USE_DB) {
+      try { await db.upsert('device_approval_requests', requestData); }
+      catch (e) { console.error('[Auth] DB save device_approval error:', e.message); }
+    }
+
+    // Send push notification to developers only
+    try {
+      const pushService = require('../utils/push_service');
+      const devPhones = await getDeveloperPhones();
+      for (const devPhone of devPhones) {
+        await pushService.sendPushToPhone(
+          devPhone,
+          'Запрос на новое устройство',
+          `${userName || normalizedPhone} хочет войти с нового устройства (${deviceName || 'Unknown'})`,
+          { type: 'device_approval_request', requestId, phone: normalizedPhone },
+          'default_channel'
+        );
+      }
+    } catch (pushErr) {
+      console.error('[Auth] Push to developers error:', pushErr.message);
+    }
+
+    console.log(`[Auth] Device approval requested: ${maskPhone(normalizedPhone)}, id=${requestId}`);
+
+    res.json({
+      success: true,
+      requestId,
+      message: 'Запрос отправлен разработчику. Вы получите уведомление.'
+    });
+  } catch (error) {
+    console.error('Request device approval error:', error);
+    res.status(500).json({ error: 'Ошибка отправки запроса' });
+  }
+});
+
+/**
+ * GET /api/auth/device-approval-requests
+ * Список ожидающих запросов на подтверждение устройства (только для разработчиков)
+ */
+router.get('/device-approval-requests', requireAuth, async (req, res) => {
+  try {
+    const { isDeveloper } = require('./shop_managers_api');
+    if (!(await isDeveloper(req.user.phone))) {
+      return res.status(403).json({ error: 'Только разработчик может просматривать запросы' });
+    }
+
+    let requests = [];
+    if (USE_DB) {
+      try {
+        const result = await db.query(
+          "SELECT * FROM device_approval_requests WHERE status = 'pending' ORDER BY created_at DESC"
+        );
+        requests = result.rows || [];
+      } catch (e) {
+        console.error('[Auth] DB get device_approval_requests error:', e.message);
+      }
+    }
+
+    // Fallback / supplement from JSON
+    if (requests.length === 0) {
+      try {
+        const files = await fs.readdir(DEVICE_APPROVAL_DIR);
+        for (const file of files) {
+          if (!file.endsWith('.json')) continue;
+          try {
+            const data = JSON.parse(await fs.readFile(path.join(DEVICE_APPROVAL_DIR, file), 'utf8'));
+            if (data.status === 'pending') requests.push(data);
+          } catch (_) {}
+        }
+        requests.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      } catch (_) {}
+    }
+
+    res.json({ requests });
+  } catch (error) {
+    console.error('Get device approval requests error:', error);
+    res.status(500).json({ error: 'Ошибка получения запросов' });
+  }
+});
+
+/**
+ * POST /api/auth/resolve-device-approval
+ * Разработчик одобряет или отклоняет запрос на новое устройство
+ * Body: { requestId, action: 'approve' | 'reject' }
+ */
+router.post('/resolve-device-approval', requireAuth, async (req, res) => {
+  try {
+    const { requestId, action } = req.body;
+    if (!requestId || !['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'Требуются requestId и action (approve/reject)' });
+    }
+
+    const { isDeveloper } = require('./shop_managers_api');
+    if (!(await isDeveloper(req.user.phone))) {
+      return res.status(403).json({ error: 'Только разработчик может обрабатывать запросы' });
+    }
+
+    // Load request from DB or JSON
+    let requestData;
+    if (USE_DB) {
+      try {
+        const result = await db.query('SELECT * FROM device_approval_requests WHERE id = $1', [requestId]);
+        requestData = result.rows && result.rows[0];
+      } catch (e) {
+        console.error('[Auth] DB load device_approval error:', e.message);
+      }
+    }
+    if (!requestData) {
+      try {
+        requestData = JSON.parse(await fs.readFile(path.join(DEVICE_APPROVAL_DIR, `${requestId}.json`), 'utf8'));
+      } catch (_) {}
+    }
+
+    if (!requestData || requestData.status !== 'pending') {
+      return res.status(404).json({ error: 'Запрос не найден или уже обработан' });
+    }
+
+    // Update request status
+    const newStatus = action === 'approve' ? 'approved' : 'rejected';
+    const resolvedAt = new Date().toISOString();
+    const resolvedBy = req.user.phone;
+
+    requestData.status = newStatus;
+    requestData.resolved_at = resolvedAt;
+    requestData.resolved_by = resolvedBy;
+
+    // Dual-write update
+    await writeJsonFile(path.join(DEVICE_APPROVAL_DIR, `${requestId}.json`), requestData);
+    if (USE_DB) {
+      try {
+        await db.query(
+          'UPDATE device_approval_requests SET status=$1, resolved_at=$2, resolved_by=$3 WHERE id=$4',
+          [newStatus, resolvedAt, resolvedBy, requestId]
+        );
+      } catch (e) { console.error('[Auth] DB update device_approval error:', e.message); }
+    }
+
+    const pushService = require('../utils/push_service');
+
+    if (action === 'approve') {
+      // Trust the device
+      await saveTrustedDevice(
+        requestData.phone,
+        requestData.device_id,
+        requestData.device_name,
+        'developer_approval'
+      );
+
+      // Send push to the user
+      await pushService.sendPushToPhone(
+        requestData.phone,
+        'Устройство подтверждено',
+        'Ваше новое устройство подтверждено. Войдите в приложение.',
+        { type: 'device_approved', requestId },
+        'default_channel'
+      );
+
+      console.log(`✅ Device approved by ${maskPhone(req.user.phone)} for ${maskPhone(requestData.phone)}`);
+    } else {
+      // Send push: rejected
+      await pushService.sendPushToPhone(
+        requestData.phone,
+        'Устройство отклонено',
+        'Запрос на новое устройство отклонён. Обратитесь к руководству.',
+        { type: 'device_rejected', requestId },
+        'default_channel'
+      );
+
+      console.log(`❌ Device rejected by ${maskPhone(req.user.phone)} for ${maskPhone(requestData.phone)}`);
+    }
+
+    res.json({ success: true, message: action === 'approve' ? 'Устройство подтверждено' : 'Запрос отклонён' });
+  } catch (error) {
+    console.error('Resolve device approval error:', error);
+    res.status(500).json({ error: 'Ошибка обработки запроса' });
+  }
+});
+
+/**
+ * GET /api/auth/device-approval-status/:phone
+ * Проверка статуса запроса на подтверждение устройства (для polling)
+ * Не требует авторизации — пользователь ещё не залогинен
+ */
+router.get('/device-approval-status/:phone', async (req, res) => {
+  try {
+    const normalizedPhone = normalizePhone(req.params.phone);
+
+    let latest = null;
+    if (USE_DB) {
+      try {
+        const result = await db.query(
+          'SELECT * FROM device_approval_requests WHERE phone = $1 ORDER BY created_at DESC LIMIT 1',
+          [normalizedPhone]
+        );
+        latest = result.rows && result.rows[0];
+      } catch (e) {
+        console.error('[Auth] DB device_approval_status error:', e.message);
+      }
+    }
+
+    if (!latest) {
+      try {
+        const files = await fs.readdir(DEVICE_APPROVAL_DIR);
+        for (const file of files) {
+          if (!file.endsWith('.json')) continue;
+          try {
+            const data = JSON.parse(await fs.readFile(path.join(DEVICE_APPROVAL_DIR, file), 'utf8'));
+            if (data.phone === normalizedPhone) {
+              if (!latest || new Date(data.created_at) > new Date(latest.created_at)) {
+                latest = data;
+              }
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+
+    res.json({ status: latest ? latest.status : 'none' });
+  } catch (error) {
+    console.error('Device approval status error:', error);
+    res.status(500).json({ error: 'Ошибка получения статуса' });
   }
 });
 

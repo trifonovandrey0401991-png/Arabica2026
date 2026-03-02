@@ -584,6 +584,32 @@ CREATE TABLE IF NOT EXISTS auth_pins (
   locked_until TIMESTAMPTZ
 );
 
+-- Device binding: trusted devices (one per user)
+CREATE TABLE IF NOT EXISTS trusted_devices (
+  phone TEXT PRIMARY KEY,
+  device_id TEXT NOT NULL,
+  device_name TEXT,
+  trusted_at TIMESTAMPTZ DEFAULT NOW(),
+  trusted_via TEXT DEFAULT 'auto'  -- 'auto' | 'otp' | 'developer_approval' | 'migration'
+);
+
+-- Device binding: approval requests from users on new devices
+CREATE TABLE IF NOT EXISTS device_approval_requests (
+  id TEXT PRIMARY KEY,
+  phone TEXT NOT NULL,
+  device_id TEXT NOT NULL,
+  device_name TEXT,
+  user_name TEXT,
+  status TEXT DEFAULT 'pending',  -- 'pending' | 'approved' | 'rejected'
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  resolved_at TIMESTAMPTZ,
+  resolved_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_device_approval_status ON device_approval_requests(status);
+
+-- Add device_id column to auth_sessions
+ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS device_id TEXT;
+
 CREATE TABLE IF NOT EXISTS fcm_tokens (
   phone TEXT PRIMARY KEY,
   token TEXT NOT NULL,
