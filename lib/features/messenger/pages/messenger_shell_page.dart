@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/firebase_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/contact_model.dart';
 import '../services/messenger_service.dart';
@@ -10,6 +11,7 @@ import '../../employees/services/user_role_service.dart';
 import '../../../core/utils/logger.dart';
 import '../services/messenger_ws_service.dart';
 import 'messenger_list_page.dart';
+import 'contact_search_page.dart';
 
 /// Полноэкранная обёртка мессенджера.
 /// Единственная точка входа из основного приложения.
@@ -34,10 +36,13 @@ class MessengerShellPage extends StatefulWidget {
   State<MessengerShellPage> createState() => _MessengerShellPageState();
 }
 
-class _MessengerShellPageState extends State<MessengerShellPage> {
+class _MessengerShellPageState extends State<MessengerShellPage> with WidgetsBindingObserver {
   String? _userPhone;
   String? _userName;
   bool _isLoading = true;
+
+  // Bottom navigation
+  int _currentTabIndex = 0;
 
   // Контакты из телефонной книги, которые зарегистрированы в системе
   List<MessengerContact> _matchedContacts = [];
@@ -49,7 +54,26 @@ class _MessengerShellPageState extends State<MessengerShellPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _init();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Re-check contacts permission when app returns from background (e.g. user just granted in Settings)
+    if (state == AppLifecycleState.resumed && !_contactsGranted && _userPhone != null && _userPhone!.isNotEmpty) {
+      Permission.contacts.status.then((status) {
+        if (status.isGranted) {
+          _initContacts(_userPhone!);
+        }
+      });
+    }
   }
 
   Future<void> _init() async {
@@ -139,6 +163,9 @@ class _MessengerShellPageState extends State<MessengerShellPage> {
     // Сохраняем телефонную книгу для фильтрации имён
     if (mounted) setState(() => _phoneBookNames = bookNames);
     MessengerWsService.phoneBookPhones = bookNames.keys.toSet();
+
+    // Push notifications: resolve sender name from phone book
+    FirebaseService.resolveMessengerName = (phone) => bookNames[phone];
 
     if (phones.isEmpty) return;
 
@@ -298,13 +325,58 @@ class _MessengerShellPageState extends State<MessengerShellPage> {
       );
     }
 
-    return MessengerListPage(
-      userPhone: _userPhone!,
-      userName: _userName ?? _userPhone!,
-      matchedContacts: _matchedContacts,
-      contactsGranted: _contactsGranted,
-      isClient: _isClient,
-      phoneBookNames: _phoneBookNames,
+    return Scaffold(
+      backgroundColor: AppColors.night,
+      body: IndexedStack(
+        index: _currentTabIndex,
+        children: [
+          MessengerListPage(
+            userPhone: _userPhone!,
+            userName: _userName ?? _userPhone!,
+            matchedContacts: _matchedContacts,
+            contactsGranted: _contactsGranted,
+            isClient: _isClient,
+            phoneBookNames: _phoneBookNames,
+          ),
+          ContactSearchPage(
+            userPhone: _userPhone!,
+            userName: _userName ?? _userPhone!,
+            matchedContacts: _contactsGranted ? _matchedContacts : null,
+            embeddedMode: true,
+          ),
+        ],
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: AppColors.night.withOpacity(0.95),
+          border: Border(
+            top: BorderSide(color: Colors.white.withOpacity(0.06)),
+          ),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentTabIndex,
+          onTap: (index) {
+            if (mounted) setState(() => _currentTabIndex = index);
+          },
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedItemColor: AppColors.turquoise,
+          unselectedItemColor: Colors.white.withOpacity(0.4),
+          selectedFontSize: 12,
+          unselectedFontSize: 12,
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble),
+              label: 'Чаты',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.contacts),
+              label: 'Контакты',
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../models/conversation_model.dart';
@@ -12,10 +15,22 @@ import '../models/message_model.dart';
 import '../services/messenger_service.dart';
 import '../services/messenger_ws_service.dart';
 import '../services/voice_recorder_service.dart';
+import '../services/call_service.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input_bar.dart';
+import '../widgets/message_context_menu.dart';
+import '../widgets/pinned_message_bar.dart';
+import '../widgets/combined_media_picker.dart';
+import 'call_page.dart';
 import 'group_info_page.dart';
 import 'messenger_shell_page.dart';
+import 'photo_editor_page.dart';
+import 'video_note_recorder_page.dart';
+import 'create_poll_page.dart';
+import 'conversation_picker_page.dart';
+import 'image_viewer_page.dart';
+import '../models/poll_model.dart';
+import '../widgets/poll_bubble.dart';
 
 class MessengerChatPage extends StatefulWidget {
   final Conversation conversation;
@@ -37,8 +52,14 @@ class MessengerChatPage extends StatefulWidget {
   State<MessengerChatPage> createState() => _MessengerChatPageState();
 }
 
-class _MessengerChatPageState extends State<MessengerChatPage> {
+class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindingObserver {
+  // In-memory cache shared across all chat instances (lives while app is open)
+  static final Map<String, List<MessengerMessage>> _messagesCache = {};
+  static const int _messagesCacheLimit = 20; // max conversations cached
+
   final List<MessengerMessage> _messages = [];
+  // O(1) lookup for reply-to messages (rebuilt when messages change)
+  Map<String, MessengerMessage> _messagesById = {};
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
   bool _isFirstLoad = true;
@@ -47,6 +68,22 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
   String? _typingPhone;
   String? _replyToId;
   String? _replyToText;
+
+  // Edit mode
+  String? _editingMessageId;
+
+  // Pinned message
+  MessengerMessage? _pinnedMessage;
+  bool _isBlocked = false; // true if WE blocked the other user
+
+  /// Is current user admin of the channel (can post)?
+  bool get _isChannelAdmin {
+    if (widget.conversation.type != ConversationType.channel) return false;
+    final me = widget.conversation.participants
+        .where((p) => p.phone == widget.userPhone)
+        .toList();
+    return me.isNotEmpty && (me.first.role == 'admin' || me.first.role == 'creator');
+  }
 
   // Голосовая запись
   bool _isRecording = false;
@@ -57,8 +94,8 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
   String? _playingMessageId;
   final AudioPlayer _audioPlayer = AudioPlayer();
 
-  // Emoji picker
-  bool _showEmojiPicker = false;
+  // Emoji / Sticker / GIF picker
+  bool _showMediaPicker = false;
   final TextEditingController _textController = TextEditingController();
 
   StreamSubscription? _newMessageSub;
@@ -68,21 +105,45 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
   StreamSubscription? _reactionAddedSub;
   StreamSubscription? _reactionRemovedSub;
   StreamSubscription? _readReceiptSub;
+  StreamSubscription? _messageEditedSub;
+  StreamSubscription? _messageDeliveredSub;
 
   bool _isOtherOnline = false;
+
+  // Read receipts: phone → last_read_at for each OTHER participant
+  final Map<String, DateTime> _participantLastRead = {};
 
   Timer? _typingTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     MessengerWsService.setActiveConversation(widget.conversation.id);
+    // Init read status from participants (populated when conversation list includes last_read_at)
+    for (final p in widget.conversation.participants) {
+      if (p.phone != widget.userPhone && p.lastReadAt != null) {
+        _participantLastRead[p.phone] = p.lastReadAt!;
+      }
+    }
+    // Load from cache immediately (no loading spinner if cached)
+    final cached = _messagesCache[widget.conversation.id];
+    if (cached != null && cached.isNotEmpty) {
+      _messages.addAll(cached);
+      _rebuildIndex();
+      _isFirstLoad = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    }
     _loadMessages();
     _setupWebSocket();
     _markAsRead();
+    _refreshParticipantReadTimes();
+    _checkBlockStatus();
 
     _scrollController.addListener(() {
-      if (_scrollController.position.pixels <= 50 && !_isLoadingMore && _hasMoreMessages) {
+      if (_scrollController.hasClients &&
+          _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 50 &&
+          !_isLoadingMore && _hasMoreMessages) {
         _loadMoreMessages();
       }
     });
@@ -97,6 +158,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     MessengerWsService.setActiveConversation(null);
     _newMessageSub?.cancel();
     _typingSub?.cancel();
@@ -105,12 +167,21 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
     _reactionAddedSub?.cancel();
     _reactionRemovedSub?.cancel();
     _readReceiptSub?.cancel();
+    _messageEditedSub?.cancel();
+    _messageDeliveredSub?.cancel();
     _typingTimer?.cancel();
     _recordingTimer?.cancel();
     _scrollController.dispose();
     _audioPlayer.dispose();
     _textController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      MessengerWsService.instance.reconnectIfNeeded();
+    }
   }
 
   void _setupWebSocket() {
@@ -126,6 +197,8 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
         setState(() {
           _messages.add(event.message);
         });
+        // Update cache with new message
+        _messagesCache[widget.conversation.id] = List.of(_messages);
         _scrollToBottom();
         _markAsRead();
       }
@@ -175,13 +248,74 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
 
     _reactionAddedSub = ws.onReactionAdded.listen((event) {
       if (event.conversationId == widget.conversation.id && mounted) {
-        _loadMessages(silent: true);
+        final idx = _messages.indexWhere((m) => m.id == event.messageId);
+        if (idx != -1) {
+          final msg = _messages[idx];
+          final reactions = Map<String, List<String>>.from(
+            msg.reactions.map((k, v) => MapEntry(k, List<String>.from(v))),
+          );
+          if (!reactions.containsKey(event.reaction)) reactions[event.reaction] = [];
+          if (!reactions[event.reaction]!.contains(event.phone)) {
+            reactions[event.reaction]!.add(event.phone);
+          }
+          setState(() => _messages[idx] = msg.copyWith(reactions: reactions));
+        }
       }
     });
 
     _reactionRemovedSub = ws.onReactionRemoved.listen((event) {
       if (event.conversationId == widget.conversation.id && mounted) {
-        _loadMessages(silent: true);
+        final idx = _messages.indexWhere((m) => m.id == event.messageId);
+        if (idx != -1) {
+          final msg = _messages[idx];
+          final reactions = Map<String, List<String>>.from(
+            msg.reactions.map((k, v) => MapEntry(k, List<String>.from(v))),
+          );
+          if (reactions.containsKey(event.reaction)) {
+            reactions[event.reaction]!.remove(event.phone);
+            if (reactions[event.reaction]!.isEmpty) reactions.remove(event.reaction);
+          }
+          setState(() => _messages[idx] = msg.copyWith(reactions: reactions));
+        }
+      }
+    });
+
+    // Track when other participants read messages
+    _readReceiptSub = ws.onReadReceipt.listen((event) {
+      if (event.conversationId == widget.conversation.id &&
+          event.phone != widget.userPhone &&
+          mounted) {
+        final ts = DateTime.tryParse(event.readAt);
+        if (ts != null) {
+          setState(() => _participantLastRead[event.phone] = ts);
+        }
+      }
+    });
+
+    _messageEditedSub = ws.onMessageEdited.listen((event) {
+      if (event.conversationId == widget.conversation.id && mounted) {
+        final idx = _messages.indexWhere((m) => m.id == event.messageId);
+        if (idx != -1) {
+          setState(() {
+            _messages[idx] = _messages[idx].copyWith(
+              content: event.newContent,
+              editedAt: DateTime.tryParse(event.editedAt),
+            );
+          });
+        }
+      }
+    });
+
+    _messageDeliveredSub = ws.onMessageDelivered.listen((event) {
+      if (event.conversationId == widget.conversation.id && mounted) {
+        final idx = _messages.indexWhere((m) => m.id == event.messageId);
+        if (idx != -1) {
+          setState(() {
+            _messages[idx] = _messages[idx].copyWith(
+              deliveredTo: event.deliveredTo,
+            );
+          });
+        }
       }
     });
   }
@@ -192,7 +326,13 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
     }
 
     try {
-      final messages = await MessengerService.getMessages(widget.conversation.id, limit: 50);
+      // Параллельная загрузка сообщений и закреплённых (вместо последовательной)
+      final results = await Future.wait([
+        MessengerService.getMessages(widget.conversation.id, limit: 50),
+        MessengerService.getPinnedMessages(widget.conversation.id),
+      ]);
+      final messages = results[0] as List<MessengerMessage>;
+      final pinned = results[1] as List<MessengerMessage>;
       if (mounted) {
         setState(() {
           _messages.clear();
@@ -200,9 +340,15 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
           _isLoading = false;
           _isFirstLoad = false;
           _hasMoreMessages = messages.length >= 50;
+          _pinnedMessage = pinned.isNotEmpty ? pinned.first : null;
         });
+        // Update cache — limit to avoid unbounded memory growth
+        if (_messagesCache.length >= _messagesCacheLimit && !_messagesCache.containsKey(widget.conversation.id)) {
+          _messagesCache.remove(_messagesCache.keys.first);
+        }
+        _messagesCache[widget.conversation.id] = List.of(messages);
         if (!silent) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+          _scrollToBottom();
         }
       }
     } catch (e) {
@@ -218,6 +364,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
   Future<void> _loadMoreMessages() async {
     if (_messages.isEmpty || _isLoadingMore) return;
 
+    if (!mounted) return;
     setState(() => _isLoadingMore = true);
 
     try {
@@ -241,20 +388,83 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
   }
 
   void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _markAsRead() async {
     await MessengerService.markAsRead(widget.conversation.id, widget.userPhone);
   }
 
+  /// Rebuild id→message index for O(1) reply lookups
+  void _rebuildIndex() {
+    _messagesById = {for (final m in _messages) m.id: m};
+  }
+
+  /// Fetch fresh conversation data to get accurate last_read_at for all participants.
+  /// The conversations LIST endpoint may not include last_read_at, but the single
+  /// conversation GET endpoint always does.
+  Future<void> _refreshParticipantReadTimes() async {
+    try {
+      final conv = await MessengerService.getConversation(widget.conversation.id);
+      if (conv == null || !mounted) return;
+      bool changed = false;
+      for (final p in conv.participants) {
+        if (p.phone != widget.userPhone && p.lastReadAt != null) {
+          final existing = _participantLastRead[p.phone];
+          if (existing == null || p.lastReadAt!.isAfter(existing)) {
+            _participantLastRead[p.phone] = p.lastReadAt!;
+            changed = true;
+          }
+        }
+      }
+      if (changed && mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  /// Number of OTHER participants whose last_read_at >= message.createdAt
+  int _readersCount(MessengerMessage message) {
+    return _participantLastRead.values
+        .where((readAt) => !readAt.isBefore(message.createdAt))
+        .length;
+  }
+
+  /// Total number of other participants (not counting sender)
+  int get _otherParticipantCount {
+    return widget.conversation.participants
+        .where((p) => p.phone != widget.userPhone)
+        .length
+        .clamp(1, 999);
+  }
+
+  /// Participants (name + readAt) who have read up to a given message
+  List<Map<String, dynamic>> _readersOf(MessengerMessage message) {
+    return widget.conversation.participants
+        .where((p) =>
+            p.phone != widget.userPhone &&
+            _participantLastRead[p.phone] != null &&
+            !_participantLastRead[p.phone]!.isBefore(message.createdAt))
+        .map((p) => {
+              'name': p.name ?? p.phone,
+              'readAt': _participantLastRead[p.phone]!,
+            })
+        .toList();
+  }
+
   void _handleSendText(String text) async {
+    // If editing — submit edit instead of sending new message
+    if (_editingMessageId != null) {
+      _submitEdit();
+      return;
+    }
+
     final msg = await MessengerService.sendMessage(
       conversationId: widget.conversation.id,
       senderPhone: widget.userPhone,
@@ -271,6 +481,14 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
         _replyToText = null;
       });
       _scrollToBottom();
+    } else if (msg == null && mounted) {
+      // May be blocked
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось отправить сообщение'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
@@ -336,8 +554,17 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
       return;
     }
 
-    // Загружаем файл на сервер
-    final url = await MessengerService.uploadMedia(result.file);
+    // Wait for audio buffer to fully flush to disk before uploading
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Upload with retry (3 attempts, 1 sec between)
+    String? url;
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      url = await MessengerService.uploadMedia(result.file);
+      if (url != null) break;
+      if (attempt < 3) await Future.delayed(const Duration(seconds: 1));
+    }
+
     if (url == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -383,6 +610,64 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
     }
   }
 
+  // ========= Видео-кружки =========
+
+  Future<void> _handleVideoNote() async {
+    final file = await Navigator.of(context).push<File?>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const VideoNoteRecorderPage(),
+      ),
+    );
+
+    if (file == null || !mounted) return;
+
+    // Duration from file length (approximate: file size doesn't tell us, so record time)
+    // The recorder stops at exactly _maxSeconds; we don't know exact seconds here.
+    // voiceDuration is set in the upload path via metadata if available, else 0.
+    int durationSecs = 0;
+    try {
+      // Rough estimation: not critical, will just show 00:00 if unknown
+      durationSecs = 0;
+    } catch (_) {}
+
+    // Upload
+    String? url;
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      url = await MessengerService.uploadMedia(file);
+      if (url != null) break;
+      if (attempt < 3) await Future.delayed(const Duration(seconds: 1));
+    }
+
+    if (url == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ошибка загрузки видео-кружка')),
+        );
+      }
+      return;
+    }
+
+    final msg = await MessengerService.sendMessage(
+      conversationId: widget.conversation.id,
+      senderPhone: widget.userPhone,
+      senderName: widget.userName,
+      type: MessageType.videoNote,
+      mediaUrl: url,
+      voiceDuration: durationSecs,
+    );
+
+    if (msg != null && mounted) {
+      setState(() => _messages.add(msg));
+      _scrollToBottom();
+    }
+
+    // Clean up temp file
+    try {
+      await file.delete();
+    } catch (_) {}
+  }
+
   // ========= Воспроизведение голосовых =========
 
   Future<void> _handlePlayVoice(MessengerMessage message) async {
@@ -413,16 +698,63 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
 
   // ========= Вложения =========
 
-  void _toggleEmojiPicker() {
+  void _toggleMediaPicker() {
     if (mounted) {
-      setState(() => _showEmojiPicker = !_showEmojiPicker);
-      if (_showEmojiPicker) {
+      setState(() {
+        _showMediaPicker = !_showMediaPicker;
+      });
+      if (_showMediaPicker) {
         FocusScope.of(context).unfocus();
       }
     }
   }
 
+  Future<void> _sendSticker(String stickerUrl) async {
+    if (mounted) {
+      setState(() => _showMediaPicker = false);
+    }
+    final msg = await MessengerService.sendMessage(
+      conversationId: widget.conversation.id,
+      senderPhone: widget.userPhone,
+      senderName: widget.userName,
+      type: MessageType.sticker,
+      mediaUrl: stickerUrl,
+    );
+    if (msg != null && mounted) {
+      setState(() {
+        _messages.add(msg);
+        _messagesCache[widget.conversation.id] = List.from(_messages);
+      });
+      _scrollToBottom();
+    }
+  }
+
+  Future<void> _sendGif(String gifUrl) async {
+    if (mounted) {
+      setState(() => _showMediaPicker = false);
+    }
+    final msg = await MessengerService.sendMessage(
+      conversationId: widget.conversation.id,
+      senderPhone: widget.userPhone,
+      senderName: widget.userName,
+      type: MessageType.gif,
+      mediaUrl: gifUrl,
+    );
+    if (msg != null && mounted) {
+      setState(() {
+        _messages.add(msg);
+        _messagesCache[widget.conversation.id] = List.from(_messages);
+      });
+      _scrollToBottom();
+    }
+  }
+
   void _handleAttachment() async {
+    // Close media picker if open
+    if (_showMediaPicker && mounted) {
+      setState(() => _showMediaPicker = false);
+    }
+
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF0A2A2A),
@@ -430,44 +762,495 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Row 1: Галерея | Контакт
+              Row(
+                children: [
+                  _buildAttachmentCell(ctx, Icons.photo_library, 'Галерея', () => _pickFromGallery()),
+                  const SizedBox(width: 12),
+                  _buildAttachmentCell(ctx, Icons.person, 'Контакт', () => _pickAndShareContact()),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Row 2: Камера | Видео
+              Row(
+                children: [
+                  _buildAttachmentCell(ctx, Icons.photo_camera, 'Камера', () => _pickAndSendImage(ImageSource.camera)),
+                  const SizedBox(width: 12),
+                  _buildAttachmentCell(ctx, Icons.videocam, 'Видео', () => _pickAndSendVideoFromCamera()),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Row 3: Документ | Опрос
+              Row(
+                children: [
+                  _buildAttachmentCell(ctx, Icons.insert_drive_file, 'Документ', () => _pickAndSendFile()),
+                  const SizedBox(width: 12),
+                  _buildAttachmentCell(ctx, Icons.poll, 'Опрос', () => _createPoll()),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAttachmentCell(BuildContext ctx, IconData icon, String label, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          Navigator.pop(ctx);
+          onTap();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.gold.withOpacity(0.5), width: 1),
+            borderRadius: BorderRadius.circular(14),
+            color: AppColors.gold.withOpacity(0.06),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: AppColors.gold, size: 28),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.85),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Opens gallery for picking photos and/or videos.
+  Future<void> _pickFromGallery() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickMultipleMedia();
+      if (picked.isEmpty || !mounted) return;
+
+      final images = <File>[];
+      final videos = <File>[];
+
+      for (final xf in picked.take(10)) {
+        final path = xf.path.toLowerCase();
+        if (path.endsWith('.mp4') || path.endsWith('.mov') || path.endsWith('.avi') || path.endsWith('.mkv') || path.endsWith('.webm')) {
+          videos.add(File(xf.path));
+        } else {
+          images.add(File(xf.path));
+        }
+      }
+
+      // Send photos through editor
+      if (images.isNotEmpty) {
+        final editedFiles = await Navigator.push<List<File>>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PhotoEditorPage(photos: images),
+          ),
+        );
+        if (editedFiles != null && editedFiles.isNotEmpty && mounted) {
+          await _uploadAndSendPhotos(editedFiles);
+        }
+      }
+
+      // Send videos directly
+      for (final video in videos) {
+        final url = await MessengerService.uploadMedia(video);
+        if (url == null || !mounted) continue;
+        final msg = await MessengerService.sendMessage(
+          conversationId: widget.conversation.id,
+          senderPhone: widget.userPhone,
+          senderName: widget.userName,
+          type: MessageType.video,
+          mediaUrl: url,
+        );
+        if (msg != null && mounted) {
+          setState(() => _messages.add(msg));
+          _scrollToBottom();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка загрузки: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickAndShareContact() async {
+    try {
+      // Check contacts permission
+      var status = await Permission.contacts.status;
+      if (!status.isGranted) {
+        status = await Permission.contacts.request();
+        if (!status.isGranted) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Для отправки контакта необходим доступ к телефонной книге')),
+            );
+          }
+          return;
+        }
+      }
+
+      // Open native contact picker
+      final picked = await FlutterContacts.openExternalPick();
+      if (picked == null || !mounted) return;
+
+      // Reload with full properties (phone numbers)
+      final fullContact = await FlutterContacts.getContact(picked.id, withProperties: true);
+      if (fullContact == null || !mounted) return;
+
+      final phones = fullContact.phones;
+      if (phones.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('У этого контакта нет номера телефона')),
+          );
+        }
+        return;
+      }
+
+      // If multiple phones — let user pick one
+      String selectedPhone = phones.first.number;
+      if (phones.length > 1 && mounted) {
+        final result = await showModalBottomSheet<String>(
+          context: context,
+          backgroundColor: const Color(0xFF0A2A2A),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (ctx) => _buildPhonePickerSheet(fullContact.displayName, phones),
+        );
+        if (result == null || !mounted) return;
+        selectedPhone = result;
+      }
+
+      // Show confirmation dialog with contact card preview
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => _buildContactConfirmDialog(fullContact.displayName, selectedPhone),
+      );
+      if (confirmed != true || !mounted) return;
+
+      // Normalize phone and send
+      final normalized = selectedPhone.replaceAll(RegExp(r'\D'), '');
+      final contactJson = jsonEncode({'name': fullContact.displayName, 'phone': normalized});
+      final msg = await MessengerService.sendMessage(
+        conversationId: widget.conversation.id,
+        senderPhone: widget.userPhone,
+        senderName: widget.userName,
+        type: MessageType.contact,
+        content: contactJson,
+      );
+      if (msg != null && mounted) {
+        setState(() {
+          _messages.add(msg);
+          _messagesCache[widget.conversation.id] = List.from(_messages);
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось выбрать контакт')),
+        );
+      }
+    }
+  }
+
+  /// Bottom sheet for picking one phone number when contact has multiple
+  Widget _buildPhonePickerSheet(String name, List<Phone> phones) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Text(
+              'Выберите номер для $name',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withOpacity(0.9),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...phones.map((p) => ListTile(
+            leading: Icon(Icons.phone, color: AppColors.turquoise.withOpacity(0.7)),
+            title: Text(p.number, style: TextStyle(color: Colors.white.withOpacity(0.9))),
+            subtitle: p.label.name.isNotEmpty
+                ? Text(p.label.name, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12))
+                : null,
+            onTap: () => Navigator.pop(context, p.number),
+          )),
+        ],
+      ),
+    );
+  }
+
+  /// Confirmation dialog showing contact card before sending
+  Widget _buildContactConfirmDialog(String name, String phone) {
+    final letter = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    return AlertDialog(
+      backgroundColor: const Color(0xFF0A2A2A),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Отправить контакт?',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withOpacity(0.9),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [AppColors.emeraldLight, AppColors.emerald],
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(letter,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(phone,
+                        style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.5)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actionsAlignment: MainAxisAlignment.center,
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      actions: [
+        Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.4))),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.turquoise, AppColors.emerald],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                  child: const Text('Отправить',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openPrivateChatWith(String phone, String name) async {
+    try {
+      final conv = await MessengerService.getOrCreatePrivateChat(
+        phone1: widget.userPhone,
+        phone2: phone,
+      );
+      if (conv != null && mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MessengerChatPage(
+              conversation: conv,
+              userPhone: widget.userPhone,
+              userName: widget.userName,
+              isClient: widget.isClient,
+              phoneBookNames: widget.phoneBookNames,
+            ),
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
+  void _showContactActions(String phone, String name) {
+    final letter = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    // Format phone for display
+    final displayPhone = phone.length == 11
+        ? '+${phone[0]} (${phone.substring(1, 4)}) ${phone.substring(4, 7)}-${phone.substring(7, 9)}-${phone.substring(9)}'
+        : phone;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0A2A2A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(2),
+            // Contact card preview
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [AppColors.emeraldLight, AppColors.emerald],
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(letter,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name,
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.9)),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(displayPhone,
+                        style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.5)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Action: Написать
+            ListTile(
+              leading: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.turquoise.withOpacity(0.15),
+                ),
+                child: const Icon(Icons.chat_bubble_outline, color: AppColors.turquoise, size: 20),
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_camera, color: AppColors.turquoise),
-              title: Text('Камера', style: TextStyle(color: Colors.white.withOpacity(0.9))),
+              title: Text('Написать', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               onTap: () {
                 Navigator.pop(ctx);
-                _pickAndSendImage(ImageSource.camera);
+                _openPrivateChatWith(phone, name);
               },
             ),
+            // Action: Сохранить в контакты
             ListTile(
-              leading: const Icon(Icons.photo_library, color: AppColors.turquoise),
-              title: Text('Галерея', style: TextStyle(color: Colors.white.withOpacity(0.9))),
+              leading: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.emerald.withOpacity(0.15),
+                ),
+                child: const Icon(Icons.person_add_outlined, color: AppColors.emerald, size: 20),
+              ),
+              title: Text('Сохранить в контакты', style: TextStyle(color: Colors.white.withOpacity(0.9))),
               onTap: () {
                 Navigator.pop(ctx);
-                _pickAndSendImage(ImageSource.gallery);
+                _saveToPhoneBook(phone, name);
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.videocam, color: AppColors.turquoise),
-              title: Text('Видео', style: TextStyle(color: Colors.white.withOpacity(0.9))),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickAndSendVideo();
-              },
-            ),
-            const SizedBox(height: 8),
           ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveToPhoneBook(String phone, String name) async {
+    try {
+      // Format phone with + prefix for phone book
+      final formattedPhone = phone.startsWith('+') ? phone : '+$phone';
+      final newContact = Contact(
+        name: Name(first: name),
+        phones: [Phone(formattedPhone)],
+      );
+      await FlutterContacts.openExternalInsert(newContact);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось открыть контакты')),
+        );
+      }
+    }
+  }
+
+  void _openImageViewer(String imageUrl, String? senderName) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ImageViewerPage(
+          imageUrl: imageUrl,
+          senderName: senderName,
         ),
       ),
     );
@@ -476,11 +1259,31 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
   Future<void> _pickAndSendImage(ImageSource source) async {
     try {
       final picked = await ImagePicker().pickImage(source: source, imageQuality: 75, maxWidth: 1280);
-      if (picked == null) return;
+      if (picked == null || !mounted) return;
 
-      final file = File(picked.path);
+      final editedFiles = await Navigator.push<List<File>>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PhotoEditorPage(photos: [File(picked.path)]),
+        ),
+      );
+
+      if (editedFiles == null || editedFiles.isEmpty || !mounted) return;
+
+      await _uploadAndSendPhotos(editedFiles);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка загрузки: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadAndSendPhotos(List<File> files) async {
+    for (final file in files) {
       final url = await MessengerService.uploadMedia(file);
-      if (url == null) return;
+      if (url == null) continue;
 
       final msg = await MessengerService.sendMessage(
         conversationId: widget.conversation.id,
@@ -494,6 +1297,33 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
         setState(() => _messages.add(msg));
         _scrollToBottom();
       }
+    }
+  }
+
+  Future<void> _pickAndSendVideoFromCamera() async {
+    try {
+      final picked = await ImagePicker().pickVideo(source: ImageSource.camera, maxDuration: const Duration(minutes: 5));
+      if (picked == null || !mounted) return;
+
+      final file = File(picked.path);
+      final url = await MessengerService.uploadMedia(file);
+      if (url == null || !mounted) return;
+
+      final msg = await MessengerService.sendMessage(
+        conversationId: widget.conversation.id,
+        senderPhone: widget.userPhone,
+        senderName: widget.userName,
+        type: MessageType.video,
+        mediaUrl: url,
+      );
+
+      if (msg != null && mounted) {
+        setState(() {
+          _messages.insert(0, msg);
+          _messagesCache[widget.conversation.id] = List.from(_messages);
+        });
+        _scrollToBottom();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -503,12 +1333,18 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
     }
   }
 
-  Future<void> _pickAndSendVideo() async {
+  Future<void> _pickAndSendFile() async {
     try {
-      final picked = await ImagePicker().pickVideo(source: ImageSource.gallery, maxDuration: const Duration(minutes: 5));
-      if (picked == null) return;
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'txt', 'csv'],
+      );
+      if (result == null || result.files.isEmpty) return;
 
-      final file = File(picked.path);
+      final platformFile = result.files.first;
+      if (platformFile.path == null) return;
+
+      final file = File(platformFile.path!);
       final url = await MessengerService.uploadMedia(file);
       if (url == null) return;
 
@@ -516,8 +1352,10 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
         conversationId: widget.conversation.id,
         senderPhone: widget.userPhone,
         senderName: widget.userName,
-        type: MessageType.video,
+        type: MessageType.file,
         mediaUrl: url,
+        fileName: platformFile.name,
+        fileSize: platformFile.size,
       );
 
       if (msg != null && mounted) {
@@ -533,120 +1371,284 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
     }
   }
 
+  // ========= Polls =========
+
+  final Map<String, PollModel> _pollCache = {};
+
+  Widget _buildPollWidget(MessengerMessage message) {
+    final poll = _pollCache[message.id];
+    if (poll == null) {
+      // Load poll data asynchronously
+      _getPoll(message.id).then((_) {
+        if (mounted) setState(() {});
+      });
+      return Text(
+        '📊 ${message.content ?? 'Загрузка...'}',
+        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+      );
+    }
+
+    return PollBubble(
+      poll: poll,
+      userPhone: widget.userPhone,
+      isMine: message.senderPhone == widget.userPhone,
+      onVote: (optionIndex) => _votePoll(message.id, poll.id, optionIndex),
+    );
+  }
+
+  Future<void> _createPoll() async {
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(builder: (_) => const CreatePollPage()),
+    );
+    if (result == null) return;
+
+    final response = await MessengerService.createPoll(
+      conversationId: widget.conversation.id,
+      question: result['question'] as String,
+      options: (result['options'] as List).cast<String>(),
+      multipleChoice: result['multipleChoice'] == true,
+      anonymous: result['anonymous'] == true,
+    );
+
+    if (response != null && response['message'] != null && mounted) {
+      final msg = MessengerMessage.fromJson(response['message'] as Map<String, dynamic>);
+      if (response['poll'] != null) {
+        _pollCache[msg.id] = PollModel.fromJson(response['poll'] as Map<String, dynamic>);
+      }
+      setState(() => _messages.add(msg));
+      _scrollToBottom();
+    }
+  }
+
+  Future<PollModel?> _getPoll(String messageId) async {
+    if (_pollCache.containsKey(messageId)) return _pollCache[messageId];
+    final data = await MessengerService.getPoll(widget.conversation.id, messageId);
+    if (data != null) {
+      final poll = PollModel.fromJson(data);
+      _pollCache[messageId] = poll;
+      return poll;
+    }
+    return null;
+  }
+
+  Future<void> _votePoll(String messageId, String pollId, int optionIndex) async {
+    final result = await MessengerService.votePoll(widget.conversation.id, pollId, optionIndex);
+    if (result != null && result['votes'] != null && mounted) {
+      // Update cached poll
+      final existing = _pollCache[messageId];
+      if (existing != null) {
+        final votes = <String, List<String>>{};
+        final rawVotes = result['votes'] as Map;
+        for (final entry in rawVotes.entries) {
+          final key = entry.key.toString();
+          if (entry.value is List) {
+            votes[key] = (entry.value as List).map((e) => e.toString()).toList();
+          }
+        }
+        _pollCache[messageId] = PollModel(
+          id: existing.id,
+          conversationId: existing.conversationId,
+          messageId: existing.messageId,
+          question: existing.question,
+          options: existing.options,
+          votes: votes,
+          multipleChoice: existing.multipleChoice,
+          anonymous: existing.anonymous,
+          closed: existing.closed,
+        );
+        setState(() {});
+      }
+    }
+  }
+
   // ========= Действия с сообщениями =========
 
+  void _setReplyTo(MessengerMessage message) {
+    if (mounted) {
+      setState(() {
+        _replyToId = message.id;
+        _replyToText = message.preview;
+      });
+    }
+  }
+
   void _handleLongPress(MessengerMessage message) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0A2A2A),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.reply, color: Colors.white.withOpacity(0.7)),
-              title: Text('Ответить', style: TextStyle(color: Colors.white.withOpacity(0.9))),
-              onTap: () {
-                Navigator.pop(ctx);
-                if (mounted) {
-                  setState(() {
-                    _replyToId = message.id;
-                    _replyToText = message.preview;
-                  });
-                }
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.emoji_emotions_outlined, color: Colors.white.withOpacity(0.7)),
-              title: Text('Реакция', style: TextStyle(color: Colors.white.withOpacity(0.9))),
-              onTap: () {
-                Navigator.pop(ctx);
-                _showReactionPicker(message);
-              },
-            ),
-            if (message.senderPhone == widget.userPhone)
-              ListTile(
-                leading: const Icon(Icons.delete_outline, color: AppColors.error),
-                title: const Text('Удалить', style: TextStyle(color: AppColors.error)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _deleteMessage(message);
-                },
-              ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
+    MessageContextMenu.show(
+      context,
+      message: message,
+      userPhone: widget.userPhone,
+      conversationId: widget.conversation.id,
+      onReply: () => _setReplyTo(message),
+      onEdit: (msg) => _startEditing(msg),
+      onForward: (msg) => _forwardMessage(msg),
+      onPin: (msg) => _togglePin(msg),
+      onSaveToFavorites: (msg) => _saveToFavorites(msg),
+      readers: _readersOf(message),
+      onDeleteConfirmed: (msg) => () async {
+        await MessengerService.deleteMessage(widget.conversation.id, msg.id, widget.userPhone);
+        _loadMessages(silent: true);
+      },
     );
   }
 
-  void _showReactionPicker(MessengerMessage message) {
-    final reactions = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A2A2A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: Wrap(
-          spacing: 12,
-          children: reactions.map((emoji) => GestureDetector(
-            onTap: () {
-              Navigator.pop(ctx);
-              MessengerService.addReaction(
-                widget.conversation.id,
-                message.id,
-                phone: widget.userPhone,
-                reaction: emoji,
-              );
-            },
-            child: Text(emoji, style: const TextStyle(fontSize: 32)),
-          )).toList(),
-        ),
-      ),
-    );
+  void _startEditing(MessengerMessage message) {
+    if (mounted) {
+      setState(() {
+        _editingMessageId = message.id;
+        _replyToId = null;
+        _replyToText = null;
+      });
+      _textController.text = message.content ?? '';
+      _textController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _textController.text.length),
+      );
+    }
   }
 
-  Future<void> _deleteMessage(MessengerMessage message) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A2A2A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Удалить сообщение?', style: TextStyle(color: Colors.white.withOpacity(0.9))),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Удалить', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
+  void _cancelEditing() {
+    if (mounted) {
+      setState(() {
+        _editingMessageId = null;
+      });
+      _textController.clear();
+    }
+  }
+
+  Future<void> _submitEdit() async {
+    final newContent = _textController.text.trim();
+    if (newContent.isEmpty || _editingMessageId == null) return;
+
+    final msgId = _editingMessageId!;
+    _cancelEditing();
+
+    final success = await MessengerService.editMessage(
+      widget.conversation.id,
+      msgId,
+      content: newContent,
     );
 
-    if (confirmed == true) {
-      await MessengerService.deleteMessage(widget.conversation.id, message.id, widget.userPhone);
-      _loadMessages(silent: true);
+    if (success && mounted) {
+      // Local update will come via WS event, but update immediately for responsiveness
+      final idx = _messages.indexWhere((m) => m.id == msgId);
+      if (idx != -1) {
+        setState(() {
+          _messages[idx] = _messages[idx].copyWith(
+            content: newContent,
+            editedAt: DateTime.now(),
+          );
+        });
+      }
+    }
+  }
+
+  Future<void> _togglePin(MessengerMessage message) async {
+    if (message.isPinned) {
+      final success = await MessengerService.unpinMessage(widget.conversation.id, message.id);
+      if (success && mounted) {
+        setState(() {
+          final idx = _messages.indexWhere((m) => m.id == message.id);
+          if (idx != -1) _messages[idx] = _messages[idx].copyWith(isPinned: false);
+          if (_pinnedMessage?.id == message.id) _pinnedMessage = null;
+        });
+      }
+    } else {
+      final success = await MessengerService.pinMessage(widget.conversation.id, message.id, widget.userPhone);
+      if (success && mounted) {
+        setState(() {
+          final idx = _messages.indexWhere((m) => m.id == message.id);
+          if (idx != -1) _messages[idx] = _messages[idx].copyWith(isPinned: true);
+          _pinnedMessage = message;
+        });
+      }
+    }
+  }
+
+  void _scrollToPinnedMessage() {
+    if (_pinnedMessage == null) return;
+    final idx = _messages.indexWhere((m) => m.id == _pinnedMessage!.id);
+    if (idx != -1) {
+      // Each message is roughly 60-80px. Scroll to approximate position.
+      _scrollController.animateTo(
+        idx * 70.0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  Future<void> _forwardMessage(MessengerMessage message) async {
+    final targetIds = await Navigator.push<List<String>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ConversationPickerPage(userPhone: widget.userPhone),
+      ),
+    );
+    if (targetIds == null || targetIds.isEmpty) return;
+
+    final success = await MessengerService.forwardMessage(message.id, targetIds);
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Переслано в ${targetIds.length} ${targetIds.length == 1 ? 'чат' : 'чатов'}'),
+          backgroundColor: AppColors.emerald,
+        ),
+      );
+    }
+  }
+
+  Future<void> _saveToFavorites(MessengerMessage message) async {
+    // Get or create "Избранное" conversation, then forward the message there
+    final saved = await MessengerService.getSavedMessages(widget.userPhone);
+    if (saved == null) return;
+
+    final success = await MessengerService.forwardMessage(message.id, [saved.id]);
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Сохранено в Избранное'),
+          backgroundColor: AppColors.emerald,
+        ),
+      );
+    }
+  }
+
+  Future<void> _checkBlockStatus() async {
+    final otherPhone = widget.conversation.otherPhone(widget.userPhone);
+    if (otherPhone == null) return; // group or saved — no blocking
+    final blocks = await MessengerService.getBlockedUsers(widget.userPhone);
+    final blocked = blocks.any((b) => b['blocked_phone'] == otherPhone);
+    if (mounted && blocked != _isBlocked) {
+      setState(() => _isBlocked = blocked);
+    }
+  }
+
+  Future<void> _toggleBlock() async {
+    final otherPhone = widget.conversation.otherPhone(widget.userPhone);
+    if (otherPhone == null) return;
+
+    if (_isBlocked) {
+      await MessengerService.unblockUser(phone: widget.userPhone, blockedPhone: otherPhone);
+    } else {
+      await MessengerService.blockUser(phone: widget.userPhone, blockedPhone: otherPhone);
+    }
+    if (mounted) {
+      setState(() => _isBlocked = !_isBlocked);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isBlocked ? 'Пользователь заблокирован' : 'Пользователь разблокирован'),
+          backgroundColor: AppColors.emerald,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Rebuild reply index once per build (O(n)) instead of O(n) per visible message
+    _rebuildIndex();
     final isGroup = widget.conversation.type == ConversationType.group;
+    final isSaved = widget.conversation.isSavedMessages(widget.userPhone);
     // Privacy: for clients, replace unknown contact names with "Сотрудник"
     final rawTitle = widget.conversation.displayName(widget.userPhone);
     final otherPhone = widget.conversation.otherPhone(widget.userPhone);
@@ -706,10 +1708,44 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
           ),
         ),
         actions: [
+          // Voice call button (private chats only)
+          if (!isGroup)
+            IconButton(
+              icon: Icon(Icons.call, color: Colors.white.withOpacity(0.7)),
+              tooltip: 'Позвонить',
+              onPressed: _startCall,
+            ),
           if (isGroup)
             IconButton(
               icon: Icon(Icons.group, color: Colors.white.withOpacity(0.6)),
               onPressed: _openGroupInfo,
+            ),
+          if (!isGroup && !isSaved)
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert, color: Colors.white.withOpacity(0.6)),
+              color: const Color(0xFF0A2A2A),
+              onSelected: (value) {
+                if (value == 'block') _toggleBlock();
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'block',
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isBlocked ? Icons.lock_open : Icons.block,
+                        color: _isBlocked ? Colors.white70 : AppColors.error,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _isBlocked ? 'Разблокировать' : 'Заблокировать',
+                        style: TextStyle(color: _isBlocked ? Colors.white70 : AppColors.error),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
         ],
         flexibleSpace: Container(
@@ -727,6 +1763,13 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
       ),
       body: Column(
         children: [
+          // Pinned message bar
+          if (_pinnedMessage != null)
+            PinnedMessageBar(
+              message: _pinnedMessage!,
+              onTap: _scrollToPinnedMessage,
+              onUnpin: () => _togglePin(_pinnedMessage!),
+            ),
           // Messages
           Expanded(
             child: _isLoading && _messages.isEmpty
@@ -754,10 +1797,12 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
                       )
                     : ListView.builder(
                         controller: _scrollController,
+                        reverse: true,
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: _messages.length + (_isLoadingMore ? 1 : 0),
                         itemBuilder: (context, index) {
-                          if (_isLoadingMore && index == 0) {
+                          // Loading indicator at the top (last index in reverse mode)
+                          if (_isLoadingMore && index == _messages.length) {
                             return const Padding(
                               padding: EdgeInsets.all(8),
                               child: Center(
@@ -766,7 +1811,8 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
                             );
                           }
 
-                          final msgIndex = _isLoadingMore ? index - 1 : index;
+                          // Reverse: index 0 = newest (bottom), higher index = older (top)
+                          final msgIndex = _messages.length - 1 - index;
                           final message = _messages[msgIndex];
                           final isMine = message.senderPhone == widget.userPhone;
 
@@ -789,23 +1835,51 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
                             );
                           }
 
+                          // Call message — special compact bubble
+                          if (message.type == MessageType.call) {
+                            return Column(
+                              children: [
+                                if (dateSeparator != null) dateSeparator,
+                                _buildCallBubble(message, isMine),
+                              ],
+                            );
+                          }
+
                           return Column(
                             children: [
                               if (dateSeparator != null) dateSeparator,
-                              MessageBubble(
-                                message: message,
+                              SwipeableMessage(
                                 isMine: isMine,
-                                showSenderName: isGroup && !isMine,
-                                displaySenderName: (!isMine && widget.isClient)
-                                    ? MessengerShellPage.resolveDisplayName(
-                                        message.senderPhone, message.senderName,
-                                        widget.isClient, widget.phoneBookNames)
-                                    : null,
-                                onLongPress: () => _handleLongPress(message),
-                                onPlayVoice: message.type == MessageType.voice
-                                    ? () => _handlePlayVoice(message)
-                                    : null,
-                                isPlayingVoice: _playingMessageId == message.id,
+                                onSwipeToReply: message.isDeleted ? null : () => _setReplyTo(message),
+                                child: MessageBubble(
+                                  message: message,
+                                  isMine: isMine,
+                                  replyToMessage: message.replyToId != null
+                                      ? _messagesById[message.replyToId]
+                                      : null,
+                                  showSenderName: isGroup && !isMine,
+                                  displaySenderName: (!isMine && widget.isClient)
+                                      ? MessengerShellPage.resolveDisplayName(
+                                          message.senderPhone, message.senderName,
+                                          widget.isClient, widget.phoneBookNames)
+                                      : null,
+                                  onLongPress: () => _handleLongPress(message),
+                                  onPlayVoice: message.type == MessageType.voice
+                                      ? () => _handlePlayVoice(message)
+                                      : null,
+                                  isPlayingVoice: _playingMessageId == message.id,
+                                  readersCount: isMine ? _readersCount(message) : 0,
+                                  totalOtherCount: _otherParticipantCount,
+                                  pollWidget: message.type == MessageType.poll
+                                      ? _buildPollWidget(message)
+                                      : null,
+                                  onContactTap: message.type == MessageType.contact
+                                      ? (phone, name) => _showContactActions(phone, name)
+                                      : null,
+                                  onImageTap: message.type == MessageType.image
+                                      ? (url) => _openImageViewer(url, message.senderName ?? message.senderPhone)
+                                      : null,
+                                ),
                               ),
                             ],
                           );
@@ -813,15 +1887,17 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
                       ),
           ),
 
-          // Input bar
+          // Input bar (hidden for channel subscribers)
+          if (_isChannelAdmin || widget.conversation.type != ConversationType.channel)
           MessageInputBar(
             onSendText: _handleSendText,
             onAttachmentTap: _handleAttachment,
-            onEmojiTap: _toggleEmojiPicker,
+            onMediaPickerTap: _toggleMediaPicker,
             onTyping: _handleTyping,
             onVoiceStart: _startVoiceRecording,
             onVoiceSend: _stopAndSendVoice,
             onVoiceCancel: _cancelVoiceRecording,
+            onVideoNote: _handleVideoNote,
             replyToText: _replyToText,
             onCancelReply: () {
               if (mounted) {
@@ -834,29 +1910,16 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
             isRecording: _isRecording,
             recordingSeconds: _recordingSeconds,
             textController: _textController,
+            isEditing: _editingMessageId != null,
+            onCancelEdit: _cancelEditing,
           ),
 
-          // Emoji picker
-          if (_showEmojiPicker)
-            SizedBox(
-              height: 280,
-              child: EmojiPicker(
-                textEditingController: _textController,
-                onEmojiSelected: (category, emoji) {
-                  // Emoji уже вставлен в _textController через textEditingController
-                },
-                config: Config(
-                  columns: 8,
-                  emojiSizeMax: 28,
-                  bgColor: AppColors.night,
-                  iconColorSelected: AppColors.turquoise,
-                  indicatorColor: AppColors.turquoise,
-                  iconColor: Colors.white.withOpacity(0.3),
-                  backspaceColor: Colors.white.withOpacity(0.5),
-                  skinToneDialogBgColor: const Color(0xFF0A2A2A),
-                  skinToneIndicatorColor: AppColors.turquoise,
-                ),
-              ),
+          // Combined media picker (Emoji + Stickers + GIF)
+          if (_showMediaPicker)
+            CombinedMediaPicker(
+              textController: _textController,
+              onStickerSelected: _sendSticker,
+              onGifSelected: _sendGif,
             ),
         ],
       ),
@@ -865,7 +1928,18 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
 
   Widget _buildAppBarAvatar(String displayName, bool isGroup) {
     final letter = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
-    final hasAvatar = isGroup && widget.conversation.avatarUrl != null && widget.conversation.avatarUrl!.isNotEmpty;
+
+    // Groups: group avatar. Private: other participant's profile avatar.
+    String? avatarUrl;
+    if (isGroup) {
+      avatarUrl = widget.conversation.avatarUrl;
+    } else {
+      final other = widget.conversation.participants
+          .where((p) => p.phone != widget.userPhone)
+          .toList();
+      if (other.isNotEmpty) avatarUrl = other.first.avatarUrl;
+    }
+    final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     return Container(
       width: 38,
@@ -884,9 +1958,9 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
       clipBehavior: Clip.antiAlias,
       child: hasAvatar
           ? CachedNetworkImage(
-              imageUrl: widget.conversation.avatarUrl!.startsWith('http')
-                  ? widget.conversation.avatarUrl!
-                  : '${ApiConstants.serverUrl}${widget.conversation.avatarUrl}',
+              imageUrl: avatarUrl.startsWith('http')
+                  ? avatarUrl
+                  : '${ApiConstants.serverUrl}$avatarUrl',
               fit: BoxFit.cover,
               width: 38,
               height: 38,
@@ -897,6 +1971,95 @@ class _MessengerChatPageState extends State<MessengerChatPage> {
           : Center(
               child: Text(letter, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
             ),
+    );
+  }
+
+  // ─── Call message bubble ───
+
+  Widget _buildCallBubble(MessengerMessage message, bool isMine) {
+    final isMissed = message.content?.contains('Пропущенный') == true;
+    final isRejected = message.content?.contains('отклонён') == true;
+    final color = isMissed ? Colors.red : AppColors.turquoise;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Align(
+        alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.07),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isMissed || isRejected ? Icons.call_missed : Icons.call,
+                color: color,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                message.content ?? 'Звонок',
+                style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 14),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                message.formattedTime,
+                style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Voice call ───
+
+  void _startCall() {
+    // Find the remote participant (not me)
+    final participants = widget.conversation.participants;
+    final remote = participants.firstWhere(
+      (p) => p.phone != widget.userPhone,
+      orElse: () => participants.first,
+    );
+
+    final callService = CallService.instance;
+
+    // Navigate to call page first, then start the call
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CallPage(
+          callInfo: CallInfo(
+            callId: 'pending_${DateTime.now().millisecondsSinceEpoch}',
+            remotePhone: remote.phone,
+            remoteName: MessengerShellPage.resolveDisplayName(
+              remote.phone,
+              remote.name,
+              widget.isClient,
+              widget.phoneBookNames,
+            ),
+            isOutgoing: true,
+            startedAt: DateTime.now(),
+          ),
+        ),
+      ),
+    );
+
+    // Initiate WebRTC call after navigation
+    callService.startCall(
+      targetPhone: remote.phone,
+      targetName: MessengerShellPage.resolveDisplayName(
+        remote.phone,
+        remote.name,
+        widget.isClient,
+        widget.phoneBookNames,
+      ),
+      conversationId: widget.conversation.id,
     );
   }
 

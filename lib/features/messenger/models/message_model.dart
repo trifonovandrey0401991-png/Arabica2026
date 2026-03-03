@@ -1,6 +1,6 @@
 import 'package:intl/intl.dart';
 
-enum MessageType { text, image, video, voice, emoji }
+enum MessageType { text, image, video, voice, emoji, call, videoNote, file, poll, sticker, gif, contact }
 
 class MessengerMessage {
   final String id;
@@ -15,6 +15,15 @@ class MessengerMessage {
   final Map<String, List<String>> reactions;
   final bool isDeleted;
   final DateTime createdAt;
+  final DateTime? editedAt;
+  final List<String> deliveredTo;
+  final String? fileName;
+  final int? fileSize;
+  final String? forwardedFromId;
+  final String? forwardedFromName;
+  final bool isPinned;
+  final DateTime? pinnedAt;
+  final String? pinnedBy;
 
   MessengerMessage({
     required this.id,
@@ -29,7 +38,19 @@ class MessengerMessage {
     this.reactions = const {},
     this.isDeleted = false,
     required this.createdAt,
+    this.editedAt,
+    this.deliveredTo = const [],
+    this.fileName,
+    this.fileSize,
+    this.forwardedFromId,
+    this.forwardedFromName,
+    this.isPinned = false,
+    this.pinnedAt,
+    this.pinnedBy,
   });
+
+  bool get isEdited => editedAt != null;
+  bool get isForwarded => forwardedFromId != null;
 
   factory MessengerMessage.fromJson(Map<String, dynamic> json) {
     // Парсим reactions из JSONB
@@ -56,6 +77,17 @@ class MessengerMessage {
       reactions: reactions,
       isDeleted: json['is_deleted'] == true,
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      editedAt: json['edited_at'] != null ? DateTime.tryParse(json['edited_at'].toString()) : null,
+      deliveredTo: json['delivered_to'] is List
+          ? (json['delivered_to'] as List).map((e) => e.toString()).toList()
+          : const [],
+      fileName: json['file_name'] as String?,
+      fileSize: (json['file_size'] as num?)?.toInt(),
+      forwardedFromId: json['forwarded_from_id'] as String?,
+      forwardedFromName: json['forwarded_from_name'] as String?,
+      isPinned: json['is_pinned'] == true,
+      pinnedAt: json['pinned_at'] != null ? DateTime.tryParse(json['pinned_at'].toString()) : null,
+      pinnedBy: json['pinned_by'] as String?,
     );
   }
 
@@ -69,6 +101,20 @@ class MessengerMessage {
         return MessageType.voice;
       case 'emoji':
         return MessageType.emoji;
+      case 'call':
+        return MessageType.call;
+      case 'video_note':
+        return MessageType.videoNote;
+      case 'file':
+        return MessageType.file;
+      case 'poll':
+        return MessageType.poll;
+      case 'sticker':
+        return MessageType.sticker;
+      case 'gif':
+        return MessageType.gif;
+      case 'contact':
+        return MessageType.contact;
       default:
         return MessageType.text;
     }
@@ -84,8 +130,22 @@ class MessengerMessage {
         return 'voice';
       case MessageType.emoji:
         return 'emoji';
+      case MessageType.call:
+        return 'call';
+      case MessageType.videoNote:
+        return 'video_note';
       case MessageType.text:
         return 'text';
+      case MessageType.file:
+        return 'file';
+      case MessageType.poll:
+        return 'poll';
+      case MessageType.sticker:
+        return 'sticker';
+      case MessageType.gif:
+        return 'gif';
+      case MessageType.contact:
+        return 'contact';
     }
   }
 
@@ -104,6 +164,20 @@ class MessengerMessage {
         return '🎤 ${dur ~/ 60}:${(dur % 60).toString().padLeft(2, '0')}';
       case MessageType.emoji:
         return content ?? '😀';
+      case MessageType.videoNote:
+        return '📹 Видео-кружок';
+      case MessageType.call:
+        return content ?? '📞 Звонок';
+      case MessageType.file:
+        return '📎 ${fileName ?? 'Документ'}';
+      case MessageType.poll:
+        return '📊 Опрос';
+      case MessageType.sticker:
+        return '🎨 Стикер';
+      case MessageType.gif:
+        return 'GIF';
+      case MessageType.contact:
+        return '👤 Контакт';
     }
   }
 
@@ -127,4 +201,38 @@ class MessengerMessage {
   }
 
   bool get isMine => false; // будет вычисляться при отображении
+
+  /// Create a copy with updated fields (used for edit, reactions, delete, etc.)
+  MessengerMessage copyWith({
+    String? content,
+    DateTime? editedAt,
+    Map<String, List<String>>? reactions,
+    bool? isDeleted,
+    List<String>? deliveredTo,
+    bool? isPinned,
+  }) {
+    return MessengerMessage(
+      id: id,
+      conversationId: conversationId,
+      senderPhone: senderPhone,
+      senderName: senderName,
+      type: type,
+      content: content ?? this.content,
+      mediaUrl: mediaUrl,
+      voiceDuration: voiceDuration,
+      replyToId: replyToId,
+      reactions: reactions ?? this.reactions,
+      isDeleted: isDeleted ?? this.isDeleted,
+      createdAt: createdAt,
+      editedAt: editedAt ?? this.editedAt,
+      deliveredTo: deliveredTo ?? this.deliveredTo,
+      fileName: fileName,
+      fileSize: fileSize,
+      forwardedFromId: forwardedFromId,
+      forwardedFromName: forwardedFromName,
+      isPinned: isPinned ?? this.isPinned,
+      pinnedAt: pinnedAt,
+      pinnedBy: pinnedBy,
+    );
+  }
 }

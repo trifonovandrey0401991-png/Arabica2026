@@ -1,7 +1,7 @@
 import 'participant_model.dart';
 import 'message_model.dart';
 
-enum ConversationType { private_, group }
+enum ConversationType { private_, group, channel }
 
 class Conversation {
   final String id;
@@ -10,6 +10,7 @@ class Conversation {
   final String? avatarUrl;
   final String? creatorPhone;
   final String? creatorName;
+  final String? description; // for channels
   final List<Participant> participants;
   final int unreadCount;
   final MessengerMessage? lastMessage;
@@ -24,6 +25,7 @@ class Conversation {
     this.avatarUrl,
     this.creatorPhone,
     this.creatorName,
+    this.description,
     this.participants = const [],
     this.unreadCount = 0,
     this.lastMessage,
@@ -51,11 +53,14 @@ class Conversation {
       id: json['id'] as String,
       type: (json['type'] as String?) == 'group'
           ? ConversationType.group
-          : ConversationType.private_,
+          : (json['type'] as String?) == 'channel'
+              ? ConversationType.channel
+              : ConversationType.private_,
       name: json['name'] as String?,
       avatarUrl: json['avatar_url'] as String?,
       creatorPhone: json['creator_phone'] as String?,
       creatorName: json['creator_name'] as String?,
+      description: json['description'] as String?,
       participants: participants,
       unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
       lastMessage: lastMessage,
@@ -67,9 +72,16 @@ class Conversation {
     );
   }
 
+  /// Whether this is a "Saved Messages" conversation (chat with yourself).
+  bool isSavedMessages(String myPhone) {
+    return type == ConversationType.private_ && id == 'private_${myPhone}_$myPhone';
+  }
+
   /// Отображаемое имя (для приватных чатов — имя собеседника)
   String displayName(String myPhone) {
     if (type == ConversationType.group) return name ?? 'Группа';
+    if (type == ConversationType.channel) return name ?? 'Канал';
+    if (isSavedMessages(myPhone)) return 'Избранное';
 
     final other = participants.where((p) => p.phone != myPhone).toList();
     if (other.isNotEmpty) return other.first.name ?? other.first.phone;

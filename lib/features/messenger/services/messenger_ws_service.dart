@@ -48,6 +48,57 @@ class MsgrReaction {
   MsgrReaction({required this.conversationId, required this.messageId, required this.reaction, required this.phone});
 }
 
+class MsgrMessageEdited {
+  final String conversationId;
+  final String messageId;
+  final String newContent;
+  final String editedAt;
+  MsgrMessageEdited({required this.conversationId, required this.messageId, required this.newContent, required this.editedAt});
+}
+
+class MsgrMessageDelivered {
+  final String conversationId;
+  final String messageId;
+  final List<String> deliveredTo;
+  MsgrMessageDelivered({required this.conversationId, required this.messageId, required this.deliveredTo});
+}
+
+// ==================== Call Event Models ====================
+
+class MsgrCallIncoming {
+  final String callId;
+  final String callerPhone;
+  final String callerName;
+  final String offerSdp;
+  MsgrCallIncoming({required this.callId, required this.callerPhone, required this.callerName, required this.offerSdp});
+}
+
+class MsgrCallAnswered {
+  final String callId;
+  final String answerSdp;
+  final String calleePhone;
+  MsgrCallAnswered({required this.callId, required this.answerSdp, required this.calleePhone});
+}
+
+class MsgrCallRejected {
+  final String callId;
+  final String calleePhone;
+  MsgrCallRejected({required this.callId, required this.calleePhone});
+}
+
+class MsgrCallIceCandidate {
+  final String? callId;
+  final Map<String, dynamic> candidate;
+  final String fromPhone;
+  MsgrCallIceCandidate({this.callId, required this.candidate, required this.fromPhone});
+}
+
+class MsgrCallHangup {
+  final String? callId;
+  final String fromPhone;
+  MsgrCallHangup({this.callId, required this.fromPhone});
+}
+
 // ==================== WebSocket Service ====================
 
 class MessengerWsService {
@@ -95,6 +146,14 @@ class MessengerWsService {
   final _reactionAddedController = StreamController<MsgrReaction>.broadcast();
   final _reactionRemovedController = StreamController<MsgrReaction>.broadcast();
   final _connectionStatusController = StreamController<bool>.broadcast();
+  final _messageEditedController = StreamController<MsgrMessageEdited>.broadcast();
+  final _messageDeliveredController = StreamController<MsgrMessageDelivered>.broadcast();
+  // Call signaling streams
+  final _callIncomingController = StreamController<MsgrCallIncoming>.broadcast();
+  final _callAnsweredController = StreamController<MsgrCallAnswered>.broadcast();
+  final _callRejectedController = StreamController<MsgrCallRejected>.broadcast();
+  final _callIceCandidateController = StreamController<MsgrCallIceCandidate>.broadcast();
+  final _callHangupController = StreamController<MsgrCallHangup>.broadcast();
 
   // Public streams
   Stream<MsgrNewMessage> get onNewMessage => _newMessageController.stream;
@@ -105,6 +164,14 @@ class MessengerWsService {
   Stream<MsgrReaction> get onReactionAdded => _reactionAddedController.stream;
   Stream<MsgrReaction> get onReactionRemoved => _reactionRemovedController.stream;
   Stream<bool> get onConnectionStatus => _connectionStatusController.stream;
+  Stream<MsgrMessageEdited> get onMessageEdited => _messageEditedController.stream;
+  Stream<MsgrMessageDelivered> get onMessageDelivered => _messageDeliveredController.stream;
+  // Call signaling public streams
+  Stream<MsgrCallIncoming> get onCallIncoming => _callIncomingController.stream;
+  Stream<MsgrCallAnswered> get onCallAnswered => _callAnsweredController.stream;
+  Stream<MsgrCallRejected> get onCallRejected => _callRejectedController.stream;
+  Stream<MsgrCallIceCandidate> get onCallIceCandidate => _callIceCandidateController.stream;
+  Stream<MsgrCallHangup> get onCallHangup => _callHangupController.stream;
 
   bool get isConnected => _isConnected;
 
@@ -159,7 +226,7 @@ class MessengerWsService {
 
   void _startPing() {
     _pingTimer?.cancel();
-    _pingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _pingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       _send({'type': 'ping'});
     });
   }
@@ -179,6 +246,10 @@ class MessengerWsService {
               conversationId: convId,
               message: msg,
             ));
+            // Auto-send delivery ack (we received the message)
+            if (msg.senderPhone != _userPhone) {
+              _send({'type': 'delivery_ack', 'messageIds': [msg.id], 'conversationId': convId});
+            }
             // Show local notification if user is not currently in this chat
             if (_activeConversationId != convId) {
               String senderName = msg.senderName ?? msg.senderPhone;
@@ -232,6 +303,27 @@ class MessengerWsService {
           ));
           break;
 
+        case 'message_edited':
+          _messageEditedController.add(MsgrMessageEdited(
+            conversationId: message['conversationId'] as String? ?? '',
+            messageId: message['messageId'] as String? ?? '',
+            newContent: message['newContent'] as String? ?? '',
+            editedAt: message['editedAt'] as String? ?? '',
+          ));
+          break;
+
+        case 'message_delivered':
+          final rawDelivered = message['deliveredTo'];
+          final deliveredList = rawDelivered is List
+              ? rawDelivered.map((e) => e.toString()).toList()
+              : <String>[];
+          _messageDeliveredController.add(MsgrMessageDelivered(
+            conversationId: message['conversationId'] as String? ?? '',
+            messageId: message['messageId'] as String? ?? '',
+            deliveredTo: deliveredList,
+          ));
+          break;
+
         case 'read_receipt':
           _readReceiptController.add(MsgrReadReceipt(
             conversationId: message['conversationId'] as String? ?? '',
@@ -264,6 +356,45 @@ class MessengerWsService {
 
         case 'pong':
           break;
+
+        // ===== CALL SIGNALING =====
+        case 'call_incoming':
+          _callIncomingController.add(MsgrCallIncoming(
+            callId: message['callId'] as String? ?? '',
+            callerPhone: message['callerPhone'] as String? ?? '',
+            callerName: message['callerName'] as String? ?? '',
+            offerSdp: message['offerSdp'] as String? ?? '',
+          ));
+          break;
+        case 'call_answered':
+          _callAnsweredController.add(MsgrCallAnswered(
+            callId: message['callId'] as String? ?? '',
+            answerSdp: message['answerSdp'] as String? ?? '',
+            calleePhone: message['calleePhone'] as String? ?? '',
+          ));
+          break;
+        case 'call_rejected':
+          _callRejectedController.add(MsgrCallRejected(
+            callId: message['callId'] as String? ?? '',
+            calleePhone: message['calleePhone'] as String? ?? '',
+          ));
+          break;
+        case 'call_ice_candidate':
+          final raw = message['candidate'];
+          if (raw is Map<String, dynamic>) {
+            _callIceCandidateController.add(MsgrCallIceCandidate(
+              callId: message['callId'] as String?,
+              candidate: raw,
+              fromPhone: message['fromPhone'] as String? ?? '',
+            ));
+          }
+          break;
+        case 'call_hangup':
+          _callHangupController.add(MsgrCallHangup(
+            callId: message['callId'] as String?,
+            fromPhone: message['fromPhone'] as String? ?? '',
+          ));
+          break;
       }
     } catch (e) {
       Logger.error('💬 Messenger WS: parse error: $e');
@@ -294,8 +425,8 @@ class MessengerWsService {
     _reconnectAttempts++;
 
     if (_reconnectAttempts > _maxReconnectAttempts) {
-      Logger.debug('💬 Messenger WS: max reconnect attempts, waiting 5 min');
-      Future.delayed(const Duration(minutes: 5), () {
+      Logger.debug('💬 Messenger WS: max reconnect attempts, waiting 1 min');
+      Future.delayed(const Duration(minutes: 1), () {
         if (!_isDisposed) {
           _reconnectAttempts = 0;
           _doConnect();
@@ -330,6 +461,28 @@ class MessengerWsService {
     _send({'type': 'get_online_users'});
   }
 
+  // ===== CALL SIGNALING SEND METHODS =====
+
+  void sendCallOffer({required String targetPhone, required String callId, required String offerSdp, required String callerName}) {
+    _send({'type': 'call_offer', 'targetPhone': targetPhone, 'callId': callId, 'offerSdp': offerSdp, 'callerName': callerName});
+  }
+
+  void sendCallAnswer({required String callerPhone, required String callId, required String answerSdp}) {
+    _send({'type': 'call_answer', 'callerPhone': callerPhone, 'callId': callId, 'answerSdp': answerSdp});
+  }
+
+  void sendCallReject({required String callerPhone, required String callId}) {
+    _send({'type': 'call_reject', 'callerPhone': callerPhone, 'callId': callId});
+  }
+
+  void sendCallIceCandidate({required String targetPhone, required String callId, required Map<String, dynamic> candidate}) {
+    _send({'type': 'call_ice_candidate', 'targetPhone': targetPhone, 'callId': callId, 'candidate': candidate});
+  }
+
+  void sendCallHangup({required String targetPhone, required String callId}) {
+    _send({'type': 'call_hangup', 'targetPhone': targetPhone, 'callId': callId});
+  }
+
   void _send(Map<String, dynamic> data) {
     if (_channel != null && _isConnected) {
       try {
@@ -337,6 +490,14 @@ class MessengerWsService {
       } catch (e) {
         Logger.error('💬 Messenger WS: send error: $e');
       }
+    }
+  }
+
+  /// Call when app returns to foreground — reconnects immediately if disconnected
+  void reconnectIfNeeded() {
+    if (!_isConnected && !_isDisposed && _userPhone != null) {
+      _reconnectAttempts = 0;
+      _doConnect();
     }
   }
 
@@ -361,6 +522,13 @@ class MessengerWsService {
     _reactionAddedController.close();
     _reactionRemovedController.close();
     _connectionStatusController.close();
+    _messageEditedController.close();
+    _messageDeliveredController.close();
+    _callIncomingController.close();
+    _callAnsweredController.close();
+    _callRejectedController.close();
+    _callIceCandidateController.close();
+    _callHangupController.close();
     _instance = null;
   }
 }

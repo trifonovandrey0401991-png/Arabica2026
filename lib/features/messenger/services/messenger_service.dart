@@ -142,6 +142,8 @@ class MessengerService {
     String? mediaUrl,
     int? voiceDuration,
     String? replyToId,
+    String? fileName,
+    int? fileSize,
   }) async {
     return await BaseHttpService.post<MessengerMessage>(
       endpoint: '$_base/conversations/$conversationId/messages',
@@ -155,12 +157,59 @@ class MessengerService {
             : type == MessageType.video ? 'video'
             : type == MessageType.voice ? 'voice'
             : type == MessageType.emoji ? 'emoji'
+            : type == MessageType.videoNote ? 'video_note'
+            : type == MessageType.file ? 'file'
+            : type == MessageType.poll ? 'poll'
+            : type == MessageType.sticker ? 'sticker'
+            : type == MessageType.gif ? 'gif'
+            : type == MessageType.contact ? 'contact'
             : 'text',
         if (content != null) 'content': content,
         if (mediaUrl != null) 'mediaUrl': mediaUrl,
         if (voiceDuration != null) 'voiceDuration': voiceDuration,
         if (replyToId != null) 'replyToId': replyToId,
+        if (fileName != null) 'fileName': fileName,
+        if (fileSize != null) 'fileSize': fileSize,
       },
+    );
+  }
+
+  static Future<bool> pinMessage(String conversationId, String messageId, String phone) async {
+    return await BaseHttpService.simplePut(
+      endpoint: '$_base/conversations/$conversationId/messages/$messageId/pin?phone=$phone',
+      body: {},
+    );
+  }
+
+  static Future<bool> unpinMessage(String conversationId, String messageId) async {
+    return await BaseHttpService.simplePut(
+      endpoint: '$_base/conversations/$conversationId/messages/$messageId/unpin',
+      body: {},
+    );
+  }
+
+  static Future<List<MessengerMessage>> getPinnedMessages(String conversationId) async {
+    return await BaseHttpService.getList<MessengerMessage>(
+      endpoint: '$_base/conversations/$conversationId/pinned',
+      fromJson: (json) => MessengerMessage.fromJson(json),
+      listKey: 'messages',
+    );
+  }
+
+  static Future<bool> forwardMessage(String sourceMessageId, List<String> targetConversationIds) async {
+    return await BaseHttpService.simplePost(
+      endpoint: '$_base/forward',
+      body: {
+        'sourceMessageId': sourceMessageId,
+        'targetConversationIds': targetConversationIds,
+      },
+    );
+  }
+
+  static Future<bool> editMessage(String conversationId, String messageId, {required String content}) async {
+    return await BaseHttpService.simplePut(
+      endpoint: '$_base/conversations/$conversationId/messages/$messageId',
+      body: {'content': content},
     );
   }
 
@@ -247,6 +296,172 @@ class MessengerService {
     }
   }
 
+  // ==================== POLLS ====================
+
+  static Future<Map<String, dynamic>?> createPoll({
+    required String conversationId,
+    required String question,
+    required List<String> options,
+    bool multipleChoice = false,
+    bool anonymous = false,
+  }) async {
+    return await BaseHttpService.postRaw(
+      endpoint: '$_base/conversations/$conversationId/poll',
+      body: {
+        'question': question,
+        'options': options,
+        'multipleChoice': multipleChoice,
+        'anonymous': anonymous,
+      },
+    );
+  }
+
+  static Future<Map<String, dynamic>?> votePoll(String conversationId, String pollId, int optionIndex) async {
+    return await BaseHttpService.postRaw(
+      endpoint: '$_base/conversations/$conversationId/poll/$pollId/vote',
+      body: {'optionIndex': optionIndex},
+    );
+  }
+
+  static Future<bool> closePoll(String conversationId, String pollId) async {
+    final result = await BaseHttpService.postRaw(
+      endpoint: '$_base/conversations/$conversationId/poll/$pollId/close',
+      body: {},
+    );
+    return result?['success'] == true;
+  }
+
+  static Future<Map<String, dynamic>?> getPoll(String conversationId, String messageId) async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_base/conversations/$conversationId/poll/$messageId',
+      );
+      if (result != null && result['success'] == true && result['poll'] != null) {
+        return result['poll'] as Map<String, dynamic>;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ==================== CHANNELS ====================
+
+  static Future<Conversation?> createChannel({
+    required String name,
+    String? description,
+  }) async {
+    return await BaseHttpService.post<Conversation>(
+      endpoint: '$_base/conversations/channel',
+      fromJson: (json) => Conversation.fromJson(json),
+      itemKey: 'conversation',
+      body: {
+        'name': name,
+        if (description != null) 'description': description,
+      },
+    );
+  }
+
+  static Future<List<Map<String, dynamic>>> getChannels() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_base/channels',
+      );
+      if (result != null && result['success'] == true && result['channels'] is List) {
+        return (result['channels'] as List).cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<bool> subscribeToChannel(String channelId) async {
+    final result = await BaseHttpService.postRaw(
+      endpoint: '$_base/channels/$channelId/subscribe',
+      body: {},
+    );
+    return result?['success'] == true;
+  }
+
+  static Future<bool> unsubscribeFromChannel(String channelId) async {
+    final result = await BaseHttpService.postRaw(
+      endpoint: '$_base/channels/$channelId/unsubscribe',
+      body: {},
+    );
+    return result?['success'] == true;
+  }
+
+  // ==================== STICKERS ====================
+
+  static Future<List<Map<String, dynamic>>> getStickerPacks() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_base/sticker-packs',
+      );
+      if (result != null && result['success'] == true && result['packs'] is List) {
+        return (result['packs'] as List).cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getStickerPack(String packId) async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_base/sticker-packs/$packId',
+      );
+      if (result != null && result['success'] == true && result['pack'] != null) {
+        return result['pack'] as Map<String, dynamic>;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ==================== GIF ====================
+
+  static Future<List<Map<String, dynamic>>> searchGifs(String query, {int limit = 20}) async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_base/gifs/search?query=${Uri.encodeComponent(query)}&limit=$limit',
+      );
+      if (result != null && result['success'] == true && result['gifs'] is List) {
+        return (result['gifs'] as List).cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getTrendingGifs({int limit = 20}) async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_base/gifs/trending?limit=$limit',
+      );
+      if (result != null && result['success'] == true && result['gifs'] is List) {
+        return (result['gifs'] as List).cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // ==================== SAVED MESSAGES ("Избранное") ====================
+
+  static Future<Conversation?> getSavedMessages(String phone) async {
+    return await BaseHttpService.get<Conversation>(
+      endpoint: '$_base/saved?phone=$phone',
+      fromJson: (json) => Conversation.fromJson(json),
+      itemKey: 'conversation',
+    );
+  }
+
   // ==================== CONTACTS ====================
 
   static Future<List<MessengerContact>> searchContacts(String query) async {
@@ -325,5 +540,102 @@ class MessengerService {
     } catch (e) {
       return 0;
     }
+  }
+
+  // ==================== BLOCK / UNBLOCK ====================
+
+  static Future<bool> blockUser({required String phone, required String blockedPhone}) async {
+    final result = await BaseHttpService.postRaw(
+      endpoint: '$_base/block',
+      body: {'phone': phone, 'blockedPhone': blockedPhone},
+    );
+    return result?['success'] == true;
+  }
+
+  static Future<bool> unblockUser({required String phone, required String blockedPhone}) async {
+    return await BaseHttpService.delete(
+      endpoint: '$_base/block?phone=$phone&blockedPhone=$blockedPhone',
+    );
+  }
+
+  static Future<List<Map<String, dynamic>>> getBlockedUsers(String phone) async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_base/blocks?phone=$phone',
+      );
+      if (result != null && result['success'] == true && result['blocks'] is List) {
+        return (result['blocks'] as List).cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // ==================== FOLDERS ====================
+
+  static Future<List<Map<String, dynamic>>> getFolders(String phone) async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_base/folders?phone=$phone',
+      );
+      if (result != null && result['success'] == true && result['folders'] is List) {
+        return (result['folders'] as List).cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>?> createFolder({
+    required String phone,
+    required String name,
+    String filterType = 'manual',
+    int sortOrder = 0,
+  }) async {
+    final result = await BaseHttpService.postRaw(
+      endpoint: '$_base/folders',
+      body: {
+        'phone': phone,
+        'name': name,
+        'filterType': filterType,
+        'sortOrder': sortOrder,
+      },
+    );
+    if (result != null && result['success'] == true && result['folder'] != null) {
+      return result['folder'] as Map<String, dynamic>;
+    }
+    return null;
+  }
+
+  static Future<bool> updateFolder(String folderId, {String? name, int? sortOrder}) async {
+    return await BaseHttpService.simplePut(
+      endpoint: '$_base/folders/$folderId',
+      body: {
+        if (name != null) 'name': name,
+        if (sortOrder != null) 'sortOrder': sortOrder,
+      },
+    );
+  }
+
+  static Future<bool> deleteFolder(String folderId) async {
+    return await BaseHttpService.delete(
+      endpoint: '$_base/folders/$folderId',
+    );
+  }
+
+  static Future<bool> addConversationToFolder(String folderId, String conversationId) async {
+    final result = await BaseHttpService.postRaw(
+      endpoint: '$_base/folders/$folderId/conversations',
+      body: {'conversationId': conversationId},
+    );
+    return result?['success'] == true;
+  }
+
+  static Future<bool> removeConversationFromFolder(String folderId, String conversationId) async {
+    return await BaseHttpService.delete(
+      endpoint: '$_base/folders/$folderId/conversations/$conversationId',
+    );
   }
 }

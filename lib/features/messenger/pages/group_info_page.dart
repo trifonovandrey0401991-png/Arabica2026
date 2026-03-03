@@ -4,9 +4,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
+import '../models/contact_model.dart';
 import '../models/conversation_model.dart';
 import '../models/participant_model.dart';
 import '../services/messenger_service.dart';
+import 'contact_search_page.dart';
 
 class GroupInfoPage extends StatefulWidget {
   final Conversation conversation;
@@ -153,6 +155,100 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
         requesterPhone: widget.userPhone,
       );
       _refresh();
+    }
+  }
+
+  Future<void> _editGroupName() async {
+    final controller = TextEditingController(text: _conversation.name ?? '');
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0A2A2A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Название группы',
+          style: TextStyle(color: Colors.white.withOpacity(0.9)),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 50,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Введите название',
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+            ),
+            focusedBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: AppColors.turquoise),
+            ),
+            counterStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+          ),
+          onSubmitted: (value) => Navigator.pop(ctx, value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Сохранить', style: TextStyle(color: AppColors.turquoise)),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+
+    if (newName == null || newName.isEmpty || newName == _conversation.name || !mounted) return;
+
+    final success = await MessengerService.updateGroup(
+      _conversation.id,
+      phone: widget.userPhone,
+      name: newName,
+    );
+
+    if (success) {
+      _refresh();
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось переименовать группу')),
+      );
+    }
+  }
+
+  Future<void> _addMembers() async {
+    final existingPhones = _conversation.participants.map((p) => p.phone).toSet();
+
+    final result = await Navigator.push<List<MessengerContact>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ContactSearchPage(
+          userPhone: widget.userPhone,
+          userName: widget.userName,
+          selectMode: true,
+          excludePhones: existingPhones,
+        ),
+      ),
+    );
+
+    if (result == null || result.isEmpty || !mounted) return;
+
+    final phones = result.map((c) => {'phone': c.phone, 'name': c.name ?? c.phone}).toList();
+    final success = await MessengerService.addParticipants(
+      _conversation.id,
+      requesterPhone: widget.userPhone,
+      phones: phones,
+    );
+
+    if (success) {
+      _refresh();
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось добавить участников')),
+      );
     }
   }
 
@@ -331,12 +427,24 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Text(
-                        _conversation.name ?? 'Группа',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white.withOpacity(0.95),
+                      GestureDetector(
+                        onTap: _isCreator ? _editGroupName : null,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _conversation.name ?? 'Группа',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white.withOpacity(0.95),
+                              ),
+                            ),
+                            if (_isCreator) ...[
+                              const SizedBox(width: 8),
+                              Icon(Icons.edit, size: 18, color: Colors.white.withOpacity(0.4)),
+                            ],
+                          ],
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -365,6 +473,48 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                     ),
                   ),
                 ),
+
+                // Add member button (only for creator)
+                if (_isCreator)
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      splashColor: Colors.white.withOpacity(0.05),
+                      highlightColor: Colors.white.withOpacity(0.03),
+                      onTap: _addMembers,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.turquoise.withOpacity(0.15),
+                                border: Border.all(color: AppColors.turquoise.withOpacity(0.3)),
+                              ),
+                              child: const Icon(Icons.person_add, color: AppColors.turquoise, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Добавить участника',
+                              style: TextStyle(
+                                color: AppColors.turquoise,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
 
                 ..._conversation.participants.map((p) => Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

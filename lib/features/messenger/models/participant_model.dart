@@ -4,6 +4,7 @@ class Participant {
   final String role; // 'admin' | 'member'
   final DateTime? joinedAt;
   final DateTime? lastReadAt;
+  final String? avatarUrl;
 
   Participant({
     required this.phone,
@@ -11,6 +12,7 @@ class Participant {
     this.role = 'member',
     this.joinedAt,
     this.lastReadAt,
+    this.avatarUrl,
   });
 
   factory Participant.fromJson(Map<String, dynamic> json) {
@@ -24,6 +26,7 @@ class Participant {
       lastReadAt: json['last_read_at'] != null
           ? DateTime.tryParse(json['last_read_at'].toString())
           : null,
+      avatarUrl: json['avatar_url'] as String?,
     );
   }
 
