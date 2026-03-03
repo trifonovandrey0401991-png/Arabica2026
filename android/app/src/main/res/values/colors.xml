@@ -5,7 +5,7 @@
     <!-- Primary color for the app -->
     <color name="primary">#1A4D4D</color>
     <!-- Adaptive icon background color -->
-    <color name="ic_launcher_background">#1A4D4D</color>
+    <color name="ic_launcher_background">#093D4A</color>
     <!-- Notification accent color (brand color for push notifications) -->
     <color name="notification_color">#004D40</color>
 </resources>

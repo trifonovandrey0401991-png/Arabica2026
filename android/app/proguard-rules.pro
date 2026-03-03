@@ -21,6 +21,10 @@
 -keep class com.google.firebase.** { *; }
 -keep class com.google.android.gms.** { *; }
 
+# ExoPlayer / Media3
+-keep class androidx.media3.** { *; }
+-dontwarn androidx.media3.**
+
 # Keep Gson classes (if used)
 -keepattributes Signature
 -keepattributes *Annotation*

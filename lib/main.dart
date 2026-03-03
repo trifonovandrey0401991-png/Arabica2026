@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -16,6 +17,7 @@ import 'core/services/background_gps_service.dart';
 import 'features/loyalty/services/loyalty_service.dart';
 import 'features/loyalty/services/loyalty_storage.dart';
 import 'features/shifts/services/shift_sync_service.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'core/services/firebase_wrapper.dart';
 import 'features/employees/services/user_role_service.dart';
 import 'core/utils/logger.dart';
@@ -26,6 +28,9 @@ import 'features/onboarding/pages/permission_onboarding_page.dart';
 
 // Условный импорт Firebase (для веб используется заглушка)
 import 'core/services/firebase_service.dart' if (dart.library.html) 'core/services/firebase_service_stub.dart';
+import 'features/messenger/services/call_service.dart';
+import 'features/messenger/pages/call_page.dart';
+import 'features/messenger/widgets/call_overlay.dart';
 
 /// Глобальный флаг - показывать ли диалог об уведомлениях при запуске
 bool _shouldShowNotificationDialog = false;
@@ -40,16 +45,20 @@ void main() async {
   // Увеличиваем лимит TCP соединений к одному хосту (по умолчанию 6)
   // 6 заняты семафором API + нужны слоты для Image.network и прочего
   HttpOverrides.global = _AppHttpOverrides();
-  
+
   // Инициализация Firebase (только для мобильных платформ)
   try {
     Logger.debug('🔵 Начало инициализации Firebase Core...');
     await FirebaseWrapper.initializeApp();
     Logger.success('Firebase Core инициализирован');
-    
+
+    // Инициализация Crashlytics — перехват ошибок Flutter
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    Logger.success('Firebase Crashlytics инициализирован');
+
     // Проверяем готовность Firebase без задержки
     Logger.debug('🔵 Проверка готовности Firebase...');
-    
+
     // Инициализация Firebase Messaging
     Logger.debug('🔵 Начало инициализации Firebase Messaging...');
     await FirebaseService.initialize();
@@ -114,6 +123,53 @@ void main() async {
   runApp(const ArabicaApp());
 }
 
+/// Глобальный слушатель входящих звонков — показывает CallPage автоматически.
+/// Живёт на уровне MaterialApp, не теряется при навигации.
+class _GlobalCallListener extends StatefulWidget {
+  final Widget child;
+  const _GlobalCallListener({super.key, required this.child});
+
+  @override
+  State<_GlobalCallListener> createState() => _GlobalCallListenerState();
+}
+
+class _GlobalCallListenerState extends State<_GlobalCallListener> {
+  StreamSubscription<CallState>? _sub;
+  bool _callPageOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sub = CallService.instance.onStateChanged.listen((state) {
+      if (state == CallState.incoming && !_callPageOpen) {
+        _openCallPage();
+      }
+      if (state == CallState.idle || state == CallState.ended) {
+        _callPageOpen = false;
+      }
+    });
+  }
+
+  void _openCallPage() {
+    final call = CallService.instance.currentCall;
+    final nav = navigatorKey.currentState;
+    if (call == null || nav == null) return;
+    _callPageOpen = true;
+    nav.push(
+      MaterialPageRoute(builder: (_) => CallPage(callInfo: call)),
+    ).then((_) => _callPageOpen = false);
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 class ArabicaApp extends StatelessWidget {
   const ArabicaApp({super.key});
 
@@ -146,6 +202,16 @@ class ArabicaApp extends StatelessWidget {
               navigatorKey: navigatorKey,
               debugShowCheckedModeBanner: false,
               title: 'Arabica',
+              builder: (context, child) {
+                return _GlobalCallListener(
+                  child: Stack(
+                    children: [
+                      child ?? const SizedBox.shrink(),
+                      const CallOverlayBar(),
+                    ],
+                  ),
+                );
+              },
               theme: ThemeData(
                 primarySwatch: primaryGreen,
                 appBarTheme: AppBarTheme(
@@ -219,6 +285,9 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
       if (savedPhone != null && savedPhone.isNotEmpty &&
           savedName != null && savedName.isNotEmpty && isRegistered) {
 
+        // Инициализируем голосовые звонки
+        CallService.instance.init(savedPhone, savedName);
+
         // Проверяем, есть ли у пользователя PIN-код
         Logger.debug('🔐 Проверяем наличие PIN-кода...');
         final authService = AuthService();
@@ -264,6 +333,7 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
           await prefs.setString('user_name', loyaltyInfo.name);
           await prefs.setString('user_phone', loyaltyInfo.phone);
           await LoyaltyStorage.save(loyaltyInfo);
+          CallService.instance.init(loyaltyInfo.phone, loyaltyInfo.name);
 
           // Сохраняем FCM токен (теперь когда phone известен)
           await FirebaseService.resaveToken();

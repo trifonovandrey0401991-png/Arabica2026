@@ -4,6 +4,7 @@ plugins {
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
     id "com.google.gms.google-services"
+    id "com.google.firebase.crashlytics"
 }
 
 android {
@@ -24,7 +25,7 @@ android {
     defaultConfig {
         applicationId = "ru.arabica.app"
         minSdk = 23
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -59,4 +60,6 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+    // ExoPlayer (Media3) for reliable A/V sync on Samsung Exynos
+    implementation 'androidx.media3:media3-exoplayer:1.5.1'
 }
