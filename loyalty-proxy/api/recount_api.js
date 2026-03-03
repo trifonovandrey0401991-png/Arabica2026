@@ -55,6 +55,7 @@ function dbRecountToCamel(row) {
       ? JSON.parse(row.photo_verifications)
       : (row.photo_verifications || []),
     savedAt: row.saved_at,
+    autoRated: row.auto_rated,
     updatedAt: row.updated_at,
   };
 }
@@ -87,6 +88,7 @@ function camelToDbRecount(body) {
   if (body.expiredAt !== undefined) data.expired_at = body.expiredAt;
   if (body.photoVerifications !== undefined) data.photo_verifications = body.photoVerifications ? JSON.stringify(body.photoVerifications) : null;
   if (body.savedAt !== undefined) data.saved_at = body.savedAt;
+  if (body.autoRated != null) data.auto_rated = body.autoRated;
   return data;
 }
 
@@ -619,6 +621,11 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
         }
       }
 
+      // Block re-rating auto-rated reports
+      if (report && report.autoRated) {
+        return res.status(403).json({ success: false, error: 'Отчёт оценён автоматически (максимальная оценка). Переоценка невозможна.' });
+      }
+
       const reportsDir = `${DATA_DIR}/recount-reports`;
       if (!report) {
         const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
@@ -646,6 +653,11 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
           const matchingFile = files.find(f => f.includes(sanitizedId.substring(0, 20)));
           if (matchingFile) actualFile = path.join(reportsDir, matchingFile);
         }
+      }
+
+      // Block re-rating auto-rated reports (check after file load too)
+      if (report.autoRated) {
+        return res.status(403).json({ success: false, error: 'Отчёт оценён автоматически (максимальная оценка). Переоценка невозможна.' });
       }
 
       // Обновляем оценку и статус

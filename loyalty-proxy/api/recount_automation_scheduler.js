@@ -134,6 +134,7 @@ class RecountScheduler extends BaseReportScheduler {
         if (dataToSave.adminRating != null) dbUpdate.admin_rating = dataToSave.adminRating;
         if (dataToSave.adminName) dbUpdate.admin_name = dataToSave.adminName;
         if (dataToSave.ratedAt) dbUpdate.rated_at = dataToSave.ratedAt;
+        if (dataToSave.autoRated != null) dbUpdate.auto_rated = dataToSave.autoRated;
 
         await db.updateById('recount_reports', report.id, dbUpdate);
         console.log(`${this.tag} DB updated: ${report.id} → ${report.status}`);
@@ -339,6 +340,8 @@ class RecountScheduler extends BaseReportScheduler {
     const now = new Date();
     const reports = await this.loadTodayReports();
     let rejectedCount = 0;
+    const settings = await this.getSettings();
+    const maxRating = settings.maxRating || 10;
 
     // Персистентный Set: сохраняется между запусками → предотвращает двойные штрафы
     // если JSON-путь обновил файл, но DB-запись временно упала
@@ -353,11 +356,13 @@ class RecountScheduler extends BaseReportScheduler {
       if (now > reviewDeadline) {
         report.status = 'rejected';
         report.rejectedAt = now.toISOString();
+        report.adminRating = maxRating;
+        report.autoRated = true;
         await this.saveReport(report);
         rejectedCount++;
         processedIds.add(report.id);
 
-        console.log(`${this.tag} Recount REJECTED (admin timeout): ${report.shopName} (${report.shiftType}), employee: ${report.employeeName}`);
+        console.log(`${this.tag} Recount REJECTED + AUTO-RATED (${maxRating}/10): ${report.shopName} (${report.shiftType}), employee: ${report.employeeName}`);
 
         await this.assignPenaltyDirect(report);
       }
@@ -379,15 +384,15 @@ class RecountScheduler extends BaseReportScheduler {
           // Атомарный UPDATE: меняет только если status всё ещё 'review'
           // Если 0 строк — другой инстанс scheduler уже обработал → пропускаем штраф
           const updated = await db.query(
-            `UPDATE recount_reports SET status='rejected', rejected_at=$2, updated_at=$3
+            `UPDATE recount_reports SET status='rejected', rejected_at=$2, updated_at=$3, admin_rating=$4, auto_rated=true
              WHERE id=$1 AND status='review' RETURNING id`,
-            [row.id, now.toISOString(), now.toISOString()]
+            [row.id, now.toISOString(), now.toISOString(), maxRating]
           );
           if (!updated.rows || updated.rows.length === 0) continue;
 
           rejectedCount++;
           processedIds.add(row.id);
-          console.log(`${this.tag} DB: Recount REJECTED (stale review): ${row.shop_address}, employee: ${row.employee_name}`);
+          console.log(`${this.tag} DB: Recount REJECTED + AUTO-RATED (${maxRating}/10): ${row.shop_address}, employee: ${row.employee_name}`);
 
           // Штраф управляющей
           await this.assignPenaltyDirect({
@@ -408,15 +413,15 @@ class RecountScheduler extends BaseReportScheduler {
 
           // Атомарный UPDATE: предотвращает двойной штраф при двух инстансах
           const updated = await db.query(
-            `UPDATE recount_reports SET status='rejected', rejected_at=$2, updated_at=$3
+            `UPDATE recount_reports SET status='rejected', rejected_at=$2, updated_at=$3, admin_rating=$4, auto_rated=true
              WHERE id=$1 AND status='review' RETURNING id`,
-            [row.id, now.toISOString(), now.toISOString()]
+            [row.id, now.toISOString(), now.toISOString(), maxRating]
           );
           if (!updated.rows || updated.rows.length === 0) continue;
 
           rejectedCount++;
           processedIds.add(row.id);
-          console.log(`${this.tag} DB: Recount REJECTED (null deadline): ${row.shop_address}, employee: ${row.employee_name}`);
+          console.log(`${this.tag} DB: Recount REJECTED + AUTO-RATED (${maxRating}/10, null deadline): ${row.shop_address}, employee: ${row.employee_name}`);
 
           // Штраф управляющей
           await this.assignPenaltyDirect({

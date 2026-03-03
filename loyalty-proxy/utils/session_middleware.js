@@ -11,7 +11,7 @@
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
-const { isAdminPhone, normalizePhone } = require('./admin_cache');
+const { isAdminPhone, isManagerPhone, normalizePhone } = require('./admin_cache');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SESSIONS_DIR = path.join(DATA_DIR, 'auth-sessions');
@@ -124,6 +124,7 @@ function sessionMiddleware(req, res, next) {
     phone: session.phone,
     name: session.name,
     isAdmin: isAdminPhone(session.phone),
+    isManager: isManagerPhone(session.phone),
   };
 
   next();
@@ -145,6 +146,7 @@ function verifyToken(token) {
     phone: session.phone,
     name: session.name,
     isAdmin: isAdminPhone(session.phone),
+    isManager: isManagerPhone(session.phone),
   };
 }
 

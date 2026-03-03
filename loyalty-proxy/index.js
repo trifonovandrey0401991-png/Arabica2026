@@ -139,6 +139,7 @@ const { setupEmployeeRegistrationAPI } = require('./api/employee_registration_ap
 const { setupAiDashboardAPI } = require('./api/ai_dashboard_api');
 const { setupHealthMonitorAPI } = require('./api/health_monitor_api');
 const { startYoloRetrainScheduler, triggerManualRetrain, getRetrainStatus } = require('./api/yolo_retrain_scheduler');
+const { startMessengerMediaCleanupScheduler, getMediaStats } = require('./api/messenger_media_cleanup_scheduler');
 const { getNextReferralCode } = require('./api/employees_api');
 const authApiRouter = require("./api/auth_api");
 const telegramBotService = require("./services/telegram_bot_service");
@@ -401,6 +402,11 @@ app.get('/privacy-policy', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacy-policy.html'));
 });
 
+// Account deletion page (required by Google Play)
+app.get('/delete-account', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'delete-account.html'));
+});
+
 // ============================================
 // SECURITY: File Type Validation для всех uploads
 // ============================================
@@ -546,10 +552,29 @@ const messengerMediaStorage = multer.diskStorage({
     cb(null, `msgr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${ext}`);
   }
 });
+// Messenger accepts media + documents (PDF, DOC, XLS, ZIP, TXT, CSV)
+const messengerDocExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.zip', '.txt', '.csv'];
+const messengerDocMimeTypes = [
+  'application/pdf', 'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/zip', 'application/x-zip-compressed',
+  'text/plain', 'text/csv',
+];
+const messengerFileFilter = (req, file, cb) => {
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  if (allowedMediaTypes.includes(file.mimetype) || allowedMediaExtensions.includes(ext) ||
+      messengerDocMimeTypes.includes(file.mimetype) || messengerDocExtensions.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Invalid file type: ${file.mimetype}. Images, videos, audio and documents allowed.`), false);
+  }
+};
 const uploadMessengerMedia = multer({
   storage: messengerMediaStorage,
-  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB (voice+video)
-  fileFilter: mediaFileFilter
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
+  fileFilter: messengerFileFilter
 });
 
 // Настройка multer для загрузки документов (РКО)
@@ -676,6 +701,7 @@ app.use('/shift-photos', express.static(`${DATA_DIR}/shift-photos`));
 app.use('/product-question-photos', express.static(`${DATA_DIR}/product-question-photos`));
 app.use('/coffee-machine-photos', express.static(`${DATA_DIR}/coffee-machine-photos`));
 app.use('/messenger-media', express.static(`${DATA_DIR}/messenger-media`));
+app.use('/sticker-packs', express.static(`${DATA_DIR}/sticker-packs`));
 app.use('/shop-product-photos', express.static(`${DATA_DIR}/shop-product-photos`));
 
 // Настройка multer для загрузки фото сотрудников
@@ -953,6 +979,9 @@ startAutoCleanupScheduler();
 
 // Start YOLO auto-retrain scheduler (weekly, if YOLO_RETRAIN_ENABLED=true)
 setTimeout(() => startYoloRetrainScheduler(), 15000);
+
+// Messenger media cleanup scheduler (daily at 4:00 MSK, if MESSENGER_MEDIA_CLEANUP_ENABLED=true)
+setTimeout(() => startMessengerMediaCleanupScheduler(), 16000);
 
 // ============================================
 // HEALTH CHECK ENDPOINT

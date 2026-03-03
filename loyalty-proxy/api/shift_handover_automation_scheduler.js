@@ -440,6 +440,7 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
   async checkReviewTimeouts() {
     const settings = await this.getSettings();
     const timeoutHours = settings.adminReviewTimeout;
+    const maxRating = settings.maxRating || 10;
     const now = new Date();
     let rejectedCount = 0;
     const rejectedReports = [];
@@ -454,10 +455,12 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
         );
 
         for (const row of result.rows) {
-          // Обновляем в БД
+          // Обновляем в БД с авто-оценкой
           await db.updateById('shift_handover_reports', row.id, {
             status: 'rejected',
             expired_at: now.toISOString(),
+            rating: maxRating,
+            auto_rated: true,
             updated_at: now.toISOString()
           });
 
@@ -469,6 +472,8 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
               report.status = 'rejected';
               report.expiredAt = now.toISOString();
               report.rejectionReason = `Таймаут проверки (${timeoutHours} ч)`;
+              report.rating = maxRating;
+              report.autoRated = true;
               await writeJsonFile(filePath, report);
             } catch (e) {
               // Файл мог не существовать — ок
@@ -483,7 +488,7 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
             createdAt: row.created_at
           });
 
-          console.log(`${this.tag} REJECTED (timeout): ${row.shop_address} by ${row.employee_name}`);
+          console.log(`${this.tag} REJECTED + AUTO-RATED (${maxRating}/10): ${row.shop_address} by ${row.employee_name}`);
 
           // Штраф управляющей
           const manager = await this.findManagerForShop(row.shop_address);
@@ -532,8 +537,26 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
             report.status = 'rejected';
             report.expiredAt = now.toISOString();
             report.rejectionReason = `Таймаут проверки (${timeoutHours} ч)`;
+            report.rating = maxRating;
+            report.autoRated = true;
 
             await writeJsonFile(filePath, report);
+
+            // DB dual-write
+            if (USE_DB && report.id) {
+              try {
+                await db.updateById('shift_handover_reports', report.id, {
+                  status: 'rejected',
+                  expired_at: now.toISOString(),
+                  rating: maxRating,
+                  auto_rated: true,
+                  updated_at: now.toISOString()
+                });
+              } catch (dbErr) {
+                console.error(`${this.tag} DB update error:`, dbErr.message);
+              }
+            }
+
             rejectedCount++;
 
             rejectedReports.push({
@@ -543,7 +566,7 @@ class ShiftHandoverScheduler extends BaseReportScheduler {
               createdAt: report.createdAt
             });
 
-            console.log(`${this.tag} REJECTED (timeout): ${report.shopAddress} by ${report.employeeName}`);
+            console.log(`${this.tag} REJECTED + AUTO-RATED (${maxRating}/10): ${report.shopAddress} by ${report.employeeName}`);
 
             // Штраф управляющей
             const manager = await this.findManagerForShop(report.shopAddress);

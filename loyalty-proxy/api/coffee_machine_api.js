@@ -66,6 +66,7 @@ function dbCmReportToCamel(row) {
     rejectReason: row.reject_reason,
     failedAt: row.failed_at,
     completedBy: row.completed_by,
+    autoRated: row.auto_rated,
     updatedAt: row.updated_at,
   };
 }
@@ -94,6 +95,7 @@ function camelToDbCm(body) {
   if (body.rejectReason !== undefined) data.reject_reason = body.rejectReason;
   if (body.failedAt !== undefined) data.failed_at = body.failedAt;
   if (body.completedBy !== undefined) data.completed_by = body.completedBy;
+  if (body.autoRated != null) data.auto_rated = body.autoRated;
   return data;
 }
 
@@ -562,6 +564,11 @@ function setupCoffeeMachineAPI(app, { sendPushToPhone } = {}) {
         report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
       }
 
+      // Block re-rating auto-rated reports
+      if (report.autoRated) {
+        return res.status(403).json({ success: false, error: 'Отчёт подтверждён автоматически. Статус нельзя изменить.' });
+      }
+
       report.status = 'confirmed';
       report.confirmedAt = new Date().toISOString();
       report.confirmedByAdmin = confirmedByAdmin;
@@ -630,6 +637,11 @@ function setupCoffeeMachineAPI(app, { sendPushToPhone } = {}) {
           return res.status(404).json({ success: false, error: 'Отчёт не найден' });
         }
         report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
+      }
+
+      // Block re-rating auto-rated reports
+      if (report.autoRated) {
+        return res.status(403).json({ success: false, error: 'Отчёт подтверждён автоматически. Статус нельзя изменить.' });
       }
 
       report.status = 'rejected';

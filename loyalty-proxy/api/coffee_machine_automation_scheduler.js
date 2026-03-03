@@ -366,8 +366,8 @@ class CoffeeMachineScheduler extends BaseReportScheduler {
 
         for (const row of stuckRows.rows || stuckRows) {
           await db.query(
-            `UPDATE coffee_machine_reports SET status = 'rejected', rejected_at = $1, reject_reason = $2, updated_at = $1 WHERE id = $3`,
-            [now.toISOString(), `Автоотклонение: админ не проверил за ${timeoutHours} ч`, row.id]
+            `UPDATE coffee_machine_reports SET status = 'confirmed', confirmed_at = $1, auto_rated = true, reject_reason = $2, updated_at = $1 WHERE id = $3`,
+            [now.toISOString(), `Авто-подтверждение: админ не проверил за ${timeoutHours} ч`, row.id]
           );
 
           // Also update JSON file if exists
@@ -375,9 +375,10 @@ class CoffeeMachineScheduler extends BaseReportScheduler {
           if (await fileExists(filePath)) {
             try {
               const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
-              report.status = 'rejected';
-              report.rejectedAt = now.toISOString();
-              report.rejectReason = `Автоотклонение: админ не проверил за ${timeoutHours} ч`;
+              report.status = 'confirmed';
+              report.confirmedAt = now.toISOString();
+              report.autoRated = true;
+              report.rejectReason = `Авто-подтверждение: админ не проверил за ${timeoutHours} ч`;
               await writeJsonFile(filePath, report);
             } catch (e) { /* skip */ }
           }
@@ -406,9 +407,9 @@ class CoffeeMachineScheduler extends BaseReportScheduler {
                 { type: 'coffee_machine_auto_rejected' }
               );
             }
-            console.log(`${this.tag} Auto-rejected (admin timeout ${timeoutHours}h): ${row.shop_address} (${row.shift_type}), penalty → manager: ${manager.name}`);
+            console.log(`${this.tag} AUTO-CONFIRMED (admin timeout ${timeoutHours}h): ${row.shop_address} (${row.shift_type}), penalty → manager: ${manager.name}`);
           } else {
-            console.log(`${this.tag} Auto-rejected (admin timeout ${timeoutHours}h): ${row.shop_address} (${row.shift_type}) — no manager found, penalty skipped`);
+            console.log(`${this.tag} AUTO-CONFIRMED (admin timeout ${timeoutHours}h): ${row.shop_address} (${row.shift_type}) — no manager found, penalty skipped`);
           }
 
           rejectedCount++;
@@ -437,16 +438,17 @@ class CoffeeMachineScheduler extends BaseReportScheduler {
               const createdAt = new Date(report.createdAt);
               if (createdAt >= cutoff) continue;
 
-              report.status = 'rejected';
-              report.rejectedAt = now.toISOString();
-              report.rejectReason = `Автоотклонение: админ не проверил за ${timeoutHours} ч`;
+              report.status = 'confirmed';
+              report.confirmedAt = now.toISOString();
+              report.autoRated = true;
+              report.rejectReason = `Авто-подтверждение: админ не проверил за ${timeoutHours} ч`;
               await writeJsonFile(filePath, report);
 
               // DB update if available
               if (USE_DB) {
                 try {
                   await db.query(
-                    `UPDATE coffee_machine_reports SET status = 'rejected', rejected_at = $1, reject_reason = $2, updated_at = $1 WHERE id = $3`,
+                    `UPDATE coffee_machine_reports SET status = 'confirmed', confirmed_at = $1, auto_rated = true, reject_reason = $2, updated_at = $1 WHERE id = $3`,
                     [now.toISOString(), report.rejectReason, report.id]
                   );
                 } catch (e) { /* skip */ }
@@ -475,9 +477,9 @@ class CoffeeMachineScheduler extends BaseReportScheduler {
                     { type: 'coffee_machine_auto_rejected' }
                   );
                 }
-                console.log(`${this.tag} Auto-rejected (file, admin timeout ${timeoutHours}h): ${report.shopAddress} (${report.shiftType}), penalty → manager: ${manager.name}`);
+                console.log(`${this.tag} AUTO-CONFIRMED (file, admin timeout ${timeoutHours}h): ${report.shopAddress} (${report.shiftType}), penalty → manager: ${manager.name}`);
               } else {
-                console.log(`${this.tag} Auto-rejected (file, admin timeout ${timeoutHours}h): ${report.shopAddress} (${report.shiftType}) — no manager found, penalty skipped`);
+                console.log(`${this.tag} AUTO-CONFIRMED (file, admin timeout ${timeoutHours}h): ${report.shopAddress} (${report.shiftType}) — no manager found, penalty skipped`);
               }
 
               rejectedCount++;

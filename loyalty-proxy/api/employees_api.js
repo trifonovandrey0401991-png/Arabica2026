@@ -318,6 +318,78 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
 
         const row = await db.updateById('employees', id, updateData);
         employee = dbEmployeeToCamel(row);
+
+        // Cascade phone change to all related tables
+        if (req.body.phone && existing.phone && req.body.phone !== existing.phone) {
+          const oldPhone = existing.phone;
+          const newPhone = req.body.phone.replace(/[\s+\-()]/g, '');
+          try {
+            await db.transaction(async (client) => {
+              // Reference tables (employee_phone / assignee_phone / phone columns)
+              const cascadeTables = [
+                ['shift_reports', 'employee_phone'],
+                ['shift_handover_reports', 'employee_phone'],
+                ['recount_reports', 'employee_phone'],
+                ['envelope_reports', 'employee_phone'],
+                ['coffee_machine_reports', 'employee_phone'],
+                ['rko_reports', 'employee_phone'],
+                ['efficiency_penalties', 'employee_phone'],
+                ['attendance', 'employee_phone'],
+                ['task_assignments', 'assignee_phone'],
+                ['recurring_task_instances', 'assignee_phone'],
+                ['messenger_participants', 'phone'],
+                ['auth_sessions', 'phone'],
+              ];
+              for (const [table, col] of cascadeTables) {
+                await client.query(`UPDATE ${table} SET ${col} = $1 WHERE ${col} = $2`, [newPhone, oldPhone]);
+              }
+
+              // Tables with phone as PRIMARY KEY (need DELETE + INSERT)
+              for (const pkTable of ['auth_pins', 'trusted_devices', 'fcm_tokens', 'messenger_profiles']) {
+                const oldRow = await client.query(`SELECT * FROM ${pkTable} WHERE phone = $1`, [oldPhone]);
+                if (oldRow.rows.length > 0) {
+                  await client.query(`DELETE FROM ${pkTable} WHERE phone = $1`, [oldPhone]);
+                  const rowData = { ...oldRow.rows[0], phone: newPhone };
+                  const cols = Object.keys(rowData);
+                  const placeholders = cols.map((_, i) => `$${i + 1}`);
+                  await client.query(
+                    `INSERT INTO ${pkTable} (${cols.join(',')}) VALUES (${placeholders.join(',')})`,
+                    cols.map(c => rowData[c])
+                  );
+                }
+              }
+
+              // employee_registrations (PK = id = phone)
+              const regRow = await client.query('SELECT * FROM employee_registrations WHERE id = $1', [oldPhone]);
+              if (regRow.rows.length > 0) {
+                await client.query('DELETE FROM employee_registrations WHERE id = $1', [oldPhone]);
+                await client.query(
+                  'INSERT INTO employee_registrations (id, data, created_at) VALUES ($1, $2, $3)',
+                  [newPhone, regRow.rows[0].data, regRow.rows[0].created_at]
+                );
+              }
+            });
+
+            // Rename JSON registration file (dual-write)
+            const oldRegFile = path.join(DATA_DIR, 'employee-registrations', `${oldPhone}.json`);
+            const newRegFile = path.join(DATA_DIR, 'employee-registrations', `${newPhone}.json`);
+            try {
+              if (await fileExists(oldRegFile)) {
+                const content = await fsp.readFile(oldRegFile, 'utf8');
+                const data = JSON.parse(content);
+                data.phone = newPhone;
+                await writeJsonFile(newRegFile, data);
+                await fsp.unlink(oldRegFile);
+              }
+            } catch (fsErr) {
+              console.error('⚠️ JSON registration rename error:', fsErr.message);
+            }
+
+            console.log(`✅ Phone cascaded: ${oldPhone} → ${newPhone}`);
+          } catch (cascErr) {
+            console.error('⚠️ Phone cascade error (employee record updated OK):', cascErr.message);
+          }
+        }
       } else {
         const employeeFile = path.join(EMPLOYEES_DIR, `${id}.json`);
         if (!await fileExists(employeeFile)) {

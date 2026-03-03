@@ -485,9 +485,9 @@ function setupEnvelopeAPI(app) {
         report = JSON.parse(content);
       }
 
-      // IDOR: проверка владельца или админ
+      // IDOR: проверка владельца, админ или управляющий
       const ownerPhone = report.employeePhone || report.phone;
-      if (ownerPhone && req.user && req.user.phone !== ownerPhone && !req.user.isAdmin) {
+      if (ownerPhone && req.user && req.user.phone !== ownerPhone && !req.user.isAdmin && !req.user.isManager) {
         return res.status(403).json({ success: false, error: 'Доступ запрещён' });
       }
 
@@ -592,9 +592,9 @@ function setupEnvelopeAPI(app) {
         existingReport = JSON.parse(content);
       }
 
-      // IDOR: проверка владельца или админ
+      // IDOR: проверка владельца, админ или управляющий
       const ownerPhone = existingReport.employeePhone || existingReport.phone;
-      if (ownerPhone && req.user && req.user.phone !== ownerPhone && !req.user.isAdmin) {
+      if (ownerPhone && req.user && req.user.phone !== ownerPhone && !req.user.isAdmin && !req.user.isManager) {
         return res.status(403).json({ success: false, error: 'Доступ запрещён' });
       }
 
@@ -633,12 +633,12 @@ function setupEnvelopeAPI(app) {
     }
   });
 
-  // PUT /api/envelope-reports/:id/confirm - подтвердить отчет с оценкой (только админ)
+  // PUT /api/envelope-reports/:id/confirm - подтвердить отчет с оценкой (админ или управляющий)
   app.put('/api/envelope-reports/:id/confirm', requireAuth, async (req, res) => {
     try {
-      // Подтверждение отчёта — только админ
-      if (!req.user || !req.user.isAdmin) {
-        return res.status(403).json({ success: false, error: 'Только администратор может подтвердить отчёт' });
+      // Подтверждение отчёта — админ или управляющий
+      if (!req.user || (!req.user.isAdmin && !req.user.isManager)) {
+        return res.status(403).json({ success: false, error: 'Только администратор или управляющий может подтвердить отчёт' });
       }
 
       const rawId = decodeURIComponent(req.params.id);
@@ -713,12 +713,12 @@ function setupEnvelopeAPI(app) {
     }
   });
 
-  // DELETE /api/envelope-reports/:id - удалить отчет (только админ)
+  // DELETE /api/envelope-reports/:id - удалить отчет (админ или управляющий)
   app.delete('/api/envelope-reports/:id', requireAuth, async (req, res) => {
     try {
-      // Удаление отчёта — только админ
-      if (!req.user || !req.user.isAdmin) {
-        return res.status(403).json({ success: false, error: 'Только администратор может удалить отчёт' });
+      // Удаление отчёта — админ или управляющий
+      if (!req.user || (!req.user.isAdmin && !req.user.isManager)) {
+        return res.status(403).json({ success: false, error: 'Только администратор или управляющий может удалить отчёт' });
       }
 
       const rawId = decodeURIComponent(req.params.id);

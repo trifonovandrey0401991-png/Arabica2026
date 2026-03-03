@@ -1,12 +1,14 @@
 /**
  * Admin Cache Utility
- * Кэширование проверки isAdmin/developer для предотвращения повторного чтения файлов
+ * Кэширование проверки isAdmin/developer/isManager для предотвращения повторного чтения файлов
  *
  * SCALABILITY: Без кэша каждый запрос сканирует ВСЕ файлы сотрудников.
  * При 5000 сотрудниках и 100 запросах/сек = 500,000 file reads/sec
  * С кэшем = 0 file reads (после первой загрузки)
  *
  * NOTE: Developer role имеет те же права что и admin
+ * NOTE: Управляющие (managers) из shop-managers имеют отдельный флаг isManager (2026-03-03)
+ *       isManager НЕ даёт полный admin доступ — только к тем модулям, где это явно разрешено
  */
 
 const fs = require('fs');
@@ -16,12 +18,13 @@ const path = require('path');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
+const SHOP_MANAGERS_FILE = `${DATA_DIR}/shop-managers.json`;
 
 // ============================================
 // ADMIN CACHE
 // ============================================
 
-// Кэш: phone -> { isAdmin: boolean, cachedAt: timestamp }
+// Кэш: phone -> { isAdmin: boolean, isManager: boolean, cachedAt: timestamp }
 const adminCache = new Map();
 
 // TTL кэша: 5 минут (сотрудники редко меняют статус)
@@ -53,6 +56,19 @@ function isAdminPhone(phone) {
 }
 
 /**
+ * Проверить, является ли телефон управляющим (чистый cache lookup, без I/O)
+ * Управляющие — это managers из shop-managers, у них ограниченные админ-права
+ * @param {string} phone - Телефон для проверки
+ * @returns {boolean} - true если управляющий
+ */
+function isManagerPhone(phone) {
+  if (!phone) return false;
+  const normalizedPhone = normalizePhone(phone);
+  const cached = adminCache.get(normalizedPhone);
+  return cached ? cached.isManager : false;
+}
+
+/**
  * Async версия isAdminPhone (для совместимости с employee_chat_api)
  */
 async function isAdminPhoneAsync(phone) {
@@ -60,7 +76,7 @@ async function isAdminPhoneAsync(phone) {
 }
 
 /**
- * Async предзагрузка всех админов в кэш
+ * Async предзагрузка всех админов и управляющих в кэш
  * Не блокирует event loop (используется fsp.readdir/readFile)
  */
 async function preloadAdminCache() {
@@ -90,6 +106,7 @@ async function preloadAdminCache() {
           const hasAdminRights = employee.isAdmin === true || employee.role === 'developer';
           adminCache.set(empPhone, {
             isAdmin: hasAdminRights,
+            isManager: false,
             cachedAt: now
           });
           totalCount++;
@@ -98,9 +115,75 @@ async function preloadAdminCache() {
       } catch (e) { /* skip */ }
     }
 
+    // Загружаем управляющих из shop-managers (файл или БД)
+    // Управляющие (managers) получают isManager=true (НЕ isAdmin)
+    // Разработчики (developers) получают isAdmin=true
+    // Заведующие (storeManagers) — без дополнительных прав
+    let managerCount = 0;
+    try {
+      let shopManagersData = null;
+
+      if (process.env.USE_DB_SHOP_MANAGERS === 'true') {
+        try {
+          const db = require('./db');
+          const row = await db.findById('app_settings', 'shop_managers', 'key');
+          if (row && row.data) shopManagersData = row.data;
+        } catch (dbErr) {
+          console.error('[AdminCache] DB shop-managers read error:', dbErr.message);
+        }
+      }
+
+      // Fallback на файл
+      if (!shopManagersData) {
+        try {
+          await fsp.access(SHOP_MANAGERS_FILE);
+          const content = await fsp.readFile(SHOP_MANAGERS_FILE, 'utf8');
+          shopManagersData = JSON.parse(content);
+        } catch (fileErr) { /* file not found — ok */ }
+      }
+
+      if (shopManagersData) {
+        // Разработчики из shop-managers → isAdmin
+        if (Array.isArray(shopManagersData.developers)) {
+          for (const devPhone of shopManagersData.developers) {
+            const normalized = normalizePhone(devPhone);
+            if (normalized) {
+              const existing = adminCache.get(normalized);
+              if (!existing || !existing.isAdmin) {
+                adminCache.set(normalized, {
+                  isAdmin: true,
+                  isManager: existing?.isManager || false,
+                  cachedAt: now
+                });
+                adminCount++;
+              }
+            }
+          }
+        }
+
+        // Управляющие (managers) → isManager (НЕ isAdmin!)
+        if (Array.isArray(shopManagersData.managers)) {
+          for (const manager of shopManagersData.managers) {
+            const normalized = normalizePhone(manager.phone);
+            if (normalized) {
+              const existing = adminCache.get(normalized);
+              adminCache.set(normalized, {
+                isAdmin: existing?.isAdmin || false,
+                isManager: true,
+                cachedAt: now
+              });
+              managerCount++;
+            }
+          }
+        }
+      }
+    } catch (smErr) {
+      console.error('[AdminCache] Shop-managers preload error:', smErr.message);
+    }
+
     preloadComplete = true;
     const elapsed = Date.now() - startTime;
-    console.log(`[AdminCache] Preloaded ${totalCount} employees (${adminCount} admins) in ${elapsed}ms`);
+    console.log(`[AdminCache] Preloaded ${totalCount} employees (${adminCount} admins, ${managerCount} managers) in ${elapsed}ms`);
   } catch (e) {
     console.error('[AdminCache] Preload error:', e);
   }
@@ -151,6 +234,7 @@ function getCacheStats() {
 module.exports = {
   isAdminPhone,
   isAdminPhoneAsync,
+  isManagerPhone,
   preloadAdminCache,
   startPeriodicRebuild,
   invalidateCache,

@@ -151,6 +151,7 @@ function dbShiftReportToCamel(row) {
     completedBy: row.completed_by,
     isSynced: row.is_synced,
     savedAt: row.saved_at,
+    autoRated: row.auto_rated,
     updatedAt: row.updated_at,
   };
 }
@@ -181,6 +182,7 @@ function camelToDbShift(body) {
   if (body.expiredAt !== undefined) data.expired_at = body.expiredAt;
   if (body.isSynced !== undefined) data.is_synced = body.isSynced;
   if (body.savedAt !== undefined) data.saved_at = body.savedAt;
+  if (body.autoRated != null) data.auto_rated = body.autoRated;
   return data;
 }
 
@@ -209,6 +211,7 @@ function dbHandoverReportToCamel(row) {
     completedBy: row.completed_by,
     aiVerificationSkipped: row.ai_verification_skipped,
     isSynced: row.is_synced,
+    autoRated: row.auto_rated,
     updatedAt: row.updated_at,
   };
 }
@@ -235,6 +238,7 @@ function camelToDbHandover(body) {
   if (body.aiVerificationSkipped !== undefined) data.ai_verification_skipped = body.aiVerificationSkipped;
   if (body.isSynced !== undefined) data.is_synced = body.isSynced;
   if (body.updatedAt !== undefined) data.updated_at = body.updatedAt;
+  if (body.autoRated != null) data.auto_rated = body.autoRated;
   return data;
 }
 
@@ -645,6 +649,11 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
         return res.status(404).json({ success: false, error: 'Отчет не найден' });
       }
 
+      // Block re-rating auto-rated reports
+      if (req.body.rating !== undefined && existingReport.autoRated) {
+        return res.status(403).json({ success: false, error: 'Отчёт оценён автоматически (максимальная оценка). Переоценка невозможна.' });
+      }
+
       // IDOR: проверка — владелец может обновить свой отчёт, подтверждение/оценка — только админ
       const reportOwnerPhone = existingReport.employeePhone || existingReport.phone;
       if (req.body.rating !== undefined || req.body.confirmedAt) {
@@ -1001,6 +1010,11 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       }
 
       const previousStatus = existingReport.status;
+
+      // Block re-rating auto-rated reports
+      if (updatedData.rating !== undefined && existingReport.autoRated) {
+        return res.status(403).json({ success: false, error: 'Отчёт оценён автоматически (максимальная оценка). Переоценка невозможна.' });
+      }
 
       // Объединяем данные
       const updatedReport = {

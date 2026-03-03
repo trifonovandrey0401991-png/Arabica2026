@@ -765,12 +765,14 @@ CREATE TABLE IF NOT EXISTS messenger_conversations (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL DEFAULT 'private',
   name TEXT,
+  description TEXT,
   avatar_url TEXT,
   creator_phone TEXT,
   creator_name TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE messenger_conversations ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL;
 
 CREATE TABLE IF NOT EXISTS messenger_participants (
   id SERIAL PRIMARY KEY,
@@ -780,8 +782,17 @@ CREATE TABLE IF NOT EXISTS messenger_participants (
   role TEXT DEFAULT 'member',
   joined_at TIMESTAMPTZ DEFAULT NOW(),
   last_read_at TIMESTAMPTZ,
+  unread_count INT DEFAULT 0,
   UNIQUE(conversation_id, phone)
 );
+-- Migration: add unread_count column to existing table
+ALTER TABLE messenger_participants ADD COLUMN IF NOT EXISTS unread_count INT DEFAULT 0;
+-- Migration: populate unread_count from actual message counts (run once on deploy)
+-- UPDATE messenger_participants p SET unread_count = (
+--   SELECT COUNT(*)::int FROM messenger_messages m
+--   WHERE m.conversation_id = p.conversation_id AND m.sender_phone != p.phone
+--     AND m.is_deleted = false AND m.created_at > COALESCE(p.last_read_at, '1970-01-01'::timestamptz)
+-- );
 CREATE INDEX IF NOT EXISTS idx_msgr_part_phone ON messenger_participants(phone);
 CREATE INDEX IF NOT EXISTS idx_msgr_part_conv ON messenger_participants(conversation_id);
 
@@ -797,11 +808,25 @@ CREATE TABLE IF NOT EXISTS messenger_messages (
   reply_to_id TEXT,
   reactions JSONB DEFAULT '{}',
   is_deleted BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  edited_at TIMESTAMPTZ DEFAULT NULL,
+  delivered_to JSONB DEFAULT '[]',
+  file_name TEXT DEFAULT NULL,
+  file_size BIGINT DEFAULT NULL,
+  forwarded_from_id TEXT DEFAULT NULL,
+  forwarded_from_name TEXT DEFAULT NULL,
+  is_pinned BOOLEAN DEFAULT false,
+  pinned_at TIMESTAMPTZ DEFAULT NULL,
+  pinned_by TEXT DEFAULT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_msgr_msg_conv ON messenger_messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_msgr_msg_time ON messenger_messages(created_at);
 CREATE INDEX IF NOT EXISTS idx_msgr_msg_sender ON messenger_messages(sender_phone);
+-- Composite partial index: speeds up conversation message loading (10-100x)
+-- and unread count calculation by filtering only active messages
+CREATE INDEX IF NOT EXISTS idx_msgr_msg_conv_active ON messenger_messages(conversation_id, created_at DESC) WHERE is_deleted = false;
+-- Index for pinned messages lookup
+CREATE INDEX IF NOT EXISTS idx_msgr_msg_pinned ON messenger_messages(conversation_id) WHERE is_pinned = true;
 
 -- Messenger: профили пользователей (аватар + имя)
 CREATE TABLE IF NOT EXISTS messenger_profiles (
@@ -810,6 +835,54 @@ CREATE TABLE IF NOT EXISTS messenger_profiles (
   avatar_url TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS messenger_sticker_packs (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  thumbnail_url TEXT,
+  sticker_urls JSONB NOT NULL,
+  is_default BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS messenger_polls (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL REFERENCES messenger_conversations(id) ON DELETE CASCADE,
+  message_id TEXT NOT NULL REFERENCES messenger_messages(id) ON DELETE CASCADE,
+  question TEXT NOT NULL,
+  options JSONB NOT NULL,
+  votes JSONB DEFAULT '{}',
+  multiple_choice BOOLEAN DEFAULT false,
+  anonymous BOOLEAN DEFAULT false,
+  closed BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_msgr_polls_conv ON messenger_polls(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_msgr_polls_msg ON messenger_polls(message_id);
+
+CREATE TABLE IF NOT EXISTS messenger_blocks (
+  blocker_phone TEXT NOT NULL,
+  blocked_phone TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (blocker_phone, blocked_phone)
+);
+CREATE INDEX IF NOT EXISTS idx_msgr_blocks_blocked ON messenger_blocks(blocked_phone);
+
+CREATE TABLE IF NOT EXISTS messenger_folders (
+  id TEXT PRIMARY KEY,
+  phone TEXT NOT NULL,
+  name TEXT NOT NULL,
+  sort_order INT DEFAULT 0,
+  filter_type TEXT DEFAULT 'manual',
+  conversation_ids JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_msgr_folders_phone ON messenger_folders(phone);
+
+-- Composite index for broadcastOnlineStatus and participant lookups
+CREATE INDEX IF NOT EXISTS idx_msgr_part_phone_conv ON messenger_participants(phone, conversation_id);
+-- Index for channel filtering
+CREATE INDEX IF NOT EXISTS idx_msgr_conv_type ON messenger_conversations(type);
 
 -- ============================================
 -- CIGARETTE VISION (сигареты + обучение ИИ)
@@ -904,6 +977,14 @@ CREATE INDEX IF NOT EXISTS idx_loyalty_rdm_qr ON loyalty_redemptions(qr_token);
 CREATE INDEX IF NOT EXISTS idx_loyalty_rdm_status ON loyalty_redemptions(status);
 CREATE INDEX IF NOT EXISTS idx_loyalty_rdm_date ON loyalty_redemptions(created_at);
 CREATE INDEX IF NOT EXISTS idx_loyalty_rdm_shop ON loyalty_redemptions(shop_address);
+
+-- ============================================
+-- Auto-rating: колонка auto_rated для автоматической оценки при просрочке проверки
+-- ============================================
+ALTER TABLE shift_reports ADD COLUMN IF NOT EXISTS auto_rated BOOLEAN DEFAULT false;
+ALTER TABLE recount_reports ADD COLUMN IF NOT EXISTS auto_rated BOOLEAN DEFAULT false;
+ALTER TABLE shift_handover_reports ADD COLUMN IF NOT EXISTS auto_rated BOOLEAN DEFAULT false;
+ALTER TABLE coffee_machine_reports ADD COLUMN IF NOT EXISTS auto_rated BOOLEAN DEFAULT false;
 
 -- ============================================
 -- Готово. Таблицы: ~54

@@ -1182,12 +1182,17 @@ router.post('/request-device-approval', async (req, res) => {
       }
     }
 
+    // Fetch old trusted device info to include in request
+    const trustedDevice = await getTrustedDevice(normalizedPhone);
+    const oldDeviceName = trustedDevice ? trustedDevice.device_name : null;
+
     const requestId = `devreq_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     const requestData = {
       id: requestId,
       phone: normalizedPhone,
       device_id: deviceId,
       device_name: deviceName || 'Unknown Device',
+      old_device_name: oldDeviceName,
       user_name: userName || normalizedPhone,
       status: 'pending',
       created_at: new Date().toISOString(),

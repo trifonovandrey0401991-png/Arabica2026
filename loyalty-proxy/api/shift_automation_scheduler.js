@@ -277,6 +277,8 @@ class ShiftScheduler extends BaseReportScheduler {
     const now = new Date();
     let reports = await this.loadTodayReports();
     let rejectedCount = 0;
+    const settings = await this.getSettings();
+    const maxRating = settings.maxRating || 10;
 
     for (let i = 0; i < reports.length; i++) {
       const report = reports[i];
@@ -288,9 +290,11 @@ class ShiftScheduler extends BaseReportScheduler {
       if (now > reviewDeadline) {
         reports[i].status = 'rejected';
         reports[i].rejectedAt = now.toISOString();
+        reports[i].rating = maxRating;
+        reports[i].autoRated = true;
         rejectedCount++;
 
-        console.log(`${this.tag} Report REJECTED (admin timeout): ${report.shopName} (${report.shiftType}), employee: ${report.employeeName}`);
+        console.log(`${this.tag} Report REJECTED + AUTO-RATED (${maxRating}/10): ${report.shopName} (${report.shiftType}), employee: ${report.employeeName}`);
 
         await this.assignPenaltyDirect(report);
       }
@@ -307,9 +311,11 @@ class ShiftScheduler extends BaseReportScheduler {
               await db.updateById('shift_reports', report.id, {
                 status: 'rejected',
                 rejected_at: report.rejectedAt,
+                rating: report.rating,
+                auto_rated: true,
                 updated_at: new Date().toISOString()
               });
-              console.log(`${this.tag} DB updated: ${report.id} → rejected`);
+              console.log(`${this.tag} DB updated: ${report.id} → rejected + auto-rated (${report.rating})`);
             } catch (dbErr) {
               console.error(`${this.tag} DB update error:`, dbErr.message);
             }
@@ -337,10 +343,12 @@ class ShiftScheduler extends BaseReportScheduler {
             await db.updateById('shift_reports', row.id, {
               status: 'rejected',
               rejected_at: now.toISOString(),
+              rating: maxRating,
+              auto_rated: true,
               updated_at: now.toISOString()
             });
             rejectedCount++;
-            console.log(`${this.tag} DB stale REJECTED: ${row.shop_address} (${row.shift_type}), employee: ${row.employee_name}`);
+            console.log(`${this.tag} DB stale REJECTED + AUTO-RATED (${maxRating}/10): ${row.shop_address} (${row.shift_type}), employee: ${row.employee_name}`);
 
             // Запоминаем для обновления JSON
             if (row.date) {
@@ -364,6 +372,8 @@ class ShiftScheduler extends BaseReportScheduler {
                 if (ids.includes(r.id) && r.status === 'review') {
                   r.status = 'rejected';
                   r.rejectedAt = now.toISOString();
+                  r.rating = maxRating;
+                  r.autoRated = true;
                   changed = true;
                 }
               }
