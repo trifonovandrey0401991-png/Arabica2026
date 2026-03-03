@@ -17,12 +17,16 @@ class AuthResult {
   final String? error;
   final AuthSession? session;
   final String? message;
+  final bool newDeviceDetected;
+  final String? phone;
 
   AuthResult({
     required this.success,
     this.error,
     this.session,
     this.message,
+    this.newDeviceDetected = false,
+    this.phone,
   });
 
   factory AuthResult.success({AuthSession? session, String? message}) {
@@ -31,6 +35,15 @@ class AuthResult {
 
   factory AuthResult.failure(String error) {
     return AuthResult(success: false, error: error);
+  }
+
+  factory AuthResult.deviceBlocked({required String phone}) {
+    return AuthResult(
+      success: false,
+      error: 'Обнаружено новое устройство',
+      newDeviceDetected: true,
+      phone: phone,
+    );
   }
 }
 
@@ -309,6 +322,13 @@ class AuthService {
           return AuthResult.failure('Неверный PIN-код. Осталось попыток: $remaining');
         }
         return AuthResult.failure(data['error'] as String? ?? 'Неверный PIN-код');
+      } else if (response.statusCode == 403) {
+        final code = data['code'] as String?;
+        if (code == 'NEW_DEVICE_DETECTED') {
+          final serverPhone = data['phone'] as String?;
+          return AuthResult.deviceBlocked(phone: serverPhone ?? normalizedPhone);
+        }
+        return AuthResult.failure(data['error'] as String? ?? 'Доступ запрещён');
       } else if (response.statusCode == 423) {
         return AuthResult.failure(data['error'] as String? ?? 'Аккаунт заблокирован');
       } else {
@@ -680,6 +700,147 @@ class AuthService {
   Future<bool> isAuthenticated() async {
     final session = await _storage.getSession();
     return session != null && !session.isExpired;
+  }
+
+  // ==================== DEVICE BINDING ====================
+
+  /// Подтверждение нового устройства через OTP (Telegram)
+  Future<AuthResult> verifyDeviceOtp({
+    required String phone,
+    required String code,
+    required String pin,
+  }) async {
+    try {
+      final deviceId = await _deviceService.getDeviceId();
+      final deviceName = await _deviceService.getDeviceName();
+
+      final response = await http.post(
+        Uri.parse('$_authApiUrl/verify-device-otp'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({
+          'phone': phone,
+          'code': code,
+          'deviceId': deviceId,
+          'deviceName': deviceName,
+          'pin': pin,
+        }),
+      ).timeout(ApiConstants.longTimeout);
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        final tokenValue = data['sessionToken'];
+        final expiresValue = data['expiresAt'];
+        if (tokenValue is! String || expiresValue is! int) {
+          return AuthResult.failure('Сервер вернул неполные данные сессии');
+        }
+
+        final session = AuthSession(
+          sessionToken: tokenValue,
+          phone: phone,
+          name: data['name'] as String?,
+          deviceId: deviceId,
+          deviceName: deviceName,
+          createdAt: DateTime.now(),
+          expiresAt: DateTime.fromMillisecondsSinceEpoch(expiresValue),
+          isVerified: true,
+        );
+        await _storage.saveSession(session);
+        ApiConstants.sessionToken = session.sessionToken;
+        await _saveSessionTokenToPrefs(session.sessionToken);
+        await _storage.createCredentials(pin);
+
+        return AuthResult.success(session: session, message: 'Устройство подтверждено');
+      } else {
+        return AuthResult.failure(data['error'] as String? ?? 'Ошибка подтверждения');
+      }
+    } catch (e) {
+      return AuthResult.failure('Ошибка соединения: $e');
+    }
+  }
+
+  /// Запрос подтверждения нового устройства от разработчика
+  Future<Map<String, dynamic>> requestDeviceApproval({
+    required String phone,
+  }) async {
+    try {
+      final deviceId = await _deviceService.getDeviceId();
+      final deviceName = await _deviceService.getDeviceName();
+
+      final response = await http.post(
+        Uri.parse('$_authApiUrl/request-device-approval'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({
+          'phone': phone,
+          'deviceId': deviceId,
+          'deviceName': deviceName,
+        }),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      return {'success': false, 'error': 'Ошибка соединения: $e'};
+    }
+  }
+
+  /// Проверка статуса запроса на подтверждение устройства (polling)
+  Future<String> checkDeviceApprovalStatus(String phone) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_authApiUrl/device-approval-status/$phone'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.shortTimeout);
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return data['status'] as String? ?? 'none';
+    } catch (e) {
+      return 'none';
+    }
+  }
+
+  /// Получение списка запросов на подтверждение устройств (для разработчика)
+  Future<List<Map<String, dynamic>>> getDeviceApprovalRequests() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_authApiUrl/device-approval-requests'),
+        headers: {
+          ...ApiConstants.jsonHeaders,
+          if (ApiConstants.sessionToken != null)
+            'Authorization': 'Bearer ${ApiConstants.sessionToken}',
+        },
+      ).timeout(ApiConstants.defaultTimeout);
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final requests = data['requests'] as List<dynamic>? ?? [];
+      return requests.cast<Map<String, dynamic>>();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Одобрение/отклонение запроса на подтверждение устройства (для разработчика)
+  Future<Map<String, dynamic>> resolveDeviceApproval({
+    required String requestId,
+    required String action,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_authApiUrl/resolve-device-approval'),
+        headers: {
+          ...ApiConstants.jsonHeaders,
+          if (ApiConstants.sessionToken != null)
+            'Authorization': 'Bearer ${ApiConstants.sessionToken}',
+        },
+        body: jsonEncode({
+          'requestId': requestId,
+          'action': action,
+        }),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      return {'success': false, 'error': 'Ошибка соединения: $e'};
+    }
   }
 
   /// Получает статус авторизации для отображения

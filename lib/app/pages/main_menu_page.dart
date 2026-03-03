@@ -47,6 +47,7 @@ import '../../features/orders/pages/employee_orders_page.dart';
 import '../../features/orders/services/order_service.dart';
 import '../../features/messenger/pages/messenger_shell_page.dart';
 import '../../features/messenger/services/messenger_service.dart';
+import '../../features/messenger/services/messenger_ws_service.dart';
 import '../../features/work_schedule/services/shift_transfer_service.dart';
 import '../../features/loyalty/pages/loyalty_scanner_page.dart';
 import '../../features/loyalty/pages/prize_scanner_page.dart';
@@ -138,6 +139,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
 
   // WebSocket live counters
   StreamSubscription<CounterUpdateEvent>? _countersSub;
+  StreamSubscription? _messengerNewMsgSub;
   DateTime? _lastLifecycleReload;
 
   @override
@@ -188,6 +190,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
     _loadEmployeeRating();
     _loadEfficiencyPoints();
     _connectCountersWs();
+    _connectMessengerWs();
   }
 
   Future<void> _checkForUpdates() async {
@@ -397,6 +400,32 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
       });
     } catch (e) {
       Logger.warning('Counters WS connection error: $e');
+    }
+  }
+
+  /// Connect to messenger WebSocket for live unread badge updates
+  Future<void> _connectMessengerWs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      if (normalizedPhone.isEmpty) return;
+
+      final ws = MessengerWsService.instance;
+      if (!ws.isConnected) {
+        await ws.connect(normalizedPhone);
+      }
+
+      _messengerNewMsgSub?.cancel();
+      _messengerNewMsgSub = ws.onNewMessage.listen((event) {
+        if (!mounted) return;
+        // Only count messages from others
+        if (event.message.senderPhone != normalizedPhone) {
+          setState(() => _messengerUnreadCount++);
+        }
+      });
+    } catch (e) {
+      Logger.warning('Messenger WS connection error: $e');
     }
   }
 
@@ -785,6 +814,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _countersSub?.cancel();
+    _messengerNewMsgSub?.cancel();
     super.dispose();
   }
 

@@ -36,6 +36,7 @@ import '../../features/ai_training/pages/ai_training_page.dart';
 // Мессенджер
 import '../../features/messenger/pages/messenger_shell_page.dart';
 import '../../features/messenger/services/messenger_service.dart';
+import '../../features/messenger/services/messenger_ws_service.dart';
 
 // Управление данными
 import '../../features/work_schedule/pages/work_schedule_page.dart';
@@ -116,6 +117,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
   Timer? _badgeTimer;
   DateTime? _lastLifecycleReload;
   StreamSubscription<CounterUpdateEvent>? _countersSub;
+  StreamSubscription? _messengerNewMsgSub;
 
   // Роль текущего пользователя (для условного скрытия элементов)
   UserRoleData? _userRole;
@@ -140,12 +142,14 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
       _loadOrdersCount();
     });
     _connectCountersWs();
+    _connectMessengerWs();
   }
 
   @override
   void dispose() {
     _badgeTimer?.cancel();
     _countersSub?.cancel();
+    _messengerNewMsgSub?.cancel();
     if (FirebaseService.onOrderPushReceived == _loadOrdersCount) {
       FirebaseService.onOrderPushReceived = null;
     }
@@ -543,6 +547,31 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
       final count = await MessengerService.getUnreadCount(normalizedPhone);
       if (mounted) setState(() => _messengerUnreadCount = count);
     } catch (e) { Logger.error('Ошибка загрузки счётчика мессенджера', e); }
+  }
+
+  /// Connect to messenger WebSocket for live unread badge updates
+  Future<void> _connectMessengerWs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      if (normalizedPhone.isEmpty) return;
+
+      final ws = MessengerWsService.instance;
+      if (!ws.isConnected) {
+        await ws.connect(normalizedPhone);
+      }
+
+      _messengerNewMsgSub?.cancel();
+      _messengerNewMsgSub = ws.onNewMessage.listen((event) {
+        if (!mounted) return;
+        if (event.message.senderPhone != normalizedPhone) {
+          setState(() => _messengerUnreadCount++);
+        }
+      });
+    } catch (e) {
+      Logger.warning('Messenger WS connection error: $e');
+    }
   }
 
   @override

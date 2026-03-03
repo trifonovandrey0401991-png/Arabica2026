@@ -104,13 +104,17 @@ class DeviceService {
   }
 
   /// Генерирует уникальный ID на основе характеристик устройства
+  ///
+  /// ID детерминирован: одно физическое устройство = один и тот же ID.
+  /// Android ID (info.id) уникален для каждого устройства.
+  /// Если переустановить приложение на том же телефоне — ID останется прежним.
   Future<String> _generateDeviceId() async {
     final buffer = StringBuffer();
 
     try {
       if (Platform.isAndroid) {
         final info = await _deviceInfo.androidInfo;
-        buffer.write(info.id); // Android ID
+        buffer.write(info.id); // Android ID — unique per device
         buffer.write(info.brand);
         buffer.write(info.device);
         buffer.write(info.model);
@@ -124,12 +128,9 @@ class DeviceService {
         buffer.write(info.utsname.machine);
       }
     } catch (e) {
-      // Fallback: используем случайные данные
+      // Fallback: random value (generated once, then persisted in secure storage)
       buffer.write(DateTime.now().microsecondsSinceEpoch);
     }
-
-    // Добавляем соль для уникальности
-    buffer.write(DateTime.now().millisecondsSinceEpoch);
 
     // Хешируем для получения стабильного ID
     final data = utf8.encode(buffer.toString());

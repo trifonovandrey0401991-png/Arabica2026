@@ -11,6 +11,7 @@ import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../shop_catalog/pages/shop_catalog_admin_page.dart';
+import '../../auth/pages/device_approval_page.dart';
 
 /// Страница управления сетью магазинов
 /// Доступна только для developer
@@ -40,7 +41,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
     _tabController.addListener(_onTabChanged);
     _loadCurrentUser();
   }
@@ -156,6 +157,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                           _buildEmployeesTab(),
                           _buildStoreManagersTab(),
                           const ShopCatalogAdminPage(),
+                          const DeviceApprovalPage(embedded: true),
                         ],
                       ),
               ),
@@ -203,6 +205,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       (icon: Icons.people, text: 'Сотрудники'),
       (icon: Icons.supervisor_account, text: 'Заведующие'),
       (icon: Icons.storefront, text: 'Магазин(опт)'),
+      (icon: Icons.verified_user, text: 'Авторизация'),
     ];
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 16.w),
@@ -216,7 +219,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
         children: [
           Row(
             children: List.generate(
-              3,
+              4,
               (i) => Expanded(
                 child: _buildTabButton(i, tabDefs[i].icon, tabDefs[i].text),
               ),
@@ -227,7 +230,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
             children: List.generate(
               3,
               (i) => Expanded(
-                child: _buildTabButton(i + 3, tabDefs[i + 3].icon, tabDefs[i + 3].text),
+                child: _buildTabButton(i + 4, tabDefs[i + 4].icon, tabDefs[i + 4].text),
               ),
             ),
           ),

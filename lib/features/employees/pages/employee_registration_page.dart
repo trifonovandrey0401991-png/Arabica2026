@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import '../models/employee_registration_model.dart';
@@ -45,6 +46,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
 
   bool _isLoading = false;
   bool _isEditing = false;
+  String? _originalPhone; // Original phone to detect changes
   
   // Переменные для выбора роли
   String? _selectedRole; // 'admin' или 'employee'
@@ -58,7 +60,8 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
     if (widget.existingRegistration != null) {
       final reg = widget.existingRegistration!;
       _fullNameController.text = reg.fullName;
-      _phoneController.text = reg.phone; // Заполняем телефон из регистрации
+      _phoneController.text = reg.phone;
+      _originalPhone = reg.phone;
       _passportSeriesController.text = reg.passportSeries;
       _passportNumberController.text = reg.passportNumber;
       _issuedByController.text = reg.issuedBy;
@@ -67,8 +70,8 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       _passportRegistrationPhotoUrl = reg.passportRegistrationPhotoUrl;
       _additionalPhotoUrl = reg.additionalPhotoUrl;
     } else if (widget.employeePhone != null) {
-      // Если передан телефон, заполняем его
       _phoneController.text = widget.employeePhone!;
+      _originalPhone = widget.employeePhone;
     }
     // По умолчанию роль - сотрудник
     _selectedRole = 'employee';
@@ -171,15 +174,15 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
   }
 
   Future<String?> _getEmployeePhone() async {
-    // Если телефон указан в виджете, используем его
-    if (widget.employeePhone != null && widget.employeePhone!.isNotEmpty) {
-      return widget.employeePhone;
-    }
-    // Если телефон введен в поле, используем его
+    // Phone field value takes priority (user may have edited it)
     if (_phoneController.text.trim().isNotEmpty) {
       return _phoneController.text.trim();
     }
-    // Получаем телефон из SharedPreferences (для случая, когда сотрудник регистрирует себя)
+    // Fallback to widget param
+    if (widget.employeePhone != null && widget.employeePhone!.isNotEmpty) {
+      return widget.employeePhone;
+    }
+    // Last resort: SharedPreferences (employee self-registration)
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('user_phone') ?? prefs.getString('userPhone');
   }
@@ -187,15 +190,19 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
   /// Создать или обновить запись сотрудника с указанной ролью
   Future<void> _createOrUpdateEmployee(String phone, String name, bool isAdmin, bool isManager) async {
     try {
-      // Получаем всех сотрудников и ищем по телефону
       final allEmployees = await EmployeeService.getEmployees();
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-      
+
+      // If phone changed, search by original phone to find existing record
+      final searchPhone = (_originalPhone != null && _originalPhone!.isNotEmpty)
+          ? _originalPhone!.replaceAll(RegExp(r'[\s\+]'), '')
+          : normalizedPhone;
+
       Employee? existingEmployee;
       for (var emp in allEmployees) {
         if (emp.phone != null) {
           final empPhone = emp.phone!.replaceAll(RegExp(r'[\s\+]'), '');
-          if (empPhone == normalizedPhone) {
+          if (empPhone == searchPhone) {
             existingEmployee = emp;
             break;
           }
@@ -203,7 +210,6 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       }
 
       if (existingEmployee != null) {
-        // Обновляем существующего сотрудника
         await EmployeeService.updateEmployee(
           id: existingEmployee.id,
           name: name,
@@ -213,7 +219,6 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
         );
         Logger.success('Сотрудник обновлен: $name, роль: ${isAdmin ? "Админ" : "Сотрудник"}, Заведующий: $isManager');
       } else {
-        // Создаем нового сотрудника
         await EmployeeService.createEmployee(
           name: name,
           phone: normalizedPhone,
@@ -224,7 +229,6 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       }
     } catch (e) {
       Logger.warning('Ошибка создания/обновления сотрудника: $e');
-      // Не прерываем процесс, так как регистрация уже сохранена
     }
   }
 
@@ -310,6 +314,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
 
       final now = DateTime.now();
       final registration = widget.existingRegistration?.copyWith(
+        phone: phone,
         fullName: _fullNameController.text.trim(),
         passportSeries: _passportSeriesController.text.trim(),
         passportNumber: _passportNumberController.text.trim(),
@@ -391,6 +396,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
     required String hint,
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
     int? maxLength,
     bool enabled = true,
     String? Function(String?)? validator,
@@ -405,6 +411,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
         maxLength: maxLength,
         enabled: enabled,
         style: TextStyle(fontSize: 16.sp, color: Colors.white.withOpacity(0.9)),
@@ -548,14 +555,12 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
                               return null;
                             },
                           ),
-                          if (widget.employeePhone == null)
-                            _buildTextField(
+                          _buildTextField(
                               controller: _phoneController,
                               label: 'Телефон',
                               hint: '79001234567',
                               icon: Icons.phone,
                               keyboardType: TextInputType.phone,
-                              enabled: !_isEditing,
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
                                   return 'Введите телефон';
@@ -637,7 +642,8 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
                             label: 'Дата выдачи',
                             hint: 'ДД.ММ.ГГГГ',
                             icon: Icons.calendar_today,
-                            keyboardType: TextInputType.datetime,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [_DateInputFormatter()],
                             maxLength: 10,
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
@@ -1221,3 +1227,25 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
   }
 }
 
+/// Auto-formats date input: digits only → DD.MM.YYYY
+class _DateInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    final buffer = StringBuffer();
+
+    for (int i = 0; i < digits.length && i < 8; i++) {
+      if (i == 2 || i == 4) buffer.write('.');
+      buffer.write(digits[i]);
+    }
+
+    final text = buffer.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+}

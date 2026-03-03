@@ -8,6 +8,7 @@ import '../../loyalty/services/loyalty_service.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../referrals/services/referral_service.dart';
 import '../../auth/services/auth_service.dart';
+import '../../auth/pages/device_verification_page.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/firebase_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -216,6 +217,24 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     } catch (e) {
                       Logger.warning('Не удалось перепроверить роль после входа: $e');
                     }
+                  } else if (loginResult.newDeviceDetected && loginResult.phone != null) {
+                    // Device binding: new device detected — open verification page
+                    Logger.info('🔐 Новое устройство обнаружено для ${Logger.maskPhone(existingUser.phone)}, открываем верификацию');
+                    if (mounted) {
+                      final pin = _pinController.text.trim();
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => DeviceVerificationPage(
+                            phone: loginResult.phone!,
+                            pin: pin,
+                            onSuccess: () {
+                              Navigator.of(context).pushReplacementNamed('/home');
+                            },
+                          ),
+                        ),
+                      );
+                    }
+                    return;
                   } else {
                     Logger.warning('❌ Ошибка входа через сервер: ${loginResult.error}');
                     // Показываем ошибку пользователю и выходим

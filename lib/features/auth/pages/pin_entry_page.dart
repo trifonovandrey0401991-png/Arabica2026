@@ -7,6 +7,7 @@ import '../services/biometric_service.dart';
 import '../widgets/pin_input_widget.dart';
 import '../../../features/clients/pages/registration_page.dart';
 import 'forgot_pin_page.dart';
+import 'device_verification_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница ввода PIN-кода
@@ -92,6 +93,21 @@ class _PinEntryPageState extends State<PinEntryPage> {
       setState(() {
         _isLoading = false;
       });
+
+      // Device binding: new device detected
+      if (result.newDeviceDetected && result.phone != null) {
+        if (!mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => DeviceVerificationPage(
+              phone: result.phone!,
+              pin: pin,
+              onSuccess: widget.onSuccess,
+            ),
+          ),
+        );
+        return;
+      }
 
       if (result.success) {
         // Если биометрия доступна но НЕ включена - предложить включить

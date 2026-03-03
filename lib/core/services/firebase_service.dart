@@ -34,6 +34,9 @@ import '../../features/employee_chat/pages/employee_chats_list_page.dart';
 import '../../features/employees/services/user_role_service.dart';
 import '../../features/messenger/services/messenger_service.dart';
 import '../../features/messenger/pages/messenger_chat_page.dart';
+import '../../features/messenger/services/call_service.dart';
+import '../../features/messenger/pages/call_page.dart';
+import '../../features/auth/pages/device_approval_page.dart';
 import '../constants/api_constants.dart';
 import '../utils/logger.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
@@ -57,6 +60,14 @@ Future<void> _firebaseBackgroundMessageHandler(RemoteMessage message) async {
       // SharedPreferences может быть недоступен в изоляте — игнорируем
     }
   }
+
+  // Для входящих звонков — сохраняем данные, чтобы восстановить вызов при открытии
+  if (type == 'incoming_call') {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('pending_incoming_call', jsonEncode(message.data));
+    } catch (_) {}
+  }
 }
 
 /// Сервис для работы с Firebase Cloud Messaging (FCM)
@@ -77,6 +88,9 @@ class FirebaseService {
 
   /// Callback для мгновенного обновления бейджа заказов при получении push
   static VoidCallback? onOrderPushReceived;
+
+  /// Resolve messenger sender name from phone book (set by MessengerShellPage)
+  static String? Function(String phone)? resolveMessengerName;
 
   /// Цвет уведомлений (основной цвет бренда Арабика)
   static final Color _notificationColor = AppColors.primaryGreen;
@@ -279,6 +293,24 @@ class FirebaseService {
           Logger.debug('Получено уведомление об отзыве верификации в foreground');
           _showVerificationRevokedDialog();
           return;
+        }
+
+        // Входящий звонок в foreground (WS был отключён, FCM пришёл вместо него)
+        if (type == 'incoming_call') {
+          Logger.debug('📞 FCM incoming_call в foreground — восстанавливаем через CallService');
+          final callId = message.data['callId'] as String?;
+          final callerPhone = message.data['callerPhone'] as String?;
+          final callerName = message.data['callerName'] as String?;
+          final offerSdp = message.data['offerSdp'] as String?;
+          if (callId != null && callerPhone != null && offerSdp != null) {
+            CallService.instance.handleFcmIncomingCall(
+              callId: callId,
+              callerPhone: callerPhone,
+              callerName: callerName ?? callerPhone,
+              offerSdp: offerSdp,
+            );
+          }
+          return; // Системное уведомление FCM уже показано, локальное не нужно
         }
 
         // Мгновенное обновление бейджа заказов при получении push
@@ -684,9 +716,19 @@ class FirebaseService {
     final notificationId = (message.messageId?.hashCode ??
         DateTime.now().microsecondsSinceEpoch).abs() % 2147483647;
 
+    // For messenger messages, resolve sender name from phone book
+    String title = message.notification?.title ?? 'Уведомление';
+    if (type == 'messenger_message' && resolveMessengerName != null) {
+      final senderPhone = message.data['senderPhone'] as String?;
+      if (senderPhone != null) {
+        final bookName = resolveMessengerName!(senderPhone);
+        if (bookName != null) title = bookName;
+      }
+    }
+
     await _localNotifications.show(
       notificationId,
-      message.notification?.title ?? 'Уведомление',
+      title,
       message.notification?.body ?? '',
       notificationDetails,
       payload: jsonEncode(message.data),
@@ -1050,6 +1092,41 @@ class FirebaseService {
       return;
     }
 
+    // Входящий звонок — открываем экран звонка
+    if (type == 'incoming_call') {
+      Logger.debug('📞 Открываем CallPage из уведомления');
+      if (CallService.instance.state == CallState.incoming) {
+        // WS или foreground FCM уже настроили состояние
+        final call = CallService.instance.currentCall;
+        if (call != null) {
+          navigatorKey.currentState!.push(
+            MaterialPageRoute(builder: (_) => CallPage(callInfo: call)),
+          );
+        }
+      } else {
+        // Приложение было закрыто — восстанавливаем из данных уведомления
+        final callId = data['callId'] as String?;
+        final callerPhone = data['callerPhone'] as String?;
+        final callerName = data['callerName'] as String?;
+        final offerSdp = data['offerSdp'] as String?;
+        if (callId != null && callerPhone != null && offerSdp != null) {
+          CallService.instance.handleFcmIncomingCall(
+            callId: callId,
+            callerPhone: callerPhone,
+            callerName: callerName ?? callerPhone,
+            offerSdp: offerSdp,
+          );
+          final call = CallService.instance.currentCall;
+          if (call != null) {
+            navigatorKey.currentState!.push(
+              MaterialPageRoute(builder: (_) => CallPage(callInfo: call)),
+            );
+          }
+        }
+      }
+      return;
+    }
+
     // Геозона: клиент рядом с магазином → открываем карту кофеен
     if (type == 'geofence') {
       navigatorKey.currentState!.push(
@@ -1057,6 +1134,46 @@ class FirebaseService {
           builder: (context) => const ShopsOnMapPage(),
         ),
       );
+      return;
+    }
+
+    // Device binding: developer taps "device approval request" notification
+    if (type == 'device_approval_request') {
+      navigatorKey.currentState!.push(
+        MaterialPageRoute(
+          builder: (context) => const DeviceApprovalPage(),
+        ),
+      );
+      return;
+    }
+
+    // Device binding: user's device was approved
+    if (type == 'device_approved') {
+      final ctx = navigatorKey.currentContext;
+      if (ctx != null) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          SnackBar(
+            content: Text('Ваше устройство подтверждено! Войдите снова.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Device binding: user's device was rejected
+    if (type == 'device_rejected') {
+      final ctx = navigatorKey.currentContext;
+      if (ctx != null) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          SnackBar(
+            content: Text('Запрос на новое устройство отклонён.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
       return;
     }
 
