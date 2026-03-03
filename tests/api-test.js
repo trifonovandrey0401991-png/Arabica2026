@@ -31,6 +31,8 @@ const TESTS = [
   // CORE — Системные
   // =============================================
   // auth/check-session — НЕ тестируем, эндпоинт не существует (см. ISSUES_FOUND C-01)
+  { path: '/api/auth/device-approval-requests', name: 'Device approval requests (dev)', expectedType: 'object' },
+  { path: '/api/auth/device-approval-status/0000000000', name: 'Device approval status (test)', expectedType: 'object' },
 
   // =============================================
   // EMPLOYEES — Сотрудники

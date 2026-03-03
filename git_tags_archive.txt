@@ -1,0 +1,79 @@
+# Архив тегов Git — 2026-03-02 01:59
+# Для восстановления тега: git tag <имя_тега> <хэш_коммита>
+
+1 | a33496de676b9811b44e4d1ee9ed841c2064247d | 2026-01-25 11:54:44 +0300 | feat(recount): pivot-таблица с иерархическим списком и badge-счётчиком
+autofill-schedule-v1 | 2d8e73e377be20c4b387bda7e3b61e5f7ccd401e | 2025-12-24 08:11:08 +0000 | Исправление: равномерное распределение смен между всеми сотрудниками с выходными днями
+backup-2025-11-29-0830 | ad70b32316b35c39bd5d609ce906878f598a5a67 | 2025-11-28 20:12:08 +0000 | Add arabica_background.png to training and test pages
+backup-2025-11-29-1554 | ad70b32316b35c39bd5d609ce906878f598a5a67 | 2025-11-28 20:12:08 +0000 | Add arabica_background.png to training and test pages
+backup-2025-11-29-1634 | bf7ce6354f10ae56993ef6f594ea1f85e5216eab | 2025-11-29 16:34:40 +0000 | Add automatic next question transition after answering in shift questions
+before-fetch-api-fix | 271f14924eadac02294f315c653cf13426fe9dbe | 2025-11-30 19:10:34 +0000 | Auto-commit before checkpoint: before-fetch-api-fix
+before-recipes-feature | 4c96081efc10b7f2486b9948345aa59f2dbd9401 | 2025-11-30 19:31:02 +0000 | Добавлена функциональность проверки отчетов: кнопка подтверждения, статусы (галочка/крестик), проверка 6 часов
+before-report-verification | 4c92595f5d3b8ba8eeb6629c6fbc2cf182ede8e5 | 2025-11-30 19:22:23 +0000 | Исправлен XMLHttpRequest на HttpRequest для dart:html
+cart-with-comment-20251127-2054 | 96898d217fecbb07bbd650d00c3ccd54fc145921 | 2025-11-27 20:50:21 +0000 | Add two buttons in cart: 'Заказать' and 'Комментарий к заказу' with dialog containing order and return buttons
+checkpoint-20251208-212957 | 5027ac5f64828262d30ccd6886e56719e554e78b | 2025-12-08 21:25:14 +0000 | Исправление: использование только Regular шрифта Roboto для всех стилей
+checkpoint-20251208-215914 | 090b13190517a0194a5b7655933858ab68107df3 | 2025-12-08 21:50:03 +0000 | Исправление: поиск выбранного магазина в DropdownButton по адресу
+checkpoint-20251220-195921 | 5904e4c79abb5553800a67f09ae61be5bfc66ec4 | 2025-12-20 19:57:38 +0000 | Увеличено эталонное фото при демонстрации - теперь 400px высотой, fit: contain, добавлена тень и рамка
+checkpoint-20251222-193743 | 87e11062e0082b13948919af16207e056aaac5b1 | 2025-12-22 19:26:14 +0000 | Исправлено: добавлено сохранение аббревиатур смен в shop-settings на сервере
+checkpoint-20251222-203558 | 87e11062e0082b13948919af16207e056aaac5b1 | 2025-12-22 19:26:14 +0000 | Исправлено: добавлено сохранение аббревиатур смен в shop-settings на сервере
+checkpoint-pre-audit-2026-02-26 | 3a8c0e0d4aab8f4d05535bbe2f1a8c28ebdb99d1 | 2026-02-26 11:52:54 +0300 | checkpoint: сохранение состояния перед аудитными исправлениями (2026-02-26)
+gradle-fix-v1 | d96ee2584432edac859e3a1ebf23ea82ea8f7647 | 2025-12-24 11:01:18 +0000 | Исправления для коммита 2d8e73e: удалены проблемные блоки из settings.gradle, исправлен Flutter source в app/build.gradle
+graph-schedule-v1 | 26e24eb9817728e6201d47c8a8f72138ed1155c9 | 2025-12-22 21:59:23 +0000 | Исправление: убраны width/height infinity из ячеек таблицы
+kpi-rko-fix-v1.0 | 630338802d04935727ac3673ab2334dad3a9952a | 2025-12-20 10:04:19 +0000 | Исправлена обработка РКО в getEmployeeData - использование latest и months
+pochti | a7dd4d30781a36e5848195efe1e149e55a785c13 | 2026-01-15 03:31:48 +0300 | release: Версия "почти" - Push-уведомления для замен смены + исправления
+pre-polishing-20260217 | 5fa62f8194234f818d71955b6adc21574f54d95c | 2026-02-17 02:34:20 +0300 | checkpoint: pre-polishing snapshot — safe rollback point
+pre-refactoring-backup-20251228 | 00b3e79aa2911e7e75dc4d900bad159a82674e8b | 2025-12-28 21:23:24 +0300 | Добавлены Release Notes для v1.0-working
+recipes-feature-complete | ba7b4c1066c43dc5ba0f19d8d007e58b3aa9c717 | 2025-11-30 20:08:00 +0000 | Добавлена обработка символов \n для переноса строк в рецептах
+rko-pdf-before-absolute-positioning | c78522d1c4c2d05980f8e684ff9b861832d1eb77 | 2025-12-09 19:29:10 +0000 | Исправлена структура PDF: заголовок с номером/датой справа, правильные размеры шрифтов, убрана лишняя строка таблицы
+rko-pdf-before-layout-fix | ca907ed3a043eef5c2525af3e46ea472c302cf34 | 2025-12-09 19:11:47 +0000 | Исправлена структура PDF РКО для соответствия эталону: форматирование полей, расположение подписей, структура таблицы
+schedule-by-employees-v1 | b352035aa6f57c3dcb8d290568fd45e476f38a5b | 2025-12-23 22:27:41 +0000 | Исправление: бесконечная загрузка в EmployeeSchedulePage - добавлен сброс _isLoading и загрузка настроек магазинов
+schedule-employee-recognition-v1 | 2d3b3a55b6ecfe6a8b71881ce08696fa5ab275bb | 2025-12-23 20:04:29 +0000 | Улучшение: в Мой график отображаются только дни со сменами, без выходных дней
+suppliers-management-v1 | 03bc2f7e8bb55f8865e5ca70e8f475521e2e41ca | 2025-12-24 08:58:40 +0000 | Исправлена ошибка с фоновым изображением на странице поставщиков
+test-page-fix-v1.0 | e1c259460c49715b8d4cb9917f81dbdd94ade6e3 | 2025-12-20 10:38:15 +0000 | ИСПРАВЛЕНО: пересменка через тестовую страницу теперь сохраняется на сервер через ShiftReportService
+training-test-complete-20251128-1949 | f73ef248a5ca97993a04eb7824d49129a29b98af | 2025-11-28 19:46:45 +0000 | Add auto-advance for wrong answers too (2 seconds delay)
+v1.0-employee-verification | a2ffa1f27e2a5f3b210702d9b279aaaecd4e8229 | 2025-12-08 19:03:26 +0000 | Исправлена ошибка компиляции: переменная displayName используется до определения
+v1.0-kpi-fix | dc92c7f6ff29e7dd3a96529ee94cdf9669e4d79e | 2025-12-20 08:51:43 +0000 | Исправлено отображение времени прихода: конвертация UTC в локальное время при форматировании
+v1.0-network-fix | a34d07c2c26b069768a8bd6d3b0294fef490c61a | 2025-12-03 18:41:03 +0000 | ИСПРАВЛЕНО: открыты порты 80/443 в файрволе, добавлен network security config для Android
+v1.0-production | 6aa277f1442df192449e484f8b299e7465e94430 | 2025-12-31 08:59:56 +0000 | 🔧 Исправлен PayloadTooLargeError - увеличен лимит body-parser до 50MB
+v1.0-recount-complete | e3b88d381dec35e91e1f46d77fa3e5035da9a964 | 2025-12-07 19:45:15 +0000 | Fix report rating: URL encode reportId and use POST method
+v1.0-rko-reports-fixed | d2493f472062dc7655ab15fe61fa57aab97f9352 | 2025-12-30 23:09:54 +0300 | ✅ Исправлена функция отчетов по РКО
+v1.0-stable | bda664d448544e19d13ceb81f58a54accc919732 | 2025-11-27 20:15:34 +0000 | Add detailed logging for shop addresses loading to debug new address detection
+v1.0-working | 00b3e79aa2911e7e75dc4d900bad159a82674e8b | 2025-12-28 21:23:24 +0300 | Добавлены Release Notes для v1.0-working
+v1.0-working-before-efficiency-refactor | 800bad46f5aef5b4101f045f97e82f337b2c7c0e | 2026-01-27 00:38:14 +0300 | feat: add revenue analytics, documentation, and currency fixes
+v1.0.0 | 148814891d687d1c8d4956c2495c5bd96449923b | 2025-12-20 08:16:36 +0000 | Создана страница Панель работника с кнопками: Обучение, Я на работе, Пересменка, Пересчет товаров, Рецепты
+v1.0.0-employee-registration | 45138f8a61d9d380f03bd8ab0b9e720931080cfd | 2025-12-07 20:45:06 +0000 | Добавлена функция регистрации сотрудника: модель, сервис, страницы регистрации/просмотра, галочка верификации в списке сотрудников, серверные эндпоинты
+v1.0.0-fully-working | 73247ef7e54524f60c53b6f25ec89cf2dd69bba5 | 2025-12-30 22:14:23 +0300 | Добавлены игнорируемые файлы (.claude, nul) в .gitignore
+v1.1-recipes-and-fixes | 462edc8225af88af4df691ec98f1c20a5bd20083 | 2025-12-31 11:12:02 +0300 | ✨ Добавлен API endpoint для рецептов и исправлены UI ошибки
+v1.1-recount-photo-logic | 1b58f91a014dd619dfd000574d4720c2b4182da6 | 2025-12-07 19:51:25 +0000 | Исправлена блокировка поля фактического остатка
+v1.1-stable | b5ffe773ecdb9b8d03e369bf449fe764cb53976f | 2025-11-27 20:39:58 +0000 | Add missing shop selection and category loading functions to main_menu_page
+v1.1.0-shift-handover | 4592cfbc5c1e0f26439921488a5f9351d4565275 | 2025-12-30 22:48:53 +0300 | ✨ Интегрирована функциональность "Сдача смены" и очистка кода
+v1.2-attendance-geolocation | 8e2bf61516bb7f7c7c9a39e4bd15bc6120d109e0 | 2025-12-07 20:21:42 +0000 | Добавлена функция 'Я на работе' с геолокацией
+v1.5.0 | 7b985d1990cd791f912b2b8d0563fc2d75148e81 | 2026-01-03 11:00:15 +0300 | ✨ Система заказов: вкладки, фото, сортировка
+v1.5.5 | 05cb32f59bced191b7b5d4190fc4c5eaca3d0698 | 2026-01-03 20:48:48 +0300 | ✨ v1.5.5: Пересчёты, пересменки, статьи обучения
+v1.5.7 | b39889f0fd65969260293f8098c149ba454cb608 | 2026-01-18 00:05:39 +0300 | fix(orders): Исправлен порядок routes - /unviewed-count перед /:id
+v1.6.0-70percent | 841f977a44b824ecdb104329a69d523c7b9c7176 | 2026-01-10 00:14:14 +0300 | v1.6.0 (70%): Задачи, Премии/Штрафы, Заявки на работу, Реферальная система, Баллы пересчёта
+v1.6.0-75percent | 57601c04203f9d289ccb31b94769a324813b20ce | 2026-01-10 02:28:27 +0300 | v1.6.0 (75%): Мой рейтинг + Колесо Удачи
+v1.6.1 | 8e1ee63be39af4c29035ace10bd2d4803a2fdc2f | 2026-01-16 19:14:36 +0300 | feat: KPI - расширенная группировка по месяцам + улучшения интерфейса
+v1.6.1-efficiency-before-optimization | 130cec957393044d3e5346dd2bee2db54a47060d | 2026-01-17 12:31:39 +0300 | feat: Добавлен счётчик неподтверждённых выемок в отчётах
+v1.6.1-efficiency-phase3-before-refactor | 17cbf6ef5114cc539ec9f0bbe15560ff0f0e5941 | 2026-01-17 13:16:27 +0300 | feat(efficiency): Создание переиспользуемых виджетов для my_efficiency_page
+v1.6.1-push-orders | 628e70e18c30ca4234139ad196754a85e0130eee | 2026-01-11 02:00:31 +0300 | Пуш + Заказы
+v2.0.0-major-update | e59d30532697cb80f3860670c4adadd72df6b785 | 2026-01-31 01:42:14 +0300 | feat: major update - Employee Chat, My Dialogs, Geofencing, Loyalty
+v2.2-enhanced-balancing | c37f825e2a07f1003b8c6efb85eb995b46cec861 | 2025-12-29 21:39:58 +0300 | 📚 Усиленная балансировка графика + полная документация
+v2.3-testing-improvements | b3815ca5d8e15ce6294ff2454c6594b9fa063337 | 2026-01-17 16:03:33 +0300 | feat: Улучшения системы тестирования и вопросов о товарах
+v2.4-ai-training | 0d016edf3cde12e15ab480f8c607bae730699a79 | 2026-01-18 22:00:49 +0300 | feat(ai_training): Добавлен модуль машинного обучения Z-отчётов
+v2.5-ai-training-templates | 0765a86f3c7aa1119b93acc6d50dc0b87ec3a7f7 | 2026-01-19 03:04:08 +0300 | feat(ai-training): добавлены шаблоны фото и вкладка настроек
+z-report-works | 312ae20d1c96e9d9fad6093157ef225e9b5f577b | 2026-02-21 11:38:55 +0300 | fix: 2 critical bugs — envelope 400 error and Z-report OCR crash
+Начало_Тестов | ba65cf7804f1b310f004e98a84a6b3827f6a1eb4 | 2026-02-03 12:04:37 +0300 | feat: major UI redesign and AI training improvements
+Тестирование | 24b0193131c161fa193f6559abb8620d3183fc1c | 2026-02-01 10:10:12 +0300 | feat(tests): добавлены тесты для 10 недостающих модулей
+
+# Архив веток
+  backup/pre-audit-fixes-20260208                               999e937 feat: full restructure - interactive OCR training, Dark Emerald theme, backend refactoring
+  backup/pre-phase3                                             010e5c9 fix(security): comprehensive security audit - auth hardening, path traversal protection, session middleware
+  main                                                          04b7c71 [behind 13] Fix: Move flutter block before plugins block
+* refactoring/full-restructure                                  55f119e fix: политика конфиденциальности — только клиентский функционал
+  remove-google-deps                                            00b3e79 Добавлены Release Notes для v1.0-working
+  remotes/origin/HEAD                                           -> origin/main
+  remotes/origin/claude/find-perf-issues-mjonxcjoyj3exzlp-ixQlB 81e1fc9 security: Add MEDIUM priority security and configuration improvements
+  remotes/origin/main                                           972ed86 ✨ Серверные модули для системы заказов
+  remotes/origin/refactoring/full-restructure                   55f119e fix: политика конфиденциальности — только клиентский функционал
+  remotes/origin/restore-autofill-schedule-v1                   4f819e1 fix: минимальные исправления для совместимости с Gradle 8+
+  remotes/origin/restore-v1.0-stable                            6bd84d2 Remove unused shop_model import from menu_page

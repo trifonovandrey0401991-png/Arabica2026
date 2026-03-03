@@ -1,7 +1,7 @@
 # Navigation — Quick Reference Index
 > **Цель**: найти нужную информацию в ARCHITECTURE_COMPLETE.md (ARCH) и PROJECT_MAP.md (MAP) без чтения всего файла.
 > Указывай `offset` и `limit` при чтении: `Read(file, offset=LINE, limit=50)`
-> Дата: 2026-03-01 | Версия: 2.8.1 | 39 модулей | 76 API | 11 schedulers
+> Дата: 2026-03-04 | Версия: 2.10.0 | 39 модулей | 77 API files | 12 schedulers
 
 ---
 
@@ -9,47 +9,47 @@
 
 | Модуль | ARCH (строка) | MAP (строка) | Файлов | Риск |
 |--------|--------------|-------------|--------|------|
-| auth | 331 (flow), 554 (models), 1349 (API) | 225 | 13 | ВЫСШИЙ |
-| attendance | 642 | 369 | 10 | Средний |
-| shifts | 710 | 328 | 16 | Высокий |
-| shift_handover | 1426 (API) | 434 | 16 | Средний |
-| work_schedule | 1685 (API) | 399 | 15 | Средний |
-| recount | 1415 (API) | 472 | 26 | Средний |
-| envelope | 1454 (API) | 521 | 10 | Средний |
-| rko | 1466 (API) | 552 | 10 | Средний |
-| orders | 1478 (API), 1974 (flow) | 582 | 8 | Средний |
-| menu | 1500 (API) | 609 | 3 | Низкий |
-| recipes | 1512 (API) | 626 | 7 | Низкий |
-| employees | 1522 (API) | 266 | 13 | Высокий |
-| shops | 1534 (API) | 300 | 6 | Высокий |
-| kpi | — | 648 | 17 | Низкий |
-| efficiency | 793, 1695 (API), 2470 (баллы) | 683 | 58 | Средний |
-| rating | 1723 (API) | 769 | 4 | Низкий |
-| main_cash | 1762 (API) | 789 | 19 | Низкий |
-| fortune_wheel | 1723 (API), 2705 (wheel) | 824 | 6 | Низкий |
-| training | 931, 1615 (API) | 846 | 7 | Низкий |
-| tests | 998, 1625 (API) | 868 | 8 | Низкий |
-| product_questions | 1647 (API) | 891 | 14 | Низкий |
-| ai_training | 1792 (cig API+embeddings), 1812 (catalog 17 endpoints), 1836 (AI verif), 1860 (dashboard) | 922 | 34 | Низкий |
-| messenger | 1075 | 1008 | 17 | Низкий |
-| employee_chat | 871, 1672 (API) | 1057 | 13 | Низкий |
-| clients | 1906 (API) | 1091 | 19 | Низкий |
-| loyalty | 1544 (API), 1554 (gamif) | 1125 | 16 | Низкий |
-| bonuses | — | 1156 | 4 | Низкий |
-| referrals | 1733 (API) | 1175 | 5 | Низкий |
-| reviews | 1636 (API) | 1195 | 9 | Низкий |
-| tasks | 1590 (API) | 1219 | 16 | Низкий |
-| coffee_machine | — | 1252 | 14 | Низкий |
-| data_cleanup | 1888 (API) | 1285 | 4 | Низкий |
-| job_application | 1742 (API) | 1305 | 6 | Низкий |
-| suppliers | 1752 (API) | 1326 | 3 | Низкий |
-| network_management | — | 1344 | 2 | Низкий |
-| execution_chain | — | 1359 | 3 | Низкий |
-| shop_catalog | 1135 | 1377 | 6 | Низкий |
-| onboarding | 1173 | 1403 | 1 | Низкий |
-| settings | 1918 (API) | 1420 | 1 | Низкий |
-| geofence | 1783 (API) | — | — | Низкий |
-| recurring_tasks | 1602 (API) | — | — | Низкий |
+| auth | 331 (flow), 546 (device), 582 (models), 1411 (API) | 225 | 15 | ВЫСШИЙ |
+| attendance | 671 | 376 | 10 | Средний |
+| shifts | 739 | 335 | 16 | Высокий |
+| shift_handover | 1493 (API) | 441 | 16 | Средний |
+| work_schedule | 1752 (API) | 406 | 15 | Средний |
+| recount | 1482 (API) | 479 | 26 | Средний |
+| envelope | 1521 (API) | 528 | 10 | Средний |
+| rko | 1533 (API) | 559 | 10 | Средний |
+| orders | 1545 (API), 2040 (flow) | 589 | 8 | Средний |
+| menu | 1567 (API) | 616 | 3 | Низкий |
+| recipes | 1579 (API) | 633 | 7 | Низкий |
+| employees | 1589 (API) | 273 | 13 | Высокий |
+| shops | 1601 (API) | 307 | 6 | Высокий |
+| kpi | — | 655 | 17 | Низкий |
+| efficiency | 822, 1762 (API), 2549 (баллы) | 690 | 58 | Средний |
+| rating | 1790 (API) | 776 | 4 | Низкий |
+| main_cash | 1829 (API) | 796 | 19 | Низкий |
+| fortune_wheel | 1790 (API), 2784 (wheel) | 831 | 6 | Низкий |
+| training | 960, 1682 (API) | 853 | 7 | Низкий |
+| tests | 1027, 1692 (API) | 875 | 8 | Низкий |
+| product_questions | 1714 (API) | 898 | 14 | Низкий |
+| ai_training | 1859 (cig API+embeddings), 1879 (catalog 17 endpoints), 1903 (AI verif), 1927 (dashboard) | 929 | 34 | Низкий |
+| messenger | 1104 | 1015 | 39 | Средний |
+| employee_chat | 900, 1739 (API) | 1094 | 13 | Низкий |
+| clients | 1973 (API) | 1128 | 19 | Низкий |
+| loyalty | 1611 (API), 1621 (gamif) | 1162 | 16 | Низкий |
+| bonuses | — | 1193 | 4 | Низкий |
+| referrals | 1800 (API) | 1212 | 5 | Низкий |
+| reviews | 1703 (API) | 1232 | 9 | Низкий |
+| tasks | 1657 (API) | 1256 | 16 | Низкий |
+| coffee_machine | — | 1289 | 14 | Низкий |
+| data_cleanup | 1955 (API) | 1322 | 4 | Низкий |
+| job_application | 1809 (API) | 1342 | 6 | Низкий |
+| suppliers | 1819 (API) | 1363 | 3 | Низкий |
+| network_management | — | 1381 | 2 | Низкий |
+| execution_chain | — | 1396 | 3 | Низкий |
+| shop_catalog | 1197 | 1414 | 6 | Низкий |
+| onboarding | 1235 | 1440 | 1 | Низкий |
+| settings | 1984 (API) | 1457 | 1 | Низкий |
+| geofence | 1850 (API) | — | — | Низкий |
+| recurring_tasks | 1669 (API) | — | — | Низкий |
 
 ---
 
@@ -64,33 +64,34 @@
 | Запуск приложения (main.dart) | 218 | Инициализация, провайдеры |
 | Дерево решений при запуске | 265 | Роль → какая страница открывается |
 | Система авторизации (полная) | 331 | Архитектура, flows, модели |
-| Регистрация flow | 389 | Пошаговый flow с кодом |
-| Вход по PIN flow | 459 | Пошаговый flow с кодом |
-| Сброс PIN flow | 484 | Через Telegram OTP |
-| Модули Flutter (обзор) | 593 | Таблица 39 модулей |
-| Модули Flutter (детально) | 640 | Описание каждого модуля |
-| Структура сервера (дерево) | 1196 | Полное дерево loyalty-proxy/ |
-| Все API endpoints (таблицы) | 1347 | 240+ endpoints с описаниями |
-| Store Links API | 1918 | QR-коды для скачивания приложения |
-| Потоки данных | 1939 | Attendance, Order, Shift, Handover, Penalty |
-| Schedulers (все 11) | 2187 | Обзор + детальные блок-схемы |
-| Баллы и эффективность | 2480 | 13 категорий, формулы, примеры |
-| Формула рейтинга | 2500 | Линейная интерполяция |
-| Формула тестов | 2564 | Score-based формула |
-| Итоговый рейтинг | 2630 | Формула + пример расчёта |
-| Ссылки на магазины (QR) | 1918 | Store Links API, QR-коды |
-| Batch-оптимизация | 2686 | Dashboard batch endpoint |
-| Колесо удачи связь | 2715 | Рейтинг → спины |
-| Роли и матрица доступа | 2780 | 6 ролей, иерархия, матрица |
-| Определение роли в коде | 2810 | Логика UserRoleService |
-| Матрица модули x роли | 2858 | Кто что видит |
-| PostgreSQL структура | 2932 | Таблицы, dual-write, feature flags |
-| Файловое хранилище /var/www | 2967 | 110+ директорий, карта |
-| JSON Schemas сущностей | 3131 | Employee, Client, Shift, Order и др. |
-| Слабые места и аудит | 3289 | Критические проблемы, план |
-| Карта связей модулей | 3504 | Flutter→API→Files→Scheduler→Push |
-| Результаты аудита | 3608 | Сводка, цепочки, масштабируемость |
-| Глоссарий | 3754 | Термины, роли, сокращения |
+| Регистрация flow | 395 | Пошаговый flow с кодом |
+| Вход по PIN flow | 465 | Пошаговый flow с кодом |
+| Сброс PIN flow | 490 | Через Telegram OTP |
+| Привязка к устройству | 546 | Device Binding, feature flag, flow |
+| Модули Flutter (обзор) | 621 | Таблица 39 модулей |
+| Модули Flutter (детально) | 669 | Описание каждого модуля |
+| Структура сервера (дерево) | 1258 | Полное дерево loyalty-proxy/ |
+| Все API endpoints (таблицы) | 1409 | 245+ endpoints с описаниями |
+| Store Links API | 1984 | QR-коды для скачивания приложения |
+| Потоки данных | 2005 | Attendance, Order, Shift, Handover, Penalty |
+| Schedulers (все 12) | 2253 | Обзор + детальные блок-схемы |
+| Баллы и эффективность | 2549 | 13 категорий, формулы, примеры |
+| Формула рейтинга | 2569 | Линейная интерполяция |
+| Формула тестов | 2633 | Score-based формула |
+| Итоговый рейтинг | 2699 | Формула + пример расчёта |
+| Ссылки на магазины (QR) | 1984 | Store Links API, QR-коды |
+| Batch-оптимизация | 2755 | Dashboard batch endpoint |
+| Колесо удачи связь | 2784 | Рейтинг → спины |
+| Роли и матрица доступа | 2849 | 6 ролей, иерархия, матрица |
+| Определение роли в коде | 2879 | Логика UserRoleService |
+| Матрица модули x роли | 2927 | Кто что видит |
+| PostgreSQL структура | 3001 | Таблицы, dual-write, feature flags |
+| Файловое хранилище /var/www | 3042 | 110+ директорий, карта |
+| JSON Schemas сущностей | 3208 | Employee, Client, Shift, Order и др. |
+| Слабые места и аудит | 3366 | Критические проблемы, план |
+| Карта связей модулей | 3581 | Flutter→API→Files→Scheduler→Push |
+| Результаты аудита | 3685 | Сводка, цепочки, масштабируемость |
+| Глоссарий | 3831 | Термины, роли, сокращения |
 
 ---
 
@@ -104,22 +105,22 @@
 | Core: ApiConstants | 82 | Эндпоинты |
 | Core сервисы (16 файлов) | 102 | Таблица: кто использует + влияние |
 | Core утилиты (6 файлов) | 122 | CacheManager, DiskCache, Logger, PhoneNormalizer |
-| Модули по категориям | 141 | Группировка 38 модулей |
+| Модули по категориям | 141 | Группировка 39 модулей |
 | Зависимости каждого модуля | 223 | Файлы, API, зависимости, "ЕСЛИ ИЗМЕНИТЬ" |
-| Модуль settings (ссылки) | 1420 | Настройки ссылок Google Play / App Store |
-| Матрица влияния изменений | 1440 | Высший/Высокий/Средний/Низкий риск |
-| index.js (роутер) | 1498 | 76 API, middleware, WebSocket |
-| Schedulers (11 штук) | 1509 | Таблица с файлами |
-| Modules бэкенда (9 файлов) | 1525 | OCR, vision, orders, intelligence |
-| ML система (5 файлов) | 1539 | YOLO wrapper, inference, server, embeddings |
-| Utils бэкенда (15 файлов) | 1549 | db.js, async_fs, push_service и др. |
-| Admin Bot (Telegram) | 1569 | /ai_status, /ai_train, /ai_train_status |
-| Список API файлов (76) | 1586 | По категориям |
-| PostgreSQL | 1609 | DB, dual-write, feature flags |
-| Хранилище /var/www | 1631 | 110+ директорий по категориям |
-| Общие модели данных | 1800 | Модели shared между модулями |
-| Телефон как ключ | 1816 | Нормализация, ловушки |
-| Shared и App слои | 1828 | Общие виджеты, навигация |
+| Модуль settings (ссылки) | 1457 | Настройки ссылок Google Play / App Store |
+| Матрица влияния изменений | 1477 | Высший/Высокий/Средний/Низкий риск |
+| index.js (роутер) | 1535 | 77 API, middleware, WebSocket |
+| Schedulers (12 штук) | 1546 | Таблица с файлами |
+| Modules бэкенда (9 файлов) | 1563 | OCR, vision, orders, intelligence |
+| ML система (5 файлов) | 1577 | YOLO wrapper, inference, server, embeddings |
+| Utils бэкенда (15 файлов) | 1587 | db.js, async_fs, push_service и др. |
+| Admin Bot (Telegram) | 1607 | /ai_status, /ai_train, /ai_train_status |
+| Список API файлов (77) | 1624 | По категориям |
+| PostgreSQL | 1647 | DB, dual-write, feature flags |
+| Хранилище /var/www | 1669 | 110+ директорий по категориям |
+| Общие модели данных | 1838 | Модели shared между модулями |
+| Телефон как ключ | 1854 | Нормализация, ловушки |
+| Shared и App слои | 1866 | Общие виджеты, навигация |
 
 ---
 
@@ -127,29 +128,30 @@
 
 | Ищешь... | Читай |
 |----------|-------|
-| Как работает авторизация | ARCH:331-591 |
-| Как работает эффективность/баллы | ARCH:2480-2780 |
-| Какие есть schedulers | ARCH:2187-2205 или MAP:1509 |
+| Как работает авторизация | ARCH:331-619 |
+| Привязка к устройству | ARCH:546-580 |
+| Как работает эффективность/баллы | ARCH:2549-2849 |
+| Какие есть schedulers | ARCH:2253-2275 или MAP:1546 |
 | Структура конкретного модуля | MAP: найди модуль в таблице выше |
-| API endpoints модуля | ARCH:1347+ (найди модуль в таблице выше) |
-| Что сломается если изменить файл | MAP:1440 (матрица рисков) |
+| API endpoints модуля | ARCH:1409+ (найди модуль в таблице выше) |
+| Что сломается если изменить файл | MAP:1477 (матрица рисков) |
 | Зависимости модуля | MAP: найди модуль в секции 4 |
-| Роли и права доступа | ARCH:2780-2932 |
-| PostgreSQL таблицы и схема | ARCH:2932-2967 |
-| JSON schemas сущностей | ARCH:3131-3289 |
-| Файловое хранилище /var/www | MAP:1631-1800 |
-| Потоки данных (data flows) | ARCH:1939-2187 |
-| Слабые места и баги | ARCH:3289-3504 |
-| Общие модели (shared) | MAP:1800-1828 |
-| WebSocket (чат/мессенджер) | ARCH:871 (chat), 1075 (messenger) |
-| OCR система | ARCH:1196 (modules/), MAP:1525 |
-| YOLO / ML + Embeddings | ARCH:1298-1304, MAP:1539 |
-| Embedding система (1000+ товаров) | ARCH:1792 (toggle + pipeline), MAP:922 (ai_training) |
-| AI Dashboard API | ARCH:1860 (endpoints, retry, internal API) |
-| Admin Telegram Bot (AI) | MAP:1569 (admin-bot, /ai_status, /ai_train) |
-| Push уведомления | ARCH:3596 (потоки push) |
-| Batch endpoint (dashboard) | ARCH:2676 |
-| Batch approve/reject (master-catalog) | ARCH:1836 |
+| Роли и права доступа | ARCH:2849-3001 |
+| PostgreSQL таблицы и схема | ARCH:3001-3042 |
+| JSON schemas сущностей | ARCH:3208-3366 |
+| Файловое хранилище /var/www | MAP:1669-1838 |
+| Потоки данных (data flows) | ARCH:2005-2253 |
+| Слабые места и баги | ARCH:3366-3581 |
+| Общие модели (shared) | MAP:1838-1866 |
+| WebSocket (чат/мессенджер) | ARCH:900 (chat), 1104 (messenger) |
+| OCR система | ARCH:1258 (modules/), MAP:1563 |
+| YOLO / ML + Embeddings | ARCH:1364-1370, MAP:1577 |
+| Embedding система (1000+ товаров) | ARCH:1859 (toggle + pipeline), MAP:929 (ai_training) |
+| AI Dashboard API | ARCH:1927 (endpoints, retry, internal API) |
+| Admin Telegram Bot (AI) | MAP:1607 (admin-bot, /ai_status, /ai_train) |
+| Push уведомления | ARCH:3673 (потоки push) |
+| Batch endpoint (dashboard) | ARCH:2755 |
+| Batch approve/reject (master-catalog) | ARCH:1903 |
 
 ---
 
@@ -157,17 +159,17 @@
 
 | Файл | Риск | Влияние | Где подробности |
 |------|------|---------|-----------------|
-| `core/services/base_http_service.dart` | ВЫСШИЙ | ВСЕ 38 модулей | MAP:54 |
+| `core/services/base_http_service.dart` | ВЫСШИЙ | ВСЕ 39 модулей | MAP:54 |
 | `core/constants/api_constants.dart` | ВЫСШИЙ | Все с эндпоинтом | MAP:82 |
 | `features/auth/services/auth_service.dart` | ВЫСШИЙ | ВСЕ модули | MAP:225 |
-| `loyalty-proxy/index.js` | ВЫСШИЙ | ВСЕ API | MAP:1480 |
-| `loyalty-proxy/utils/db.js` | ВЫСШИЙ | 41 модуль с DB | MAP:1531 |
-| `loyalty-proxy/utils/db_schema.sql` | ВЫСШИЙ | Миграция на сервере | MAP:1531 |
+| `loyalty-proxy/index.js` | ВЫСШИЙ | ВСЕ API | MAP:1535 |
+| `loyalty-proxy/utils/db.js` | ВЫСШИЙ | 41 модуль с DB | MAP:1587 |
+| `loyalty-proxy/utils/db_schema.sql` | ВЫСШИЙ | Миграция на сервере | MAP:1587 |
 | `core/services/base_report_service.dart` | Высокий | 5 отчётных модулей | MAP:68 |
 | `core/services/multitenancy_filter_service.dart` | Высокий | 8+ модулей | MAP:102 |
-| `features/employees/services/employee_service.dart` | Высокий | 8+ модулей | MAP:266 |
-| `features/shops/models/shop_model.dart` | Высокий | 10+ модулей | MAP:300 |
-| `features/employees/models/user_role_model.dart` | Высокий | Все с ролями | MAP:266 |
+| `features/employees/services/employee_service.dart` | Высокий | 8+ модулей | MAP:273 |
+| `features/shops/models/shop_model.dart` | Высокий | 10+ модулей | MAP:307 |
+| `features/employees/models/user_role_model.dart` | Высокий | Все с ролями | MAP:273 |
 
 ---
 
