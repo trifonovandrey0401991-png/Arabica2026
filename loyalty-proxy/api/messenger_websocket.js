@@ -28,11 +28,21 @@ const connections = new Map();
 // Хранилище статусов онлайн: Map<phone, { lastSeen: Date, online: boolean }>
 const onlineStatus = new Map();
 
+// Rate limit for WS connections: Map<phone, { count, resetAt }>
+const wsRateLimit = new Map();
+const WS_RATE_LIMIT_WINDOW = 10000; // 10 seconds
+const WS_RATE_LIMIT_MAX = 5; // max 5 connections per window
+
 // Typing статусы: Map<conversationId, Map<phone, timeout>>
 const typingStatus = new Map();
 
 // Кэш участников: Map<conversationId, { phones: Set<string>, expires: number }>
 const participantsCache = new Map();
+
+// Батч delivery ack: Map<messageId, Set<phone>>
+const deliveryAckBatch = new Map();
+let deliveryAckTimer = null;
+const DELIVERY_ACK_FLUSH_MS = 2000;
 
 const CLEANUP_INTERVAL = 30000;
 const CONNECTION_TIMEOUT = 60000;
@@ -112,6 +122,20 @@ function setupMessengerWebSocket(server) {
 
     userPhone = tokenUser.phone || userPhone;
     const normalizedPhone = userPhone.replace(/[^\d]/g, '');
+
+    // Rate limit: prevent reconnection storms
+    const now = Date.now();
+    const rl = wsRateLimit.get(normalizedPhone);
+    if (rl && now < rl.resetAt) {
+      rl.count++;
+      if (rl.count > WS_RATE_LIMIT_MAX) {
+        ws.close(4005, 'Too many connections, try later');
+        return;
+      }
+    } else {
+      wsRateLimit.set(normalizedPhone, { count: 1, resetAt: now + WS_RATE_LIMIT_WINDOW });
+    }
+
     console.log(`💬 Messenger WS: подключился ${maskPhone(normalizedPhone)}`);
 
     // Регистрируем соединение
@@ -199,6 +223,11 @@ function setupMessengerWebSocket(server) {
 function handleMessage(phone, message, ws) {
   const { type, conversationId } = message;
 
+  // Debug: log all call-related messages
+  if (type && type.startsWith('call_')) {
+    console.log(`📞 [DEBUG] WS message from ${maskPhone(phone)}: type=${type}, keys=${Object.keys(message).join(',')}`);
+  }
+
   switch (type) {
     case 'typing_start':
       handleTypingStart(phone, conversationId);
@@ -212,9 +241,113 @@ function handleMessage(phone, message, ws) {
     case 'ping':
       sendToSocket(ws, { type: 'pong', timestamp: new Date().toISOString() });
       break;
+    case 'delivery_ack':
+      handleDeliveryAck(phone, message);
+      break;
+    // ===== CALL SIGNALING =====
+    case 'call_offer':
+      handleCallOffer(phone, message);
+      break;
+    case 'call_answer':
+      handleCallAnswer(phone, message);
+      break;
+    case 'call_reject':
+      handleCallReject(phone, message);
+      break;
+    case 'call_ice_candidate':
+      handleCallIceCandidate(phone, message);
+      break;
+    case 'call_hangup':
+      handleCallHangup(phone, message);
+      break;
     default:
       break;
   }
+}
+
+// ===== CALL SIGNALING HANDLERS =====
+
+/**
+ * Send a WebSocket message to all connections of a specific phone.
+ * Returns true if at least one connection received the message.
+ */
+function sendToPhone(phone, data) {
+  const normalized = phone.replace(/[^\d]/g, '');
+  if (!connections.has(normalized)) return false;
+  let sent = false;
+  for (const socket of connections.get(normalized)) {
+    sendToSocket(socket, data);
+    sent = true;
+  }
+  return sent;
+}
+
+// Caller → Server: start a call
+function handleCallOffer(callerPhone, message) {
+  const { targetPhone, offerSdp, callId, callerName } = message;
+  if (!targetPhone || !offerSdp || !callId) return;
+  console.log(`📞 Call offer: ${maskPhone(callerPhone)} → ${maskPhone(targetPhone)} [${callId}]`);
+  sendToPhone(targetPhone, {
+    type: 'call_incoming',
+    callId,
+    callerPhone,
+    callerName: callerName || callerPhone,
+    offerSdp,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+// Callee → Server: accept the call
+function handleCallAnswer(calleePhone, message) {
+  const { callId, answerSdp, callerPhone } = message;
+  if (!callId || !answerSdp || !callerPhone) return;
+  console.log(`📞 Call answered: ${maskPhone(calleePhone)} → ${maskPhone(callerPhone)} [${callId}]`);
+  sendToPhone(callerPhone, {
+    type: 'call_answered',
+    callId,
+    answerSdp,
+    calleePhone,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+// Callee → Server: decline the call
+function handleCallReject(calleePhone, message) {
+  const { callId, callerPhone } = message;
+  if (!callId || !callerPhone) return;
+  console.log(`📞 Call rejected: ${maskPhone(calleePhone)} → ${maskPhone(callerPhone)} [${callId}]`);
+  sendToPhone(callerPhone, {
+    type: 'call_rejected',
+    callId,
+    calleePhone,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+// Either party → Server: ICE candidate exchange
+function handleCallIceCandidate(fromPhone, message) {
+  const { callId, targetPhone, candidate } = message;
+  if (!targetPhone || !candidate) return;
+  sendToPhone(targetPhone, {
+    type: 'call_ice_candidate',
+    callId,
+    candidate,
+    fromPhone,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+// Either party → Server: hang up
+function handleCallHangup(fromPhone, message) {
+  const { callId, targetPhone } = message;
+  if (!targetPhone) return;
+  console.log(`📞 Call hangup: ${maskPhone(fromPhone)} → ${maskPhone(targetPhone)} [${callId}]`);
+  sendToPhone(targetPhone, {
+    type: 'call_hangup',
+    callId,
+    fromPhone,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 function handleTypingStart(phone, conversationId) {
@@ -257,12 +390,90 @@ function clearTypingStatus(phone) {
   }
 }
 
+// ===== DELIVERY ACK BATCHING =====
+
+function handleDeliveryAck(phone, message) {
+  const { messageIds, conversationId } = message;
+  if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) return;
+
+  for (const msgId of messageIds) {
+    if (!deliveryAckBatch.has(msgId)) {
+      deliveryAckBatch.set(msgId, { phones: new Set(), conversationId });
+    }
+    deliveryAckBatch.get(msgId).phones.add(phone);
+  }
+
+  // Start flush timer if not running
+  if (!deliveryAckTimer) {
+    deliveryAckTimer = setTimeout(flushDeliveryAcks, DELIVERY_ACK_FLUSH_MS);
+  }
+}
+
+async function flushDeliveryAcks() {
+  deliveryAckTimer = null;
+  if (deliveryAckBatch.size === 0) return;
+
+  // Take a snapshot and clear
+  const batch = new Map(deliveryAckBatch);
+  deliveryAckBatch.clear();
+
+  try {
+    for (const [msgId, { phones, conversationId }] of batch.entries()) {
+      const phonesArray = [...phones];
+
+      // Update DB: merge delivered_to arrays (add phones that aren't already there)
+      await db.query(
+        `UPDATE messenger_messages
+         SET delivered_to = (
+           SELECT jsonb_agg(DISTINCT val)
+           FROM jsonb_array_elements_text(COALESCE(delivered_to, '[]'::jsonb) || $2::jsonb) AS val
+         )
+         WHERE id = $1`,
+        [msgId, JSON.stringify(phonesArray)]
+      );
+
+      // Notify the sender that their message was delivered
+      // We need sender_phone to send notification back
+      const result = await db.query(
+        'SELECT sender_phone, delivered_to FROM messenger_messages WHERE id = $1',
+        [msgId]
+      );
+      if (result.rows.length > 0) {
+        const senderPhone = result.rows[0].sender_phone;
+        const deliveredTo = result.rows[0].delivered_to || [];
+        sendToPhone(senderPhone, {
+          type: 'message_delivered',
+          conversationId,
+          messageId: msgId,
+          deliveredTo,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[Messenger WS] Error flushing delivery acks:', err.message);
+  }
+}
+
 // ===== TARGETED BROADCASTING (только участникам разговора) =====
 
-async function broadcastToConversation(conversationId, data, excludePhone = null) {
+async function broadcastToConversation(conversationId, data, excludePhone = null, senderPhone = null) {
   const members = await getConversationPhones(conversationId);
+
+  // If senderPhone provided, check who blocked them — skip those recipients
+  let blockedByRecipients = new Set();
+  if (senderPhone) {
+    try {
+      const result = await db.query(
+        'SELECT blocker_phone FROM messenger_blocks WHERE blocked_phone = $1',
+        [senderPhone]
+      );
+      blockedByRecipients = new Set(result.rows.map(r => r.blocker_phone));
+    } catch (_) { /* non-critical */ }
+  }
+
   for (const [phone, sockets] of connections.entries()) {
-    if (phone !== excludePhone && members.has(phone)) {
+    if (phone !== excludePhone && members.has(phone) && !blockedByRecipients.has(phone)) {
       for (const socket of sockets) {
         sendToSocket(socket, data);
       }
@@ -364,12 +575,13 @@ function cleanupStaleConnections() {
 // ===== ПУБЛИЧНЫЕ ФУНКЦИИ ДЛЯ REST API =====
 
 async function notifyNewMessage(conversationId, message, excludePhone = null) {
+  const senderPhone = message.sender_phone || message.senderPhone || null;
   await broadcastToConversation(conversationId, {
     type: 'new_message',
     conversationId,
     message,
     timestamp: new Date().toISOString()
-  }, excludePhone);
+  }, excludePhone, senderPhone);
 }
 
 async function notifyMessageDeleted(conversationId, messageId) {
@@ -377,6 +589,17 @@ async function notifyMessageDeleted(conversationId, messageId) {
     type: 'message_deleted',
     conversationId,
     messageId,
+    timestamp: new Date().toISOString()
+  });
+}
+
+async function notifyMessageEdited(conversationId, messageId, newContent, editedAt) {
+  await broadcastToConversation(conversationId, {
+    type: 'message_edited',
+    conversationId,
+    messageId,
+    newContent,
+    editedAt,
     timestamp: new Date().toISOString()
   });
 }
@@ -440,10 +663,13 @@ module.exports = {
   invalidateParticipantsCache,
   notifyNewMessage,
   notifyMessageDeleted,
+  notifyMessageEdited,
   notifyReactionAdded,
   notifyReactionRemoved,
   notifyReadReceipt,
   isUserOnline,
   getOnlineUsers,
-  getConnectionsCount
+  getConnectionsCount,
+  sendToPhone,
+  broadcastToConversation,
 };
