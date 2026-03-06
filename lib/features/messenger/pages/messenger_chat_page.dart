@@ -145,6 +145,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
   final Map<String, DateTime> _participantLastRead = {};
 
   Timer? _typingTimer;
+  Timer? _markAsReadTimer;
 
   @override
   void initState() {
@@ -240,6 +241,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     _durationSub?.cancel();
     _typingTimer?.cancel();
     _recordingTimer?.cancel();
+    _markAsReadTimer?.cancel();
     _scrollController.dispose();
     _audioPlayer.dispose();
     _textController.dispose();
@@ -304,6 +306,10 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
     _messageDeletedSub = ws.onMessageDeleted.listen((event) {
       if (event.conversationId == widget.conversation.id && mounted) {
+        // Clear pinned message if it was deleted
+        if (_pinnedMessage?.id == event.messageId) {
+          _pinnedMessage = null;
+        }
         _updateMessage(event.messageId, (msg) => MessengerMessage(
           id: msg.id,
           conversationId: msg.conversationId,
@@ -486,8 +492,11 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     });
   }
 
-  Future<void> _markAsRead() async {
-    await MessengerService.markAsRead(widget.conversation.id, widget.userPhone);
+  void _markAsRead() {
+    _markAsReadTimer?.cancel();
+    _markAsReadTimer = Timer(const Duration(milliseconds: 300), () {
+      MessengerService.markAsRead(widget.conversation.id, widget.userPhone);
+    });
   }
 
   /// Rebuild id→message index for O(1) reply lookups

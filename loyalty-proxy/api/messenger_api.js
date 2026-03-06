@@ -781,6 +781,22 @@ function setupMessengerAPI(app, uploadMedia) {
           `INSERT INTO messenger_hidden_messages (phone, message_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
           [normalizedPhone, req.params.msgId]
         );
+        // Decrement unread_count if this message was unread by this user
+        if (message.sender_phone !== normalizedPhone) {
+          const participant = await db.query(
+            'SELECT last_read_at FROM messenger_participants WHERE conversation_id = $1 AND phone = $2',
+            [req.params.id, normalizedPhone]
+          );
+          if (participant.rows.length > 0) {
+            const lastRead = participant.rows[0].last_read_at;
+            if (!lastRead || new Date(lastRead) < new Date(message.created_at)) {
+              await db.query(
+                'UPDATE messenger_participants SET unread_count = GREATEST(unread_count - 1, 0) WHERE conversation_id = $1 AND phone = $2',
+                [req.params.id, normalizedPhone]
+              );
+            }
+          }
+        }
         return res.json({ success: true, mode: 'forMe' });
       }
 
@@ -801,6 +817,16 @@ function setupMessengerAPI(app, uploadMedia) {
       }
 
       await db.updateById('messenger_messages', req.params.msgId, { is_deleted: true });
+
+      // Decrement unread_count for participants who haven't read this message yet
+      await db.query(
+        `UPDATE messenger_participants
+         SET unread_count = GREATEST(unread_count - 1, 0)
+         WHERE conversation_id = $1
+           AND phone != $2
+           AND (last_read_at IS NULL OR last_read_at < $3)`,
+        [req.params.id, message.sender_phone, message.created_at]
+      );
 
       if (wsNotify) {
         try {
@@ -976,6 +1002,9 @@ function setupMessengerAPI(app, uploadMedia) {
   app.put('/api/messenger/conversations/:id/messages/:msgId/pin', requireAuth, async (req, res) => {
     try {
       const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      if (!(await isParticipant(req.params.id, normalizedPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
 
       const message = await db.findById('messenger_messages', req.params.msgId);
       if (!message || message.conversation_id !== req.params.id) {
@@ -1015,6 +1044,11 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.delete('/api/messenger/conversations/:id/messages/:msgId/pin', requireAuth, async (req, res) => {
     try {
+      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      if (!(await isParticipant(req.params.id, normalizedPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
+
       const message = await db.findById('messenger_messages', req.params.msgId);
       if (!message || message.conversation_id !== req.params.id) {
         return res.status(404).json({ success: false, error: 'Message not found' });
@@ -1050,6 +1084,11 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/conversations/:id/pinned', requireAuth, async (req, res) => {
     try {
+      const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
+      if (!(await isParticipant(req.params.id, requesterPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
+
       const result = await db.query(
         `SELECT * FROM messenger_messages WHERE conversation_id = $1 AND is_pinned = true ORDER BY pinned_at DESC`,
         [req.params.id]
@@ -1094,6 +1133,25 @@ function setupMessengerAPI(app, uploadMedia) {
           [targetConvId, senderPhone]
         );
         if (participant.rows.length === 0) continue;
+
+        // Check block status in private chats
+        const conv = await db.findById('messenger_conversations', targetConvId);
+        if (conv && conv.type === 'private') {
+          const otherPart = await db.query(
+            'SELECT phone FROM messenger_participants WHERE conversation_id = $1 AND phone != $2 LIMIT 1',
+            [targetConvId, senderPhone]
+          );
+          if (otherPart.rows.length > 0) {
+            const otherPhone = otherPart.rows[0].phone;
+            const blockCheck = await db.query(
+              `SELECT 1 FROM messenger_blocks
+               WHERE (blocker_phone = $1 AND blocked_phone = $2)
+                  OR (blocker_phone = $2 AND blocked_phone = $1) LIMIT 1`,
+              [senderPhone, otherPhone]
+            );
+            if (blockCheck.rows.length > 0) continue; // skip blocked conversation
+          }
+        }
 
         const msgId = generateId('msg');
         const now = new Date().toISOString();
@@ -1474,6 +1532,17 @@ function setupMessengerAPI(app, uploadMedia) {
       const normalizedTarget = targetPhone.replace(/[^\d]/g, '');
       const normalizedCaller = req.user.phone.replace(/[^\d]/g, '');
 
+      // Check block status (either direction)
+      const blockCheck = await db.query(
+        `SELECT 1 FROM messenger_blocks
+         WHERE (blocker_phone = $1 AND blocked_phone = $2)
+            OR (blocker_phone = $2 AND blocked_phone = $1) LIMIT 1`,
+        [normalizedCaller, normalizedTarget]
+      );
+      if (blockCheck.rows.length > 0) {
+        return res.status(403).json({ success: false, error: 'Call blocked' });
+      }
+
       // ALWAYS send FCM for calls — WS may be connected on server but app
       // could be minimized/suspended by Android and unable to process WS messages.
       // FCM with high priority wakes the app and triggers CallKit incoming screen.
@@ -1518,6 +1587,10 @@ function setupMessengerAPI(app, uploadMedia) {
       }
 
       const callerPhone = req.user.phone.replace(/[^\d]/g, '');
+      if (!(await isParticipant(conversationId, callerPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
+
       const callerName  = req.user.name || callerPhone;
       const now = new Date().toISOString();
       const msgId = `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -2457,6 +2530,11 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/conversations/:id/poll/:msgId', requireAuth, async (req, res) => {
     try {
+      const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
+      if (!(await isParticipant(req.params.id, requesterPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
+
       const result = await db.query(
         'SELECT * FROM messenger_polls WHERE message_id = $1 LIMIT 1',
         [req.params.msgId]
