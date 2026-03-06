@@ -379,11 +379,11 @@ class UserRoleService {
       Logger.debug('🔄 Фоновое обновление роли...');
       final freshRole = await getUserRole(phone);
 
-      // Защита: не понижаем developer/admin до client при сбое API
+      // Защита: не понижаем любую роль до client при сбое API
       if (freshRole.role == UserRole.client) {
         final prefs = await SharedPreferences.getInstance();
         final currentRole = prefs.getString('user_role');
-        if (currentRole == 'developer' || currentRole == 'admin') {
+        if (currentRole != null && currentRole != 'client') {
           Logger.debug('⚠️ Фоновое обновление: не понижаем роль $currentRole → client');
           return;
         }
