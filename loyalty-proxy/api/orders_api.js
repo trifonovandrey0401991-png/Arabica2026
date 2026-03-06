@@ -256,19 +256,18 @@ function setupOrdersAPI(app) {
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/orders/:id', id);
 
-      if (USE_DB) {
-        const deleted = await db.deleteById('orders', id);
-        if (!deleted) {
-          return res.status(404).json({ success: false, error: 'Заказ не найден' });
-        }
-      } else {
-        const orderFile = path.join(ORDERS_DIR, `${id}.json`);
-
-        if (!await fileExists(orderFile)) {
-          return res.status(404).json({ success: false, error: 'Заказ не найден' });
-        }
-
+      // Delete from both
+      const orderFile = path.join(ORDERS_DIR, `${id}.json`);
+      let found = false;
+      if (await fileExists(orderFile)) {
         await fsp.unlink(orderFile);
+        found = true;
+      }
+      try { const deleted = await db.deleteById('orders', id); if (deleted) found = true; }
+      catch (e) { console.error('[Orders] DB delete error:', e.message); }
+
+      if (!found) {
+        return res.status(404).json({ success: false, error: 'Заказ не найден' });
       }
 
       res.json({ success: true, message: 'Заказ удален' });

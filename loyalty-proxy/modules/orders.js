@@ -216,7 +216,28 @@ async function createOrder(orderData) {
 
   let order;
 
-  if (USE_DB) {
+  order = {
+    id: orderId,
+    orderNumber,
+    clientPhone: orderData.clientPhone,
+    clientName: orderData.clientName,
+    shopAddress: orderData.shopAddress,
+    items: orderData.items,
+    totalPrice: orderData.totalPrice,
+    comment: orderData.comment || null,
+    status: 'pending',
+    isWholesaleOrder,
+    createdAt: now,
+    updatedAt: now,
+    acceptedBy: null,
+    rejectedBy: null,
+    rejectionReason: null
+  };
+
+  // Dual-write: JSON first, then DB
+  const orderFile = path.join(ORDERS_DIR, orderId + '.json');
+  await writeJsonFile(orderFile, order);
+  try {
     const row = await db.insert('orders', {
       id: orderId,
       order_number: orderNumber,
@@ -231,29 +252,8 @@ async function createOrder(orderData) {
       created_at: now,
       updated_at: now
     });
-    order = dbOrderToCamel(row);
-  } else {
-    order = {
-      id: orderId,
-      orderNumber,
-      clientPhone: orderData.clientPhone,
-      clientName: orderData.clientName,
-      shopAddress: orderData.shopAddress,
-      items: orderData.items,
-      totalPrice: orderData.totalPrice,
-      comment: orderData.comment || null,
-      status: 'pending',
-      isWholesaleOrder,
-      createdAt: now,
-      updatedAt: now,
-      acceptedBy: null,
-      rejectedBy: null,
-      rejectionReason: null
-    };
-
-    const orderFile = path.join(ORDERS_DIR, orderId + '.json');
-    await writeJsonFile(orderFile, order);
-  }
+    if (USE_DB) order = dbOrderToCamel(row);
+  } catch (e) { console.error('[Orders] DB create error:', e.message); }
 
   await addOrderToDialog(order);
 
@@ -330,41 +330,38 @@ async function getOrders(filters = {}) {
 async function updateOrderStatus(orderId, updates) {
   let order;
 
+  // Read from DB or JSON
   if (USE_DB) {
-    const dbUpdates = { updated_at: new Date().toISOString() };
-    if (updates.status) dbUpdates.status = updates.status;
-    if (updates.acceptedBy) dbUpdates.accepted_by = updates.acceptedBy;
-    if (updates.rejectedBy) dbUpdates.rejected_by = updates.rejectedBy;
-    if (updates.rejectionReason) dbUpdates.rejection_reason = updates.rejectionReason;
-    if (updates.status === 'rejected') dbUpdates.rejected_at = new Date().toISOString();
-
-    const row = await db.updateById('orders', orderId, dbUpdates);
+    const row = await db.findById('orders', orderId);
     if (!row) throw new Error('Заказ ' + orderId + ' не найден');
     order = dbOrderToCamel(row);
   } else {
     const orderFile = path.join(ORDERS_DIR, orderId + '.json');
-
     if (!(await fileExists(orderFile))) {
       throw new Error('Заказ ' + orderId + ' не найден');
     }
-
-    order = await withLock(orderFile, async () => {
-      const content = await fsp.readFile(orderFile, 'utf8');
-      const data = JSON.parse(content);
-
-      Object.assign(data, updates);
-      data.updatedAt = new Date().toISOString();
-
-      // Добавляем rejectedAt при отказе
-      if (updates.status === 'rejected') {
-        data.rejectedAt = new Date().toISOString();
-      }
-
-      // Boy Scout: fsp.writeFile → writeJsonFile
-      await writeJsonFile(orderFile, data, { useLock: false }); // already inside withLock
-      return data;
-    });
+    order = JSON.parse(await fsp.readFile(orderFile, 'utf8'));
   }
+
+  // Apply updates
+  Object.assign(order, updates);
+  order.updatedAt = new Date().toISOString();
+  if (updates.status === 'rejected') {
+    order.rejectedAt = new Date().toISOString();
+  }
+
+  // Dual-write: JSON first, then DB
+  const updateOrderFile = path.join(ORDERS_DIR, orderId + '.json');
+  await writeJsonFile(updateOrderFile, order);
+  try {
+    const dbUpdates = { updated_at: order.updatedAt };
+    if (updates.status) dbUpdates.status = updates.status;
+    if (updates.acceptedBy) dbUpdates.accepted_by = updates.acceptedBy;
+    if (updates.rejectedBy) dbUpdates.rejected_by = updates.rejectedBy;
+    if (updates.rejectionReason) dbUpdates.rejection_reason = updates.rejectionReason;
+    if (updates.status === 'rejected') dbUpdates.rejected_at = order.rejectedAt;
+    await db.updateById('orders', orderId, dbUpdates);
+  } catch (e) { console.error('[Orders] DB update error:', e.message); }
 
   if (updates.status === 'accepted') {
     await sendOrderNotification(order, 'accepted');

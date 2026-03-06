@@ -121,8 +121,24 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
 
       let review;
 
-      if (USE_DB) {
-        const row = await db.insert('reviews', {
+      review = {
+        id,
+        clientPhone: req.body.clientPhone,
+        clientName: req.body.clientName,
+        shopAddress: req.body.shopAddress,
+        reviewType: req.body.reviewType,
+        reviewText: req.body.reviewText,
+        messages: [],
+        createdAt: now,
+        hasUnreadFromClient: true,
+        hasUnreadFromAdmin: false,
+      };
+
+      // Dual-write: JSON first, then DB
+      const reviewFile = path.join(REVIEWS_DIR, `${review.id}.json`);
+      await writeJsonFile(reviewFile, review);
+      try {
+        await db.insert('reviews', {
           id,
           client_phone: req.body.clientPhone,
           client_name: req.body.clientName,
@@ -134,24 +150,8 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
           has_unread_from_admin: false,
           created_at: now
         });
-        review = dbReviewToCamel(row);
-      } else {
-        review = {
-          id,
-          clientPhone: req.body.clientPhone,
-          clientName: req.body.clientName,
-          shopAddress: req.body.shopAddress,
-          reviewType: req.body.reviewType,
-          reviewText: req.body.reviewText,
-          messages: [],
-          createdAt: now,
-          hasUnreadFromClient: true,
-          hasUnreadFromAdmin: false,
-        };
-        const reviewFile = path.join(REVIEWS_DIR, `${review.id}.json`);
-        // Boy Scout: fsp.writeFile → writeJsonFile
-        await writeJsonFile(reviewFile, review);
-      }
+        if (USE_DB) review = dbReviewToCamel(await db.findById('reviews', id));
+      } catch (e) { console.error('[Reviews] DB write error:', e.message); }
 
       // Отправить push-уведомление админам
       if (sendPushNotification) {
@@ -224,29 +224,13 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
 
       let review;
 
+      // Read from DB or JSON
       if (USE_DB) {
         const row = await db.findById('reviews', safeId);
         if (!row) {
           return res.status(404).json({ success: false, error: 'Отзыв не найден' });
         }
         review = dbReviewToCamel(row);
-
-        review.messages = review.messages || [];
-        review.messages.push(message);
-
-        const dbUpdates = {
-          messages: JSON.stringify(review.messages)
-        };
-
-        if (message.sender === 'client') {
-          dbUpdates.has_unread_from_client = true;
-          review.hasUnreadFromClient = true;
-        } else if (message.sender === 'admin') {
-          dbUpdates.has_unread_from_admin = true;
-          review.hasUnreadFromAdmin = true;
-        }
-
-        await db.updateById('reviews', safeId, dbUpdates);
       } else {
         const reviewFile = path.join(REVIEWS_DIR, `${safeId}.json`);
         if (!isPathSafe(REVIEWS_DIR, reviewFile)) {
@@ -256,20 +240,26 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
           return res.status(404).json({ success: false, error: 'Отзыв не найден' });
         }
         review = JSON.parse(await fsp.readFile(reviewFile, 'utf8'));
-
-        review.messages = review.messages || [];
-        review.messages.push(message);
-
-        // Установить флаги непрочитанности
-        if (message.sender === 'client') {
-          review.hasUnreadFromClient = true;
-        } else if (message.sender === 'admin') {
-          review.hasUnreadFromAdmin = true;
-        }
-
-        // Boy Scout: fsp.writeFile → writeJsonFile
-        await writeJsonFile(reviewFile, review);
       }
+
+      review.messages = review.messages || [];
+      review.messages.push(message);
+
+      if (message.sender === 'client') {
+        review.hasUnreadFromClient = true;
+      } else if (message.sender === 'admin') {
+        review.hasUnreadFromAdmin = true;
+      }
+
+      // Dual-write: JSON first, then DB
+      const reviewMsgFile = path.join(REVIEWS_DIR, `${safeId}.json`);
+      await writeJsonFile(reviewMsgFile, review);
+      try {
+        const dbUpdates = { messages: JSON.stringify(review.messages) };
+        if (message.sender === 'client') dbUpdates.has_unread_from_client = true;
+        else if (message.sender === 'admin') dbUpdates.has_unread_from_admin = true;
+        await db.updateById('reviews', safeId, dbUpdates);
+      } catch (e) { console.error('[Reviews] DB message write error:', e.message); }
 
       // Push-уведомления в зависимости от отправителя
       if (message.sender === 'client') {
@@ -315,34 +305,14 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
         return res.status(400).json({ success: false, error: 'readerType обязателен' });
       }
 
+      // Read from DB or JSON
+      let review;
       if (USE_DB) {
         const row = await db.findById('reviews', safeId);
         if (!row) {
           return res.status(404).json({ success: false, error: 'Отзыв не найден' });
         }
-
-        const review = dbReviewToCamel(row);
-        const dbUpdates = {};
-
-        if (readerType === 'admin') {
-          dbUpdates.has_unread_from_client = false;
-          if (review.messages) {
-            review.messages.forEach(msg => {
-              if (msg.sender === 'client') msg.isRead = true;
-            });
-            dbUpdates.messages = JSON.stringify(review.messages);
-          }
-        } else if (readerType === 'client') {
-          dbUpdates.has_unread_from_admin = false;
-          if (review.messages) {
-            review.messages.forEach(msg => {
-              if (msg.sender === 'admin') msg.isRead = true;
-            });
-            dbUpdates.messages = JSON.stringify(review.messages);
-          }
-        }
-
-        await db.updateById('reviews', safeId, dbUpdates);
+        review = dbReviewToCamel(row);
       } else {
         const reviewFile = path.join(REVIEWS_DIR, `${safeId}.json`);
         if (!isPathSafe(REVIEWS_DIR, reviewFile)) {
@@ -351,28 +321,34 @@ function setupReviewsAPI(app, { sendPushNotification, sendPushToPhone } = {}) {
         if (!await fileExists(reviewFile)) {
           return res.status(404).json({ success: false, error: 'Отзыв не найден' });
         }
-
-        const review = JSON.parse(await fsp.readFile(reviewFile, 'utf8'));
-
-        if (readerType === 'admin') {
-          review.hasUnreadFromClient = false;
-          if (review.messages) {
-            review.messages.forEach(msg => {
-              if (msg.sender === 'client') msg.isRead = true;
-            });
-          }
-        } else if (readerType === 'client') {
-          review.hasUnreadFromAdmin = false;
-          if (review.messages) {
-            review.messages.forEach(msg => {
-              if (msg.sender === 'admin') msg.isRead = true;
-            });
-          }
-        }
-
-        // Boy Scout: fsp.writeFile → writeJsonFile
-        await writeJsonFile(reviewFile, review);
+        review = JSON.parse(await fsp.readFile(reviewFile, 'utf8'));
       }
+
+      if (readerType === 'admin') {
+        review.hasUnreadFromClient = false;
+        if (review.messages) {
+          review.messages.forEach(msg => {
+            if (msg.sender === 'client') msg.isRead = true;
+          });
+        }
+      } else if (readerType === 'client') {
+        review.hasUnreadFromAdmin = false;
+        if (review.messages) {
+          review.messages.forEach(msg => {
+            if (msg.sender === 'admin') msg.isRead = true;
+          });
+        }
+      }
+
+      // Dual-write: JSON first, then DB
+      const markReadFile = path.join(REVIEWS_DIR, `${safeId}.json`);
+      await writeJsonFile(markReadFile, review);
+      try {
+        const dbUpdates = { messages: JSON.stringify(review.messages) };
+        if (readerType === 'admin') dbUpdates.has_unread_from_client = false;
+        else if (readerType === 'client') dbUpdates.has_unread_from_admin = false;
+        await db.updateById('reviews', safeId, dbUpdates);
+      } catch (e) { console.error('[Reviews] DB mark-read error:', e.message); }
 
       notifyCounterUpdate('unreadReviews', { delta: -1 });
       res.json({ success: true });
