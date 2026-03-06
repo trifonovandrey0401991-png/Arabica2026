@@ -465,6 +465,8 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
     if (phone.isNotEmpty) {
       MessengerWsService.instance.connect(phone);
       CallService.instance.init(phone, name);
+      // Always refresh role on app entry (fixes stale cached roles)
+      await _checkUserRole(phone);
     }
 
     if (!mounted) return;
