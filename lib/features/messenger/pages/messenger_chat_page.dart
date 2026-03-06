@@ -62,6 +62,9 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
   static final Map<String, List<MessengerMessage>> _messagesCache = {};
   static const int _messagesCacheLimit = 20; // max conversations cached
 
+  // Draft text per conversation (persists while app is open)
+  static final Map<String, String> _drafts = {};
+
   final List<MessengerMessage> _messages = [];
   // O(1) lookup for reply-to messages (rebuilt when messages change)
   Map<String, MessengerMessage> _messagesById = {};
@@ -70,6 +73,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
   bool _isFirstLoad = true;
   bool _isLoadingMore = false;
   bool _hasMoreMessages = true;
+  String? _loadError; // error message shown to user with retry button
   String? _typingPhone;
   String? _replyToId;
   String? _replyToText;
@@ -161,6 +165,13 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       _isFirstLoad = false;
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     }
+    // Restore draft if any
+    final draft = _drafts[widget.conversation.id];
+    if (draft != null && draft.isNotEmpty) {
+      _textController.text = draft;
+      _textController.selection = TextSelection.collapsed(offset: draft.length);
+    }
+
     _loadMessages();
     _setupWebSocket();
     _markAsRead();
@@ -203,6 +214,14 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
   @override
   void dispose() {
+    // Save draft text before disposing
+    final text = _textController.text.trim();
+    if (text.isNotEmpty) {
+      _drafts[widget.conversation.id] = text;
+    } else {
+      _drafts.remove(widget.conversation.id);
+    }
+
     WidgetsBinding.instance.removeObserver(this);
     MessengerWsService.setActiveConversation(null);
     _searchController.dispose();
@@ -247,8 +266,8 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
     _newMessageSub = ws.onNewMessage.listen((event) {
       if (event.conversationId == widget.conversation.id && mounted) {
-        // Deduplicate: skip if message already in list
-        if (_messages.any((m) => m.id == event.message.id)) return;
+        // Deduplicate: O(1) lookup via index map
+        if (_messagesById.containsKey(event.message.id)) return;
         setState(() {
           _messages.add(event.message);
           _messagesById[event.message.id] = event.message;
@@ -285,28 +304,21 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
     _messageDeletedSub = ws.onMessageDeleted.listen((event) {
       if (event.conversationId == widget.conversation.id && mounted) {
-        setState(() {
-          final idx = _messages.indexWhere((m) => m.id == event.messageId);
-          if (idx != -1) {
-            _messages[idx] = MessengerMessage(
-              id: _messages[idx].id,
-              conversationId: _messages[idx].conversationId,
-              senderPhone: _messages[idx].senderPhone,
-              senderName: _messages[idx].senderName,
-              type: _messages[idx].type,
-              isDeleted: true,
-              createdAt: _messages[idx].createdAt,
-            );
-          }
-        });
+        _updateMessage(event.messageId, (msg) => MessengerMessage(
+          id: msg.id,
+          conversationId: msg.conversationId,
+          senderPhone: msg.senderPhone,
+          senderName: msg.senderName,
+          type: msg.type,
+          isDeleted: true,
+          createdAt: msg.createdAt,
+        ));
       }
     });
 
     _reactionAddedSub = ws.onReactionAdded.listen((event) {
       if (event.conversationId == widget.conversation.id && mounted) {
-        final idx = _messages.indexWhere((m) => m.id == event.messageId);
-        if (idx != -1) {
-          final msg = _messages[idx];
+        _updateMessage(event.messageId, (msg) {
           final reactions = Map<String, List<String>>.from(
             msg.reactions.map((k, v) => MapEntry(k, List<String>.from(v))),
           );
@@ -314,16 +326,14 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
           if (!reactions[event.reaction]!.contains(event.phone)) {
             reactions[event.reaction]!.add(event.phone);
           }
-          setState(() => _messages[idx] = msg.copyWith(reactions: reactions));
-        }
+          return msg.copyWith(reactions: reactions);
+        });
       }
     });
 
     _reactionRemovedSub = ws.onReactionRemoved.listen((event) {
       if (event.conversationId == widget.conversation.id && mounted) {
-        final idx = _messages.indexWhere((m) => m.id == event.messageId);
-        if (idx != -1) {
-          final msg = _messages[idx];
+        _updateMessage(event.messageId, (msg) {
           final reactions = Map<String, List<String>>.from(
             msg.reactions.map((k, v) => MapEntry(k, List<String>.from(v))),
           );
@@ -331,8 +341,8 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
             reactions[event.reaction]!.remove(event.phone);
             if (reactions[event.reaction]!.isEmpty) reactions.remove(event.reaction);
           }
-          setState(() => _messages[idx] = msg.copyWith(reactions: reactions));
-        }
+          return msg.copyWith(reactions: reactions);
+        });
       }
     });
 
@@ -350,28 +360,18 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
     _messageEditedSub = ws.onMessageEdited.listen((event) {
       if (event.conversationId == widget.conversation.id && mounted) {
-        final idx = _messages.indexWhere((m) => m.id == event.messageId);
-        if (idx != -1) {
-          setState(() {
-            _messages[idx] = _messages[idx].copyWith(
-              content: event.newContent,
-              editedAt: DateTime.tryParse(event.editedAt),
-            );
-          });
-        }
+        _updateMessage(event.messageId, (msg) => msg.copyWith(
+          content: event.newContent,
+          editedAt: DateTime.tryParse(event.editedAt),
+        ));
       }
     });
 
     _messageDeliveredSub = ws.onMessageDelivered.listen((event) {
       if (event.conversationId == widget.conversation.id && mounted) {
-        final idx = _messages.indexWhere((m) => m.id == event.messageId);
-        if (idx != -1) {
-          setState(() {
-            _messages[idx] = _messages[idx].copyWith(
-              deliveredTo: event.deliveredTo,
-            );
-          });
-        }
+        _updateMessage(event.messageId, (msg) => msg.copyWith(
+          deliveredTo: event.deliveredTo,
+        ));
       }
     });
 
@@ -399,6 +399,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       final pinned = results[1] as List<MessengerMessage>;
       if (mounted) {
         setState(() {
+          _loadError = null;
           if (silent && _messages.isNotEmpty) {
             // Merge: keep existing WS messages that server hasn't returned yet
             final serverIds = <String>{for (final m in messages) m.id};
@@ -438,6 +439,10 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
         setState(() {
           _isLoading = false;
           _isFirstLoad = false;
+          // Only show error if we have no cached messages to display
+          if (_messages.isEmpty) {
+            _loadError = 'Не удалось загрузить сообщения';
+          }
         });
       }
     }
@@ -488,6 +493,18 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
   /// Rebuild id→message index for O(1) reply lookups
   void _rebuildIndex() {
     _messagesById = {for (final m in _messages) m.id: m};
+  }
+
+  /// Update a single message in-place by ID (avoids O(n) indexWhere)
+  void _updateMessage(String messageId, MessengerMessage Function(MessengerMessage old) transform) {
+    final old = _messagesById[messageId];
+    if (old == null) return;
+    final idx = _messages.indexOf(old);
+    if (idx == -1) return;
+    final updated = transform(old);
+    _messages[idx] = updated;
+    _messagesById[messageId] = updated;
+    if (mounted) setState(() {});
   }
 
   /// Fetch fresh conversation data to get accurate last_read_at for all participants.
@@ -549,25 +566,61 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       return;
     }
 
+    final savedReplyToId = _replyToId;
+
+    // Optimistic: show message immediately with temporary ID
+    final tempId = 'pending_${DateTime.now().millisecondsSinceEpoch}';
+    final optimistic = MessengerMessage(
+      id: tempId,
+      conversationId: widget.conversation.id,
+      senderPhone: widget.userPhone,
+      senderName: widget.userName,
+      type: MessageType.text,
+      content: text,
+      replyToId: savedReplyToId,
+      createdAt: DateTime.now(),
+      isPending: true,
+    );
+
+    setState(() {
+      _messages.add(optimistic);
+      _messagesById[tempId] = optimistic;
+      _replyToId = null;
+      _replyToText = null;
+    });
+    _scrollToBottom();
+
     final msg = await MessengerService.sendMessage(
       conversationId: widget.conversation.id,
       senderPhone: widget.userPhone,
       senderName: widget.userName,
       type: MessageType.text,
       content: text,
-      replyToId: _replyToId,
+      replyToId: savedReplyToId,
     );
 
-    if (msg != null && mounted) {
-      setState(() {
-        _messages.add(msg);
-        _replyToId = null;
-        _replyToText = null;
-      });
+    if (!mounted) return;
+
+    if (msg != null) {
+      // Replace optimistic message with real one from server
+      final idx = _messages.indexWhere((m) => m.id == tempId);
+      if (idx != -1) {
+        setState(() {
+          _messages[idx] = msg;
+          _messagesById.remove(tempId);
+          _messagesById[msg.id] = msg;
+        });
+      }
       _messagesCache[widget.conversation.id] = List.of(_messages);
-      _scrollToBottom();
-    } else if (msg == null && mounted) {
-      // May be blocked
+    } else {
+      // Failed — mark as failed
+      final idx = _messages.indexWhere((m) => m.id == tempId);
+      if (idx != -1) {
+        setState(() {
+          _messages[idx] = optimistic.copyWith(isFailed: true, isPending: false);
+          _messagesById[tempId] = _messages[idx];
+        });
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Не удалось отправить сообщение'),
@@ -2513,6 +2566,30 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
                       ],
                     ),
                   )
+                : _loadError != null && _messages.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.cloud_off, size: 48, color: Colors.white.withOpacity(0.3)),
+                            const SizedBox(height: 12),
+                            Text(
+                              _loadError!,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 15),
+                            ),
+                            const SizedBox(height: 16),
+                            TextButton.icon(
+                              onPressed: () {
+                                setState(() { _loadError = null; _isLoading = true; });
+                                _loadMessages();
+                              },
+                              icon: const Icon(Icons.refresh, color: AppColors.turquoise),
+                              label: const Text('Повторить', style: TextStyle(color: AppColors.turquoise)),
+                            ),
+                          ],
+                        ),
+                      )
                 : _messages.isEmpty
                     ? Center(
                         child: Text(

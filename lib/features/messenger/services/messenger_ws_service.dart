@@ -564,6 +564,11 @@ class MessengerWsService {
     _pingTimer?.cancel();
     try { _channel?.sink.close(); } catch (_) {}
     _channel = null;
+    _onlineUsers.clear();
+    _activeConversationId = null;
+    isClientUser = false;
+    phoneBookNames = {};
+    phoneBookPhones = {};
     _connectionStatusController.add(false);
   }
 

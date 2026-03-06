@@ -577,6 +577,14 @@ class MessageBubble extends StatelessWidget {
   /// - ✓✓ (grey) = delivered but not read
   /// - ✓✓ (white) = read
   Widget _buildReadTick() {
+    // Optimistic send states
+    if (message.isFailed) {
+      return Icon(Icons.error_outline, size: 12, color: Colors.red.withOpacity(0.8));
+    }
+    if (message.isPending) {
+      return Icon(Icons.access_time, size: 12, color: Colors.white.withOpacity(0.4));
+    }
+
     final isPrivate = totalOtherCount <= 1;
     final deliveredCount = message.deliveredTo.length;
 

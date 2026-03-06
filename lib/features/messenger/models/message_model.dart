@@ -26,6 +26,10 @@ class MessengerMessage {
   final String? pinnedBy;
   final String? mediaGroupId;
 
+  // Client-only fields (not from server)
+  final bool isPending;
+  final bool isFailed;
+
   MessengerMessage({
     required this.id,
     required this.conversationId,
@@ -49,6 +53,8 @@ class MessengerMessage {
     this.pinnedAt,
     this.pinnedBy,
     this.mediaGroupId,
+    this.isPending = false,
+    this.isFailed = false,
   });
 
   bool get isEdited => editedAt != null;
@@ -213,6 +219,8 @@ class MessengerMessage {
     bool? isDeleted,
     List<String>? deliveredTo,
     bool? isPinned,
+    bool? isPending,
+    bool? isFailed,
   }) {
     return MessengerMessage(
       id: id,
@@ -237,6 +245,8 @@ class MessengerMessage {
       pinnedAt: pinnedAt,
       pinnedBy: pinnedBy,
       mediaGroupId: mediaGroupId,
+      isPending: isPending ?? this.isPending,
+      isFailed: isFailed ?? this.isFailed,
     );
   }
 }

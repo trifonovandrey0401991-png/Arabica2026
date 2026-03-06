@@ -34,6 +34,17 @@ function generateId(prefix) {
 }
 
 /**
+ * Check if phone is a participant of the conversation. Returns true/false.
+ */
+async function isParticipant(conversationId, phone) {
+  const result = await db.query(
+    'SELECT 1 FROM messenger_participants WHERE conversation_id = $1 AND phone = $2 LIMIT 1',
+    [conversationId, phone]
+  );
+  return result.rows.length > 0;
+}
+
+/**
  * Основная функция инициализации API
  * @param {Express} app
  * @param {multer} uploadMedia — multer instance для загрузки файлов
@@ -264,8 +275,13 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/conversations/:id', requireAuth, async (req, res) => {
     try {
+      const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
       const conversation = await db.findById('messenger_conversations', req.params.id);
       if (!conversation) return res.status(404).json({ success: false, error: 'Conversation not found' });
+
+      if (!(await isParticipant(req.params.id, requesterPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
 
       const parts = await db.query(
         `SELECT mp.phone, COALESCE(p.display_name, mp.name) AS name, mp.role, mp.joined_at, mp.last_read_at, p.avatar_url
@@ -443,10 +459,17 @@ function setupMessengerAPI(app, uploadMedia) {
       const conversationId = req.params.id;
 
       const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
+
+      // Security: verify requester is a participant of this conversation
+      if (!(await isParticipant(conversationId, requesterPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
+
       let sql = `
         SELECT * FROM messenger_messages
         WHERE conversation_id = $1 AND is_deleted = false
           AND id NOT IN (SELECT message_id FROM messenger_hidden_messages WHERE phone = $2)
+          AND sender_phone NOT IN (SELECT blocked_phone FROM messenger_blocks WHERE blocker_phone = $2)
       `;
       const params = [conversationId, requesterPhone];
       let paramIdx = 3;
@@ -462,17 +485,8 @@ function setupMessengerAPI(app, uploadMedia) {
 
       const result = await db.query(sql, params);
 
-      // Filter out messages from blocked users (for group chats)
-      const blockedResult = await db.query(
-        'SELECT blocked_phone FROM messenger_blocks WHERE blocker_phone = $1',
-        [requesterPhone]
-      );
-      const blockedPhones = new Set(blockedResult.rows.map(r => r.blocked_phone));
-
       // Возвращаем в хронологическом порядке (старые → новые)
-      const messages = result.rows
-        .filter(m => !blockedPhones.has(m.sender_phone))
-        .reverse();
+      const messages = result.rows.reverse();
       res.json({ success: true, messages });
     } catch (error) {
       console.error('[Messenger] GET messages error:', error.message);
@@ -725,6 +739,9 @@ function setupMessengerAPI(app, uploadMedia) {
   app.post('/api/messenger/conversations/:id/messages/:msgId/delivered', requireAuth, async (req, res) => {
     try {
       const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      if (!(await isParticipant(req.params.id, normalizedPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
       const msgId = req.params.msgId;
 
       await db.query(
@@ -803,6 +820,11 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/conversations/:id/messages/search', requireAuth, async (req, res) => {
     try {
+      const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
+      if (!(await isParticipant(req.params.id, requesterPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
+
       const { query: searchQuery, limit = 50 } = req.query;
       if (!searchQuery) return res.json({ success: true, messages: [] });
 
@@ -1180,12 +1202,18 @@ function setupMessengerAPI(app, uploadMedia) {
       try {
         if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
 
-        // Deduplication: compute hash of uploaded file, check for existing duplicate
+        // Deduplication: compute hash via streaming (avoids loading entire file into memory)
         let finalFilename = req.file.filename;
         try {
           const crypto = require('crypto');
-          const fileBuffer = await fsp.readFile(req.file.path);
-          const hash = crypto.createHash('md5').update(fileBuffer).digest('hex');
+          const fs = require('fs');
+          const hash = await new Promise((resolve, reject) => {
+            const h = crypto.createHash('md5');
+            const stream = fs.createReadStream(req.file.path);
+            stream.on('data', chunk => h.update(chunk));
+            stream.on('end', () => resolve(h.digest('hex')));
+            stream.on('error', reject);
+          });
           const ext = path.extname(req.file.filename);
           const hashFilename = `dedup_${hash}${ext}`;
           const hashPath = path.join(path.dirname(req.file.path), hashFilename);
@@ -1197,8 +1225,17 @@ function setupMessengerAPI(app, uploadMedia) {
             finalFilename = hashFilename;
             console.log(`[Messenger] Dedup: ${req.file.originalname} → existing ${hashFilename}`);
           } catch (_) {
-            // No duplicate — rename to hash-based name for future dedup
-            await fsp.rename(req.file.path, hashPath);
+            // No duplicate — rename to hash-based name (handle race condition)
+            try {
+              await fsp.rename(req.file.path, hashPath);
+            } catch (renameErr) {
+              if (renameErr.code === 'EEXIST') {
+                // Concurrent upload created the same file — use existing
+                await fsp.unlink(req.file.path).catch(() => {});
+              } else {
+                throw renameErr;
+              }
+            }
             finalFilename = hashFilename;
           }
         } catch (dedupErr) {
@@ -1982,6 +2019,15 @@ function setupMessengerAPI(app, uploadMedia) {
   const gifCache = new Map();
   const GIF_CACHE_TTL = 10 * 60 * 1000; // 10 min for search
   const GIF_TRENDING_TTL = 60 * 60 * 1000; // 1 hour for trending
+
+  // Cleanup stale GIF cache entries every 30 minutes
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of gifCache) {
+      const ttl = key.startsWith('trending_') ? GIF_TRENDING_TTL : GIF_CACHE_TTL;
+      if (now - value.ts > ttl) gifCache.delete(key);
+    }
+  }, 30 * 60 * 1000);
 
   // Helper: parse GIPHY response into unified format
   function parseGiphyResults(data) {
