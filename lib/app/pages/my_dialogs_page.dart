@@ -291,7 +291,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       if (lastMessage != null) {
         try {
           timestamp = DateTime.parse(lastMessage.timestamp);
-        } catch (_) {}
+        } catch (e) { debugPrint('my_dialogs: Failed to parse timestamp: $e'); }
       }
       items.add(_DialogItem(
         type: _DialogType.network,
@@ -308,7 +308,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       if (lastBroadcast != null) {
         try {
           broadcastTimestamp = DateTime.parse(lastBroadcast.timestamp);
-        } catch (_) {}
+        } catch (e) { debugPrint('my_dialogs: Failed to parse timestamp: $e'); }
       }
       items.add(_DialogItem(
         type: _DialogType.broadcast,
@@ -325,7 +325,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       if (lastMessage != null) {
         try {
           timestamp = DateTime.parse(lastMessage.timestamp);
-        } catch (_) {}
+        } catch (e) { debugPrint('my_dialogs: Failed to parse timestamp: $e'); }
       }
       items.add(_DialogItem(
         type: _DialogType.management,
@@ -360,7 +360,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       if (lastMessage != null) {
         try {
           timestamp = DateTime.parse(lastMessage.timestamp);
-        } catch (_) {}
+        } catch (e) { debugPrint('my_dialogs: Failed to parse timestamp: $e'); }
       }
       items.add(_DialogItem(
         type: _DialogType.personalDialog,

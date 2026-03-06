@@ -389,28 +389,48 @@ class _PhotoEditorPageState extends State<PhotoEditorPage> {
     // Flatten drawing first if there are strokes
     await _flattenCurrentDrawingIfNeeded();
 
-    final cropped = await ImageCropper().cropImage(
-      sourcePath: _photos[_currentIndex].path,
-      compressQuality: 85,
-      maxWidth: 1920,
-      maxHeight: 1920,
-      uiSettings: [
-        AndroidUiSettings(
-          toolbarTitle: 'Обрезать',
-          toolbarColor: AppColors.emeraldDark,
-          toolbarWidgetColor: Colors.white,
-          backgroundColor: Colors.black,
-          activeControlsWidgetColor: AppColors.turquoise,
-          cropGridColor: Colors.white.withOpacity(0.3),
-          cropFrameColor: AppColors.turquoise,
-        ),
-      ],
-    );
-    if (cropped != null && mounted) {
-      setState(() {
-        _photos[_currentIndex] = File(cropped.path);
-        _strokesPerPhoto.remove(_currentIndex); // clear strokes — photo changed
-      });
+    // Verify file exists before opening cropper
+    final sourceFile = _photos[_currentIndex];
+    if (!await sourceFile.exists()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Файл фото не найден')),
+        );
+      }
+      return;
+    }
+
+    try {
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: sourceFile.path,
+        compressQuality: 85,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Обрезать',
+            toolbarColor: AppColors.emeraldDark,
+            toolbarWidgetColor: Colors.white,
+            backgroundColor: Colors.black,
+            activeControlsWidgetColor: AppColors.turquoise,
+            cropGridColor: Colors.white.withOpacity(0.3),
+            cropFrameColor: AppColors.turquoise,
+          ),
+        ],
+      );
+      if (cropped != null && mounted) {
+        setState(() {
+          _photos[_currentIndex] = File(cropped.path);
+          _strokesPerPhoto.remove(_currentIndex); // clear strokes — photo changed
+        });
+      }
+    } catch (e) {
+      debugPrint('Crop error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось обрезать фото. Попробуйте ещё раз.')),
+        );
+      }
     }
   }
 
@@ -552,5 +572,9 @@ class _DrawingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _DrawingPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _DrawingPainter oldDelegate) =>
+      strokes != oldDelegate.strokes ||
+      currentStroke != oldDelegate.currentStroke ||
+      currentColor != oldDelegate.currentColor ||
+      currentWidth != oldDelegate.currentWidth;
 }

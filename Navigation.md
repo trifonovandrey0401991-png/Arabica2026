@@ -113,14 +113,14 @@
 | Schedulers (12 штук) | 1546 | Таблица с файлами |
 | Modules бэкенда (9 файлов) | 1563 | OCR, vision, orders, intelligence |
 | ML система (5 файлов) | 1577 | YOLO wrapper, inference, server, embeddings |
-| Utils бэкенда (15 файлов) | 1587 | db.js, async_fs, push_service и др. |
+| Utils бэкенда (18 файлов) | 1587 | db.js, async_fs, push_service и др. |
 | Admin Bot (Telegram) | 1607 | /ai_status, /ai_train, /ai_train_status |
-| Список API файлов (77) | 1624 | По категориям |
-| PostgreSQL | 1647 | DB, dual-write, feature flags |
-| Хранилище /var/www | 1669 | 110+ директорий по категориям |
-| Общие модели данных | 1838 | Модели shared между модулями |
-| Телефон как ключ | 1854 | Нормализация, ловушки |
-| Shared и App слои | 1866 | Общие виджеты, навигация |
+| Список API файлов (77) | 1627 | По категориям |
+| PostgreSQL | 1650 | DB, dual-write, feature flags |
+| Хранилище /var/www | 1672 | 113+ директорий по категориям |
+| Общие модели данных | 1843 | Модели shared между модулями |
+| Телефон как ключ | 1859 | Нормализация, ловушки |
+| Shared и App слои | 1871 | Общие виджеты, навигация |
 
 ---
 
@@ -131,7 +131,7 @@
 | Как работает авторизация | ARCH:331-619 |
 | Привязка к устройству | ARCH:546-580 |
 | Как работает эффективность/баллы | ARCH:2549-2849 |
-| Какие есть schedulers | ARCH:2253-2275 или MAP:1546 |
+| Какие есть schedulers | ARCH:2253-2549 или MAP:1546 |
 | Структура конкретного модуля | MAP: найди модуль в таблице выше |
 | API endpoints модуля | ARCH:1409+ (найди модуль в таблице выше) |
 | Что сломается если изменить файл | MAP:1477 (матрица рисков) |
@@ -139,16 +139,16 @@
 | Роли и права доступа | ARCH:2849-3001 |
 | PostgreSQL таблицы и схема | ARCH:3001-3042 |
 | JSON schemas сущностей | ARCH:3208-3366 |
-| Файловое хранилище /var/www | MAP:1669-1838 |
+| Файловое хранилище /var/www | MAP:1672-1843 |
 | Потоки данных (data flows) | ARCH:2005-2253 |
 | Слабые места и баги | ARCH:3366-3581 |
-| Общие модели (shared) | MAP:1838-1866 |
+| Общие модели (shared) | MAP:1843-1871 |
 | WebSocket (чат/мессенджер) | ARCH:900 (chat), 1104 (messenger) |
 | OCR система | ARCH:1258 (modules/), MAP:1563 |
 | YOLO / ML + Embeddings | ARCH:1364-1370, MAP:1577 |
 | Embedding система (1000+ товаров) | ARCH:1859 (toggle + pipeline), MAP:929 (ai_training) |
 | AI Dashboard API | ARCH:1927 (endpoints, retry, internal API) |
-| Admin Telegram Bot (AI) | MAP:1607 (admin-bot, /ai_status, /ai_train) |
+| Admin Telegram Bot (AI) | MAP:1610 (admin-bot, /ai_status, /ai_train) |
 | Push уведомления | ARCH:3673 (потоки push) |
 | Batch endpoint (dashboard) | ARCH:2755 |
 | Batch approve/reject (master-catalog) | ARCH:1903 |

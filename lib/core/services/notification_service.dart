@@ -356,19 +356,32 @@ class NotificationService {
   ) async {
     await initialize();
 
+    // Global mute check: notification still shown, but without sound
+    bool muted = false;
+    final prefs = await SharedPreferences.getInstance();
+    if (conversationId.startsWith('private_') && (prefs.getBool('messenger_mute_chats') ?? false)) {
+      muted = true;
+    } else if (conversationId.startsWith('group_') && (prefs.getBool('messenger_mute_groups') ?? false)) {
+      muted = true;
+    } else if (conversationId.startsWith('channel_') && (prefs.getBool('messenger_mute_channels') ?? false)) {
+      muted = true;
+    }
+
     final androidDetails = AndroidNotificationDetails(
-      'messenger_channel',
-      'Мессенджер',
+      muted ? 'messenger_silent_channel' : 'messenger_channel',
+      muted ? 'Мессенджер (без звука)' : 'Мессенджер',
       channelDescription: 'Уведомления о новых сообщениях',
-      importance: Importance.high,
-      priority: Priority.high,
+      importance: muted ? Importance.low : Importance.high,
+      priority: muted ? Priority.low : Priority.high,
+      playSound: !muted,
+      enableVibration: !muted,
       showWhen: true,
     );
 
     final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
-      presentSound: true,
+      presentSound: !muted,
     );
 
     await _notifications.show(

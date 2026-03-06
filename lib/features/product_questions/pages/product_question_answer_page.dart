@@ -28,7 +28,7 @@ class ProductQuestionAnswerPage extends StatefulWidget {
   State<ProductQuestionAnswerPage> createState() => _ProductQuestionAnswerPageState();
 }
 
-class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
+class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> with WidgetsBindingObserver {
   ProductQuestion? _question;
   String? _selectedShopAddress;
   String? _lastMessageTimestamp; // Для инкрементальной загрузки
@@ -44,6 +44,7 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadData();
     _markAsRead();
     _refreshTimer = Timer.periodic(Duration(seconds: 5), (_) => _refreshMessages());
@@ -62,10 +63,21 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     _answerController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+    } else if (state == AppLifecycleState.resumed) {
+      _refreshTimer ??= Timer.periodic(Duration(seconds: 5), (_) => _refreshMessages());
+    }
   }
 
   Future<void> _refreshMessages() async {

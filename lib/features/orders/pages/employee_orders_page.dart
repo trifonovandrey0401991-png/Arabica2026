@@ -40,13 +40,17 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
   Future<void> _loadOrders() async {
     if (mounted) setState(() => _isLoading = true);
 
-    final pending = await OrderService.getAllOrders(status: 'pending');
+    try {
+      final pending = await OrderService.getAllOrders(status: 'pending');
 
-    if (mounted) {
-      setState(() {
-        _pendingOrders = pending;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _pendingOrders = pending;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

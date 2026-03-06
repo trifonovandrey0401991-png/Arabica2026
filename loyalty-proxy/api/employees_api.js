@@ -219,8 +219,8 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
           department: req.body.department || null,
           phone: req.body.phone || null,
           email: req.body.email || null,
-          is_admin: parseBool(req.body.isAdmin),
-          is_manager: parseBool(req.body.isManager),
+          is_admin: false, // Roles managed ONLY via shop-managers
+          is_manager: false, // Roles managed ONLY via shop-managers
           employee_name: req.body.employeeName || null,
           preferred_work_days: req.body.preferredWorkDays || [],
           preferred_shops: req.body.preferredShops || [],
@@ -242,8 +242,8 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
           department: req.body.department || null,
           phone: req.body.phone || null,
           email: req.body.email || null,
-          isAdmin: parseBool(req.body.isAdmin),
-          isManager: parseBool(req.body.isManager),
+          isAdmin: false, // Roles managed ONLY via shop-managers
+          isManager: false, // Roles managed ONLY via shop-managers
           employeeName: req.body.employeeName || null,
           preferredWorkDays: req.body.preferredWorkDays || [],
           preferredShops: req.body.preferredShops || [],
@@ -309,8 +309,7 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
         if (req.body.department !== undefined) updateData.department = req.body.department;
         if (req.body.phone !== undefined) updateData.phone = req.body.phone;
         if (req.body.email !== undefined) updateData.email = req.body.email;
-        if (req.body.isAdmin !== undefined) updateData.is_admin = parseBool(req.body.isAdmin);
-        if (req.body.isManager !== undefined) updateData.is_manager = parseBool(req.body.isManager);
+        // isAdmin/isManager ignored — roles managed ONLY via shop-managers
         if (req.body.employeeName !== undefined) updateData.employee_name = req.body.employeeName;
         if (req.body.preferredWorkDays !== undefined) updateData.preferred_work_days = req.body.preferredWorkDays;
         if (req.body.preferredShops !== undefined) updateData.preferred_shops = req.body.preferredShops;
@@ -408,8 +407,8 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
           department: req.body.department !== undefined ? req.body.department : oldEmployee.department,
           phone: req.body.phone !== undefined ? req.body.phone : oldEmployee.phone,
           email: req.body.email !== undefined ? req.body.email : oldEmployee.email,
-          isAdmin: req.body.isAdmin !== undefined ? parseBool(req.body.isAdmin) : oldEmployee.isAdmin,
-          isManager: req.body.isManager !== undefined ? parseBool(req.body.isManager) : oldEmployee.isManager,
+          isAdmin: oldEmployee.isAdmin, // Roles managed ONLY via shop-managers
+          isManager: oldEmployee.isManager, // Roles managed ONLY via shop-managers
           employeeName: req.body.employeeName !== undefined ? req.body.employeeName : oldEmployee.employeeName,
           preferredWorkDays: req.body.preferredWorkDays !== undefined ? req.body.preferredWorkDays : oldEmployee.preferredWorkDays,
           preferredShops: req.body.preferredShops !== undefined ? req.body.preferredShops : oldEmployee.preferredShops,
@@ -422,24 +421,6 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
       }
 
       console.log('✅ Сотрудник обновлен:', id);
-
-      // Sync: если isManager сняли — удалить из storeManagers
-      if (req.body.isManager !== undefined && !parseBool(req.body.isManager) && employee.phone) {
-        try {
-          const smData = await loadShopManagers();
-          const phoneCleaned = normPhone(employee.phone);
-          const before = smData.storeManagers.length;
-          smData.storeManagers = smData.storeManagers.filter(
-            sm => normPhone(sm.phone) !== phoneCleaned
-          );
-          if (smData.storeManagers.length < before) {
-            await saveShopManagers(smData);
-            console.log(`✅ Удалена из storeManagers: ${phoneCleaned}`);
-          }
-        } catch (smErr) {
-          console.error('Ошибка синхронизации storeManagers:', smErr.message);
-        }
-      }
 
       // SCALABILITY: Инвалидируем кэши при изменении сотрудника
       if (invalidateCache) {

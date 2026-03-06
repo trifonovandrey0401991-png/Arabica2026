@@ -147,7 +147,7 @@ async function acquireLock(filePath, options = {}) {
 
   // Захватываем блокировку
   entry.locked = true;
-  entry.holder = new Error().stack; // Для отладки - кто захватил
+  entry.holder = 'locked'; // Stack trace removed — costly on every lock acquire
   entry.acquiredAt = Date.now();
 
   // Обновляем статистику

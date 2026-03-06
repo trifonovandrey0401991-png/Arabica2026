@@ -134,10 +134,10 @@ Arabica — мобильное приложение + сервер для упр
 
 **Примеры:**
 ```
-# Авторизация:           Read("ARCHITECTURE_COMPLETE.md", offset=325, limit=260)
-# Зависимости shifts:    Read("PROJECT_MAP.md", offset=324, limit=40)
-# API модуля envelope:   Read("ARCHITECTURE_COMPLETE.md", offset=1381, limit=15)
-# Что сломается:         Read("PROJECT_MAP.md", offset=1375, limit=50)
+# Авторизация:           Read("ARCHITECTURE_COMPLETE.md", offset=331, limit=260)
+# Зависимости shifts:    Read("PROJECT_MAP.md", offset=335, limit=40)
+# API модуля envelope:   Read("ARCHITECTURE_COMPLETE.md", offset=1521, limit=15)
+# Что сломается:         Read("PROJECT_MAP.md", offset=1477, limit=50)
 ```
 
 **Быстрая таблица:**
@@ -206,8 +206,8 @@ grep -n "^#\|^##\|^###" PROJECT_MAP.md | head -40
 | CLAUDE.md секция 8: «16 сервисов, 4 константы, 6 утилит, 18 shared» | `ls` по каждой папке |
 | CLAUDE.md секция 11: «143 адресов» в api-test.js | `grep -c "{ path:" tests/api-test.js` |
 | CLAUDE.md секция 11: «703 тестов» Flutter | `flutter test` — смотри итоговое число |
-| CLAUDE.md секция 14: «456 адресов» | Пересчитать если добавлял/удалял маршруты |
-| Navigation.md шапка: «36 модулей, 71 API, 11 schedulers» | Те же команды что выше |
+| CLAUDE.md секция 14: «660 адресов» | Пересчитать если добавлял/удалял маршруты |
+| Navigation.md шапка: «39 модулей, 77 API, 12 schedulers» | Те же команды что выше |
 
 **При добавлении нового GET-эндпоинта на сервере:**
 1. Добавь smoke-тест в `tests/api-test.js` (формат: `{ path, name, expectedType }`)
@@ -246,7 +246,7 @@ loyalty-proxy/
 ├── api/ (77 файлов)                   # Все серверные функции + 12 автозадач
 ├── modules/ (9 файлов)                # Распознавание фото, OCR
 ├── ml/ (5 файлов)                     # Искусственный интеллект (YOLO)
-├── utils/ (15 файлов)                # База данных, уведомления, кэш, файлы
+├── utils/ (17 файлов)                # База данных, уведомления, кэш, файлы
 └── efficiency_calc.js                 # Расчёт эффективности сотрудников
 ```
 
@@ -429,7 +429,7 @@ Flutter тесты (test/):
 | Загрузить фото | `/upload-photo` | POST |
 | Данные для главного меню | `/api/dashboard/counters` | GET |
 
-Полный список из более чем 615 адресов → ARCHITECTURE_COMPLETE.md строка 1409 (через Navigation.md).
+Полный список из более чем 660 адресов → ARCHITECTURE_COMPLETE.md строка 1409 (через Navigation.md).
 
 ---
 

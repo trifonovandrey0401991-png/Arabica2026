@@ -54,7 +54,9 @@ class _WholesaleOrdersPageState extends State<WholesaleOrdersPage>
 
   Future<void> _loadOrders() async {
     if (mounted) setState(() => _isLoading = true);
-    await _fetchOrders();
+    try {
+      await _fetchOrders();
+    } catch (_) {}
     if (mounted) setState(() => _isLoading = false);
   }
 

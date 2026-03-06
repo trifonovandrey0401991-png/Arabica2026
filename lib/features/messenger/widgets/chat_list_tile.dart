@@ -93,13 +93,47 @@ class ChatListTile extends StatelessWidget {
     );
   }
 
+  Widget _buildStatusTick(dynamic lastMsg) {
+    final others = conversation.participants.where((p) => p.phone != myPhone).toList();
+    final totalOther = others.length;
+    final deliveredCount = lastMsg.deliveredTo.length;
+
+    // Count readers: participants whose lastReadAt >= message createdAt
+    int readersCount = 0;
+    for (final p in others) {
+      if (p.lastReadAt != null && !p.lastReadAt!.isBefore(lastMsg.createdAt)) {
+        readersCount++;
+      }
+    }
+
+    final isPrivate = totalOther <= 1;
+
+    if (isPrivate) {
+      if (readersCount >= 1) {
+        return Icon(Icons.done_all, size: 14, color: AppColors.turquoise);
+      }
+      if (deliveredCount >= 1) {
+        return Icon(Icons.done_all, size: 14, color: Colors.white.withOpacity(0.4));
+      }
+      return Icon(Icons.check, size: 14, color: Colors.white.withOpacity(0.4));
+    } else {
+      if (readersCount >= totalOther) {
+        return Icon(Icons.done_all, size: 14, color: AppColors.turquoise);
+      } else if (readersCount > 0) {
+        return Icon(Icons.done_all, size: 14, color: AppColors.turquoise.withOpacity(0.6));
+      } else if (deliveredCount > 0) {
+        return Icon(Icons.done_all, size: 14, color: Colors.white.withOpacity(0.4));
+      }
+      return Icon(Icons.check, size: 14, color: Colors.white.withOpacity(0.4));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Privacy: for clients, replace unknown contact names with "Сотрудник"
     final rawName = conversation.displayName(myPhone);
     final otherPhone = conversation.otherPhone(myPhone);
     final displayName = (otherPhone != null)
-        ? MessengerShellPage.resolveDisplayName(otherPhone, rawName, isClient, phoneBookNames)
+        ? MessengerShellPage.resolveDisplayName(otherPhone, rawName, phoneBookNames)
         : rawName;
     final lastMsg = conversation.lastMessage;
     final unread = conversation.unreadCount;
@@ -160,9 +194,14 @@ class ChatListTile extends StatelessWidget {
                     // Last message + unread badge
                     Row(
                       children: [
+                        if (lastMsg != null && lastMsg.senderPhone == myPhone && !lastMsg.isDeleted)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 3),
+                            child: _buildStatusTick(lastMsg),
+                          ),
                         if (isGroup && lastMsg != null && !lastMsg.isDeleted)
                           Text(
-                            '${MessengerShellPage.resolveDisplayName(lastMsg.senderPhone, lastMsg.senderName, isClient, phoneBookNames)}: ',
+                            '${MessengerShellPage.resolveDisplayName(lastMsg.senderPhone, lastMsg.senderName, phoneBookNames, isGroupContext: true)}: ',
                             style: TextStyle(fontSize: 13, color: AppColors.turquoise.withOpacity(0.7)),
                             maxLines: 1,
                           ),

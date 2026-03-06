@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
@@ -48,6 +50,7 @@ import '../../features/orders/services/order_service.dart';
 import '../../features/messenger/pages/messenger_shell_page.dart';
 import '../../features/messenger/services/messenger_service.dart';
 import '../../features/messenger/services/messenger_ws_service.dart';
+import '../../features/messenger/services/call_service.dart';
 import '../../features/work_schedule/services/shift_transfer_service.dart';
 import '../../features/loyalty/pages/loyalty_scanner_page.dart';
 import '../../features/loyalty/pages/prize_scanner_page.dart';
@@ -58,6 +61,9 @@ import '../../features/product_questions/services/product_question_service.dart'
 import '../../features/efficiency/pages/my_efficiency_page.dart';
 import '../../features/tasks/pages/my_tasks_page.dart';
 import '../../features/fortune_wheel/pages/fortune_wheel_page.dart';
+import '../../main.dart' show SharedContentHolder;
+import '../../features/messenger/pages/conversation_picker_page.dart';
+import '../../features/messenger/models/message_model.dart';
 import '../../features/fortune_wheel/services/fortune_wheel_service.dart';
 import '../../features/tasks/services/task_service.dart';
 import '../../features/tasks/models/task_model.dart';
@@ -146,8 +152,71 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _ensureCallServiceInit();
     _loadCachedRole(); // Мгновенно: из SharedPreferences
     _loadPhased();     // Фазовая загрузка данных
+    _checkSharedContent(); // Проверяем контент из другого приложения
+  }
+
+  /// Guarantee CallService + Messenger WS are initialized for incoming calls
+  void _ensureCallServiceInit() async {
+    final prefs = await SharedPreferences.getInstance();
+    final phone = prefs.getString('user_phone') ?? '';
+    final name = prefs.getString('user_name') ?? '';
+    if (phone.isNotEmpty) {
+      if (!MessengerWsService.instance.isConnected) {
+        MessengerWsService.instance.connect(phone);
+      }
+      CallService.instance.init(phone, name);
+
+      // Check if app was launched by accepting a CallKit incoming call
+      _checkPendingIncomingCall(prefs);
+    }
+  }
+
+  /// If app was cold-started by CallKit Accept, restore and answer the call
+  void _checkPendingIncomingCall(SharedPreferences prefs) async {
+    final pendingJson = prefs.getString('pending_incoming_call');
+    if (pendingJson == null) return;
+
+    final wasAccepted = prefs.getBool('pending_call_accepted') ?? false;
+
+    // Remove immediately so it doesn't trigger again
+    await prefs.remove('pending_incoming_call');
+    await prefs.remove('pending_call_accepted');
+
+    try {
+      final data = Map<String, dynamic>.from(
+        const JsonDecoder().convert(pendingJson) as Map,
+      );
+      final callId = data['callId'] as String?;
+      final callerPhone = data['callerPhone'] as String?;
+      final callerName = data['callerName'] as String?;
+      final offerSdp = data['offerSdp'] as String?;
+
+      if (callId != null && callerPhone != null && offerSdp != null) {
+        // Wait for WS to connect (up to 5 seconds)
+        final wsReady = await CallService.instance.ensureWsConnected();
+        if (!mounted) return;
+        if (!wsReady) {
+          Logger.warning('📞 Pending call: WS not connected, cannot proceed');
+          return;
+        }
+
+        CallService.instance.handleFcmIncomingCall(
+          callId: callId,
+          callerPhone: callerPhone,
+          callerName: callerName ?? callerPhone,
+          offerSdp: offerSdp,
+        );
+
+        if (wasAccepted) {
+          // User pressed Accept on CallKit — auto-answer
+          CallService.instance.answerCall();
+        }
+        // If not accepted, _GlobalCallListener will show the CallPage
+      }
+    } catch (_) {}
   }
 
   @override
@@ -191,6 +260,80 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
     _loadEfficiencyPoints();
     _connectCountersWs();
     _connectMessengerWs();
+  }
+
+  /// Check if app was opened via "Share" from another app
+  void _checkSharedContent() {
+    // Delay to let navigation settle
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || !SharedContentHolder.hasPending) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('user_phone') ?? '';
+      final name = prefs.getString('user_name') ?? '';
+      if (phone.isEmpty) return;
+
+      final files = SharedContentHolder.pendingFiles;
+      final text = SharedContentHolder.pendingText;
+      SharedContentHolder.clear();
+
+      if (!mounted) return;
+
+      // Open conversation picker
+      final targetIds = await Navigator.push<List<String>>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ConversationPickerPage(userPhone: phone),
+        ),
+      );
+
+      if (targetIds == null || targetIds.isEmpty || !mounted) return;
+
+      // Send shared content to selected conversations
+      for (final convId in targetIds) {
+        if (files != null && files.isNotEmpty) {
+          for (final file in files) {
+            final filePath = file.path;
+            final mimeType = file.mimeType ?? '';
+            MessageType type = MessageType.file;
+            if (mimeType.startsWith('image/')) type = MessageType.image;
+            else if (mimeType.startsWith('video/')) type = MessageType.video;
+
+            // Upload media then send message
+            final url = await MessengerService.uploadMedia(
+              File(filePath),
+            );
+            if (url != null) {
+              await MessengerService.sendMessage(
+                conversationId: convId,
+                senderPhone: phone,
+                senderName: name,
+                type: type,
+                mediaUrl: url,
+                content: text,
+              );
+            }
+          }
+        } else if (text != null && text.isNotEmpty) {
+          await MessengerService.sendMessage(
+            conversationId: convId,
+            senderPhone: phone,
+            senderName: name,
+            type: MessageType.text,
+            content: text,
+          );
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Отправлено в ${targetIds.length} ${targetIds.length == 1 ? 'чат' : 'чатов'}'),
+            backgroundColor: AppColors.emerald,
+          ),
+        );
+      }
+    });
   }
 
   Future<void> _checkForUpdates() async {

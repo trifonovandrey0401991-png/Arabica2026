@@ -53,6 +53,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
   }
 
   bool get _isCreator => _conversation.creatorPhone == widget.userPhone;
+  bool get _isChannel => _conversation.type == ConversationType.channel;
 
   Future<void> _changeAvatar() async {
     final source = await showModalBottomSheet<ImageSource>(
@@ -155,6 +156,22 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
         requesterPhone: widget.userPhone,
       );
       _refresh();
+    }
+  }
+
+  Future<void> _toggleWriterRole(Participant participant) async {
+    final newRole = participant.role == 'writer' ? 'member' : 'writer';
+    final success = await MessengerService.setChannelRole(
+      _conversation.id,
+      phone: participant.phone,
+      role: newRole,
+    );
+    if (success) {
+      _refresh();
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось изменить роль')),
+      );
     }
   }
 
@@ -327,7 +344,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
         elevation: 0,
         foregroundColor: Colors.white,
         title: Text(
-          'Информация о группе',
+          _isChannel ? 'Информация о канале' : 'Информация о группе',
           style: TextStyle(color: Colors.white.withOpacity(0.95)),
         ),
         flexibleSpace: Container(
@@ -433,7 +450,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              _conversation.name ?? 'Группа',
+                              _conversation.name ?? (_isChannel ? 'Канал' : 'Группа'),
                               style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
@@ -449,7 +466,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${_conversation.participants.length} участников',
+                        '${_conversation.participants.length} ${_isChannel ? 'подписчиков' : 'участников'}',
                         style: TextStyle(color: Colors.white.withOpacity(0.5)),
                       ),
                       if (_conversation.creatorName != null)
@@ -465,7 +482,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Text(
-                    'Участники',
+                    _isChannel ? 'Подписчики' : 'Участники',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -555,11 +572,14 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                           children: [
                             Row(
                               children: [
-                                Text(
-                                  p.name ?? p.phone,
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.9),
-                                    fontWeight: FontWeight.w500,
+                                Flexible(
+                                  child: Text(
+                                    p.name ?? p.phone,
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 if (p.isAdmin)
@@ -576,6 +596,20 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                                       style: TextStyle(fontSize: 10, color: AppColors.gold.withOpacity(0.9)),
                                     ),
                                   ),
+                                if (_isChannel && p.role == 'writer')
+                                  Container(
+                                    margin: const EdgeInsets.only(left: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.turquoise.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: AppColors.turquoise.withOpacity(0.3)),
+                                    ),
+                                    child: Text(
+                                      'Писатель',
+                                      style: TextStyle(fontSize: 10, color: AppColors.turquoise.withOpacity(0.9)),
+                                    ),
+                                  ),
                                 if (p.phone == widget.userPhone)
                                   Text(
                                     ' (вы)',
@@ -590,6 +624,17 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                           ],
                         ),
                       ),
+                      if (_isCreator && !p.isAdmin && p.phone != widget.userPhone && _isChannel)
+                        IconButton(
+                          icon: Icon(
+                            p.role == 'writer' ? Icons.edit_off : Icons.edit,
+                            color: p.role == 'writer'
+                                ? AppColors.turquoise.withOpacity(0.7)
+                                : Colors.white.withOpacity(0.4),
+                          ),
+                          tooltip: p.role == 'writer' ? 'Убрать право писать' : 'Разрешить писать',
+                          onPressed: () => _toggleWriterRole(p),
+                        ),
                       if (_isCreator && p.phone != widget.userPhone)
                         IconButton(
                           icon: Icon(Icons.remove_circle_outline, color: AppColors.error.withOpacity(0.7)),
@@ -614,7 +659,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                           Icon(Icons.exit_to_app, color: Colors.orange.withOpacity(0.8)),
                           const SizedBox(width: 16),
                           Text(
-                            'Покинуть группу',
+                            _isChannel ? 'Отписаться от канала' : 'Покинуть группу',
                             style: TextStyle(color: Colors.orange.withOpacity(0.9), fontSize: 15),
                           ),
                         ],
@@ -636,7 +681,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                             Icon(Icons.delete_forever, color: AppColors.error.withOpacity(0.8)),
                             const SizedBox(width: 16),
                             Text(
-                              'Удалить группу',
+                              _isChannel ? 'Удалить канал' : 'Удалить группу',
                               style: TextStyle(color: AppColors.error.withOpacity(0.9), fontSize: 15),
                             ),
                           ],

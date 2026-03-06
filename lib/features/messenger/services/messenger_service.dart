@@ -144,6 +144,7 @@ class MessengerService {
     String? replyToId,
     String? fileName,
     int? fileSize,
+    String? mediaGroupId,
   }) async {
     return await BaseHttpService.post<MessengerMessage>(
       endpoint: '$_base/conversations/$conversationId/messages',
@@ -170,6 +171,7 @@ class MessengerService {
         if (replyToId != null) 'replyToId': replyToId,
         if (fileName != null) 'fileName': fileName,
         if (fileSize != null) 'fileSize': fileSize,
+        if (mediaGroupId != null) 'mediaGroupId': mediaGroupId,
       },
     );
   }
@@ -213,9 +215,33 @@ class MessengerService {
     );
   }
 
-  static Future<bool> deleteMessage(String conversationId, String messageId, String phone) async {
+  /// Delete message for everyone (sender only, within 1 hour)
+  static Future<bool> deleteMessageForAll(String conversationId, String messageId) async {
     return await BaseHttpService.delete(
-      endpoint: '$_base/conversations/$conversationId/messages/$messageId?phone=$phone',
+      endpoint: '$_base/conversations/$conversationId/messages/$messageId?mode=forAll',
+    );
+  }
+
+  /// Delete message for me only (hides from my view)
+  static Future<bool> deleteMessageForMe(String conversationId, String messageId) async {
+    return await BaseHttpService.delete(
+      endpoint: '$_base/conversations/$conversationId/messages/$messageId?mode=forMe',
+    );
+  }
+
+  /// Hide messages from media gallery (hide for me only, does NOT delete for others)
+  static Future<bool> hideMessages(List<String> messageIds) async {
+    return await BaseHttpService.simplePost(
+      endpoint: '$_base/messages/hide',
+      body: {'messageIds': messageIds},
+    );
+  }
+
+  /// Set auto-delete timer for a conversation (0 = off)
+  static Future<bool> setAutoDelete(String conversationId, int seconds) async {
+    return await BaseHttpService.simplePut(
+      endpoint: '$_base/conversations/$conversationId/auto-delete',
+      body: {'seconds': seconds},
     );
   }
 
@@ -227,6 +253,22 @@ class MessengerService {
       queryParams: {'query': query, 'limit': limit.toString()},
       paginate: false,
     );
+  }
+
+  /// Global fuzzy search across contacts, groups, and messages.
+  static Future<Map<String, dynamic>> globalSearch(String query, {int limit = 20}) async {
+    final result = await BaseHttpService.getRaw(
+      endpoint: '$_base/search',
+      queryParams: {'query': query, 'limit': limit.toString()},
+    );
+    if (result == null || result['success'] != true) {
+      return {'contacts': [], 'groups': [], 'messages': []};
+    }
+    return {
+      'contacts': (result['contacts'] as List?)?.cast<Map<String, dynamic>>() ?? [],
+      'groups': (result['groups'] as List?)?.cast<Map<String, dynamic>>() ?? [],
+      'messages': (result['messages'] as List?)?.cast<Map<String, dynamic>>() ?? [],
+    };
   }
 
   // ==================== READ RECEIPTS ====================
@@ -350,6 +392,7 @@ class MessengerService {
   static Future<Conversation?> createChannel({
     required String name,
     String? description,
+    String? avatarUrl,
   }) async {
     return await BaseHttpService.post<Conversation>(
       endpoint: '$_base/conversations/channel',
@@ -358,6 +401,7 @@ class MessengerService {
       body: {
         'name': name,
         if (description != null) 'description': description,
+        if (avatarUrl != null) 'avatar_url': avatarUrl,
       },
     );
   }
@@ -392,6 +436,14 @@ class MessengerService {
     return result?['success'] == true;
   }
 
+  /// Set participant role in a channel (writer or member)
+  static Future<bool> setChannelRole(String channelId, {required String phone, required String role}) async {
+    return await BaseHttpService.simplePut(
+      endpoint: '$_base/channels/$channelId/role',
+      body: {'phone': phone, 'role': role},
+    );
+  }
+
   // ==================== STICKERS ====================
 
   static Future<List<Map<String, dynamic>>> getStickerPacks() async {
@@ -418,6 +470,85 @@ class MessengerService {
       }
       return null;
     } catch (_) {
+      return null;
+    }
+  }
+
+  // ==================== FAVORITE STICKERS ====================
+
+  static Future<List<String>> getFavoriteStickers() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_base/favorite-stickers',
+      );
+      if (result != null && result['success'] == true && result['stickers'] is List) {
+        return (result['stickers'] as List).cast<String>();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<bool> addFavoriteSticker(String stickerUrl) async {
+    try {
+      final result = await BaseHttpService.postRaw(
+        endpoint: '$_base/favorite-stickers',
+        body: {'stickerUrl': stickerUrl},
+      );
+      return result?['success'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> removeFavoriteSticker(String stickerUrl) async {
+    try {
+      final encodedUrl = Uri.encodeComponent(stickerUrl);
+      return await BaseHttpService.delete(
+        endpoint: '$_base/favorite-stickers?url=$encodedUrl',
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ==================== CUSTOM STICKER UPLOAD ====================
+
+  /// Upload a custom sticker image from gallery.
+  /// Server resizes to 512x512 PNG and adds to favorites automatically.
+  static Future<String?> uploadCustomSticker(File file) async {
+    try {
+      final uri = Uri.parse('${ApiConstants.serverUrl}$_base/custom-stickers/upload');
+      final request = http.MultipartRequest('POST', uri);
+
+      request.headers.addAll(ApiConstants.jsonHeaders);
+      request.headers.remove('Content-Type');
+
+      final ext = file.path.split('.').last.toLowerCase();
+      String mimeType = 'image/png';
+      if (['jpg', 'jpeg'].contains(ext)) mimeType = 'image/jpeg';
+      if (ext == 'webp') mimeType = 'image/webp';
+
+      request.files.add(await http.MultipartFile.fromPath(
+        'file',
+        file.path,
+        contentType: MediaType.parse(mimeType),
+      ));
+
+      final streamedResponse = await request.send().timeout(ApiConstants.uploadTimeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return data['stickerUrl'] as String?;
+        }
+      }
+      Logger.error('Custom sticker upload failed: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      Logger.error('Custom sticker upload error: $e');
       return null;
     }
   }
@@ -449,6 +580,45 @@ class MessengerService {
       return [];
     } catch (_) {
       return [];
+    }
+  }
+
+  // ==================== FAVORITE GIFS ====================
+
+  static Future<List<String>> getFavoriteGifs() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_base/favorite-gifs',
+      );
+      if (result != null && result['success'] == true && result['gifs'] is List) {
+        return (result['gifs'] as List).cast<String>();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<bool> addFavoriteGif(String gifUrl) async {
+    try {
+      final result = await BaseHttpService.postRaw(
+        endpoint: '$_base/favorite-gifs',
+        body: {'gifUrl': gifUrl},
+      );
+      return result?['success'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> removeFavoriteGif(String gifUrl) async {
+    try {
+      final encodedUrl = Uri.encodeComponent(gifUrl);
+      return await BaseHttpService.delete(
+        endpoint: '$_base/favorite-gifs?url=$encodedUrl',
+      );
+    } catch (_) {
+      return false;
     }
   }
 
@@ -637,5 +807,57 @@ class MessengerService {
     return await BaseHttpService.delete(
       endpoint: '$_base/folders/$folderId/conversations/$conversationId',
     );
+  }
+
+  // ==================== CONTACT PROFILE ====================
+
+  /// Get shared media (images, videos, files) from a conversation
+  static Future<List<Map<String, dynamic>>> getConversationMedia(
+    String conversationId, {int limit = 50, int offset = 0}
+  ) async {
+    final result = await BaseHttpService.getRaw(
+      endpoint: '$_base/conversations/$conversationId/media?limit=$limit&offset=$offset',
+    );
+    if (result != null && result['media'] is List) {
+      return (result['media'] as List).cast<Map<String, dynamic>>();
+    }
+    return [];
+  }
+
+  /// Get groups that both current user and target phone participate in
+  static Future<List<Map<String, dynamic>>> getCommonGroups(String targetPhone) async {
+    final result = await BaseHttpService.getRaw(
+      endpoint: '$_base/common-groups?phone=$targetPhone',
+    );
+    if (result != null && result['groups'] is List) {
+      return (result['groups'] as List).cast<Map<String, dynamic>>();
+    }
+    return [];
+  }
+
+  // ==================== MUTE ====================
+
+  /// Mute a conversation. duration: "1h", "8h", "2d", "forever"
+  static Future<bool> muteConversation(String conversationId, String duration) async {
+    final result = await BaseHttpService.postRaw(
+      endpoint: '$_base/conversations/$conversationId/mute',
+      body: {'duration': duration},
+    );
+    return result?['success'] == true;
+  }
+
+  /// Unmute a conversation
+  static Future<bool> unmuteConversation(String conversationId) async {
+    return await BaseHttpService.delete(
+      endpoint: '$_base/conversations/$conversationId/mute',
+    );
+  }
+
+  /// Check mute status of a conversation
+  static Future<Map<String, dynamic>> getMuteStatus(String conversationId) async {
+    final result = await BaseHttpService.getRaw(
+      endpoint: '$_base/conversations/$conversationId/mute',
+    );
+    return result ?? {'is_muted': false};
   }
 }

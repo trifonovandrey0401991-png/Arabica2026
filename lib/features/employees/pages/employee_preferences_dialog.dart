@@ -114,7 +114,6 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
         id: updatedEmployee.id,
         name: updatedEmployee.name,
         phone: updatedEmployee.phone,
-        isAdmin: updatedEmployee.isAdmin,
         employeeName: updatedEmployee.employeeName,
         preferredWorkDays: updatedEmployee.preferredWorkDays,
         preferredShops: updatedEmployee.preferredShops,

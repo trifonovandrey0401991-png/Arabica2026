@@ -74,16 +74,20 @@ class _FortuneWheelPageState extends State<FortuneWheelPage>
   Future<void> _loadData() async {
     if (mounted) setState(() => _isLoading = true);
 
-    final settings = await FortuneWheelService.getSettings();
-    final spins =
-        await FortuneWheelService.getAvailableSpins(widget.employeeId);
+    try {
+      final settings = await FortuneWheelService.getSettings();
+      final spins =
+          await FortuneWheelService.getAvailableSpins(widget.employeeId);
 
-    if (mounted) {
-      setState(() {
-        _sectors = settings?.sectors ?? [];
-        _availableSpins = spins.availableSpins;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _sectors = settings?.sectors ?? [];
+          _availableSpins = spins.availableSpins;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

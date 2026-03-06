@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/message_model.dart';
 import 'video_note_player.dart';
+import 'inline_chat_video_player.dart';
 
 class MessageBubble extends StatelessWidget {
   final MessengerMessage message;
@@ -16,6 +17,10 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback? onLongPress;
   final VoidCallback? onPlayVoice;
   final bool isPlayingVoice;
+  final bool isVoicePaused;
+  final double voiceProgress;
+  final int voicePositionSec;
+  final void Function(double progress)? onSeekVoice;
   /// How many OTHER participants have last_read_at >= message.createdAt
   final int readersCount;
   /// Total number of other participants (excluding sender)
@@ -28,6 +33,8 @@ class MessageBubble extends StatelessWidget {
   final void Function(String phone, String name)? onContactTap;
   /// Callback when user taps an image to view fullscreen
   final void Function(String imageUrl)? onImageTap;
+  /// Callback when user taps a video to play fullscreen
+  final void Function(String videoUrl)? onVideoTap;
 
   const MessageBubble({
     super.key,
@@ -38,12 +45,17 @@ class MessageBubble extends StatelessWidget {
     this.onLongPress,
     this.onPlayVoice,
     this.isPlayingVoice = false,
+    this.isVoicePaused = false,
+    this.voiceProgress = 0.0,
+    this.voicePositionSec = 0,
+    this.onSeekVoice,
     this.readersCount = 0,
     this.totalOtherCount = 1,
     this.replyToMessage,
     this.pollWidget,
     this.onContactTap,
     this.onImageTap,
+    this.onVideoTap,
   });
 
   @override
@@ -60,6 +72,12 @@ class MessageBubble extends StatelessWidget {
     // Stickers render as a large image without bubble background
     if (message.type == MessageType.sticker) {
       return _buildStickerBubble();
+    }
+
+    // Emoji-only messages (1-3 emoji, no text) — large, no bubble
+    final emojiCount = _emojiOnlyCount(message.content);
+    if (emojiCount != null && (message.type == MessageType.text || message.type == MessageType.emoji)) {
+      return _buildEmojiBubble(emojiCount);
     }
 
     return Align(
@@ -199,6 +217,18 @@ class MessageBubble extends StatelessWidget {
     return const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
   }
 
+  /// Derive thumbnail URL from video media URL.
+  /// e.g. https://arabica26.ru/messenger-media/abc.mp4 → .../messenger-media/thumb/abc.jpg
+  static String? _videoThumbnailUrl(String? mediaUrl) {
+    if (mediaUrl == null) return null;
+    final lastSlash = mediaUrl.lastIndexOf('/');
+    if (lastSlash < 0) return null;
+    final filename = mediaUrl.substring(lastSlash + 1);
+    final nameWithoutExt = filename.replaceFirst(RegExp(r'\.[^.]+$'), '');
+    final basePath = mediaUrl.substring(0, lastSlash);
+    return '$basePath/thumb/$nameWithoutExt.jpg';
+  }
+
   Widget _buildReplyQuote() {
     final reply = replyToMessage!;
     final authorName = reply.senderName ?? reply.senderPhone;
@@ -305,16 +335,12 @@ class MessageBubble extends StatelessWidget {
         );
 
       case MessageType.video:
-        return Container(
-          width: 220,
-          height: 160,
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: const Center(
-            child: Icon(Icons.play_circle_outline, size: 50, color: Colors.white),
-          ),
+        return InlineChatVideoPlayer(
+          videoUrl: message.mediaUrl ?? '',
+          thumbnailUrl: _videoThumbnailUrl(message.mediaUrl),
+          onTap: message.mediaUrl != null && onVideoTap != null
+              ? () => onVideoTap!(message.mediaUrl!)
+              : null,
         );
 
       case MessageType.videoNote:
@@ -325,7 +351,9 @@ class MessageBubble extends StatelessWidget {
 
       case MessageType.voice:
         final duration = message.voiceDuration ?? 0;
-        final durationStr = '${duration ~/ 60}:${(duration % 60).toString().padLeft(2, '0')}';
+        final isActive = isPlayingVoice || isVoicePaused;
+        final showSec = isActive ? voicePositionSec : duration;
+        final timeStr = '${showSec ~/ 60}:${(showSec % 60).toString().padLeft(2, '0')}';
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -339,22 +367,40 @@ class MessageBubble extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Flexible(
-              child: Container(
-                height: 30,
-                constraints: const BoxConstraints(minWidth: 80, maxWidth: 150),
-                child: CustomPaint(
-                  painter: _WaveformPainter(
-                    color: isMine
-                        ? Colors.white.withOpacity(0.5)
-                        : AppColors.turquoise.withOpacity(0.5),
-                  ),
-                  size: const Size(double.infinity, 30),
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return GestureDetector(
+                    onTapDown: onSeekVoice != null ? (details) {
+                      final progress = details.localPosition.dx / constraints.maxWidth;
+                      onSeekVoice!(progress.clamp(0.0, 1.0));
+                    } : null,
+                    onHorizontalDragUpdate: onSeekVoice != null ? (details) {
+                      final progress = details.localPosition.dx / constraints.maxWidth;
+                      onSeekVoice!(progress.clamp(0.0, 1.0));
+                    } : null,
+                    child: Container(
+                      height: 30,
+                      constraints: const BoxConstraints(minWidth: 80, maxWidth: 150),
+                      child: CustomPaint(
+                        painter: _WaveformPainter(
+                          color: isMine
+                              ? Colors.white.withOpacity(0.3)
+                              : AppColors.turquoise.withOpacity(0.3),
+                          activeColor: isMine
+                              ? Colors.white
+                              : AppColors.turquoise,
+                          progress: voiceProgress,
+                        ),
+                        size: const Size(double.infinity, 30),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
             const SizedBox(width: 8),
             Text(
-              durationStr,
+              timeStr,
               style: TextStyle(
                 fontSize: 12,
                 color: isMine
@@ -690,6 +736,88 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
+  /// Returns emoji count (1-3) if text is emoji-only, null otherwise.
+  static int? _emojiOnlyCount(String? text) {
+    if (text == null) return null;
+    final t = text.trim();
+    if (t.isEmpty) return null;
+    final count = t.characters.length;
+    if (count < 1 || count > 3) return null;
+    // Contains latin/cyrillic/digit → not emoji-only
+    if (RegExp(r'[a-zA-Zа-яА-ЯёЁ0-9]').hasMatch(t)) return null;
+    // Each grapheme cluster must have at least one high codepoint (emoji range)
+    for (final ch in t.characters) {
+      if (!ch.runes.any((r) => r > 0xFF)) return null;
+    }
+    return count;
+  }
+
+  Widget _buildEmojiBubble(int count) {
+    final fontSize = count == 1 ? 64.0 : count == 2 ? 52.0 : 40.0;
+    return Align(
+      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+      child: GestureDetector(
+        onLongPress: onLongPress,
+        child: Container(
+          margin: EdgeInsets.only(
+            left: isMine ? 80 : 8,
+            right: isMine ? 8 : 80,
+            top: 2,
+            bottom: 2,
+          ),
+          child: Column(
+            crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              if (showSenderName && !isMine)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4, left: 4),
+                  child: Text(
+                    displaySenderName ?? message.senderName ?? message.senderPhone,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.turquoise,
+                    ),
+                  ),
+                ),
+              if (replyToMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: _buildReplyQuote(),
+                ),
+              Text(
+                message.content ?? '',
+                style: TextStyle(fontSize: fontSize),
+              ),
+              const SizedBox(height: 2),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    message.formattedTime,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.white.withOpacity(0.35),
+                    ),
+                  ),
+                  if (isMine) ...[
+                    const SizedBox(width: 3),
+                    _buildReadTick(),
+                  ],
+                ],
+              ),
+              if (message.reactions.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: _buildReactions(),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildStickerBubble() {
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
@@ -829,29 +957,47 @@ class MessageBubble extends StatelessWidget {
 
 class _WaveformPainter extends CustomPainter {
   final Color color;
-  _WaveformPainter({required this.color});
+  final Color activeColor;
+  final double progress;
+
+  _WaveformPainter({
+    required this.color,
+    Color? activeColor,
+    this.progress = 0.0,
+  }) : activeColor = activeColor ?? color;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
+    final inactivePaint = Paint()
       ..color = color
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    final activePaint = Paint()
+      ..color = activeColor
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
 
     const barCount = 20;
     final barWidth = size.width / (barCount * 2);
+    final progressX = size.width * progress;
 
     for (int i = 0; i < barCount; i++) {
       final x = barWidth + i * (size.width / barCount);
       final height = (size.height * 0.3) + (size.height * 0.7 * ((i * 7 + 3) % 11) / 11);
       final y1 = (size.height - height) / 2;
       final y2 = y1 + height;
-      canvas.drawLine(Offset(x, y1), Offset(x, y2), paint);
+      canvas.drawLine(
+        Offset(x, y1),
+        Offset(x, y2),
+        x <= progressX ? activePaint : inactivePaint,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _WaveformPainter old) =>
+      old.progress != progress || old.color != color || old.activeColor != activeColor;
 }
 
 /// Swipe-to-reply wrapper (Telegram-style).

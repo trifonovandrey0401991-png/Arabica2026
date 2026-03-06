@@ -21,7 +21,7 @@ class ProductQuestionDialogPage extends StatefulWidget {
   State<ProductQuestionDialogPage> createState() => _ProductQuestionDialogPageState();
 }
 
-class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
+class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> with WidgetsBindingObserver {
   ProductQuestion? _question;
   bool _isLoading = true;
   bool _isSending = false;
@@ -36,6 +36,7 @@ class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadClientInfo();
     _loadQuestion();
     _markAsRead();
@@ -50,10 +51,21 @@ class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+    } else if (state == AppLifecycleState.resumed) {
+      _refreshTimer ??= Timer.periodic(Duration(seconds: 5), (_) => _refreshMessages());
+    }
   }
 
   Future<void> _loadQuestion() async {

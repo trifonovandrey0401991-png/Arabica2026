@@ -373,6 +373,8 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
         ),
       ),
     ).then((result) {
+      amountController.dispose();
+      commentController.dispose();
       if (result != null && result is Map) {
         _createRecord(employee, result['amount'], result['comment']);
       }

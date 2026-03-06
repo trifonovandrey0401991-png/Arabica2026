@@ -10,7 +10,7 @@ const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
 const { sanitizeId, fileExists } = require('../utils/file_helpers');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
@@ -350,30 +350,47 @@ function setupEnvelopeAPI(app) {
       let reports;
 
       if (USE_DB) {
-        let query = 'SELECT * FROM envelope_reports WHERE 1=1';
+        const conditions = [];
         const params = [];
         let paramIdx = 1;
 
         if (normalizedShopAddress) {
-          query += ` AND TRIM(shop_address) = $${paramIdx++}`;
+          conditions.push(`TRIM(shop_address) = $${paramIdx++}`);
           params.push(normalizedShopAddress);
         }
         if (status) {
-          query += ` AND status = $${paramIdx++}`;
+          conditions.push(`status = $${paramIdx++}`);
           params.push(status);
         }
         if (fromDate) {
-          query += ` AND created_at >= $${paramIdx++}`;
+          conditions.push(`created_at >= $${paramIdx++}`);
           params.push(fromDate);
         }
         if (toDate) {
-          query += ` AND created_at <= $${paramIdx++}`;
+          conditions.push(`created_at <= $${paramIdx++}`);
           params.push(toDate);
         }
 
-        query += ' ORDER BY created_at DESC LIMIT 5000';
+        const where = conditions.length > 0 ? conditions.join(' AND ') : '1=1';
 
-        const result = await db.query(query, params);
+        // SQL-level pagination (LIMIT/OFFSET in DB, not in memory)
+        if (isPaginationRequested(req.query)) {
+          const paginatedResult = await db.findAllPaginated('envelope_reports', {
+            where,
+            whereParams: params,
+            orderBy: 'created_at',
+            orderDir: 'DESC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(paginatedResult, 'reports', dbEnvelopeReportToCamel));
+        }
+
+        // No pagination requested — full query
+        const result = await db.query(
+          `SELECT * FROM envelope_reports WHERE ${where} ORDER BY created_at DESC LIMIT 5000`,
+          params
+        );
         reports = result.rows.map(dbEnvelopeReportToCamel);
       } else {
         reports = [];

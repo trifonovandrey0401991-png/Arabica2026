@@ -13,6 +13,7 @@ const { fileExists, isPathSafe } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
+const { getMoscowTime } = require('../utils/moscow_time');
 
 const USE_DB = process.env.USE_DB_RKO === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -242,7 +243,7 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
       if (!isPathSafe(employeeDir, filePath)) {
         return res.status(400).json({ success: false, error: 'Invalid file name' });
       }
-      fs.renameSync(req.file.path, filePath);
+      await fsp.rename(req.file.path, filePath);
       console.log('РКО сохранен:', filePath);
 
       // Добавляем метаданные
@@ -367,7 +368,7 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
       console.log('📋 GET /api/rko/list/shop:', shopAddress);
 
       let shopRKOs;
-      const now = new Date();
+      const now = getMoscowTime();
       const currentMonth = now.toISOString().substring(0, 7); // YYYY-MM
 
       if (USE_DB) {
@@ -594,8 +595,8 @@ function setupRkoAPI(app, { uploadRKO, spawnPython, getPendingRkoReports, getFai
 
       const tempDocxPath = path.join(tempDir, `rko_${Date.now()}.docx`);
 
-      // Форматируем данные для замены
-      const now = new Date();
+      // Форматируем данные для замены (московское время)
+      const now = getMoscowTime();
       const dateStr = `${now.getDate().toString().padStart(2, '0')}.${(now.getMonth() + 1).toString().padStart(2, '0')}.${now.getFullYear()}`;
 
       // Форматируем имя директора

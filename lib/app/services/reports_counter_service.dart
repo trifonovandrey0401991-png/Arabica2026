@@ -17,135 +17,116 @@ import '../../features/coffee_machine/services/coffee_machine_report_service.dar
 /// Сервис для получения общего количества непросмотренных отчётов
 /// (для иерархического бейджа "Отчёты" в главном меню админа)
 class ReportsCounterService {
-  /// Получить общее количество непросмотренных/требующих внимания отчётов
+  /// Получить общее количество непросмотренных/требующих внимания отчётов.
+  /// Все 12 категорий загружаются параллельно для максимальной скорости.
   static Future<int> getTotalUnreadCount() async {
     try {
-      int total = 0;
+      // Запускаем все 12 категорий параллельно — каждая возвращает свой счётчик
+      final results = await Future.wait<int>([
+        // 1. Базовые отчёты (RKO, пересменки, сдача смены, пересчёты, приходы, тесты)
+        _safeCount(() async {
+          final reportCounts = await ReportNotificationService.getUnviewedCounts();
+          return reportCounts.total;
+        }, 'базовых счётчиков отчётов'),
 
-      // 1. Базовые отчёты (RKO, пересменки, сдача смены, пересчёты, приходы, тесты)
-      try {
-        final reportCounts = await ReportNotificationService.getUnviewedCounts();
-        total += reportCounts.total;
-      } catch (e) {
-        Logger.error('Ошибка загрузки базовых счётчиков отчётов', e);
-      }
+        // 2. Выемки (неподтверждённые, с фильтрацией по магазинам)
+        _safeCount(() async {
+          final allWithdrawals = await WithdrawalService.getWithdrawals();
+          final withdrawals = await MultitenancyFilterService.filterByShopAddress(
+            allWithdrawals,
+            (w) => w.shopAddress,
+          );
+          return withdrawals.where((w) => !w.confirmed).length;
+        }, 'счётчика выемок'),
 
-      // 2. Выемки (неподтверждённые, с фильтрацией по магазинам)
-      try {
-        final allWithdrawals = await WithdrawalService.getWithdrawals();
-        final withdrawals = await MultitenancyFilterService.filterByShopAddress(
-          allWithdrawals,
-          (w) => w.shopAddress,
-        );
-        total += withdrawals.where((w) => !w.confirmed).length;
-      } catch (e) {
-        Logger.error('Ошибка загрузки счётчика выемок', e);
-      }
+        // 3. Конверты (неподтверждённые, с фильтрацией по магазинам)
+        _safeCount(() async {
+          final envelopes = await EnvelopeReportService.getReportsForCurrentUser();
+          return envelopes.where((r) => r.status != 'confirmed').length;
+        }, 'счётчика конвертов'),
 
-      // 3. Конверты (неподтверждённые, с фильтрацией по магазинам)
-      try {
-        final envelopes = await EnvelopeReportService.getReportsForCurrentUser();
-        total += envelopes.where((r) => r.status != 'confirmed').length;
-      } catch (e) {
-        Logger.error('Ошибка загрузки счётчика конвертов', e);
-      }
+        // 4. Заявки на смены (непрочитанные)
+        _safeCount(() async {
+          final requests = await ShiftTransferService.getAdminRequests();
+          return requests.where((r) => !r.isReadByAdmin).length;
+        }, 'счётчика заявок на смены'),
 
-      // 4. Заявки на смены (непрочитанные)
-      try {
-        final requests = await ShiftTransferService.getAdminRequests();
-        total += requests.where((r) => !r.isReadByAdmin).length;
-      } catch (e) {
-        Logger.error('Ошибка загрузки счётчика заявок на смены', e);
-      }
+        // 5. Отзывы (непрочитанные, с фильтрацией по магазинам)
+        _safeCount(() async {
+          final allReviews = await ReviewService.getAllReviews();
+          final reviews = await MultitenancyFilterService.filterByShopAddress(
+            allReviews,
+            (review) => review.shopAddress,
+          );
+          return reviews.where((r) => r.hasUnreadFromClient).length;
+        }, 'счётчика отзывов'),
 
-      // 5. Отзывы (непрочитанные, с фильтрацией по магазинам)
-      try {
-        final allReviews = await ReviewService.getAllReviews();
-        final reviews = await MultitenancyFilterService.filterByShopAddress(
-          allReviews,
-          (review) => review.shopAddress,
-        );
-        total += reviews.where((r) => r.hasUnreadFromClient).length;
-      } catch (e) {
-        Logger.error('Ошибка загрузки счётчика отзывов', e);
-      }
-
-      // 6. Сообщения руководству (непрочитанные)
-      try {
-        final result = await BaseHttpService.getRaw(
-          endpoint: '/api/management-dialogs',
-          timeout: ApiConstants.longTimeout,
-        );
-        if (result != null && result['success'] == true) {
-          total += (result['totalUnread'] ?? 0) as int;
-        }
-      } catch (e) {
-        Logger.error('Ошибка загрузки счётчика сообщений руководству', e);
-      }
-
-      // 7. Поиск товаров (непросмотренные админом, с фильтрацией по магазинам)
-      try {
-        final allCounts = await ProductQuestionService.getUnviewedByAdminCounts();
-        final allowedAddresses = await MultitenancyFilterService.getAllowedShopAddresses();
-        if (allowedAddresses == null) {
-          // Developer видит всё
-          total += allCounts.values.fold(0, (sum, count) => sum + count);
-        } else {
-          // Управляющий видит только свои магазины
-          for (final entry in allCounts.entries) {
-            if (allowedAddresses.contains(entry.key)) {
-              total += entry.value;
-            }
+        // 6. Сообщения руководству (непрочитанные)
+        _safeCount(() async {
+          final result = await BaseHttpService.getRaw(
+            endpoint: '/api/management-dialogs',
+            timeout: ApiConstants.longTimeout,
+          );
+          if (result != null && result['success'] == true) {
+            return (result['totalUnread'] ?? 0) as int;
           }
-        }
-      } catch (e) {
-        Logger.error('Ошибка загрузки счётчика вопросов о товарах', e);
-      }
+          return 0;
+        }, 'счётчика сообщений руководству'),
 
-      // 8. Задачи (просроченные непросмотренные)
-      try {
-        final count = await TaskService.getUnviewedExpiredCount();
-        total += count;
-      } catch (e) {
-        Logger.error('Ошибка загрузки счётчика задач', e);
-      }
+        // 7. Поиск товаров (непросмотренные админом, с фильтрацией по магазинам)
+        _safeCount(() async {
+          final allCounts = await ProductQuestionService.getUnviewedByAdminCounts();
+          final allowedAddresses = await MultitenancyFilterService.getAllowedShopAddresses();
+          if (allowedAddresses == null) {
+            return allCounts.values.fold<int>(0, (sum, count) => sum + count);
+          } else {
+            int count = 0;
+            for (final entry in allCounts.entries) {
+              if (allowedAddresses.contains(entry.key)) {
+                count += entry.value;
+              }
+            }
+            return count;
+          }
+        }, 'счётчика вопросов о товарах'),
 
-      // 9. Заявки на работу (непросмотренные)
-      try {
-        final count = await JobApplicationService.getUnviewedCount();
-        total += count;
-      } catch (e) {
-        Logger.error('Ошибка загрузки счётчика заявок на работу', e);
-      }
+        // 8. Задачи (просроченные непросмотренные)
+        _safeCount(() => TaskService.getUnviewedExpiredCount(), 'счётчика задач'),
 
-      // 10. Приглашения (непросмотренные)
-      try {
-        final count = await ReferralService.getUnviewedCount();
-        total += count;
-      } catch (e) {
-        Logger.error('Ошибка загрузки счётчика приглашений', e);
-      }
+        // 9. Заявки на работу (непросмотренные)
+        _safeCount(() => JobApplicationService.getUnviewedCount(), 'счётчика заявок на работу'),
 
-      // 11. Заказы клиентов (непросмотренные)
-      try {
-        final counts = await OrderService.getUnviewedCounts();
-        total += counts['total'] ?? 0;
-      } catch (e) {
-        Logger.error('Ошибка загрузки счётчика заказов', e);
-      }
+        // 10. Приглашения (непросмотренные)
+        _safeCount(() => ReferralService.getUnviewedCount(), 'счётчика приглашений'),
 
-      // 12. Счётчик кофемашин (неподтверждённые)
-      try {
-        final count = await CoffeeMachineReportService.getUnconfirmedCountForCurrentUser();
-        total += count;
-      } catch (e) {
-        Logger.error('Ошибка загрузки счётчика кофемашин', e);
-      }
+        // 11. Заказы клиентов (непросмотренные)
+        _safeCount(() async {
+          final counts = await OrderService.getUnviewedCounts();
+          return counts['total'] ?? 0;
+        }, 'счётчика заказов'),
 
+        // 12. Счётчик кофемашин (неподтверждённые)
+        _safeCount(
+          () => CoffeeMachineReportService.getUnconfirmedCountForCurrentUser(),
+          'счётчика кофемашин',
+        ),
+      ]);
+
+      final total = results.fold(0, (sum, count) => sum + count);
       Logger.debug('Общий счётчик "Отчёты": $total');
       return total;
     } catch (e) {
       Logger.error('Ошибка получения общего счётчика отчётов', e);
+      return 0;
+    }
+  }
+
+  /// Безопасно выполняет функцию подсчёта — при ошибке возвращает 0
+  static Future<int> _safeCount(Future<int> Function() fn, String label) async {
+    try {
+      return await fn();
+    } catch (e) {
+      Logger.error('Ошибка загрузки $label', e);
       return 0;
     }
   }

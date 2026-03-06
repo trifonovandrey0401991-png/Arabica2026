@@ -29,11 +29,39 @@ import 'features/onboarding/pages/permission_onboarding_page.dart';
 // Условный импорт Firebase (для веб используется заглушка)
 import 'core/services/firebase_service.dart' if (dart.library.html) 'core/services/firebase_service_stub.dart';
 import 'features/messenger/services/call_service.dart';
+import 'features/messenger/services/messenger_ws_service.dart';
 import 'features/messenger/pages/call_page.dart';
 import 'features/messenger/widgets/call_overlay.dart';
-
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 /// Глобальный флаг - показывать ли диалог об уведомлениях при запуске
 bool _shouldShowNotificationDialog = false;
+
+/// Pending shared content from external apps (WhatsApp, Telegram, etc.)
+class SharedContentHolder {
+  static List<SharedMediaFile>? pendingFiles;
+  static String? pendingText;
+  static StreamSubscription? _mediaSub;
+  static StreamSubscription? _textSub;
+
+  static void initialize() {
+    // Content shared while app is running
+    _mediaSub = ReceiveSharingIntent.instance.getMediaStream().listen((files) {
+      if (files.isNotEmpty) pendingFiles = files;
+    });
+
+    // Content shared when app was closed (cold start)
+    ReceiveSharingIntent.instance.getInitialMedia().then((files) {
+      if (files.isNotEmpty) pendingFiles = files;
+    });
+  }
+
+  static bool get hasPending => pendingFiles != null || pendingText != null;
+
+  static void clear() {
+    pendingFiles = null;
+    pendingText = null;
+  }
+}
 
 /// Глобальный ключ навигатора — используется тот же экземпляр, что и в FirebaseService
 /// (один ключ → один NavigatorState, нет рассинхронизации)
@@ -119,6 +147,9 @@ void main() async {
       (_) => false,
     );
   };
+
+  // Listen for shared content from external apps
+  SharedContentHolder.initialize();
 
   runApp(const ArabicaApp());
 }
@@ -285,7 +316,32 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
       if (savedPhone != null && savedPhone.isNotEmpty &&
           savedName != null && savedName.isNotEmpty && isRegistered) {
 
-        // Инициализируем голосовые звонки
+        // FAST PATH: check for pending incoming call BEFORE any API calls.
+        // This saves 1-2 seconds by skipping getAuthStatus() network request.
+        final pendingCall = prefs.getString('pending_incoming_call');
+        final pendingCallTime = prefs.getInt('pending_incoming_call_time') ?? 0;
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final isRecentCall = pendingCall != null && (now - pendingCallTime) < 60000;
+
+        if (isRecentCall) {
+          Logger.info('📞 Recent pending call found — fast path, skipping PIN');
+          MessengerWsService.instance.connect(savedPhone);
+          CallService.instance.init(savedPhone, savedName);
+          await prefs.setBool('pending_call_accepted', true);
+          if (mounted) {
+            setState(() {
+              _isRegistered = true;
+              _isLoading = false;
+            });
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _navigateToApp();
+            });
+          }
+          return;
+        }
+
+        // Инициализируем голосовые звонки + WebSocket мессенджера (для приёма звонков)
+        MessengerWsService.instance.connect(savedPhone);
         CallService.instance.init(savedPhone, savedName);
 
         // Проверяем, есть ли у пользователя PIN-код
@@ -333,6 +389,7 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
           await prefs.setString('user_name', loyaltyInfo.name);
           await prefs.setString('user_phone', loyaltyInfo.phone);
           await LoyaltyStorage.save(loyaltyInfo);
+          MessengerWsService.instance.connect(loyaltyInfo.phone);
           CallService.instance.init(loyaltyInfo.phone, loyaltyInfo.name);
 
           // Сохраняем FCM токен (теперь когда phone известен)
@@ -400,7 +457,17 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
   }
 
   /// Navigate to app through permission onboarding
-  void _navigateToApp() {
+  void _navigateToApp() async {
+    // Ensure call service is initialized after successful login
+    final prefs = await SharedPreferences.getInstance();
+    final phone = prefs.getString('user_phone') ?? '';
+    final name = prefs.getString('user_name') ?? '';
+    if (phone.isNotEmpty) {
+      MessengerWsService.instance.connect(phone);
+      CallService.instance.init(phone, name);
+    }
+
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (context) => Builder(

@@ -26,7 +26,7 @@ class ProductQuestionPersonalDialogPage extends StatefulWidget {
   State<ProductQuestionPersonalDialogPage> createState() => _ProductQuestionPersonalDialogPageState();
 }
 
-class _ProductQuestionPersonalDialogPageState extends State<ProductQuestionPersonalDialogPage> {
+class _ProductQuestionPersonalDialogPageState extends State<ProductQuestionPersonalDialogPage> with WidgetsBindingObserver {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
@@ -43,16 +43,28 @@ class _ProductQuestionPersonalDialogPageState extends State<ProductQuestionPerso
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadData();
     _refreshTimer = Timer.periodic(Duration(seconds: 5), (_) => _refreshDialog());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+    } else if (state == AppLifecycleState.resumed) {
+      _refreshTimer ??= Timer.periodic(Duration(seconds: 5), (_) => _refreshDialog());
+    }
   }
 
   Future<void> _loadData() async {

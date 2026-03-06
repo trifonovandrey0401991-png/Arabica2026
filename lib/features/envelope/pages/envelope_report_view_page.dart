@@ -7,6 +7,7 @@ import '../models/envelope_question_model.dart';
 import '../services/envelope_report_service.dart';
 import '../services/envelope_question_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../ai_training/services/z_report_service.dart';
 import '../../ai_training/widgets/z_report_region_overlay.dart';
@@ -455,8 +456,10 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
 
     try {
       Logger.debug('Обучение AI: скачиваю фото $photoUrl');
-      final response = await http.get(Uri.parse(photoUrl))
-          .timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        Uri.parse(photoUrl),
+        headers: ApiConstants.headersWithApiKey,
+      ).timeout(const Duration(seconds: 30));
       if (response.statusCode != 200) {
         throw Exception('Не удалось скачать фото (${response.statusCode})');
       }

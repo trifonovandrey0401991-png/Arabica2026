@@ -6,7 +6,7 @@ const multer = require('multer');
 const fsp = require('fs').promises;
 const path = require('path');
 
-const { spawn } = require('child_process');
+const { spawn, execFile } = require('child_process');
 const { preloadAdminCache, startPeriodicRebuild, invalidateCache } = require('./utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('./utils/pagination');
 const { writeJsonFile } = require('./utils/async_fs');
@@ -618,7 +618,30 @@ app.post('/', async (req, res) => {
   try {
     console.log("POST request to script");
     console.log("Request action:", req.body?.action || 'unknown');
-    
+
+    // DB fallback: register without SCRIPT_URL
+    if (req.body?.action === 'register' && req.body?.phone) {
+      const phone = req.body.phone.replace(/[^\d]/g, '');
+      const name = req.body.name || '';
+      // Check if already registered (employee or client)
+      try {
+        const emp = await db.query('SELECT name, phone FROM employees WHERE phone = $1 LIMIT 1', [phone]);
+        if (emp.rows && emp.rows.length > 0) {
+          return res.json({ success: true, message: 'Employee found', client: { name: emp.rows[0].name, phone, qr: '', points: 0, freeDrinks: 0 } });
+        }
+        const client = await db.findById('clients', phone, 'phone');
+        if (client) {
+          return res.json({ success: true, message: 'Client found', client: { name: client.name || name, phone, qr: client.qr || '', points: client.points || 0, freeDrinks: client.free_drinks || 0 } });
+        }
+      } catch(e) { console.error('register DB lookup error:', e.message); }
+      // Not found — register as new client via /api/auth/register
+      return res.json({ success: false, error: 'User not found. Use /api/auth/register endpoint.' });
+    }
+
+    if (!SCRIPT_URL) {
+      return res.status(500).json({ success: false, error: 'SCRIPT_URL not configured' });
+    }
+
     const response = await fetch(SCRIPT_URL, {
       method: 'post',
       headers: { 'Content-Type': 'application/json' },
@@ -649,6 +672,23 @@ app.post('/', async (req, res) => {
 app.get('/', async (req, res) => {
   try {
     console.log("GET request:", req.query);
+
+    // DB fallback: getClient without SCRIPT_URL
+    if (req.query.action === 'getClient' && req.query.phone) {
+      const phone = req.query.phone.replace(/[^\d]/g, '');
+      try {
+        const client = await db.findById('clients', phone, 'phone');
+        if (client) return res.json({ success: true, client: { name: client.name || '', phone: client.phone, qr: client.qr || '', points: client.points || 0, freeDrinks: client.free_drinks || 0 } });
+        const emp = await db.query('SELECT name, phone FROM employees WHERE phone = $1 LIMIT 1', [phone]);
+        if (emp.rows && emp.rows.length > 0) return res.json({ success: true, client: { name: emp.rows[0].name, phone: emp.rows[0].phone, qr: '', points: 0, freeDrinks: 0 } });
+      } catch(e) { console.error('getClient DB error:', e.message); }
+      return res.json({ success: false, error: 'Client not found' });
+    }
+
+    if (!SCRIPT_URL) {
+      return res.status(500).json({ success: false, error: 'SCRIPT_URL not configured' });
+    }
+
     const queryString = new URLSearchParams(req.query).toString();
     const url = `${SCRIPT_URL}?${queryString}`;
 
@@ -700,8 +740,45 @@ app.post('/upload-photo', requireAuth, upload.single('file'), compressUpload, (r
 app.use('/shift-photos', express.static(`${DATA_DIR}/shift-photos`));
 app.use('/product-question-photos', express.static(`${DATA_DIR}/product-question-photos`));
 app.use('/coffee-machine-photos', express.static(`${DATA_DIR}/coffee-machine-photos`));
+// On-demand video thumbnail generation (cached on disk)
+app.get('/messenger-media/thumb/:filename', async (req, res) => {
+  try {
+    const safeFilename = path.basename(req.params.filename).replace(/[^a-zA-Z0-9._-]/g, '');
+    const nameWithoutExt = safeFilename.replace(/\.[^.]+$/, '');
+    const thumbDir = path.join(DATA_DIR, 'messenger-media', 'thumb');
+    const thumbPath = path.join(thumbDir, `${nameWithoutExt}.jpg`);
+
+    // Serve cached thumbnail
+    if (await fileExists(thumbPath)) {
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.sendFile(thumbPath);
+    }
+
+    // Find original video
+    const videoPath = path.join(DATA_DIR, 'messenger-media', safeFilename);
+    if (!await fileExists(videoPath)) {
+      return res.status(404).end();
+    }
+
+    // Generate thumbnail with ffmpeg
+    await fsp.mkdir(thumbDir, { recursive: true });
+    await new Promise((resolve, reject) => {
+      execFile('ffmpeg', [
+        '-i', videoPath, '-vframes', '1', '-f', 'image2',
+        '-vf', 'scale=320:-2', '-q:v', '3', thumbPath,
+      ], { timeout: 10000 }, (err) => err ? reject(err) : resolve());
+    });
+
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.sendFile(thumbPath);
+  } catch (err) {
+    console.error('[Messenger] Thumb error:', err.message);
+    res.status(500).end();
+  }
+});
 app.use('/messenger-media', express.static(`${DATA_DIR}/messenger-media`));
 app.use('/sticker-packs', express.static(`${DATA_DIR}/sticker-packs`));
+app.use('/custom-stickers', express.static(`${DATA_DIR}/custom-stickers`));
 app.use('/shop-product-photos', express.static(`${DATA_DIR}/shop-product-photos`));
 
 // Настройка multer для загрузки фото сотрудников
@@ -921,7 +998,7 @@ setupWorkScheduleAPI(app, { sendPushToPhone });
 setupWithdrawalsAPI(app);
 setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingCompleted, sendShiftHandoverNewReportNotification, getPendingShiftHandoverReports, getFailedShiftHandoverReports, calculateShiftPoints });
 setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse, invalidateCache });
-setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints });
+setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints, sendPushNotification });
 setupAttendanceAPI(app, { canMarkAttendance, markAttendancePendingCompleted, getPendingAttendanceReports, getFailedAttendanceReports, sendPushToPhone });
 setupPendingAPI(app);
 setupShopCoordinatesAPI(app);

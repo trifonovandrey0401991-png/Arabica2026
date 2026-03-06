@@ -18,6 +18,29 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const USE_DB = process.env.USE_DB_BONUS_PENALTIES === 'true';
 const BONUS_PENALTIES_DIR = `${DATA_DIR}/bonus-penalties`;
 
+// Dedup: prevent double-creation within 10 seconds (same employee + type + amount)
+const _recentCreations = new Map(); // key → timestamp
+const DEDUP_WINDOW = 10000; // 10 seconds
+
+function isDuplicateRequest(employeeId, type, amount) {
+  const key = `${employeeId}_${type}_${amount}`;
+  const now = Date.now();
+  const lastTime = _recentCreations.get(key);
+  if (lastTime && (now - lastTime) < DEDUP_WINDOW) {
+    return true;
+  }
+  _recentCreations.set(key, now);
+  return false;
+}
+
+// Cleanup old dedup entries every 2 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, ts] of _recentCreations) {
+    if ((now - ts) > DEDUP_WINDOW) _recentCreations.delete(key);
+  }
+}, 2 * 60 * 1000);
+
 // DB conversion helpers
 function camelToDb(r) {
   return {
@@ -195,6 +218,15 @@ function setupBonusPenaltiesAPI(app, { sendPushToPhone } = {}) {
         return res.status(400).json({
           success: false,
           error: 'amount должен быть положительным числом'
+        });
+      }
+
+      // Dedup: reject if same employee+type+amount within 10 seconds
+      if (isDuplicateRequest(employeeId, type, amount)) {
+        console.log(`⚠️ Duplicate bonus/penalty rejected: ${type} ${amount} for ${employeeName}`);
+        return res.status(409).json({
+          success: false,
+          error: 'Повторный запрос. Такая же запись была создана несколько секунд назад.'
         });
       }
 

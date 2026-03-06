@@ -964,50 +964,57 @@ function setupClientsAPI(app) {
     try {
       console.log('GET /api/management-dialogs');
 
-      // DB read branch: efficient aggregation query
+      // DB read branch: single query with LATERAL JOINs (replaces N+1 pattern)
       if (USE_DB_MSGS) {
         try {
           const result = await db.query(`
+            WITH agg AS (
+              SELECT
+                client_phone,
+                COUNT(*)::int AS messages_count,
+                COUNT(*) FILTER (WHERE sender_type = 'client' AND is_read_by_manager = false)::int AS unread_count,
+                MAX(timestamp) AS last_timestamp
+              FROM client_messages
+              WHERE channel = 'management'
+              GROUP BY client_phone
+              HAVING COUNT(*) > 0
+            )
             SELECT
-              client_phone,
-              COUNT(*)::int as messages_count,
-              COUNT(*) FILTER (WHERE sender_type = 'client' AND is_read_by_manager = false)::int as unread_count,
-              MAX(timestamp) as last_timestamp
-            FROM client_messages
-            WHERE channel = 'management'
-            GROUP BY client_phone
-            HAVING COUNT(*) > 0
-            ORDER BY MAX(timestamp) DESC
+              a.client_phone,
+              a.messages_count,
+              a.unread_count,
+              lm.text AS last_text,
+              lm.timestamp AS last_ts,
+              lm.sender_type AS last_sender_type,
+              cn.sender_name AS client_name
+            FROM agg a
+            LEFT JOIN LATERAL (
+              SELECT text, timestamp, sender_type
+              FROM client_messages
+              WHERE client_phone = a.client_phone AND channel = 'management'
+              ORDER BY timestamp DESC LIMIT 1
+            ) lm ON true
+            LEFT JOIN LATERAL (
+              SELECT sender_name
+              FROM client_messages
+              WHERE client_phone = a.client_phone AND channel = 'management'
+                AND sender_name IS NOT NULL AND sender_name != 'Руководство'
+              ORDER BY timestamp DESC LIMIT 1
+            ) cn ON true
+            ORDER BY a.last_timestamp DESC
           `);
 
-          const dialogs = [];
-          for (const row of result.rows) {
-            // Get last message and client name
-            const lastMsgResult = await db.query(
-              `SELECT text, timestamp, sender_type, sender_name FROM client_messages
-               WHERE client_phone = $1 AND channel = 'management' ORDER BY timestamp DESC LIMIT 1`,
-              [row.client_phone]
-            );
-            const clientNameResult = await db.query(
-              `SELECT sender_name FROM client_messages
-               WHERE client_phone = $1 AND channel = 'management' AND sender_name IS NOT NULL AND sender_name != 'Руководство'
-               ORDER BY timestamp DESC LIMIT 1`,
-              [row.client_phone]
-            );
-
-            const lastMsg = lastMsgResult.rows[0];
-            dialogs.push({
-              phone: row.client_phone,
-              clientName: clientNameResult.rows[0]?.sender_name || 'Клиент',
-              messagesCount: row.messages_count,
-              unreadCount: row.unread_count,
-              lastMessage: lastMsg ? {
-                text: lastMsg.text,
-                timestamp: lastMsg.timestamp ? new Date(lastMsg.timestamp).toISOString() : null,
-                senderType: lastMsg.sender_type
-              } : null
-            });
-          }
+          const dialogs = result.rows.map(row => ({
+            phone: row.client_phone,
+            clientName: row.client_name || 'Клиент',
+            messagesCount: row.messages_count,
+            unreadCount: row.unread_count,
+            lastMessage: row.last_text ? {
+              text: row.last_text,
+              timestamp: row.last_ts ? new Date(row.last_ts).toISOString() : null,
+              senderType: row.last_sender_type
+            } : null
+          }));
 
           const totalUnread = dialogs.reduce((sum, d) => sum + d.unreadCount, 0);
           return res.json({ success: true, dialogs, totalUnread });

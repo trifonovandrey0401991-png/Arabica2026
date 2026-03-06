@@ -17,7 +17,7 @@ class ProductQuestionShopsListPage extends StatefulWidget {
   State<ProductQuestionShopsListPage> createState() => _ProductQuestionShopsListPageState();
 }
 
-class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListPage> {
+class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListPage> with WidgetsBindingObserver {
   ProductQuestionGroupedData? _groupedData;
   bool _isLoading = true;
   Timer? _refreshTimer;
@@ -25,14 +25,26 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadData();
     _refreshTimer = Timer.periodic(Duration(seconds: 5), (_) => _loadData());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+    } else if (state == AppLifecycleState.resumed) {
+      _refreshTimer ??= Timer.periodic(Duration(seconds: 5), (_) => _loadData());
+    }
   }
 
   Future<void> _loadData() async {

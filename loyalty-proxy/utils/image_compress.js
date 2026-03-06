@@ -33,6 +33,7 @@ async function compressUpload(req, res, next) {
     const originalSize = req.file.size;
 
     const compressed = await sharp(req.file.path)
+      .rotate() // auto-rotate based on EXIF orientation (fixes 270° bug)
       .resize(MAX_DIMENSION, MAX_DIMENSION, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: JPEG_QUALITY })
       .toBuffer();

@@ -15,4 +15,9 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@color/splash_background</item>
     </style>
+    <!-- Theme for UCropActivity (image_cropper) -->
+    <style name="UcropTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+    </style>
 </resources>

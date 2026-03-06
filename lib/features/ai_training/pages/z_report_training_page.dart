@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1454,11 +1455,11 @@ class _PhotosTabState extends State<_PhotosTab> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(
-                    imageUrl,
+                  CachedNetworkImage(
+                    imageUrl: imageUrl,
                     fit: BoxFit.fill,
-                    headers: ApiConstants.headersWithApiKey,
-                    errorBuilder: (_, __, ___) => Container(
+                    httpHeaders: ApiConstants.headersWithApiKey,
+                    errorWidget: (_, __, ___) => Container(
                       color: Colors.white.withOpacity(0.05),
                       child: Center(child: Icon(Icons.broken_image, color: Colors.white24, size: 48)),
                     ),

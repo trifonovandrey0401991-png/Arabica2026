@@ -74,6 +74,7 @@ class _MessageInputBarState extends State<MessageInputBar> {
 
   @override
   void dispose() {
+    _controller.removeListener(_onTextChanged);
     _ownController?.dispose();
     super.dispose();
   }
@@ -194,6 +195,9 @@ class _MessageInputBarState extends State<MessageInputBar> {
               controller: _controller,
               maxLines: null,
               textInputAction: TextInputAction.newline,
+              enableSuggestions: true,
+              autocorrect: true,
+              spellCheckConfiguration: const SpellCheckConfiguration(),
               style: TextStyle(fontSize: 15, color: Colors.white.withOpacity(0.9), height: 1.4),
               decoration: InputDecoration(
                 hintText: 'Сообщение...',

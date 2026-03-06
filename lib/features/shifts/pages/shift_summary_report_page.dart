@@ -76,29 +76,33 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
   }
 
   Future<void> _loadData() async {
-    // Загружаем вопросы
-    final questions = await ShiftQuestionService.getQuestions();
+    try {
+      // Загружаем вопросы
+      final questions = await ShiftQuestionService.getQuestions();
 
-    // Показываем только вопросы с форматом да/нет и числовым — остальные (фото, текст) скрываем
-    final filteredQuestions = questions.where((q) => q.isYesNo || q.isNumberOnly).toList();
+      // Показываем только вопросы с форматом да/нет и числовым — остальные (фото, текст) скрываем
+      final filteredQuestions = questions.where((q) => q.isYesNo || q.isNumberOnly).toList();
 
-    // Создаём map отчётов по магазинам.
-    // Включаем только реально пройденные (не pending/failed) — только у них есть ответы.
-    // Список отсортирован новейшими первыми, берём первый подходящий для каждого магазина.
-    for (final report in widget.reports) {
-      if (report.status != 'pending' &&
-          report.status != 'failed' &&
-          report.employeeName.isNotEmpty) {
-        final key = report.shopAddress.toLowerCase().trim();
-        _reportsByShop.putIfAbsent(key, () => report);
+      // Создаём map отчётов по магазинам.
+      // Включаем только реально пройденные (не pending/failed) — только у них есть ответы.
+      // Список отсортирован новейшими первыми, берём первый подходящий для каждого магазина.
+      for (final report in widget.reports) {
+        if (report.status != 'pending' &&
+            report.status != 'failed' &&
+            report.employeeName.isNotEmpty) {
+          final key = report.shopAddress.toLowerCase().trim();
+          _reportsByShop.putIfAbsent(key, () => report);
+        }
       }
-    }
 
-    if (!mounted) return;
-    setState(() {
-      _questions = filteredQuestions;
-      _isLoading = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _questions = filteredQuestions;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   /// Получить название магазина для вертикального отображения
@@ -398,20 +402,64 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.vertical,
-        child: Column(
-          children: _questions.asMap().entries.map((entry) {
-            final index = entry.key;
-            final question = entry.value;
-            final isEven = index % 2 == 0;
-            return _buildTableRow(question, isEven);
-          }).toList(),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Фиксированный столбец с вопросами
+            Column(
+              children: _questions.asMap().entries.map((entry) {
+                final index = entry.key;
+                final question = entry.value;
+                final isEven = index % 2 == 0;
+                return _buildQuestionCell(question, isEven);
+              }).toList(),
+            ),
+            // Единый горизонтально-скроллируемый блок ответов
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _bodyScrollController,
+                scrollDirection: Axis.horizontal,
+                child: Column(
+                  children: _questions.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final question = entry.value;
+                    final isEven = index % 2 == 0;
+                    return _buildAnswerRow(question, isEven);
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  /// Строка таблицы (вопрос + ответы)
-  Widget _buildTableRow(ShiftQuestion question, bool isEven) {
+  /// Фиксированная ячейка с вопросом (левый столбец)
+  Widget _buildQuestionCell(ShiftQuestion question, bool isEven) {
+    return Container(
+      width: _questionColumnWidth,
+      height: _rowHeight,
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: isEven ? Colors.white.withOpacity(0.03) : Colors.transparent,
+        border: Border(
+          right: BorderSide(color: Colors.white.withOpacity(0.15), width: 2),
+          bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
+        ),
+      ),
+      alignment: Alignment.centerLeft,
+      child: Text(
+        question.question,
+        style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.8)),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  /// Строка ответов (скроллируемая часть — без своего ScrollController)
+  Widget _buildAnswerRow(ShiftQuestion question, bool isEven) {
     return Container(
       height: _rowHeight,
       decoration: BoxDecoration(
@@ -419,37 +467,9 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
         border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.06))),
       ),
       child: Row(
-        children: [
-          // Фиксированный столбец с вопросом
-          Container(
-            width: _questionColumnWidth,
-            height: _rowHeight,
-            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 4.h),
-            decoration: BoxDecoration(
-              color: isEven ? Colors.white.withOpacity(0.03) : Colors.transparent,
-              border: Border(right: BorderSide(color: Colors.white.withOpacity(0.15), width: 2)),
-            ),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              question.question,
-              style: TextStyle(fontSize: 11.sp, color: Colors.white.withOpacity(0.8)),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          // Скроллируемые ответы
-          Expanded(
-            child: SingleChildScrollView(
-              controller: _bodyScrollController,
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: widget.allShops.map((shop) {
-                  return _buildAnswerCell(shop, question);
-                }).toList(),
-              ),
-            ),
-          ),
-        ],
+        children: widget.allShops.map((shop) {
+          return _buildAnswerCell(shop, question);
+        }).toList(),
       ),
     );
   }

@@ -4,6 +4,8 @@ import 'package:firebase_messaging/firebase_messaging.dart' if (dart.library.htm
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:flutter_callkit_incoming/entities/entities.dart';
 import '../theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -61,11 +63,53 @@ Future<void> _firebaseBackgroundMessageHandler(RemoteMessage message) async {
     }
   }
 
-  // Для входящих звонков — сохраняем данные, чтобы восстановить вызов при открытии
+  // Для входящих звонков — показываем системный экран звонка через CallKit
   if (type == 'incoming_call') {
     try {
+      final callId = message.data['callId'] as String? ?? '';
+      final callerName = message.data['callerName'] as String? ?? 'Неизвестный';
+      final callerPhone = message.data['callerPhone'] as String? ?? '';
+
+      final params = CallKitParams(
+        id: callId,
+        nameCaller: callerName,
+        appName: 'Арабика',
+        handle: callerPhone,
+        type: 0, // 0 = audio call
+        textAccept: 'Ответить',
+        textDecline: 'Отклонить',
+        duration: 45000,
+        extra: <String, dynamic>{
+          'callId': callId,
+          'callerPhone': callerPhone,
+          'callerName': callerName,
+          'offerSdp': message.data['offerSdp'] ?? '',
+        },
+        android: const AndroidParams(
+          isCustomNotification: true,
+          isShowLogo: false,
+          ringtonePath: 'system_ringtone_default',
+          backgroundColor: '#1A4D4D',
+          actionColor: '#4CAF50',
+          textColor: '#ffffff',
+          incomingCallNotificationChannelName: 'Входящий звонок',
+          missedCallNotificationChannelName: 'Пропущенный звонок',
+          isShowCallID: false,
+        ),
+        missedCallNotification: const NotificationParams(
+          showNotification: true,
+          isShowCallback: true,
+          subtitle: 'Пропущенный звонок',
+          callbackText: 'Перезвонить',
+        ),
+      );
+
+      await FlutterCallkitIncoming.showCallkitIncoming(params);
+
+      // Save to SharedPreferences — used for cold start call handling + PIN bypass
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('pending_incoming_call', jsonEncode(message.data));
+      await prefs.setInt('pending_incoming_call_time', DateTime.now().millisecondsSinceEpoch);
     } catch (_) {}
   }
 }
@@ -297,12 +341,13 @@ class FirebaseService {
 
         // Входящий звонок в foreground (WS был отключён, FCM пришёл вместо него)
         if (type == 'incoming_call') {
-          Logger.debug('📞 FCM incoming_call в foreground — восстанавливаем через CallService');
+          Logger.debug('📞 FCM incoming_call в foreground — показываем через CallKit + CallService');
           final callId = message.data['callId'] as String?;
           final callerPhone = message.data['callerPhone'] as String?;
           final callerName = message.data['callerName'] as String?;
           final offerSdp = message.data['offerSdp'] as String?;
           if (callId != null && callerPhone != null && offerSdp != null) {
+            // Set up call state so answer can proceed
             CallService.instance.handleFcmIncomingCall(
               callId: callId,
               callerPhone: callerPhone,
@@ -310,7 +355,7 @@ class FirebaseService {
               offerSdp: offerSdp,
             );
           }
-          return; // Системное уведомление FCM уже показано, локальное не нужно
+          return;
         }
 
         // Мгновенное обновление бейджа заказов при получении push
@@ -536,6 +581,22 @@ class FirebaseService {
     // Определяем канал в зависимости от типа уведомления
     final type = message.data['type'] as String?;
 
+    // Global mute check for messenger notifications (sound off, notification still shown)
+    bool messengerMuted = false;
+    if (type == 'messenger_message') {
+      final convId = message.data['conversationId'] as String?;
+      if (convId != null) {
+        final prefs = await SharedPreferences.getInstance();
+        if (convId.startsWith('private_') && (prefs.getBool('messenger_mute_chats') ?? false)) {
+          messengerMuted = true;
+        } else if (convId.startsWith('group_') && (prefs.getBool('messenger_mute_groups') ?? false)) {
+          messengerMuted = true;
+        } else if (convId.startsWith('channel_') && (prefs.getBool('messenger_mute_channels') ?? false)) {
+          messengerMuted = true;
+        }
+      }
+    }
+
     AndroidNotificationDetails androidDetails;
     if (type == 'new_order' || type == 'order_status' || type == 'order_unconfirmed' || type == 'order_rejected') {
       androidDetails = AndroidNotificationDetails(
@@ -673,6 +734,21 @@ class FirebaseService {
         color: _notificationColor,
         largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       );
+    } else if (type == 'messenger_message') {
+      // Messenger channel with mute support
+      androidDetails = AndroidNotificationDetails(
+        messengerMuted ? 'messenger_silent_channel' : 'messenger_channel',
+        messengerMuted ? 'Мессенджер (без звука)' : 'Мессенджер',
+        channelDescription: 'Уведомления мессенджера',
+        importance: messengerMuted ? Importance.low : Importance.high,
+        priority: messengerMuted ? Priority.low : Priority.high,
+        playSound: !messengerMuted,
+        enableVibration: !messengerMuted,
+        showWhen: true,
+        icon: '@drawable/ic_launcher_foreground',
+        color: _notificationColor,
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      );
     } else if (message.data.containsKey('reviewId')) {
       // Уведомление об отзыве (legacy-формат без поля type)
       androidDetails = AndroidNotificationDetails(
@@ -704,7 +780,7 @@ class FirebaseService {
     final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
-      presentSound: true,
+      presentSound: !messengerMuted,
     );
 
     final notificationDetails = NotificationDetails(
@@ -716,13 +792,24 @@ class FirebaseService {
     final notificationId = (message.messageId?.hashCode ??
         DateTime.now().microsecondsSinceEpoch).abs() % 2147483647;
 
-    // For messenger messages, resolve sender name from phone book
+    // For messenger messages, resolve sender name:
+    // 1. Phone book name (if in contacts)
+    // 2. Phone number (if private chat, not in contacts)
+    // 3. Server-sent name (if group, not in contacts)
     String title = message.notification?.title ?? 'Уведомление';
     if (type == 'messenger_message' && resolveMessengerName != null) {
       final senderPhone = message.data['senderPhone'] as String?;
       if (senderPhone != null) {
         final bookName = resolveMessengerName!(senderPhone);
-        if (bookName != null) title = bookName;
+        if (bookName != null) {
+          title = bookName;
+        } else {
+          final convId = message.data['conversationId'] as String?;
+          if (convId != null && convId.startsWith('private_')) {
+            title = senderPhone;
+          }
+          // group/channel → keep server-sent profile name
+        }
       }
     }
 
@@ -813,6 +900,7 @@ class FirebaseService {
       return;
     }
 
+    try {
     final type = data['type'] as String?;
 
     // Обработка уведомления об отзыве верификации - показываем блокирующий диалог
@@ -825,17 +913,19 @@ class FirebaseService {
     if (type == 'new_order' || type == 'order_status' || type == 'order_rejected' || type == 'order_unconfirmed') {
       final userRole = await UserRoleService.loadUserRole();
       final isStaff = userRole != null && userRole.isEmployeeOrAdmin;
+      final nav = navigatorKey.currentState;
+      if (nav == null) return;
 
       if ((type == 'new_order' || type == 'order_unconfirmed') && isStaff) {
         // Сотрудник/админ → страница управления заказами
-        navigatorKey.currentState!.push(
+        nav.push(
           MaterialPageRoute(
             builder: (context) => EmployeeOrdersPage(),
           ),
         );
       } else {
         // Клиент (или статус заказа) → страница "Мои заказы"
-        navigatorKey.currentState!.push(
+        nav.push(
           MaterialPageRoute(
             builder: (context) => OrdersPage(),
           ),
@@ -851,13 +941,13 @@ class FirebaseService {
       if (questionId != null) {
         // Для сетевых вопросов → страница управления (выбор магазина)
         if (shopAddress == 'Вся сеть' || shopAddress == null || shopAddress.isEmpty) {
-          navigatorKey.currentState!.push(
+          navigatorKey.currentState?.push(
             MaterialPageRoute(
               builder: (context) => const ProductQuestionsManagementPage(),
             ),
           );
         } else {
-          navigatorKey.currentState!.push(
+          navigatorKey.currentState?.push(
             MaterialPageRoute(
               builder: (context) => ProductQuestionAnswerPage(
                 questionId: questionId,
@@ -877,13 +967,13 @@ class FirebaseService {
       if (questionId != null) {
         // Для сетевых вопросов → страница управления (выбор магазина)
         if (shopAddress == 'Вся сеть' || shopAddress == null || shopAddress.isEmpty) {
-          navigatorKey.currentState!.push(
+          navigatorKey.currentState?.push(
             MaterialPageRoute(
               builder: (context) => const ProductQuestionsManagementPage(),
             ),
           );
         } else {
-          navigatorKey.currentState!.push(
+          navigatorKey.currentState?.push(
             MaterialPageRoute(
               builder: (context) => ProductQuestionAnswerPage(
                 questionId: questionId,
@@ -902,7 +992,7 @@ class FirebaseService {
       final questionId = data['questionId'] as String?;
 
       if (questionId != null && questionId.isNotEmpty && navigatorKey.currentState != null) {
-        navigatorKey.currentState!.push(
+        navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (context) => ProductQuestionDialogPage(
               questionId: questionId,
@@ -911,7 +1001,7 @@ class FirebaseService {
         );
       } else if (navigatorKey.currentState != null) {
         // Fallback: общий клиентский чат
-        navigatorKey.currentState!.push(
+        navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (context) => const ProductQuestionClientDialogPage(),
           ),
@@ -926,7 +1016,7 @@ class FirebaseService {
       final dialogId = data['dialogId'] as String?;
       final shopAddress = data['shopAddress'] as String?;
       if (dialogId != null && shopAddress != null) {
-        navigatorKey.currentState!.push(
+        navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (context) => ProductQuestionPersonalDialogPage(
               dialogId: dialogId,
@@ -943,7 +1033,7 @@ class FirebaseService {
       final dialogId = data['dialogId'] as String?;
       final shopAddress = data['shopAddress'] as String?;
       if (dialogId != null && shopAddress != null) {
-        navigatorKey.currentState!.push(
+        navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (context) => ProductQuestionEmployeeDialogPage(
               dialogId: dialogId,
@@ -960,7 +1050,7 @@ class FirebaseService {
     if (type == 'new_task' || type == 'new_recurring_task' ||
         type == 'task_expired' || type == 'recurring_task_expired' ||
         type == 'task_reminder') {
-      navigatorKey.currentState!.push(
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => MyTasksPage(),
         ),
@@ -970,7 +1060,7 @@ class FirebaseService {
 
     // Обработка уведомлений о просроченных задачах для админа → отчёты по задачам
     if (type == 'task_expired_admin' || type == 'recurring_task_expired_admin') {
-      navigatorKey.currentState!.push(
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => const TaskReportsPage(),
         ),
@@ -980,7 +1070,7 @@ class FirebaseService {
 
     // Обработка уведомлений чата сотрудников
     if (type == 'employee_chat') {
-      navigatorKey.currentState!.push(
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => EmployeeChatsListPage(),
         ),
@@ -990,7 +1080,7 @@ class FirebaseService {
 
     // Обработка уведомлений от руководства (рассылка и личные сообщения)
     if (type == 'management_message') {
-      navigatorKey.currentState!.push(
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => MyDialogsPage(),
         ),
@@ -1004,7 +1094,7 @@ class FirebaseService {
 
       // Для админа - переход на страницу графика работы (Note: можно добавить initialTab для открытия вкладки "Заявки")
       if (action == 'admin_review') {
-        navigatorKey.currentState!.push(
+        navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (context) => WorkSchedulePage(),
           ),
@@ -1014,7 +1104,7 @@ class FirebaseService {
 
       // Для сотрудника - переход к мой график (Note: можно добавить initialTab для открытия вкладки "Заявки")
       if (action == 'view_request') {
-        navigatorKey.currentState!.push(
+        navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (context) => MySchedulePage(),
           ),
@@ -1024,7 +1114,7 @@ class FirebaseService {
 
       // При одобрении - переход к графику
       if (action == 'view_schedule') {
-        navigatorKey.currentState!.push(
+        navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (context) => MySchedulePage(),
           ),
@@ -1035,7 +1125,7 @@ class FirebaseService {
 
     // Обработка уведомления об обновлении графика → мой график
     if (type == 'schedule_updated') {
-      navigatorKey.currentState!.push(
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => MySchedulePage(),
         ),
@@ -1045,7 +1135,7 @@ class FirebaseService {
 
     // Обработка уведомления о назначении теста → страница тестов
     if (type == 'test_assigned') {
-      navigatorKey.currentState!.push(
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => const TestNotificationsPage(),
         ),
@@ -1055,7 +1145,7 @@ class FirebaseService {
 
     // Обработка уведомления о новом отчёте (для админов) → страница отчётов
     if (type == 'report_notification') {
-      navigatorKey.currentState!.push(
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => const ReportsPage(),
         ),
@@ -1065,7 +1155,7 @@ class FirebaseService {
 
     // Обработка уведомления о новых кодах (для админов) → страница ожидающих кодов
     if (type == 'new_pending_codes') {
-      navigatorKey.currentState!.push(
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => const PendingCodesPage(),
         ),
@@ -1075,7 +1165,7 @@ class FirebaseService {
 
     // Обработка уведомлений о бонусах и штрафах → Моя эффективность
     if (type == 'bonus_penalty') {
-      navigatorKey.currentState!.push(
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => const MyEfficiencyPage(),
         ),
@@ -1099,7 +1189,7 @@ class FirebaseService {
         // WS или foreground FCM уже настроили состояние
         final call = CallService.instance.currentCall;
         if (call != null) {
-          navigatorKey.currentState!.push(
+          navigatorKey.currentState?.push(
             MaterialPageRoute(builder: (_) => CallPage(callInfo: call)),
           );
         }
@@ -1118,7 +1208,7 @@ class FirebaseService {
           );
           final call = CallService.instance.currentCall;
           if (call != null) {
-            navigatorKey.currentState!.push(
+            navigatorKey.currentState?.push(
               MaterialPageRoute(builder: (_) => CallPage(callInfo: call)),
             );
           }
@@ -1129,7 +1219,7 @@ class FirebaseService {
 
     // Геозона: клиент рядом с магазином → открываем карту кофеен
     if (type == 'geofence') {
-      navigatorKey.currentState!.push(
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => const ShopsOnMapPage(),
         ),
@@ -1139,7 +1229,7 @@ class FirebaseService {
 
     // Device binding: developer taps "device approval request" notification
     if (type == 'device_approval_request') {
-      navigatorKey.currentState!.push(
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => const DeviceApprovalPage(),
         ),
@@ -1181,7 +1271,7 @@ class FirebaseService {
     final reviewId = data['reviewId'] as String?;
     if (reviewId != null) {
       // Навигация к диалогу
-      navigatorKey.currentState!.push(
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => FutureBuilder<Review?>(
             future: ReviewService.getReviewById(reviewId),
@@ -1206,6 +1296,9 @@ class FirebaseService {
         ),
       );
     }
+    } catch (e) {
+      Logger.debug('Ошибка навигации из push-уведомления: $e');
+    }
   }
 
   /// Открыть конкретный чат мессенджера по conversationId
@@ -1219,7 +1312,7 @@ class FirebaseService {
     if (conversation == null) return;
 
     if (navigatorKey.currentState == null) return;
-    navigatorKey.currentState!.push(
+    navigatorKey.currentState?.push(
       MaterialPageRoute(
         builder: (_) => MessengerChatPage(
           conversation: conversation,

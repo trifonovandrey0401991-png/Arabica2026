@@ -30,6 +30,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
   String _visibility = 'all';  // 'all' или 'managers'
   final ImagePicker _imagePicker = ImagePicker();
   List<String> _existingGroups = [];
+  TextEditingController? _syncedAutocompleteController;
 
   @override
   void initState() {
@@ -1129,12 +1130,15 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
         );
       },
       fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
-        // Sync controllers
-        textController.addListener(() {
-          if (_groupController.text != textController.text) {
-            _groupController.text = textController.text;
-          }
-        });
+        // Sync controllers (add listener only once per controller instance)
+        if (_syncedAutocompleteController != textController) {
+          _syncedAutocompleteController = textController;
+          textController.addListener(() {
+            if (_groupController.text != textController.text) {
+              _groupController.text = textController.text;
+            }
+          });
+        }
         return TextFormField(
           controller: textController,
           focusNode: focusNode,

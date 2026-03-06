@@ -10,6 +10,7 @@
 
 const path = require('path');
 const fsp = require('fs').promises;
+const multer = require('multer');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 const pushService = require('../utils/push_service');
@@ -74,6 +75,7 @@ function setupMessengerAPI(app, uploadMedia) {
           SELECT id, sender_phone, sender_name, type, content, media_url, voice_duration, is_deleted, created_at
           FROM messenger_messages
           WHERE conversation_id = c.id AND is_deleted = false
+            AND id NOT IN (SELECT message_id FROM messenger_hidden_messages WHERE phone = $1)
           ORDER BY created_at DESC
           LIMIT 1
         ) lm ON true
@@ -87,7 +89,7 @@ function setupMessengerAPI(app, uploadMedia) {
         // Запрос 2: batch-загрузка всех участников для всех диалогов одним запросом
         const convIds = conversations.map(c => c.id);
         const partResult = await db.query(`
-          SELECT pp.conversation_id, pp.phone, pp.name, pp.role, pp.last_read_at, mp.avatar_url
+          SELECT pp.conversation_id, pp.phone, COALESCE(mp.display_name, pp.name) AS name, pp.role, pp.last_read_at, mp.avatar_url
           FROM messenger_participants pp
           LEFT JOIN messenger_profiles mp ON mp.phone = pp.phone
           WHERE pp.conversation_id = ANY($1)
@@ -263,7 +265,7 @@ function setupMessengerAPI(app, uploadMedia) {
       if (!conversation) return res.status(404).json({ success: false, error: 'Conversation not found' });
 
       const parts = await db.query(
-        `SELECT mp.phone, mp.name, mp.role, mp.joined_at, mp.last_read_at, p.avatar_url
+        `SELECT mp.phone, COALESCE(p.display_name, mp.name) AS name, mp.role, mp.joined_at, mp.last_read_at, p.avatar_url
          FROM messenger_participants mp
          LEFT JOIN messenger_profiles p ON p.phone = mp.phone
          WHERE mp.conversation_id = $1`,
@@ -437,12 +439,14 @@ function setupMessengerAPI(app, uploadMedia) {
       const { limit = 50, before } = req.query;
       const conversationId = req.params.id;
 
+      const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
       let sql = `
         SELECT * FROM messenger_messages
         WHERE conversation_id = $1 AND is_deleted = false
+          AND id NOT IN (SELECT message_id FROM messenger_hidden_messages WHERE phone = $2)
       `;
-      const params = [conversationId];
-      let paramIdx = 2;
+      const params = [conversationId, requesterPhone];
+      let paramIdx = 3;
 
       if (before) {
         sql += ` AND created_at < $${paramIdx}`;
@@ -456,7 +460,6 @@ function setupMessengerAPI(app, uploadMedia) {
       const result = await db.query(sql, params);
 
       // Filter out messages from blocked users (for group chats)
-      const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
       const blockedResult = await db.query(
         'SELECT blocked_phone FROM messenger_blocks WHERE blocker_phone = $1',
         [requesterPhone]
@@ -486,7 +489,7 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(429).json({ success: false, error: 'Too many messages. Try again in a minute.' });
       }
 
-      const { type = 'text', content, mediaUrl, voiceDuration, replyToId, fileName, fileSize } = req.body;
+      const { type = 'text', content, mediaUrl, voiceDuration, replyToId, fileName, fileSize, mediaGroupId } = req.body;
       // SECURITY: берём телефон из токена авторизации, игнорируем req.body.senderPhone
       let senderName = req.user.name || null;
 
@@ -548,11 +551,11 @@ function setupMessengerAPI(app, uploadMedia) {
         }
       }
 
-      // Channel: only admin can post
+      // Channel: only admin or writer can post
       if (conv && conv.type === 'channel') {
         const senderRole = participant.rows[0]?.role;
-        if (senderRole !== 'admin' && senderRole !== 'creator') {
-          return res.status(403).json({ success: false, error: 'Only admin can post in channels' });
+        if (senderRole !== 'admin' && senderRole !== 'creator' && senderRole !== 'writer') {
+          return res.status(403).json({ success: false, error: 'Only admin/writers can post in channels' });
         }
       }
 
@@ -572,6 +575,7 @@ function setupMessengerAPI(app, uploadMedia) {
         created_at: new Date().toISOString(),
         file_name: type === 'file' ? (fileName || null) : null,
         file_size: type === 'file' ? (fileSize || null) : null,
+        media_group_id: (type === 'image' || type === 'video') ? (mediaGroupId || null) : null,
       };
 
       await db.insert('messenger_messages', message);
@@ -606,7 +610,7 @@ function setupMessengerAPI(app, uploadMedia) {
       // Push уведомления остальным участникам
       try {
         const participantsResult = await db.query(
-          'SELECT phone FROM messenger_participants WHERE conversation_id = $1 AND phone != $2',
+          'SELECT phone, muted_until FROM messenger_participants WHERE conversation_id = $1 AND phone != $2',
           [conversationId, normalizedSender]
         );
 
@@ -623,20 +627,18 @@ function setupMessengerAPI(app, uploadMedia) {
           : type === 'contact' ? '👤 Контакт'
           : 'Новое сообщение';
 
-        const pushTitle = senderName || normalizedSender;
-
-        // Privacy: hide employee names from clients
-        const employees = dataCache.getEmployees();
-        const employeePhones = employees
-          ? new Set(employees.map(e => (e.phone || '').replace(/[^\d]/g, '')).filter(Boolean))
-          : new Set();
+        // Push title: group name for groups/channels, sender name for private
+        const senderDisplayName = senderName || normalizedSender;
+        const isGroupOrChannel = conv && (conv.type === 'group' || conv.type === 'channel');
+        const pushTitle = isGroupOrChannel ? (conv.name || 'Группа') : senderDisplayName;
+        const pushPreview = isGroupOrChannel ? `${senderDisplayName}: ${preview}` : preview;
 
         for (const p of participantsResult.rows) {
           // Не отправляем push онлайн-пользователям
           if (wsNotify && wsNotify.isUserOnline(p.phone)) continue;
-          // Клиент (не сотрудник) видит "Сотрудник" вместо ФИО
-          const recipientTitle = employeePhones.has(p.phone) ? pushTitle : 'Сотрудник';
-          pushService.sendPushToPhone(p.phone, recipientTitle, preview, {
+          // Не отправляем push замьюченным пользователям
+          if (p.muted_until && new Date(p.muted_until) > new Date()) continue;
+          pushService.sendPushToPhone(p.phone, pushTitle, pushPreview, {
             type: 'messenger_message',
             conversationId,
             senderPhone: normalizedSender,
@@ -686,11 +688,11 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(400).json({ success: false, error: 'Cannot edit deleted message' });
       }
 
-      // Within 48 hours
+      // Within 5 minutes
       const createdAt = new Date(message.created_at);
-      const hoursAgo = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
-      if (hoursAgo > 48) {
-        return res.status(400).json({ success: false, error: 'Cannot edit messages older than 48 hours' });
+      const minutesAgo = (Date.now() - createdAt.getTime()) / (1000 * 60);
+      if (minutesAgo > 5) {
+        return res.status(400).json({ success: false, error: 'Cannot edit messages older than 5 minutes' });
       }
 
       const editedAt = new Date().toISOString();
@@ -740,23 +742,42 @@ function setupMessengerAPI(app, uploadMedia) {
   });
 
   /**
-   * DELETE /api/messenger/conversations/:id/messages/:msgId
-   * Soft-delete сообщения (отправитель или admin группы)
+   * DELETE /api/messenger/conversations/:id/messages/:msgId?mode=forMe|forAll
+   * mode=forMe  — скрыть только у себя (messenger_hidden_messages)
+   * mode=forAll — удалить для всех (is_deleted=true), только своё, в течение 1 часа
    */
   app.delete('/api/messenger/conversations/:id/messages/:msgId', requireAuth, async (req, res) => {
     try {
       const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const mode = req.query.mode || 'forAll';
       const message = await db.findById('messenger_messages', req.params.msgId);
       if (!message || message.conversation_id !== req.params.id) {
         return res.status(404).json({ success: false, error: 'Message not found' });
       }
 
-      // Разрешаем удалять: автору ИЛИ создателю группы
-      if (message.sender_phone !== normalizedPhone) {
+      if (mode === 'forMe') {
+        // Hide for current user only
+        await db.query(
+          `INSERT INTO messenger_hidden_messages (phone, message_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [normalizedPhone, req.params.msgId]
+        );
+        return res.json({ success: true, mode: 'forMe' });
+      }
+
+      // mode=forAll — delete for everyone
+      const isSender = message.sender_phone === normalizedPhone;
+      if (!isSender) {
         const conversation = await db.findById('messenger_conversations', req.params.id);
         if (!conversation || conversation.creator_phone !== normalizedPhone) {
-          return res.status(403).json({ success: false, error: 'Cannot delete this message' });
+          return res.status(403).json({ success: false, error: 'Cannot delete for all — not sender or admin' });
         }
+      }
+
+      // Check 1-hour limit for forAll
+      const createdAt = new Date(message.created_at);
+      const minutesAgo = (Date.now() - createdAt.getTime()) / (1000 * 60);
+      if (minutesAgo > 60) {
+        return res.status(400).json({ success: false, error: 'Cannot delete for all — older than 1 hour' });
       }
 
       await db.updateById('messenger_messages', req.params.msgId, { is_deleted: true });
@@ -767,7 +788,7 @@ function setupMessengerAPI(app, uploadMedia) {
         } catch (e) { console.error('WS notifyMessageDeleted error:', e.message); }
       }
 
-      res.json({ success: true });
+      res.json({ success: true, mode: 'forAll' });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
@@ -1413,11 +1434,10 @@ function setupMessengerAPI(app, uploadMedia) {
       const normalizedTarget = targetPhone.replace(/[^\d]/g, '');
       const normalizedCaller = req.user.phone.replace(/[^\d]/g, '');
 
-      // Check if callee is already reachable via WebSocket
-      const isOnline = wsNotify ? wsNotify.isUserOnline(normalizedTarget) : false;
-
-      if (!isOnline) {
-        // Callee offline — wake them up via FCM data message
+      // ALWAYS send FCM for calls — WS may be connected on server but app
+      // could be minimized/suspended by Android and unable to process WS messages.
+      // FCM with high priority wakes the app and triggers CallKit incoming screen.
+      try {
         await pushService.sendPushToPhone(
           normalizedTarget,
           callerName || normalizedCaller,
@@ -1431,9 +1451,13 @@ function setupMessengerAPI(app, uploadMedia) {
           },
           'call_channel'
         );
+        console.log(`📞 Call FCM sent to ${normalizedTarget.replace(/(\d{4})\d+(\d{2})/, '$1***$2')}`);
+      } catch (e) {
+        console.error('[Messenger] Call FCM error:', e.message);
       }
 
-      res.json({ success: true, calleeOnline: isOnline });
+      const isOnline = wsNotify ? wsNotify.isUserOnline(normalizedTarget) : false;
+      res.json({ success: true, calleeOnline: isOnline, fcmSent: true });
     } catch (error) {
       console.error('[Messenger] Call notify error:', error.message);
       res.status(500).json({ success: false, error: error.message });
@@ -1566,36 +1590,25 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.post('/api/messenger/conversations/channel', requireAuth, async (req, res) => {
     try {
-      const { name, description } = req.body;
+      const { name, description, avatar_url } = req.body;
       if (!name) return res.status(400).json({ success: false, error: 'name required' });
 
       const creatorPhone = req.user.phone.replace(/[^\d]/g, '');
 
-      // Check role — only managers can create channels
-      const employees = dataCache.getEmployees();
+      // Check role — only developers can create channels
+      const { isDeveloper } = require('./shop_managers_api');
       let creatorName = req.user.name;
-      let allowed = false;
-      if (employees) {
-        const emp = employees.find(e => (e.phone || '').replace(/[^\d]/g, '') === creatorPhone);
-        if (emp) {
-          const role = (emp.role || '').toLowerCase();
-          if (['разработчик', 'управляющий', 'заведующая', 'управляющая', 'developer', 'manager', 'supervisor'].includes(role)) {
-            allowed = true;
-          }
-          if (emp.name) creatorName = emp.name;
-        }
-      }
-      if (!allowed) {
-        return res.status(403).json({ success: false, error: 'Only managers can create channels' });
+      if (!(await isDeveloper(creatorPhone))) {
+        return res.status(403).json({ success: false, error: 'Only developers can create channels' });
       }
 
       const channelId = generateId('channel');
 
       await db.transaction(async (client) => {
         await client.query(
-          `INSERT INTO messenger_conversations (id, type, name, description, creator_phone, creator_name, created_at, updated_at)
-           VALUES ($1, 'channel', $2, $3, $4, $5, NOW(), NOW())`,
-          [channelId, name, description || null, creatorPhone, creatorName || null]
+          `INSERT INTO messenger_conversations (id, type, name, description, avatar_url, creator_phone, creator_name, created_at, updated_at)
+           VALUES ($1, 'channel', $2, $3, $4, $5, $6, NOW(), NOW())`,
+          [channelId, name, description || null, avatar_url || null, creatorPhone, creatorName || null]
         );
         // Creator is admin
         await client.query(
@@ -1701,6 +1714,49 @@ function setupMessengerAPI(app, uploadMedia) {
     }
   });
 
+  /**
+   * PUT /api/messenger/channels/:id/role
+   * Назначить роль участнику канала (admin → writer/member)
+   * Body: { phone, role: 'writer' | 'member' }
+   */
+  app.put('/api/messenger/channels/:id/role', requireAuth, async (req, res) => {
+    try {
+      const channelId = req.params.id;
+      const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
+      const { phone, role } = req.body;
+
+      if (!phone || !role || !['writer', 'member'].includes(role)) {
+        return res.status(400).json({ success: false, error: 'phone and role (writer|member) required' });
+      }
+
+      // Only channel admin can change roles
+      const adminCheck = await db.query(
+        'SELECT role FROM messenger_participants WHERE conversation_id = $1 AND phone = $2',
+        [channelId, requesterPhone]
+      );
+      if (adminCheck.rows[0]?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'Only channel admin can change roles' });
+      }
+
+      const targetPhone = phone.replace(/[^\d]/g, '');
+
+      // Cannot change own role
+      if (targetPhone === requesterPhone) {
+        return res.status(400).json({ success: false, error: 'Cannot change own role' });
+      }
+
+      await db.query(
+        'UPDATE messenger_participants SET role = $1 WHERE conversation_id = $2 AND phone = $3',
+        [role, channelId, targetPhone]
+      );
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Messenger] PUT channel role error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ==================== STICKERS ====================
 
   /**
@@ -1734,6 +1790,189 @@ function setupMessengerAPI(app, uploadMedia) {
     }
   });
 
+  // ==================== FAVORITE STICKERS ====================
+
+  /**
+   * GET /api/messenger/favorite-stickers
+   * Get user's favorite stickers
+   */
+  app.get('/api/messenger/favorite-stickers', requireAuth, async (req, res) => {
+    try {
+      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const result = await db.query(
+        "SELECT sticker_url, created_at FROM favorite_stickers WHERE phone = $1 AND (type = 'sticker' OR type IS NULL) ORDER BY created_at DESC",
+        [phone]
+      );
+      res.json({ success: true, stickers: result.rows.map(r => r.sticker_url) });
+    } catch (error) {
+      console.error('[Messenger] GET favorite-stickers error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * POST /api/messenger/favorite-stickers
+   * Add sticker to favorites
+   * Body: { stickerUrl }
+   */
+  app.post('/api/messenger/favorite-stickers', requireAuth, async (req, res) => {
+    try {
+      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const { stickerUrl } = req.body;
+      if (!stickerUrl) {
+        return res.status(400).json({ success: false, error: 'stickerUrl is required' });
+      }
+
+      // Limit to 200 favorites per user (stickers only)
+      const countResult = await db.query(
+        "SELECT COUNT(*) as cnt FROM favorite_stickers WHERE phone = $1 AND (type = 'sticker' OR type IS NULL)",
+        [phone]
+      );
+      if (parseInt(countResult.rows[0].cnt) >= 200) {
+        return res.status(400).json({ success: false, error: 'Достигнут лимит избранных стикеров (200)' });
+      }
+
+      await db.query(
+        "INSERT INTO favorite_stickers (phone, sticker_url, type) VALUES ($1, $2, 'sticker') ON CONFLICT (phone, sticker_url) DO NOTHING",
+        [phone, stickerUrl]
+      );
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Messenger] POST favorite-stickers error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * DELETE /api/messenger/favorite-stickers?url=...
+   * Remove sticker from favorites
+   */
+  app.delete('/api/messenger/favorite-stickers', requireAuth, async (req, res) => {
+    try {
+      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const stickerUrl = req.query.url;
+      if (!stickerUrl) {
+        return res.status(400).json({ success: false, error: 'url query param is required' });
+      }
+
+      await db.query(
+        'DELETE FROM favorite_stickers WHERE phone = $1 AND sticker_url = $2',
+        [phone, stickerUrl]
+      );
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Messenger] DELETE favorite-stickers error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ==================== CUSTOM STICKER UPLOAD ====================
+
+  // Multer storage for custom stickers — separate directory from messenger-media
+  const customStickerStorage = multer.diskStorage({
+    destination: async (req, file, cb) => {
+      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const dir = path.join(DATA_DIR, 'custom-stickers', phone);
+      await fsp.mkdir(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname || '.png').toLowerCase();
+      const safeExt = ['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext) ? ext : '.png';
+      cb(null, `stk_${Date.now()}_${Math.random().toString(36).substr(2, 6)}${safeExt}`);
+    },
+  });
+  const uploadCustomSticker = multer({
+    storage: customStickerStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype && file.mimetype.startsWith('image/')) cb(null, true);
+      else cb(new Error('Only images allowed'), false);
+    },
+  });
+
+  /**
+   * POST /api/messenger/custom-stickers/upload
+   * Upload custom sticker from gallery. Resizes to 512px, saves as PNG, adds to favorites.
+   */
+  app.post('/api/messenger/custom-stickers/upload', requireAuth, (req, res, next) => {
+    const phone = req.user.phone.replace(/[^\d]/g, '');
+    if (!checkUploadRateLimit(phone)) {
+      return res.status(429).json({ success: false, error: 'Слишком много загрузок. Попробуйте через минуту.' });
+    }
+    next();
+  }, uploadCustomSticker.single('file'), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
+
+      const phone = req.user.phone.replace(/[^\d]/g, '');
+
+      // Check limit: max 100 custom stickers per user
+      const countResult = await db.query(
+        "SELECT COUNT(*) as cnt FROM favorite_stickers WHERE phone = $1 AND sticker_url LIKE '%/custom-stickers/%'",
+        [phone]
+      );
+      if (parseInt(countResult.rows[0].cnt) >= 100) {
+        await fsp.unlink(req.file.path).catch(() => {});
+        return res.status(400).json({ success: false, error: 'Лимит: 100 пользовательских стикеров' });
+      }
+
+      // Detect if it's a GIF (skip PNG conversion)
+      const ext = path.extname(req.file.originalname || req.file.filename || '').toLowerCase();
+      const isGif = ext === '.gif' || req.file.mimetype === 'image/gif';
+      const favType = isGif ? 'gif' : 'sticker';
+
+      if (isGif) {
+        // GIF — keep as-is, no conversion
+        const stickerUrl = `/custom-stickers/${phone}/${req.file.filename}`;
+        await db.query(
+          "INSERT INTO favorite_stickers (phone, sticker_url, type) VALUES ($1, $2, 'gif') ON CONFLICT (phone, sticker_url) DO NOTHING",
+          [phone, stickerUrl]
+        );
+        console.log(`[Messenger] Custom GIF uploaded: ${phone}/${req.file.filename}`);
+        res.json({ success: true, stickerUrl });
+      } else {
+        // Sticker — resize to 512px max and convert to PNG
+        let sharp;
+        try { sharp = require('sharp'); } catch (_) {}
+
+        if (sharp) {
+          const tmpPath = req.file.path + '.tmp.png';
+          await sharp(req.file.path)
+            .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
+            .png({ quality: 90 })
+            .toFile(tmpPath);
+
+          await fsp.unlink(req.file.path).catch(() => {});
+          const finalPath = req.file.path.replace(path.extname(req.file.path), '.png');
+          await fsp.rename(tmpPath, finalPath);
+
+          const finalFilename = path.basename(finalPath);
+          const stickerUrl = `/custom-stickers/${phone}/${finalFilename}`;
+
+          await db.query(
+            "INSERT INTO favorite_stickers (phone, sticker_url, type) VALUES ($1, $2, 'sticker') ON CONFLICT (phone, sticker_url) DO NOTHING",
+            [phone, stickerUrl]
+          );
+
+          console.log(`[Messenger] Custom sticker uploaded: ${phone}/${finalFilename}`);
+          res.json({ success: true, stickerUrl });
+        } else {
+          const stickerUrl = `/custom-stickers/${phone}/${req.file.filename}`;
+          await db.query(
+            "INSERT INTO favorite_stickers (phone, sticker_url, type) VALUES ($1, $2, 'sticker') ON CONFLICT (phone, sticker_url) DO NOTHING",
+            [phone, stickerUrl]
+          );
+          res.json({ success: true, stickerUrl });
+        }
+      }
+    } catch (error) {
+      console.error('[Messenger] Custom sticker upload error:', error.message);
+      if (req.file) await fsp.unlink(req.file.path).catch(() => {});
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ==================== GIF (Tenor API proxy) ====================
 
   // In-memory cache for GIF results
@@ -1741,17 +1980,29 @@ function setupMessengerAPI(app, uploadMedia) {
   const GIF_CACHE_TTL = 10 * 60 * 1000; // 10 min for search
   const GIF_TRENDING_TTL = 60 * 60 * 1000; // 1 hour for trending
 
+  // Helper: parse GIPHY response into unified format
+  function parseGiphyResults(data) {
+    return (data.data || []).map(r => ({
+      id: r.id,
+      title: r.title || '',
+      url: r.images?.original?.url || r.images?.downsized?.url || '',
+      preview: r.images?.fixed_width_small?.url || r.images?.preview_gif?.url || '',
+      width: parseInt(r.images?.original?.width) || 200,
+      height: parseInt(r.images?.original?.height) || 200,
+    })).filter(g => g.url);
+  }
+
   /**
    * GET /api/messenger/gifs/search?query=X&limit=20
-   * Search GIFs via Tenor API
+   * Search GIFs via GIPHY API
    */
   app.get('/api/messenger/gifs/search', requireAuth, async (req, res) => {
     try {
       const { query, limit = '20' } = req.query;
       if (!query) return res.status(400).json({ success: false, error: 'query required' });
 
-      const tenorKey = process.env.TENOR_API_KEY;
-      if (!tenorKey) return res.json({ success: true, gifs: [] });
+      const giphyKey = process.env.GIPHY_API_KEY;
+      if (!giphyKey) return res.json({ success: true, gifs: [] });
 
       const cacheKey = `search_${query}_${limit}`;
       const cached = gifCache.get(cacheKey);
@@ -1759,19 +2010,11 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.json({ success: true, gifs: cached.data });
       }
 
-      const url = `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(query)}&key=${tenorKey}&limit=${limit}&media_filter=gif`;
+      const url = `https://api.giphy.com/v1/gifs/search?api_key=${giphyKey}&q=${encodeURIComponent(query)}&limit=${limit}&rating=pg-13&lang=ru`;
       const response = await fetch(url);
       const data = await response.json();
 
-      const gifs = (data.results || []).map(r => ({
-        id: r.id,
-        title: r.title || '',
-        url: r.media_formats?.gif?.url || r.media_formats?.tinygif?.url || '',
-        preview: r.media_formats?.tinygif?.url || r.media_formats?.nanogif?.url || '',
-        width: r.media_formats?.gif?.dims?.[0] || 200,
-        height: r.media_formats?.gif?.dims?.[1] || 200,
-      })).filter(g => g.url);
-
+      const gifs = parseGiphyResults(data);
       gifCache.set(cacheKey, { data: gifs, ts: Date.now() });
       res.json({ success: true, gifs });
     } catch (error) {
@@ -1782,13 +2025,13 @@ function setupMessengerAPI(app, uploadMedia) {
 
   /**
    * GET /api/messenger/gifs/trending?limit=20
-   * Trending GIFs via Tenor API
+   * Trending GIFs via GIPHY API
    */
   app.get('/api/messenger/gifs/trending', requireAuth, async (req, res) => {
     try {
       const { limit = '20' } = req.query;
-      const tenorKey = process.env.TENOR_API_KEY;
-      if (!tenorKey) return res.json({ success: true, gifs: [] });
+      const giphyKey = process.env.GIPHY_API_KEY;
+      if (!giphyKey) return res.json({ success: true, gifs: [] });
 
       const cacheKey = `trending_${limit}`;
       const cached = gifCache.get(cacheKey);
@@ -1796,23 +2039,177 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.json({ success: true, gifs: cached.data });
       }
 
-      const url = `https://tenor.googleapis.com/v2/featured?key=${tenorKey}&limit=${limit}&media_filter=gif`;
+      const url = `https://api.giphy.com/v1/gifs/trending?api_key=${giphyKey}&limit=${limit}&rating=pg-13`;
       const response = await fetch(url);
       const data = await response.json();
 
-      const gifs = (data.results || []).map(r => ({
-        id: r.id,
-        title: r.title || '',
-        url: r.media_formats?.gif?.url || r.media_formats?.tinygif?.url || '',
-        preview: r.media_formats?.tinygif?.url || r.media_formats?.nanogif?.url || '',
-        width: r.media_formats?.gif?.dims?.[0] || 200,
-        height: r.media_formats?.gif?.dims?.[1] || 200,
-      })).filter(g => g.url);
-
+      const gifs = parseGiphyResults(data);
       gifCache.set(cacheKey, { data: gifs, ts: Date.now() });
       res.json({ success: true, gifs });
     } catch (error) {
       console.error('[Messenger] GIF trending error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ==================== FAVORITE GIFS ====================
+
+  /**
+   * GET /api/messenger/favorite-gifs
+   * Get user's favorite GIFs
+   */
+  app.get('/api/messenger/favorite-gifs', requireAuth, async (req, res) => {
+    try {
+      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const result = await db.query(
+        "SELECT sticker_url, created_at FROM favorite_stickers WHERE phone = $1 AND type = 'gif' ORDER BY created_at DESC",
+        [phone]
+      );
+      res.json({ success: true, gifs: result.rows.map(r => r.sticker_url) });
+    } catch (error) {
+      console.error('[Messenger] GET favorite-gifs error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * POST /api/messenger/favorite-gifs
+   * Add a GIF to favorites
+   */
+  app.post('/api/messenger/favorite-gifs', requireAuth, async (req, res) => {
+    try {
+      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const { gifUrl } = req.body;
+      if (!gifUrl) {
+        return res.status(400).json({ success: false, error: 'gifUrl is required' });
+      }
+
+      // Limit to 200 favorite GIFs per user
+      const countResult = await db.query(
+        "SELECT COUNT(*) as cnt FROM favorite_stickers WHERE phone = $1 AND type = 'gif'",
+        [phone]
+      );
+      if (parseInt(countResult.rows[0].cnt) >= 200) {
+        return res.status(400).json({ success: false, error: 'Достигнут лимит избранных GIF (200)' });
+      }
+
+      await db.query(
+        "INSERT INTO favorite_stickers (phone, sticker_url, type) VALUES ($1, $2, 'gif') ON CONFLICT (phone, sticker_url) DO NOTHING",
+        [phone, gifUrl]
+      );
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Messenger] POST favorite-gifs error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * DELETE /api/messenger/favorite-gifs
+   * Remove a GIF from favorites
+   */
+  app.delete('/api/messenger/favorite-gifs', requireAuth, async (req, res) => {
+    try {
+      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const gifUrl = req.query.url;
+      if (!gifUrl) {
+        return res.status(400).json({ success: false, error: 'url query param is required' });
+      }
+
+      await db.query(
+        "DELETE FROM favorite_stickers WHERE phone = $1 AND sticker_url = $2 AND type = 'gif'",
+        [phone, gifUrl]
+      );
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Messenger] DELETE favorite-gifs error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ==================== GLOBAL SEARCH ====================
+
+  /**
+   * GET /api/messenger/search?query=X&limit=20
+   * Global fuzzy search across contacts, groups, and messages.
+   * Uses pg_trgm for typo-tolerant matching.
+   */
+  app.get('/api/messenger/search', requireAuth, async (req, res) => {
+    try {
+      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const { query: searchQuery, limit = 20 } = req.query;
+
+      if (!searchQuery || searchQuery.trim().length < 2) {
+        return res.json({ success: true, contacts: [], groups: [], messages: [] });
+      }
+
+      const q = searchQuery.trim();
+      const parsedLimit = Math.min(parseInt(limit) || 20, 50);
+
+      // Find user's conversation IDs (for scoping search to own chats)
+      const myConvs = await db.query(
+        'SELECT conversation_id FROM messenger_participants WHERE phone = $1',
+        [phone]
+      );
+      const myConvIds = myConvs.rows.map(r => r.conversation_id);
+
+      if (myConvIds.length === 0) {
+        return res.json({ success: true, contacts: [], groups: [], messages: [] });
+      }
+
+      // Three parallel searches
+      const [contactsResult, groupsResult, messagesResult] = await Promise.all([
+        // 1. Contacts: people from my conversations whose name matches
+        db.query(
+          `SELECT DISTINCT ON (p.phone) p.phone, p.name, c.id AS conversation_id, c.type
+           FROM messenger_participants p
+           JOIN messenger_conversations c ON c.id = p.conversation_id
+           WHERE p.conversation_id = ANY($1)
+             AND p.phone != $2
+             AND p.name IS NOT NULL AND p.name != ''
+             AND (p.name ILIKE '%' || $3 || '%' OR p.phone ILIKE '%' || $3 || '%' OR similarity(p.name, $3) > 0.2)
+           ORDER BY p.phone, similarity(p.name, $3) DESC
+           LIMIT $4`,
+          [myConvIds, phone, q, parsedLimit]
+        ),
+
+        // 2. Groups: group conversations whose name matches
+        db.query(
+          `SELECT c.id, c.name, c.avatar_url, c.type
+           FROM messenger_conversations c
+           JOIN messenger_participants p ON p.conversation_id = c.id AND p.phone = $1
+           WHERE c.type = 'group'
+             AND c.name IS NOT NULL AND c.name != ''
+             AND (c.name ILIKE '%' || $2 || '%' OR similarity(c.name, $2) > 0.2)
+           ORDER BY similarity(c.name, $2) DESC
+           LIMIT $3`,
+          [phone, q, parsedLimit]
+        ),
+
+        // 3. Messages: search message content in my conversations
+        db.query(
+          `SELECT m.id, m.conversation_id, m.sender_phone, m.sender_name, m.content, m.type, m.created_at,
+                  c.name AS conversation_name, c.type AS conversation_type
+           FROM messenger_messages m
+           JOIN messenger_conversations c ON c.id = m.conversation_id
+           WHERE m.conversation_id = ANY($1)
+             AND m.is_deleted = false
+             AND m.content IS NOT NULL AND m.content != ''
+             AND (m.content ILIKE '%' || $2 || '%' OR similarity(m.content, $2) > 0.15)
+           ORDER BY similarity(m.content, $2) DESC, m.created_at DESC
+           LIMIT $3`,
+          [myConvIds, q, parsedLimit]
+        ),
+      ]);
+
+      res.json({
+        success: true,
+        contacts: contactsResult.rows,
+        groups: groupsResult.rows,
+        messages: messagesResult.rows,
+      });
+    } catch (error) {
+      console.error('[Messenger] Global search error:', error.message);
       res.status(500).json({ success: false, error: error.message });
     }
   });
@@ -2245,6 +2642,303 @@ function setupMessengerAPI(app, uploadMedia) {
       res.status(500).json({ success: false, error: error.message });
     }
   });
+
+  // ============================================
+  // CONVERSATION MEDIA (shared photos/videos/files)
+  // ============================================
+
+  /**
+   * GET /api/messenger/conversations/:id/media
+   * Returns media messages from a conversation (images, videos, files)
+   */
+  app.get('/api/messenger/conversations/:id/media', requireAuth, async (req, res) => {
+    try {
+      const conversationId = req.params.id;
+      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+      const offset = parseInt(req.query.offset) || 0;
+
+      // Verify participant
+      const participant = await db.query(
+        'SELECT 1 FROM messenger_participants WHERE conversation_id = $1 AND phone = $2',
+        [conversationId, normalizedPhone]
+      );
+      if (participant.rows.length === 0) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
+
+      const result = await db.query(
+        `SELECT id, type, media_url, file_name, file_size, sender_phone, sender_name, created_at
+         FROM messenger_messages
+         WHERE conversation_id = $1 AND type IN ('image', 'video', 'video_note', 'file') AND is_deleted = false
+           AND id NOT IN (SELECT message_id FROM messenger_hidden_messages WHERE phone = $4)
+         ORDER BY created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [conversationId, limit, offset, normalizedPhone]
+      );
+
+      res.json({ success: true, media: result.rows });
+    } catch (error) {
+      console.error('[Messenger] GET media error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================
+  // HIDE MESSAGES (hide for me — used in media gallery)
+  // ============================================
+
+  /**
+   * POST /api/messenger/messages/hide
+   * Hides messages from the current user's media gallery (does NOT delete for others)
+   */
+  app.post('/api/messenger/messages/hide', requireAuth, async (req, res) => {
+    try {
+      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const { messageIds } = req.body;
+      if (!Array.isArray(messageIds) || messageIds.length === 0) {
+        return res.status(400).json({ success: false, error: 'messageIds array required' });
+      }
+
+      // Limit batch size
+      const ids = messageIds.slice(0, 100);
+
+      const values = ids.map((id, i) => `($1, $${i + 2})`).join(', ');
+      await db.query(
+        `INSERT INTO messenger_hidden_messages (phone, message_id) VALUES ${values} ON CONFLICT DO NOTHING`,
+        [normalizedPhone, ...ids]
+      );
+
+      res.json({ success: true, hidden: ids.length });
+    } catch (error) {
+      console.error('[Messenger] POST hide messages error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================
+  // COMMON GROUPS (groups shared between two users)
+  // ============================================
+
+  /**
+   * GET /api/messenger/common-groups?phone=TARGET_PHONE
+   * Returns groups where both current user and target phone are participants
+   */
+  app.get('/api/messenger/common-groups', requireAuth, async (req, res) => {
+    try {
+      const myPhone = req.user.phone.replace(/[^\d]/g, '');
+      const targetPhone = (req.query.phone || '').replace(/[^\d]/g, '');
+      if (!targetPhone) {
+        return res.status(400).json({ success: false, error: 'phone parameter required' });
+      }
+
+      const result = await db.query(
+        `SELECT c.id, c.name, c.avatar_url,
+                (SELECT COUNT(*) FROM messenger_participants WHERE conversation_id = c.id)::int AS participants_count
+         FROM messenger_conversations c
+         WHERE c.type = 'group'
+           AND EXISTS (SELECT 1 FROM messenger_participants WHERE conversation_id = c.id AND phone = $1)
+           AND EXISTS (SELECT 1 FROM messenger_participants WHERE conversation_id = c.id AND phone = $2)
+         ORDER BY c.updated_at DESC`,
+        [myPhone, targetPhone]
+      );
+
+      res.json({ success: true, groups: result.rows });
+    } catch (error) {
+      console.error('[Messenger] GET common-groups error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================
+  // MUTE / UNMUTE CONVERSATION
+  // ============================================
+
+  /**
+   * POST /api/messenger/conversations/:id/mute
+   * body: { duration: "1h" | "8h" | "2d" | "forever" }
+   */
+  app.post('/api/messenger/conversations/:id/mute', requireAuth, async (req, res) => {
+    try {
+      const conversationId = req.params.id;
+      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const { duration } = req.body;
+
+      let mutedUntil;
+      const now = new Date();
+      switch (duration) {
+        case '1h': mutedUntil = new Date(now.getTime() + 60 * 60 * 1000); break;
+        case '8h': mutedUntil = new Date(now.getTime() + 8 * 60 * 60 * 1000); break;
+        case '2d': mutedUntil = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000); break;
+        case 'forever': mutedUntil = new Date('2099-12-31T23:59:59Z'); break;
+        default: return res.status(400).json({ success: false, error: 'Invalid duration' });
+      }
+
+      await db.query(
+        'UPDATE messenger_participants SET muted_until = $1 WHERE conversation_id = $2 AND phone = $3',
+        [mutedUntil.toISOString(), conversationId, normalizedPhone]
+      );
+
+      res.json({ success: true, muted_until: mutedUntil.toISOString() });
+    } catch (error) {
+      console.error('[Messenger] POST mute error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * DELETE /api/messenger/conversations/:id/mute
+   */
+  app.delete('/api/messenger/conversations/:id/mute', requireAuth, async (req, res) => {
+    try {
+      const conversationId = req.params.id;
+      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+
+      await db.query(
+        'UPDATE messenger_participants SET muted_until = NULL WHERE conversation_id = $1 AND phone = $2',
+        [conversationId, normalizedPhone]
+      );
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Messenger] DELETE mute error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * GET /api/messenger/conversations/:id/mute
+   */
+  app.get('/api/messenger/conversations/:id/mute', requireAuth, async (req, res) => {
+    try {
+      const conversationId = req.params.id;
+      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+
+      const result = await db.query(
+        'SELECT muted_until FROM messenger_participants WHERE conversation_id = $1 AND phone = $2',
+        [conversationId, normalizedPhone]
+      );
+
+      const mutedUntil = result.rows[0]?.muted_until;
+      const isMuted = mutedUntil && new Date(mutedUntil) > new Date();
+
+      res.json({ success: true, is_muted: !!isMuted, muted_until: mutedUntil || null });
+    } catch (error) {
+      console.error('[Messenger] GET mute error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================
+  // DISAPPEARING MESSAGES (auto-delete timer per conversation)
+  // ============================================
+
+  /**
+   * PUT /api/messenger/conversations/:id/auto-delete
+   * Set auto-delete timer for the conversation
+   * body: { seconds: 0 | 86400 | 604800 | 2592000 }
+   */
+  app.put('/api/messenger/conversations/:id/auto-delete', requireAuth, async (req, res) => {
+    try {
+      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const conversationId = req.params.id;
+      const { seconds = 0 } = req.body;
+
+      // Validate
+      const allowed = [0, 86400, 604800, 2592000];
+      if (!allowed.includes(seconds)) {
+        return res.status(400).json({ success: false, error: 'Invalid timer value' });
+      }
+
+      // Verify participant
+      const participant = await db.query(
+        'SELECT 1 FROM messenger_participants WHERE conversation_id = $1 AND phone = $2',
+        [conversationId, normalizedPhone]
+      );
+      if (participant.rows.length === 0) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
+
+      await db.updateById('messenger_conversations', conversationId, {
+        auto_delete_seconds: seconds,
+      });
+
+      // Send system message about the change
+      const labels = { 0: 'выключены', 86400: '1 день', 604800: '1 неделя', 2592000: '1 месяц' };
+      const label = labels[seconds] || `${seconds}с`;
+      const senderName = req.user.name || normalizedPhone;
+      const systemContent = seconds === 0
+        ? `${senderName} выключил(а) исчезающие сообщения`
+        : `${senderName} включил(а) исчезающие сообщения: ${label}`;
+
+      const msgId = generateId('msg');
+      const systemMsg = {
+        id: msgId,
+        conversation_id: conversationId,
+        sender_phone: 'system',
+        sender_name: null,
+        type: 'system',
+        content: systemContent,
+        is_deleted: false,
+        created_at: new Date().toISOString(),
+      };
+      await db.upsert('messenger_messages', systemMsg);
+
+      // WS notify
+      if (wsNotify) {
+        try {
+          await wsNotify.notifyNewMessage(conversationId, systemMsg);
+          // Also notify about setting change
+          await wsNotify.broadcastToConversation(conversationId, {
+            type: 'auto_delete_changed',
+            conversationId,
+            autoDeleteSeconds: seconds,
+          });
+        } catch (e) { console.error('WS auto-delete notify error:', e.message); }
+      }
+
+      res.json({ success: true, autoDeleteSeconds: seconds });
+    } catch (error) {
+      console.error('[Messenger] PUT auto-delete error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================
+  // AUTO-DELETE SCHEDULER (runs every 5 minutes)
+  // ============================================
+  const { getMoscowTime } = require('../utils/moscow_time');
+
+  setInterval(async () => {
+    try {
+      // Find conversations with auto-delete enabled
+      const convs = await db.query(
+        `SELECT id, auto_delete_seconds FROM messenger_conversations WHERE auto_delete_seconds > 0`
+      );
+      if (convs.rows.length === 0) return;
+
+      for (const conv of convs.rows) {
+        const cutoff = new Date(Date.now() - conv.auto_delete_seconds * 1000).toISOString();
+        const deleted = await db.query(
+          `UPDATE messenger_messages SET is_deleted = true
+           WHERE conversation_id = $1 AND is_deleted = false AND created_at < $2 AND type != 'system'
+           RETURNING id`,
+          [conv.id, cutoff]
+        );
+
+        if (deleted.rows.length > 0 && wsNotify) {
+          for (const row of deleted.rows) {
+            try {
+              await wsNotify.notifyMessageDeleted(conv.id, row.id);
+            } catch (_) { /* non-critical */ }
+          }
+          console.log(`[AutoDelete] Deleted ${deleted.rows.length} messages from ${conv.id}`);
+        }
+      }
+    } catch (error) {
+      console.error('[AutoDelete] Scheduler error:', error.message);
+    }
+  }, 5 * 60 * 1000); // Every 5 minutes
 
   console.log('✅ Messenger API initialized');
 }

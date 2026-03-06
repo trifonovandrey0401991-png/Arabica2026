@@ -193,6 +193,47 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     if (mounted) setState(() => _isLoading = false);
   }
 
+  bool get _hasUnsavedData {
+    return _currentStep > 0 ||
+        _oooRevenueController.text.isNotEmpty ||
+        _oooCashController.text.isNotEmpty ||
+        _ipRevenueController.text.isNotEmpty ||
+        _ipCashController.text.isNotEmpty ||
+        _oooZReportPhoto != null ||
+        _ipZReportPhoto != null ||
+        _oooEnvelopePhoto != null ||
+        _ipEnvelopePhoto != null ||
+        _oooExpenses.isNotEmpty ||
+        _expenses.isNotEmpty;
+  }
+
+  Future<bool> _confirmExit() async {
+    if (!_hasUnsavedData) return true;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.emeraldDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Выйти из формы?', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Введённые данные будут потеряны.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Остаться', style: TextStyle(color: AppColors.gold)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Выйти', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   @override
   void dispose() {
     _oooRevenueController.dispose();
@@ -735,7 +776,15 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       );
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (await _confirmExit()) {
+          if (mounted) Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -756,7 +805,11 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                       child: Row(
                         children: [
                           IconButton(
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () async {
+                              if (await _confirmExit()) {
+                                if (mounted) Navigator.pop(context);
+                              }
+                            },
                             icon: Icon(Icons.arrow_back, color: Colors.white),
                           ),
                           Expanded(
@@ -812,6 +865,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                 ),
         ),
       ),
+    ),
     );
   }
 

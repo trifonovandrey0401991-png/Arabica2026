@@ -306,6 +306,8 @@ CREATE TABLE IF NOT EXISTS coffee_machine_reports (
 );
 CREATE INDEX IF NOT EXISTS idx_cm_reports_date ON coffee_machine_reports(date);
 CREATE INDEX IF NOT EXISTS idx_cm_reports_shop ON coffee_machine_reports(shop_address);
+CREATE INDEX IF NOT EXISTS idx_cm_reports_status ON coffee_machine_reports(status);
+CREATE INDEX IF NOT EXISTS idx_cm_reports_employee ON coffee_machine_reports(employee_phone);
 
 CREATE TABLE IF NOT EXISTS rko_reports (
   id TEXT PRIMARY KEY,
@@ -631,6 +633,8 @@ CREATE TABLE IF NOT EXISTS job_applications (
   notes_updated_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_job_app_status ON job_applications(status);
+CREATE INDEX IF NOT EXISTS idx_job_app_phone ON job_applications(phone);
 
 CREATE TABLE IF NOT EXISTS recipes (
   id TEXT PRIMARY KEY,
@@ -744,6 +748,7 @@ CREATE TABLE IF NOT EXISTS fortune_wheel_results (
   data JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_fortune_wheel_client ON fortune_wheel_results(client_phone);
 
 CREATE TABLE IF NOT EXISTS employee_registrations (
   id TEXT PRIMARY KEY,
@@ -773,6 +778,7 @@ CREATE TABLE IF NOT EXISTS messenger_conversations (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE messenger_conversations ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL;
+ALTER TABLE messenger_conversations ADD COLUMN IF NOT EXISTS auto_delete_seconds INT DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS messenger_participants (
   id SERIAL PRIMARY KEY,
@@ -787,6 +793,8 @@ CREATE TABLE IF NOT EXISTS messenger_participants (
 );
 -- Migration: add unread_count column to existing table
 ALTER TABLE messenger_participants ADD COLUMN IF NOT EXISTS unread_count INT DEFAULT 0;
+-- Migration: add muted_until column for conversation muting
+ALTER TABLE messenger_participants ADD COLUMN IF NOT EXISTS muted_until TIMESTAMPTZ;
 -- Migration: populate unread_count from actual message counts (run once on deploy)
 -- UPDATE messenger_participants p SET unread_count = (
 --   SELECT COUNT(*)::int FROM messenger_messages m
@@ -817,11 +825,13 @@ CREATE TABLE IF NOT EXISTS messenger_messages (
   forwarded_from_name TEXT DEFAULT NULL,
   is_pinned BOOLEAN DEFAULT false,
   pinned_at TIMESTAMPTZ DEFAULT NULL,
-  pinned_by TEXT DEFAULT NULL
+  pinned_by TEXT DEFAULT NULL,
+  media_group_id TEXT DEFAULT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_msgr_msg_conv ON messenger_messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_msgr_msg_time ON messenger_messages(created_at);
 CREATE INDEX IF NOT EXISTS idx_msgr_msg_sender ON messenger_messages(sender_phone);
+CREATE INDEX IF NOT EXISTS idx_msgr_msg_media_group ON messenger_messages(media_group_id) WHERE media_group_id IS NOT NULL;
 -- Composite partial index: speeds up conversation message loading (10-100x)
 -- and unread count calculation by filtering only active messages
 CREATE INDEX IF NOT EXISTS idx_msgr_msg_conv_active ON messenger_messages(conversation_id, created_at DESC) WHERE is_deleted = false;
@@ -878,6 +888,14 @@ CREATE TABLE IF NOT EXISTS messenger_folders (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_msgr_folders_phone ON messenger_folders(phone);
+
+-- Hidden messages (hide for me — media gallery)
+CREATE TABLE IF NOT EXISTS messenger_hidden_messages (
+  phone TEXT NOT NULL,
+  message_id TEXT NOT NULL,
+  hidden_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (phone, message_id)
+);
 
 -- Composite index for broadcastOnlineStatus and participant lookups
 CREATE INDEX IF NOT EXISTS idx_msgr_part_phone_conv ON messenger_participants(phone, conversation_id);

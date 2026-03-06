@@ -12,6 +12,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { requireAuth } = require('../utils/session_middleware');
 const { notifyCounterUpdate } = require('./counters_websocket');
 const db = require('../utils/db');
+const { getMoscowTime } = require('../utils/moscow_time');
 
 const USE_DB_WORK_SCHEDULE = process.env.USE_DB_WORK_SCHEDULE === 'true';
 
@@ -50,7 +51,7 @@ async function saveShiftTransfers(requests) {
 
 // Cleanup expired transfers (older than 30 days with pending status)
 function cleanupExpiredTransfers(requests) {
-  const thirtyDaysAgo = new Date();
+  const thirtyDaysAgo = getMoscowTime();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   return requests.filter(r => {

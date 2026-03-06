@@ -70,7 +70,9 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
 
     try {
       await old?.dispose();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('video_note_recorder: Failed to dispose old camera: $e');
+    }
 
     if (index >= _cameras.length) return;
 
@@ -114,6 +116,7 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
     }
 
     _progressAnim.forward(from: 0);
+    if (!mounted) return;
     setState(() {
       _mode = _RecorderMode.recording;
       _seconds = 0;
@@ -150,17 +153,22 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
 
       // Clean up raw file if remux succeeded
       if (remuxed) {
-        try { await rawDest.delete(); } catch (_) {}
+        try { await rawDest.delete(); } catch (e) {
+          debugPrint('video_note_recorder: Failed to delete raw file: $e');
+        }
       }
 
       // Release camera BEFORE playing preview — frees the video decoder
       // so ExoPlayer can use it (critical on older devices with limited codecs)
       try {
         await _cameraCtrl?.dispose();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('video_note_recorder: Failed to dispose camera: $e');
+      }
       _cameraCtrl = null;
       _cameraReady = false;
 
+      if (!mounted) return;
       setState(() {
         _recordedFile = finalFile;
         _mode = _RecorderMode.preview;
@@ -387,23 +395,20 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
 
   Widget _buildCameraPreview(double size) {
     final ctrl = _cameraCtrl!;
-    final ps = ctrl.value.previewSize;
 
-    if (ps == null) {
-      return SizedBox(
-          width: size, height: size, child: CameraPreview(ctrl));
-    }
-
-    final shortSide = math.min(ps.width, ps.height);
-    final longSide = math.max(ps.width, ps.height);
-
-    return OverflowBox(
-      maxWidth: double.infinity,
-      maxHeight: double.infinity,
-      child: SizedBox(
-        width: size,
-        height: size * longSide / shortSide,
-        child: CameraPreview(ctrl),
+    // Use FittedBox with cover to fill the circle without distortion.
+    // The camera aspect ratio (e.g. 9:16) will be cropped to 1:1 square.
+    return SizedBox(
+      width: size,
+      height: size,
+      child: FittedBox(
+        fit: BoxFit.cover,
+        clipBehavior: Clip.hardEdge,
+        child: SizedBox(
+          width: ctrl.value.previewSize?.height ?? size,
+          height: ctrl.value.previewSize?.width ?? size,
+          child: CameraPreview(ctrl),
+        ),
       ),
     );
   }

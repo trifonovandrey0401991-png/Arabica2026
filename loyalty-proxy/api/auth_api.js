@@ -359,16 +359,9 @@ async function saveTrustedDevice(phone, deviceId, deviceName, trustedVia = 'auto
  * Получает телефоны разработчиков (для push-уведомлений о новых устройствах)
  */
 async function getDeveloperPhones() {
-  const phones = [];
-  const employees = dataCache.getEmployees();
-  if (employees) {
-    for (const emp of employees) {
-      if (emp.role === 'developer' && emp.phone) {
-        phones.push((emp.phone || '').replace(/[^\d]/g, ''));
-      }
-    }
-  }
-  return phones;
+  const { loadShopManagers } = require('./shop_managers_api');
+  const data = await loadShopManagers();
+  return (data.developers || []).map(p => (p || '').replace(/[^\d]/g, '')).filter(Boolean);
 }
 
 /**
@@ -480,7 +473,7 @@ router.post('/register', async (req, res) => {
       console.log(`[Auth] Device auto-trusted on registration: ${maskPhone(normalizedPhone)}`);
     }
 
-    console.log(`✅ User registered: ${normalizedPhone}`);
+    console.log(`✅ User registered: ${maskPhone(normalizedPhone)}`);
 
     res.json({
       success: true,
@@ -608,7 +601,7 @@ router.post('/login', async (req, res) => {
     await saveSession(normalizedPhone, session);
     addTokenToIndex(sessionToken, normalizedPhone, result.pinData.name, session.expiresAt);
 
-    console.log(`✅ User logged in: ${normalizedPhone}`);
+    console.log(`✅ User logged in: ${maskPhone(normalizedPhone)}`);
 
     res.json({
       success: true,
@@ -763,7 +756,7 @@ router.post('/reset-pin', async (req, res) => {
       console.log(`[Auth] Device trusted after PIN reset: ${maskPhone(normalizedPhone)}`);
     }
 
-    console.log(`✅ PIN reset for: ${normalizedPhone}`);
+    console.log(`✅ PIN reset for: ${maskPhone(normalizedPhone)}`);
 
     res.json({
       success: true,
@@ -906,7 +899,7 @@ router.post('/enable-biometric', requireAuth, async (req, res) => {
 
     await savePinData(normalizedPhone, pinData);
 
-    console.log(`✅ Biometric ${enabled ? 'enabled' : 'disabled'} for: ${normalizedPhone}`);
+    console.log(`✅ Biometric ${enabled ? 'enabled' : 'disabled'} for: ${maskPhone(normalizedPhone)}`);
 
     res.json({
       success: true,
@@ -1067,7 +1060,7 @@ router.post('/change-pin', requireAuth, async (req, res) => {
       return res.status(result.status).json(result.body);
     }
 
-    console.log(`✅ PIN changed for: ${normalizedPhone}`);
+    console.log(`✅ PIN changed for: ${maskPhone(normalizedPhone)}`);
     res.json({ success: true, message: 'PIN-код успешно изменён' });
 
   } catch (error) {

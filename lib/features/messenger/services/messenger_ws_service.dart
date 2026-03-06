@@ -115,13 +115,16 @@ class MessengerWsService {
   bool _isConnected = false;
   bool _isDisposed = false;
   Timer? _pingTimer;
+  Timer? _reconnectTimer;
+  int _connectionGeneration = 0;
 
   // Tracks which conversation is currently open (to suppress duplicate notifications)
   static String? _activeConversationId;
   static void setActiveConversation(String? id) => _activeConversationId = id;
 
-  // Privacy filter: hide employee names from clients who don't have them in contacts
+  // Phone book names: normalized phone → contact name from device
   static bool isClientUser = false;
+  static Map<String, String> phoneBookNames = {};
   static Set<String> phoneBookPhones = {};
 
   // Online users cache: phone → isOnline
@@ -184,6 +187,15 @@ class MessengerWsService {
   }
 
   Future<void> _doConnect() async {
+    // Increment generation to invalidate old connection handlers
+    _connectionGeneration++;
+    final myGeneration = _connectionGeneration;
+
+    // Close old connection (its onDone will be ignored via generation check)
+    _pingTimer?.cancel();
+    try { _channel?.sink.close(); } catch (_) {}
+    _channel = null;
+
     try {
       final wsUrl = _buildWebSocketUrl();
       Logger.debug('💬 Messenger WS: connecting to $wsUrl');
@@ -192,8 +204,14 @@ class MessengerWsService {
 
       _channel!.stream.listen(
         _handleMessage,
-        onError: _handleError,
-        onDone: _handleDone,
+        onError: (error) {
+          if (_connectionGeneration != myGeneration) return;
+          _handleError(error);
+        },
+        onDone: () {
+          if (_connectionGeneration != myGeneration) return;
+          _handleDone();
+        },
       );
 
       _isConnected = true;
@@ -252,10 +270,15 @@ class MessengerWsService {
             }
             // Show local notification if user is not currently in this chat
             if (_activeConversationId != convId) {
-              String senderName = msg.senderName ?? msg.senderPhone;
-              // Privacy: clients see "Сотрудник" for unknown contacts
-              if (isClientUser && !phoneBookPhones.contains(msg.senderPhone)) {
-                senderName = 'Сотрудник';
+              // Name priority: phone book → profile name (group) / phone (private)
+              final bookName = phoneBookNames[msg.senderPhone];
+              String senderName;
+              if (bookName != null) {
+                senderName = bookName;
+              } else if (convId.startsWith('private_')) {
+                senderName = msg.senderPhone;
+              } else {
+                senderName = msg.senderName ?? msg.senderPhone;
               }
               final preview = (msg.content != null && msg.content!.isNotEmpty)
                   ? msg.content!
@@ -359,6 +382,7 @@ class MessengerWsService {
 
         // ===== CALL SIGNALING =====
         case 'call_incoming':
+          Logger.debug('📞 WS received call_incoming from ${message['callerPhone']}, callId=${message['callId']}, hasListeners=${_callIncomingController.hasListener}');
           _callIncomingController.add(MsgrCallIncoming(
             callId: message['callId'] as String? ?? '',
             callerPhone: message['callerPhone'] as String? ?? '',
@@ -422,11 +446,14 @@ class MessengerWsService {
   void _scheduleReconnect() {
     if (_isDisposed || _userPhone == null) return;
 
+    // Cancel any pending reconnect timer
+    _reconnectTimer?.cancel();
+
     _reconnectAttempts++;
 
     if (_reconnectAttempts > _maxReconnectAttempts) {
       Logger.debug('💬 Messenger WS: max reconnect attempts, waiting 1 min');
-      Future.delayed(const Duration(minutes: 1), () {
+      _reconnectTimer = Timer(const Duration(minutes: 1), () {
         if (!_isDisposed) {
           _reconnectAttempts = 0;
           _doConnect();
@@ -442,7 +469,7 @@ class MessengerWsService {
     );
 
     Logger.debug('💬 Messenger WS: reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts)');
-    Future.delayed(delay, () {
+    _reconnectTimer = Timer(delay, () {
       if (!_isDisposed) _doConnect();
     });
   }
@@ -490,12 +517,38 @@ class MessengerWsService {
       } catch (e) {
         Logger.error('💬 Messenger WS: send error: $e');
       }
+    } else {
+      Logger.error('💬 WS _send DROPPED: type=${data['type']} (connected=$_isConnected, channel=${_channel != null})');
     }
+  }
+
+  /// Send with retry: waits for WS connection and retries up to [maxRetries] times.
+  /// Used for critical messages like call_answer that must not be lost.
+  Future<bool> sendWithRetry(Map<String, dynamic> data, {int maxRetries = 3}) async {
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      if (_channel != null && _isConnected) {
+        try {
+          _channel!.sink.add(jsonEncode(data));
+          Logger.debug('💬 WS sendWithRetry: sent type=${data['type']} (attempt $attempt)');
+          return true;
+        } catch (e) {
+          Logger.error('💬 WS sendWithRetry error: $e');
+        }
+      }
+      if (attempt < maxRetries) {
+        // Wait for reconnection
+        reconnectIfNeeded();
+        await Future.delayed(const Duration(seconds: 2));
+      }
+    }
+    Logger.error('💬 WS sendWithRetry FAILED: type=${data['type']} after $maxRetries retries');
+    return false;
   }
 
   /// Call when app returns to foreground — reconnects immediately if disconnected
   void reconnectIfNeeded() {
     if (!_isConnected && !_isDisposed && _userPhone != null) {
+      _reconnectTimer?.cancel();
       _reconnectAttempts = 0;
       _doConnect();
     }
@@ -506,8 +559,10 @@ class MessengerWsService {
   void disconnect() {
     _isDisposed = true;
     _isConnected = false;
+    _connectionGeneration++; // Invalidate old connection handlers
+    _reconnectTimer?.cancel();
     _pingTimer?.cancel();
-    _channel?.sink.close();
+    try { _channel?.sink.close(); } catch (_) {}
     _channel = null;
     _connectionStatusController.add(false);
   }

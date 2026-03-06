@@ -18,6 +18,7 @@ const { writeJsonFile, withLock } = require('../utils/async_fs');
 const db = require('../utils/db');
 
 const USE_DB = process.env.USE_DB_CIGARETTE_VISION === 'true';
+const USE_DB_RQ = process.env.USE_DB_RECOUNT_QUESTIONS === 'true';
 const USE_EMBEDDING = process.env.USE_EMBEDDING_RECOGNITION === 'true';
 
 // YOLO ML Wrapper для детекции
@@ -475,6 +476,229 @@ async function getProductsWithTrainingInfo(recountQuestions, productGroup = null
   }
 
   return products;
+}
+
+/**
+ * SQL-optimized version: products with training info via DB queries.
+ * Returns null if DB is not available (caller should fall back to memory-based method).
+ */
+async function getProductsWithTrainingInfoDB(options = {}) {
+  if (!USE_DB || !USE_DB_RQ) return null;
+
+  const {
+    page = 1, pageSize = 50,
+    search = null, filter = null, sort = null,
+    productGroup = null, shopAddress = null,
+  } = options;
+
+  try {
+    const settings = await loadSettings();
+    const shops = await loadAllShops();
+    const requiredRecount = settings.requiredRecountPhotos || 10;
+    const requiredDisplayPerShop = settings.requiredDisplayPhotosPerShop || 3;
+
+    // Build WHERE conditions for recount_questions
+    const conditions = ['1=1'];
+    const params = [];
+    let idx = 1;
+
+    if (search) {
+      conditions.push(`(rq.data->>'productName' ILIKE $${idx} OR rq.data->>'barcode' ILIKE $${idx})`);
+      params.push(`%${search}%`);
+      idx++;
+    }
+    if (productGroup) {
+      conditions.push(`rq.data->>'productGroup' = $${idx}`);
+      params.push(productGroup);
+      idx++;
+    }
+
+    // Filters that require sample data
+    if (filter === 'has-photos') {
+      conditions.push('COALESCE(ps.total_photos, 0) > 0');
+    } else if (filter === 'counting-complete') {
+      conditions.push(`COALESCE(ps.template_count, 0) >= $${idx}`);
+      params.push(requiredRecount);
+      idx++;
+    }
+
+    // Sort clause
+    let orderBy = "rq.data->>'productName'";
+    if (sort === 'progress-asc') {
+      orderBy = 'COALESCE(ps.total_photos, 0) ASC';
+    } else if (sort === 'accuracy-desc') {
+      orderBy = 'COALESCE(ps.total_photos, 0) DESC';
+    }
+
+    const whereClause = conditions.join(' AND ');
+    const offset = (page - 1) * pageSize;
+
+    // CTE: aggregate photo stats per product_id (runs once, not per-row)
+    const photoCTE = `
+      photo_stats AS (
+        SELECT product_id,
+               COUNT(*) as total_photos,
+               COUNT(DISTINCT CASE WHEN data->>'templateId' IS NOT NULL THEN data->>'templateId' END) as template_count
+        FROM cigarette_samples
+        GROUP BY product_id
+      )`;
+
+    // Parallel: count + paginated data
+    const [countResult, dataResult] = await Promise.all([
+      db.query(
+        `WITH ${photoCTE}
+         SELECT COUNT(*) as total
+         FROM recount_questions rq
+         LEFT JOIN photo_stats ps ON ps.product_id = rq.data->>'barcode'
+         WHERE ${whereClause}`,
+        params,
+      ),
+      db.query(
+        `WITH ${photoCTE}
+         SELECT rq.id, rq.data
+         FROM recount_questions rq
+         LEFT JOIN photo_stats ps ON ps.product_id = rq.data->>'barcode'
+         WHERE ${whereClause}
+         ORDER BY ${orderBy}
+         LIMIT $${idx} OFFSET $${idx + 1}`,
+        [...params, pageSize, offset],
+      ),
+    ]);
+
+    const total = parseInt(countResult.rows[0].total);
+    const productRows = dataResult.rows;
+
+    if (productRows.length === 0) {
+      return {
+        products: [],
+        pagination: { page, limit: pageSize, total, totalPages: Math.ceil(total / pageSize) || 1, hasNextPage: false, hasPrevPage: page > 1 },
+      };
+    }
+
+    // Collect all IDs for sample aggregation (only for this page's products)
+    const barcodes = productRows.map(r => r.data.barcode).filter(Boolean);
+    const rqIds = productRows.map(r => r.id);
+    const allIds = [...new Set([...barcodes, ...rqIds])];
+
+    // 3 parallel queries: detailed stats for paginated products only
+    const [recountResult, displayResult, templateResult] = await Promise.all([
+      db.query(
+        `SELECT product_id, COUNT(*) as count FROM cigarette_samples
+         WHERE (product_id = ANY($1) OR data->>'barcode' = ANY($1)) AND (type IS NULL OR type != 'display')
+         GROUP BY product_id`,
+        [allIds],
+      ),
+      db.query(
+        `SELECT product_id, shop_address, COUNT(*) as count FROM cigarette_samples
+         WHERE (product_id = ANY($1) OR data->>'barcode' = ANY($1)) AND type = 'display'
+         GROUP BY product_id, shop_address`,
+        [allIds],
+      ),
+      db.query(
+        `SELECT product_id, data->>'templateId' as template_id FROM cigarette_samples
+         WHERE (product_id = ANY($1) OR data->>'barcode' = ANY($1)) AND data->>'templateId' IS NOT NULL
+         GROUP BY product_id, data->>'templateId'`,
+        [allIds],
+      ),
+    ]);
+
+    // Build lookup maps
+    const recountPhotosByProduct = {};
+    for (const r of recountResult.rows) {
+      recountPhotosByProduct[r.product_id] = parseInt(r.count);
+    }
+
+    const displayPhotosByProductAndShop = {};
+    for (const r of displayResult.rows) {
+      displayPhotosByProductAndShop[`${r.product_id}|${r.shop_address}`] = parseInt(r.count);
+    }
+
+    const completedTemplatesByProduct = {};
+    for (const r of templateResult.rows) {
+      if (!completedTemplatesByProduct[r.product_id]) {
+        completedTemplatesByProduct[r.product_id] = new Set();
+      }
+      completedTemplatesByProduct[r.product_id].add(r.template_id);
+    }
+
+    // Assemble product objects (same structure as getProductsWithTrainingInfo)
+    const products = productRows.map(row => {
+      const q = row.data;
+      const barcode = q.barcode || q.id;
+
+      const recountPhotos = recountPhotosByProduct[barcode] || recountPhotosByProduct[row.id] || 0;
+      const completedTemplatesSet = completedTemplatesByProduct[barcode] || completedTemplatesByProduct[row.id] || new Set();
+      const completedTemplates = Array.from(completedTemplatesSet).sort((a, b) => a - b);
+      const isRecountComplete = completedTemplates.length >= requiredRecount;
+
+      // Display stats across ALL shops
+      let totalDisplayPhotos = 0;
+      let shopsWithAiReady = 0;
+      for (const shop of shops) {
+        const keyByBarcode = `${barcode}|${shop.address}`;
+        const keyById = `${row.id}|${shop.address}`;
+        const count = displayPhotosByProductAndShop[keyByBarcode] || displayPhotosByProductAndShop[keyById] || 0;
+        totalDisplayPhotos += count;
+        if (count >= requiredDisplayPerShop) shopsWithAiReady++;
+      }
+      const isDisplayComplete = shopsWithAiReady > 0;
+
+      // Per-shop stats (filtered by shopAddress if provided)
+      const shopsToSend = shopAddress ? shops.filter(s => s.address === shopAddress) : shops;
+      const perShopDisplayStats = shopsToSend.map(shop => {
+        const keyByBarcode = `${barcode}|${shop.address}`;
+        const keyById = `${row.id}|${shop.address}`;
+        const count = displayPhotosByProductAndShop[keyByBarcode] || displayPhotosByProductAndShop[keyById] || 0;
+        return {
+          shopAddress: shop.address,
+          shopName: shop.name,
+          shopId: shop.id,
+          displayPhotosCount: count,
+          requiredDisplayPhotos: requiredDisplayPerShop,
+          isDisplayComplete: count >= requiredDisplayPerShop,
+        };
+      });
+
+      return {
+        id: q.id || row.id,
+        barcode: barcode,
+        productGroup: q.productGroup || '',
+        productName: q.productName || q.question || '',
+        grade: q.grade || 1,
+        isAiActive: q.isAiActive || false,
+        trainingPhotosCount: recountPhotos + totalDisplayPhotos,
+        requiredPhotosCount: requiredRecount + requiredDisplayPerShop,
+        isTrainingComplete: isRecountComplete && isDisplayComplete,
+        recountPhotosCount: recountPhotos,
+        requiredRecountPhotos: requiredRecount,
+        isRecountComplete: isRecountComplete,
+        completedTemplates: completedTemplates,
+        displayPhotosCount: totalDisplayPhotos,
+        requiredDisplayPhotos: requiredDisplayPerShop,
+        isDisplayComplete: isDisplayComplete,
+        perShopDisplayStats: perShopDisplayStats,
+        totalDisplayPhotos: totalDisplayPhotos,
+        requiredDisplayPhotosPerShop: requiredDisplayPerShop,
+        shopsWithAiReady: shopsWithAiReady,
+        totalShops: shops.length,
+      };
+    });
+
+    return {
+      products,
+      pagination: {
+        page,
+        limit: pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize) || 1,
+        hasNextPage: page * pageSize < total,
+        hasPrevPage: page > 1,
+      },
+    };
+  } catch (err) {
+    console.error('[Cigarette Vision] getProductsWithTrainingInfoDB error:', err.message);
+    return null; // Caller should fall back to memory-based method
+  }
 }
 
 /**
@@ -2880,6 +3104,7 @@ async function getAccuracyReport() {
 module.exports = {
   init,
   getProductsWithTrainingInfo,
+  getProductsWithTrainingInfoDB,
   getProductGroups,
   getTrainingStats,
   saveTrainingSample,

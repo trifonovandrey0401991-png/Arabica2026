@@ -476,7 +476,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
               month: now.month,
             );
             count += assignments.where((a) => a.status.name == 'pending' || a.status.name == 'submitted').length;
-          } catch (_) {}
+          } catch (e) { debugPrint('manager_grid: Failed to load task assignments: $e'); }
         }(),
         // Циклические задачи (pending)
         () async {
@@ -490,7 +490,7 @@ class _ManagerGridPageState extends State<ManagerGridPage> with WidgetsBindingOb
               yearMonth: yearMonth,
             );
             count += instances.where((i) => i.status == 'pending').length;
-          } catch (_) {}
+          } catch (e) { debugPrint('manager_grid: Failed to load recurring tasks: $e'); }
         }(),
         // Отчёты пересменки (review) — admin only
         () async {

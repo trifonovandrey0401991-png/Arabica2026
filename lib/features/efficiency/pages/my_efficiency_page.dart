@@ -34,6 +34,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
   bool _isLoading = true;
   EfficiencySummary? _summary;
   EfficiencySummary? _previousMonthSummary; // Для сравнения
+  List<EfficiencyRecord> _sortedRecentRecords = []; // cached sorted records
   String? _error;
   String? _employeeName;
   String? _employeeId;
@@ -109,6 +110,11 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
         _employeeName = cached['employeeName'] as String?;
         _employeeId = cached['employeeId'] as String?;
         _teamTaskPenalties = cached['teamTaskPenalties'] as Map<String, dynamic>?;
+        _sortedRecentRecords = _summary != null
+            ? (List<EfficiencyRecord>.from(_summary!.records)
+                ..sort((a, b) => b.date.compareTo(a.date)))
+                .take(20).toList()
+            : [];
         _isLoading = false;
         _error = null;
       });
@@ -301,6 +307,11 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
         _referralPoints = referralPoints;
         _avgTestScore = avgScore;
         _totalTests = totalTests;
+        _sortedRecentRecords = mySummary != null
+            ? (List<EfficiencyRecord>.from(mySummary.records)
+                ..sort((a, b) => b.date.compareTo(a.date)))
+                .take(20).toList()
+            : [];
         _isLoading = false;
       });
 
@@ -1502,12 +1513,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
   }
 
   Widget _buildRecentRecordsCard() {
-    // Сортируем записи по дате (новые сначала)
-    final sortedRecords = List<EfficiencyRecord>.from(_summary!.records)
-      ..sort((a, b) => b.date.compareTo(a.date));
-
-    // Берем последние 20 записей
-    final recentRecords = sortedRecords.take(20).toList();
+    final recentRecords = _sortedRecentRecords;
 
     return Container(
       decoration: BoxDecoration(

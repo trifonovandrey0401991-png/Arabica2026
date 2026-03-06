@@ -22,7 +22,6 @@ class _CallPageState extends State<CallPage> {
   bool _isMuted = false;
   int _secondsElapsed = 0;
   Timer? _timer;
-  bool _isRinging = false;
 
   @override
   void initState() {
@@ -30,8 +29,7 @@ class _CallPageState extends State<CallPage> {
     _info = widget.callInfo;
     _state = CallService.instance.state;
 
-    // Start ringtone/ringback based on current state when page opens
-    if (_state == CallState.incoming) _startRingtone();
+    // Start ringback for outgoing calls (CallKit handles incoming ringtone)
     if (_state == CallState.outgoing) _startRingback();
 
     _stateSub = CallService.instance.onStateChanged.listen((s) {
@@ -41,10 +39,8 @@ class _CallPageState extends State<CallPage> {
         _state = s;
         _isMuted = CallService.instance.isMuted;
       });
-      // Manage sounds on state change
-      if (s == CallState.incoming) _startRingtone();
+      // Manage sounds on state change (CallKit handles incoming ringtone)
       if (s == CallState.outgoing) _startRingback();
-      if (prevState == CallState.incoming && s != CallState.incoming) _stopRingtone();
       if (prevState == CallState.outgoing && s != CallState.outgoing) _stopRingback();
 
       if (s == CallState.connected && _timer == null) {
@@ -66,19 +62,6 @@ class _CallPageState extends State<CallPage> {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _secondsElapsed++);
     });
-  }
-
-  // ─── Incoming call: play the device ringtone ───
-  void _startRingtone() {
-    if (_isRinging) return;
-    _isRinging = true;
-    FlutterRingtonePlayer().playRingtone(looping: true, volume: 1.0);
-  }
-
-  void _stopRingtone() {
-    if (!_isRinging) return;
-    _isRinging = false;
-    FlutterRingtonePlayer().stop();
   }
 
   // ─── Outgoing call: play a ring-back tone (short beeps) ───
@@ -109,7 +92,6 @@ class _CallPageState extends State<CallPage> {
 
   @override
   void dispose() {
-    _stopRingtone();
     _stopRingback();
     _stateSub?.cancel();
     _timer?.cancel();

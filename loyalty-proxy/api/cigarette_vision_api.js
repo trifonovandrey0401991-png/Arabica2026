@@ -146,7 +146,24 @@ async function setupCigaretteVisionAPI(app) {
     try {
       const { productGroup, shopAddress, search, sort, filter } = req.query;
 
-      // Перезагружаем вопросы для актуальности
+      // SQL-optimized path: pagination + search/filter/sort in DB (no file reads)
+      if (isPaginationRequested(req.query)) {
+        const dbResult = await cigaretteVision.getProductsWithTrainingInfoDB({
+          page: parseInt(req.query.page) || 1,
+          pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          search: search && search.trim() ? search.trim() : null,
+          filter: filter || null,
+          sort: sort || null,
+          productGroup: productGroup || null,
+          shopAddress: shopAddress || null,
+        });
+        if (dbResult) {
+          return res.json({ success: true, ...dbResult });
+        }
+        // DB unavailable — fall through to memory-based method
+      }
+
+      // Memory-based fallback (file reads)
       await loadRecountQuestions();
 
       let products = await cigaretteVision.getProductsWithTrainingInfo(

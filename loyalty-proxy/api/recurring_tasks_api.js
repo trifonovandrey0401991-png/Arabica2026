@@ -374,7 +374,7 @@ async function generateDailyTasks(date) {
 }
 
 async function checkExpiredTasks() {
-  const now = new Date();
+  const now = getMoscowTime();
   const today = getToday();
   const yearMonth = getYearMonth(today);
   let instances = await loadInstances(yearMonth);

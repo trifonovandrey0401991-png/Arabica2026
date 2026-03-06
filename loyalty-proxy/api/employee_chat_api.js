@@ -6,6 +6,7 @@ const { maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
+const { getMoscowTime } = require('../utils/moscow_time');
 
 const USE_DB = process.env.USE_DB_EMPLOYEE_CHATS === 'true';
 
@@ -169,7 +170,7 @@ async function saveChat(chat) {
 
 // Helper: Clean old messages (older than retention days) - async
 async function cleanOldMessages(chat) {
-  const cutoffDate = new Date();
+  const cutoffDate = getMoscowTime();
   cutoffDate.setDate(cutoffDate.getDate() - MESSAGE_RETENTION_DAYS);
 
   if (chat.messages && chat.messages.length > 0) {
@@ -1011,8 +1012,8 @@ function setupEmployeeChatAPI(app) {
         deletedCount = originalCount;
         chat.messages = [];
       } else if (mode === 'previous_month') {
-        // Удаляем сообщения старше текущего месяца
-        const now = new Date();
+        // Удаляем сообщения старше текущего месяца (московское время)
+        const now = getMoscowTime();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
         chat.messages = (chat.messages || []).filter(m => {

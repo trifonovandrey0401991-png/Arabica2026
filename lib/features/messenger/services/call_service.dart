@@ -1,5 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:flutter_callkit_incoming/entities/entities.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/utils/logger.dart';
 import 'messenger_ws_service.dart';
@@ -68,6 +72,12 @@ class CallService {
   // Timer for unanswered outgoing calls (ring timeout)
   Timer? _ringTimer;
 
+  // Timer for ICE disconnect grace period
+  Timer? _iceDisconnectTimer;
+
+  // Flag to suppress actionCallEnded triggered by our own endAllCalls()
+  bool _dismissingCallKit = false;
+
   // ─── Public state ───
   CallState get state => _state;
   CallInfo? get currentCall => _currentCall;
@@ -79,12 +89,19 @@ class CallService {
   final _stateController = StreamController<CallState>.broadcast();
   Stream<CallState> get onStateChanged => _stateController.stream;
 
+  // CallKit event subscription
+  StreamSubscription? _callkitSub;
+
   // ─── Initialisation ───
 
   void init(String myPhone, String myName) {
     _myPhone = myPhone;
     _myName  = myName;
+    Logger.debug('📞 CallService.init: phone=$myPhone, name=$myName');
     _subscribeToWsEvents();
+    _subscribeToCallKitEvents();
+    // Request full-screen intent permission for Android 14+
+    FlutterCallkitIncoming.requestFullIntentPermission();
   }
 
   void _subscribeToWsEvents() {
@@ -98,6 +115,7 @@ class CallService {
     final ws = MessengerWsService.instance;
 
     _subIncoming = ws.onCallIncoming.listen((e) {
+      Logger.debug('📞 CallService: received call_incoming event, callId=${e.callId}, state=$_state');
       _pendingOfferSdp = e.offerSdp;
       _onCallIncoming(e);
     });
@@ -105,6 +123,163 @@ class CallService {
     _subRejected = ws.onCallRejected.listen(_onCallRejected);
     _subIce      = ws.onCallIceCandidate.listen(_onCallIceCandidate);
     _subHangup   = ws.onCallHangup.listen(_onCallHangup);
+  }
+
+  void _subscribeToCallKitEvents() {
+    _callkitSub?.cancel();
+    _callkitSub = FlutterCallkitIncoming.onEvent.listen((CallEvent? event) {
+      if (event == null) return;
+      Logger.debug('📞 CallKit event: ${event.event}');
+      switch (event.event) {
+        case Event.actionCallAccept:
+          // User pressed "Answer" on system call screen
+          _onCallKitAccept(event);
+          break;
+        case Event.actionCallDecline:
+          // User pressed "Decline" on system call screen
+          _onCallKitDecline(event);
+          break;
+        case Event.actionCallEnded:
+          // Ignore if WE dismissed CallKit (endAllCalls in answerCall/cleanup)
+          if (_dismissingCallKit) {
+            _dismissingCallKit = false;
+            break;
+          }
+          // Call ended from system UI by user
+          if (_state == CallState.connected || _state == CallState.outgoing) {
+            hangUp();
+          }
+          break;
+        case Event.actionCallTimeout:
+          // Missed call (ring timeout)
+          if (_state == CallState.incoming) {
+            rejectCall();
+          }
+          break;
+        default:
+          break;
+      }
+    });
+  }
+
+  void _onCallKitAccept(CallEvent event) async {
+    final extra = event.body['extra'] as Map<String, dynamic>?;
+    if (_state == CallState.incoming && _currentCall != null) {
+      // Already set up via WS — just answer
+      await ensureWsConnected();
+      answerCall();
+    } else if (extra != null && _myPhone != null) {
+      // App was in background but alive — restore call, wait for WS, then answer
+      final callId = extra['callId'] as String? ?? '';
+      final callerPhone = extra['callerPhone'] as String? ?? '';
+      final callerName = extra['callerName'] as String? ?? '';
+      final offerSdp = extra['offerSdp'] as String? ?? '';
+      if (callId.isNotEmpty && callerPhone.isNotEmpty && offerSdp.isNotEmpty) {
+        // Reconnect WS first (was likely frozen in background)
+        MessengerWsService.instance.reconnectIfNeeded();
+        handleFcmIncomingCall(
+          callId: callId,
+          callerPhone: callerPhone,
+          callerName: callerName,
+          offerSdp: offerSdp,
+        );
+        // Wait for WS to be ready before answering
+        await ensureWsConnected();
+        // Small delay so _GlobalCallListener can show CallPage
+        await Future.delayed(const Duration(milliseconds: 500));
+        answerCall();
+      }
+    } else if (extra != null) {
+      // Cold start — CallService not initialized yet, save for after PIN entry
+      Logger.debug('📞 CallKit Accept: cold start, saving pending acceptance');
+      _savePendingAcceptedCall(extra);
+    }
+  }
+
+  /// Wait for WS to be connected (up to 5 seconds)
+  Future<bool> ensureWsConnected() async {
+    final ws = MessengerWsService.instance;
+    if (ws.isConnected) return true;
+    ws.reconnectIfNeeded();
+    // Poll for connection up to 5 seconds
+    for (int i = 0; i < 25; i++) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      if (ws.isConnected) return true;
+    }
+    Logger.error('📞 CallService: WS not connected after 5s timeout');
+    return false;
+  }
+
+  void _savePendingAcceptedCall(Map<String, dynamic> extra) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('pending_incoming_call', jsonEncode(extra));
+      await prefs.setBool('pending_call_accepted', true);
+    } catch (_) {}
+  }
+
+  void _onCallKitDecline(CallEvent event) {
+    if (_state == CallState.incoming && _currentCall != null) {
+      rejectCall();
+    } else {
+      // App was in background — restore minimal info and reject
+      final extra = event.body['extra'] as Map<String, dynamic>?;
+      if (extra != null) {
+        final callId = extra['callId'] as String? ?? '';
+        final callerPhone = extra['callerPhone'] as String? ?? '';
+        if (callId.isNotEmpty && callerPhone.isNotEmpty) {
+          MessengerWsService.instance.sendCallReject(
+            callerPhone: callerPhone,
+            callId: callId,
+          );
+        }
+      }
+    }
+    // Dismiss CallKit UI (suppress actionCallEnded event)
+    _dismissingCallKit = true;
+    FlutterCallkitIncoming.endAllCalls();
+  }
+
+  /// Show native CallKit incoming call screen
+  Future<void> _showCallKitIncoming(String callId, String callerName, String callerPhone, String offerSdp) async {
+    try {
+      final params = CallKitParams(
+        id: callId,
+        nameCaller: callerName.isNotEmpty ? callerName : callerPhone,
+        appName: 'Арабика',
+        handle: callerPhone,
+        type: 0,
+        textAccept: 'Ответить',
+        textDecline: 'Отклонить',
+        duration: 45000,
+        extra: <String, dynamic>{
+          'callId': callId,
+          'callerPhone': callerPhone,
+          'callerName': callerName,
+          'offerSdp': offerSdp,
+        },
+        android: const AndroidParams(
+          isCustomNotification: true,
+          isShowLogo: false,
+          ringtonePath: 'system_ringtone_default',
+          backgroundColor: '#1A4D4D',
+          actionColor: '#4CAF50',
+          textColor: '#ffffff',
+          incomingCallNotificationChannelName: 'Входящий звонок',
+          missedCallNotificationChannelName: 'Пропущенный звонок',
+          isShowCallID: false,
+        ),
+        missedCallNotification: const NotificationParams(
+          showNotification: true,
+          isShowCallback: true,
+          subtitle: 'Пропущенный звонок',
+          callbackText: 'Перезвонить',
+        ),
+      );
+      await FlutterCallkitIncoming.showCallkitIncoming(params);
+    } catch (e) {
+      Logger.error('📞 CallKit showIncoming error', e);
+    }
   }
 
   // ─── Outgoing call ───
@@ -188,7 +363,9 @@ class CallService {
 
   void _onCallIncoming(MsgrCallIncoming event) {
     if (_state != CallState.idle) {
-      // Already in a call — auto-reject
+      // Same call arriving via duplicate WS connection — ignore
+      if (_currentCall?.callId == event.callId) return;
+      // Different call while already in one — auto-reject
       MessengerWsService.instance.sendCallReject(
         callerPhone: event.callerPhone,
         callId: event.callId,
@@ -206,6 +383,9 @@ class CallService {
     );
     _pendingCandidates.clear();
     _setState(CallState.incoming);
+
+    // Show native incoming call screen (works even when app is minimized)
+    _showCallKitIncoming(event.callId, event.callerName, event.callerPhone, event.offerSdp);
   }
 
   Future<void> answerCall() async {
@@ -239,11 +419,23 @@ class CallService {
       final answer = await _pc!.createAnswer({});
       await _pc!.setLocalDescription(answer);
 
-      MessengerWsService.instance.sendCallAnswer(
-        callerPhone: _currentCall!.remotePhone,
-        callId: _currentCall!.callId,
-        answerSdp: answer.sdp!,
-      );
+      // Send call_answer with retry — critical message, must not be lost
+      final sent = await MessengerWsService.instance.sendWithRetry({
+        'type': 'call_answer',
+        'callerPhone': _currentCall!.remotePhone,
+        'callId': _currentCall!.callId,
+        'answerSdp': answer.sdp!,
+      });
+
+      if (!sent) {
+        Logger.error('📞 CallService: failed to send call_answer after retries');
+        rejectCall();
+        return;
+      }
+
+      // Dismiss CallKit incoming screen (suppress actionCallEnded event)
+      _dismissingCallKit = true;
+      FlutterCallkitIncoming.endAllCalls();
 
       _setState(CallState.connected);
     } catch (e) {
@@ -260,8 +452,8 @@ class CallService {
       callId: _currentCall!.callId,
     );
     _recordCall('rejected');
-    _cleanup();
     _setState(CallState.ended);
+    _cleanup();
     Future.delayed(const Duration(seconds: 1), () => _setState(CallState.idle));
   }
 
@@ -289,8 +481,8 @@ class CallService {
     Logger.debug('📞 CallService: call rejected');
     _ringTimer?.cancel();
     _recordCall('rejected');
-    _cleanup();
     _setState(CallState.ended);
+    _cleanup();
     Future.delayed(const Duration(seconds: 1), () => _setState(CallState.idle));
   }
 
@@ -310,8 +502,8 @@ class CallService {
     Logger.debug('📞 CallService: remote hung up');
     _ringTimer?.cancel();
     if (_state == CallState.connected) _recordCall('completed');
-    _cleanup();
     _setState(CallState.ended);
+    _cleanup();
     Future.delayed(const Duration(seconds: 1), () => _setState(CallState.idle));
   }
 
@@ -324,8 +516,8 @@ class CallService {
     );
     _ringTimer?.cancel();
     if (_state == CallState.connected) _recordCall('completed');
-    _cleanup();
     _setState(CallState.ended);
+    _cleanup();
     Future.delayed(const Duration(seconds: 1), () => _setState(CallState.idle));
   }
 
@@ -353,11 +545,32 @@ class CallService {
 
     _pc!.onIceConnectionState = (state) {
       Logger.debug('📞 ICE state: $state');
-      if (state == RTCIceConnectionState.RTCIceConnectionStateDisconnected ||
-          state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
-        if (_state == CallState.connected) {
+      if (state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
+        // ICE completely failed — no recovery possible
+        if (_state == CallState.connected && _currentCall != null) {
           hangUp();
         }
+      } else if (state == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
+        // ICE temporarily disconnected — give it 8 seconds to recover
+        // (common during cold start when ICE candidates are still being exchanged)
+        _iceDisconnectTimer?.cancel();
+        _iceDisconnectTimer = Timer(const Duration(seconds: 8), () {
+          if (_state == CallState.connected && _currentCall != null && _pc != null) {
+            // Check if still disconnected after timeout
+            _pc!.getStats().then((_) {
+              // If we get here, PC is alive but ICE may still be disconnected
+              Logger.debug('📞 ICE disconnect timeout — hanging up');
+              hangUp();
+            }).catchError((_) {
+              hangUp();
+            });
+          }
+        });
+      } else if (state == RTCIceConnectionState.RTCIceConnectionStateConnected ||
+                 state == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
+        // ICE recovered or connected — cancel disconnect timer
+        _iceDisconnectTimer?.cancel();
+        _iceDisconnectTimer = null;
       }
     };
   }
@@ -383,7 +596,7 @@ class CallService {
         'durationSeconds': duration,
         'status': status,
       },
-    ).catchError((_) {});
+    ).catchError((_) => null);
   }
 
   // ─── FCM-launched call restore ───
@@ -415,15 +628,20 @@ class CallService {
   // ─── Cleanup ───
 
   void _cleanup() {
-    _pc?.close();
+    _iceDisconnectTimer?.cancel();
+    _iceDisconnectTimer = null;
+    try { _pc?.close(); } catch (e) { Logger.error('📞 _cleanup: pc.close error', e); }
     _pc = null;
-    _localStream?.dispose();
+    try { _localStream?.dispose(); } catch (e) { Logger.error('📞 _cleanup: stream.dispose error', e); }
     _localStream = null;
     _pendingCandidates.clear();
     _pendingOfferSdp = null;
     _currentCall = null;
     _conversationId = null;
     _isMuted = false;
+    // Dismiss any active CallKit UI (suppress actionCallEnded event)
+    _dismissingCallKit = true;
+    FlutterCallkitIncoming.endAllCalls();
   }
 
   void _setState(CallState s) {
@@ -432,6 +650,7 @@ class CallService {
   }
 
   void dispose() {
+    _callkitSub?.cancel();
     _subIncoming?.cancel();
     _subAnswered?.cancel();
     _subRejected?.cancel();

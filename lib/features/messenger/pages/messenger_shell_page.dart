@@ -12,6 +12,8 @@ import '../../../core/utils/logger.dart';
 import '../services/messenger_ws_service.dart';
 import 'messenger_list_page.dart';
 import 'contact_search_page.dart';
+import 'messenger_global_search_page.dart';
+import 'messenger_profile_page.dart';
 
 /// Полноэкранная обёртка мессенджера.
 /// Единственная точка входа из основного приложения.
@@ -19,17 +21,19 @@ import 'contact_search_page.dart';
 class MessengerShellPage extends StatefulWidget {
   const MessengerShellPage({super.key});
 
-  /// Определяет отображаемое имя с учётом приватности клиента.
-  /// Для клиентов: номер в контактах → имя из книги, иначе → «Сотрудник».
-  /// Для сотрудников/управляющих/разработчиков: всегда серверное имя.
+  /// Determines display name using priority:
+  /// 1. Phone book name (if user is in device contacts)
+  /// 2. Profile/server name (if set in messenger profile)
+  /// 3. Phone number (fallback)
   static String resolveDisplayName(
     String phone, String? serverName,
-    bool isClient, Map<String, String> phoneBookNames,
+    Map<String, String> phoneBookNames,
+    {bool isGroupContext = false}
   ) {
-    if (!isClient) return serverName ?? phone;
     final bookName = phoneBookNames[phone];
     if (bookName != null) return bookName;
-    return 'Сотрудник';
+    if (serverName != null && serverName.isNotEmpty && serverName != phone) return serverName;
+    return phone;
   }
 
   @override
@@ -162,6 +166,7 @@ class _MessengerShellPageState extends State<MessengerShellPage> with WidgetsBin
 
     // Сохраняем телефонную книгу для фильтрации имён
     if (mounted) setState(() => _phoneBookNames = bookNames);
+    MessengerWsService.phoneBookNames = bookNames;
     MessengerWsService.phoneBookPhones = bookNames.keys.toSet();
 
     // Push notifications: resolve sender name from phone book
@@ -344,6 +349,22 @@ class _MessengerShellPageState extends State<MessengerShellPage> with WidgetsBin
             matchedContacts: _contactsGranted ? _matchedContacts : null,
             embeddedMode: true,
           ),
+          MessengerGlobalSearchPage(
+            userPhone: _userPhone!,
+            userName: _userName ?? _userPhone!,
+            isClient: _isClient,
+            phoneBookNames: _phoneBookNames,
+          ),
+          MessengerProfilePage(
+            userPhone: _userPhone!,
+            userName: _userName ?? _userPhone!,
+            embeddedMode: true,
+            onProfileChanged: (result) {
+              if (result.displayName != null && mounted) {
+                setState(() => _userName = result.displayName);
+              }
+            },
+          ),
         ],
       ),
       bottomNavigationBar: Container(
@@ -373,6 +394,14 @@ class _MessengerShellPageState extends State<MessengerShellPage> with WidgetsBin
             BottomNavigationBarItem(
               icon: Icon(Icons.contacts),
               label: 'Контакты',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.search),
+              label: 'Поиск',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Профиль',
             ),
           ],
         ),

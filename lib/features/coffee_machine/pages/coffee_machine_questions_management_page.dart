@@ -875,6 +875,7 @@ class _TemplateEditPageState extends State<_TemplateEditPage> {
     );
     if (picked != null && mounted) {
       final bytes = await File(picked.path).readAsBytes();
+      if (!mounted) return;
       setState(() => _imageBytes = bytes);
     }
   }

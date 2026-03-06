@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../services/messenger_service.dart';
+import 'messenger_notification_settings_page.dart';
 
 /// Результат редактирования профиля
 class ProfileResult {
@@ -18,11 +19,15 @@ class ProfileResult {
 class MessengerProfilePage extends StatefulWidget {
   final String userPhone;
   final String userName;
+  final bool embeddedMode;
+  final void Function(ProfileResult)? onProfileChanged;
 
   const MessengerProfilePage({
     super.key,
     required this.userPhone,
     required this.userName,
+    this.embeddedMode = false,
+    this.onProfileChanged,
   });
 
   @override
@@ -146,13 +151,27 @@ class _MessengerProfilePageState extends State<MessengerProfilePage> {
         }
 
         if (!mounted) return;
-        Navigator.pop(
-          context,
-          ProfileResult(
-            displayName: displayName.isNotEmpty ? displayName : null,
-            avatarUrl: uploadedAvatarUrl ?? _avatarUrl,
-          ),
+
+        final profileResult = ProfileResult(
+          displayName: displayName.isNotEmpty ? displayName : null,
+          avatarUrl: uploadedAvatarUrl ?? _avatarUrl,
         );
+
+        if (widget.embeddedMode) {
+          // In embedded mode, notify parent via callback + show snackbar
+          widget.onProfileChanged?.call(profileResult);
+          if (mounted) {
+            setState(() => _isSaving = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Профиль сохранён'),
+                backgroundColor: AppColors.emerald,
+              ),
+            );
+          }
+        } else {
+          Navigator.pop(context, profileResult);
+        }
       } else if (mounted) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -177,6 +196,7 @@ class _MessengerProfilePageState extends State<MessengerProfilePage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
+        automaticallyImplyLeading: !widget.embeddedMode,
         title: Text(
           'Профиль',
           style: TextStyle(color: Colors.white.withOpacity(0.95)),
@@ -334,6 +354,46 @@ class _MessengerProfilePageState extends State<MessengerProfilePage> {
                               'Сохранить',
                               style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                             ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+                  Divider(color: Colors.white.withOpacity(0.08)),
+                  const SizedBox(height: 8),
+
+                  // Notifications settings
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      leading: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: AppColors.turquoise.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.notifications_outlined, color: AppColors.turquoise, size: 22),
+                      ),
+                      title: Text(
+                        'Уведомления',
+                        style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15, fontWeight: FontWeight.w500),
+                      ),
+                      subtitle: Text(
+                        'Настройки звука',
+                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+                      ),
+                      trailing: Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3)),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const MessengerNotificationSettingsPage()),
+                        );
+                      },
                     ),
                   ),
                 ],

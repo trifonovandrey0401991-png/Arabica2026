@@ -153,12 +153,12 @@ class UserRoleService {
                 canSeeAllManagerShops = multitenantRole['canSeeAllManagerShops'] == true;
                 Logger.debug('🏪 Пользователь - MANAGER (заведующая), магазинов: ${managedShopIds.length}');
               } else {
-                // Используем роль из employees API
-                finalRole = isAdmin ? UserRole.admin : UserRole.employee;
+                // Role not in shop-managers — regular employee
+                finalRole = UserRole.employee;
               }
             } else {
-              // Мультитенантная роль не определена - используем стандартную
-              finalRole = isAdmin ? UserRole.admin : UserRole.employee;
+              // Multitenant role not available — regular employee
+              finalRole = UserRole.employee;
             }
 
             return UserRoleData(

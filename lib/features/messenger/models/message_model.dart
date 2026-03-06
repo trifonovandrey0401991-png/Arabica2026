@@ -24,6 +24,7 @@ class MessengerMessage {
   final bool isPinned;
   final DateTime? pinnedAt;
   final String? pinnedBy;
+  final String? mediaGroupId;
 
   MessengerMessage({
     required this.id,
@@ -47,6 +48,7 @@ class MessengerMessage {
     this.isPinned = false,
     this.pinnedAt,
     this.pinnedBy,
+    this.mediaGroupId,
   });
 
   bool get isEdited => editedAt != null;
@@ -88,6 +90,7 @@ class MessengerMessage {
       isPinned: json['is_pinned'] == true,
       pinnedAt: json['pinned_at'] != null ? DateTime.tryParse(json['pinned_at'].toString()) : null,
       pinnedBy: json['pinned_by'] as String?,
+      mediaGroupId: json['media_group_id'] as String?,
     );
   }
 
@@ -156,9 +159,9 @@ class MessengerMessage {
       case MessageType.text:
         return content ?? '';
       case MessageType.image:
-        return '📷 Фото';
+        return mediaGroupId != null ? '📷 Альбом' : '📷 Фото';
       case MessageType.video:
-        return '🎬 Видео';
+        return mediaGroupId != null ? '🎬 Альбом' : '🎬 Видео';
       case MessageType.voice:
         final dur = voiceDuration ?? 0;
         return '🎤 ${dur ~/ 60}:${(dur % 60).toString().padLeft(2, '0')}';
@@ -233,6 +236,7 @@ class MessengerMessage {
       isPinned: isPinned ?? this.isPinned,
       pinnedAt: pinnedAt,
       pinnedBy: pinnedBy,
+      mediaGroupId: mediaGroupId,
     );
   }
 }

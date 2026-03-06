@@ -96,6 +96,7 @@ async function preloadAdminCache() {
     let adminCount = 0;
     let totalCount = 0;
 
+    // Регистрируем всех сотрудников (без прав — роли берутся ТОЛЬКО из shop-managers)
     for (const file of files) {
       try {
         const content = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
@@ -103,23 +104,22 @@ async function preloadAdminCache() {
         const empPhone = normalizePhone(employee.phone);
 
         if (empPhone) {
-          const hasAdminRights = employee.isAdmin === true || employee.role === 'developer';
           adminCache.set(empPhone, {
-            isAdmin: hasAdminRights,
+            isAdmin: false,
             isManager: false,
             cachedAt: now
           });
           totalCount++;
-          if (hasAdminRights) adminCount++;
         }
       } catch (e) { /* skip */ }
     }
 
-    // Загружаем управляющих из shop-managers (файл или БД)
-    // Управляющие (managers) получают isManager=true (НЕ isAdmin)
-    // Разработчики (developers) получают isAdmin=true
-    // Заведующие (storeManagers) — без дополнительных прав
+    // Роли берутся ТОЛЬКО из shop-managers:
+    // Разработчики (developers) → isAdmin=true
+    // Управляющие (managers) → isAdmin=true (полный доступ к своим магазинам)
+    // Заведующие (storeManagers) → isManager=true
     let managerCount = 0;
+    let storeManagerCount = 0;
     try {
       let shopManagersData = null;
 
@@ -161,18 +161,33 @@ async function preloadAdminCache() {
           }
         }
 
-        // Управляющие (managers) → isManager (НЕ isAdmin!)
+        // Управляющие (managers) → isAdmin=true (полный доступ к своим магазинам)
         if (Array.isArray(shopManagersData.managers)) {
           for (const manager of shopManagersData.managers) {
             const normalized = normalizePhone(manager.phone);
             if (normalized) {
-              const existing = adminCache.get(normalized);
               adminCache.set(normalized, {
-                isAdmin: existing?.isAdmin || false,
+                isAdmin: true,
                 isManager: true,
                 cachedAt: now
               });
               managerCount++;
+            }
+          }
+        }
+
+        // Заведующие (storeManagers) → isManager=true (ограниченные права)
+        if (Array.isArray(shopManagersData.storeManagers)) {
+          for (const sm of shopManagersData.storeManagers) {
+            const smPhone = normalizePhone(sm.phone);
+            if (smPhone) {
+              const existing = adminCache.get(smPhone);
+              adminCache.set(smPhone, {
+                isAdmin: existing?.isAdmin || false,
+                isManager: true,
+                cachedAt: now
+              });
+              storeManagerCount++;
             }
           }
         }
@@ -183,7 +198,7 @@ async function preloadAdminCache() {
 
     preloadComplete = true;
     const elapsed = Date.now() - startTime;
-    console.log(`[AdminCache] Preloaded ${totalCount} employees (${adminCount} admins, ${managerCount} managers) in ${elapsed}ms`);
+    console.log(`[AdminCache] Preloaded ${totalCount} employees (${adminCount} admins, ${managerCount} managers, ${storeManagerCount} storeManagers) in ${elapsed}ms`);
   } catch (e) {
     console.error('[AdminCache] Preload error:', e);
   }

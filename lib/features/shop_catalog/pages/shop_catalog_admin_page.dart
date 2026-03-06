@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/logger.dart';
 import '../models/shop_product.dart';
@@ -1017,10 +1018,10 @@ class _ProductPhotoCarouselState extends State<_ProductPhotoCarousel> {
           onPageChanged: (i) { if (mounted) setState(() => _currentPage = i); },
           itemBuilder: (_, i) {
             final url = widget.product.getPhotoUrl(i);
-            return Image.network(
-              url ?? '',
+            return CachedNetworkImage(
+              imageUrl: url ?? '',
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorWidget: (_, __, ___) => Container(
                 color: AppColors.emerald.withOpacity(0.15),
                 child: Icon(Icons.broken_image, color: Colors.white30, size: 32),
               ),

@@ -1,7 +1,7 @@
 # Arabica - Полная архитектурная документация
 
-**Версия:** 2.8.0
-**Дата обновления:** 2026-03-01
+**Версия:** 2.9.0
+**Дата обновления:** 2026-03-04
 **Автор:** Claude Code (полный архитектурный анализ + аудит безопасности + полный аудит 09.02.2026)
 **Назначение:** Исчерпывающая документация для любого IT-специалиста
 
@@ -12,7 +12,7 @@
 1. [Общая архитектура системы](#1-общая-архитектура-системы)
 2. [Запуск приложения (App Flow)](#2-запуск-приложения)
 3. [Система авторизации](#3-система-авторизации)
-4. [Flutter модули (38 штук)](#4-flutter-модули)
+4. [Flutter модули (39 штук)](#4-flutter-модули)
 5. [Сервер (loyalty-proxy)](#5-сервер-loyalty-proxy)
 6. [Потоки данных](#6-потоки-данных)
 7. [Автоматизация (Schedulers)](#7-автоматизация-schedulers)
@@ -33,7 +33,7 @@
 **Arabica** — комплексная система управления сетью кофеен, включающая:
 - Мобильное приложение (Flutter) для клиентов, сотрудников и администраторов
 - Backend сервер (Node.js + Express) для API и автоматизации
-- PostgreSQL база данных (41 таблица, ~10400 записей) + JSON файлы как fallback
+- PostgreSQL база данных (63 таблицы, ~10400 записей) + JSON файлы как fallback
 - Push-уведомления через Firebase Cloud Messaging
 - Telegram-бот для OTP авторизации
 
@@ -1261,7 +1261,7 @@ onboarding/
 loyalty-proxy/
 ├── index.js                              # Точка входа (middleware, schedulers, routes, PUBLIC_WRITE_PATHS)
 │
-├── api/                                  # 75 API файлов (63 обработчика + 9 планировщиков + 3 WebSocket)
+├── api/                                  # 77 API файлов (63 обработчика + 11 планировщиков + 3 WebSocket)
 │   │
 │   │── CORE API ──────────────────────────────────────────────────
 │   ├── auth_api.js                       # Авторизация
@@ -1375,7 +1375,7 @@ loyalty-proxy/
 │   ├── base_report_scheduler.js          # Базовый класс автоматизации отчётов
 │   ├── data_cache.js                     # Кэш employees/shops данных
 │   ├── db.js                             # PostgreSQL клиент (findById, findAll, upsert, deleteById, query, transaction)
-│   ├── db_schema.sql                     # SQL схема всех ~40 таблиц
+│   ├── db_schema.sql                     # SQL схема всех 63 таблиц
 │   ├── file_helpers.js                   # Утилиты для файлов (sanitizeId, fileExists, maskPhone)
 │   ├── file_lock.js                      # File locking (защита от race conditions)
 │   ├── image_compress.js                 # Сжатие изображений (sharp)
@@ -1396,17 +1396,17 @@ loyalty-proxy/
 ```
 
 **Общая статистика:**
-- ~42000 строк JavaScript кода
-- 75 API файлов в api/ (63 обработчика + 9 планировщиков + 3 WebSocket) + 1 в корне (efficiency_calc.js)
+- ~64000 строк JavaScript кода
+- 77 API файлов в api/ (63 обработчика + 11 планировщиков + 3 WebSocket) + 1 в корне (efficiency_calc.js)
 - 9 модулей в modules/ (OCR, vision, orders, z-report intelligence)
 - 5 ML файлов в ml/ (YOLO inference, server, wrapper, embedding_catalog, build_reference_catalog)
-- 15 утилит в utils/ (включая db.js, db_schema.sql, push_service, pending_notify)
-- 11 Scheduler'ов (7 отчётных + product_questions_penalty + order_timeout + auto_cleanup + yolo_retrain)
-- 610+ endpoints
-- PostgreSQL: ~44 таблицы, 10400+ записей, 17MB данных
-- 517 Dart файлов во Flutter-приложении
+- 17 утилит в utils/ (включая db.js, db_schema.sql, push_service, pending_notify, s3_storage)
+- 12 Scheduler'ов (7 отчётных + product_questions_penalty + order_timeout + auto_cleanup + yolo_retrain + messenger_media_cleanup)
+- 661 endpoints
+- PostgreSQL: 63 таблицы, 10400+ записей, 17MB данных
+- 541 Dart файлов во Flutter-приложении
 
-## 5.2 ПОЛНАЯ ТАБЛИЦА API ENDPOINTS (240+)
+## 5.2 ПОЛНАЯ ТАБЛИЦА API ENDPOINTS (660+)
 
 ### AUTH API (Авторизация)
 
@@ -3003,11 +3003,11 @@ async function checkManagerAccess(phone, shopAddress) {
 ## 10.0 PostgreSQL (основное хранилище с 2026-02-17)
 
 **База данных:** `arabica_db` на localhost, пользователь `arabica_app`, peer auth
-**Всего:** ~40 таблиц, 10400+ записей, 17MB данных
+**Всего:** 63 таблицы, 10400+ записей, 17MB данных
 
 **Паттерн dual-write:** Данные пишутся сначала в JSON (backward compat), затем в PostgreSQL (try/catch).
 При чтении: `if (USE_DB_*) { read from DB } else { read from files }`.
-Флаги `USE_DB_*=true` (41 шт.) в pm2 env, для мгновенного rollback можно выставить `false`.
+Флаги `USE_DB_*=true` (47 шт.) в pm2 env, для мгновенного rollback можно выставить `false`.
 
 **Ключевые таблицы:**
 
@@ -3889,7 +3889,7 @@ Client broadcast ──────────────┘
 
 **Конец документации**
 
-*Последнее обновление: 2026-03-01*
+*Последнее обновление: 2026-03-04*
 *Автор: Claude Code*
-*Версия: 2.5.0 (аудит файлового инвентаря 17.02.2026: api/ 49→67, schedulers 8→10, /var/www/ dirs ~55→104, lib/core/ + lib/app/ полное обновление)*
+*Версия: 2.9.0 (api/ 77 файлов, schedulers 12, 63 таблицы PostgreSQL, 661 endpoints, 541 Dart файлов)*
 

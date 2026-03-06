@@ -7,7 +7,6 @@ import '../services/messenger_service.dart';
 import '../services/messenger_ws_service.dart';
 import '../widgets/chat_list_tile.dart';
 import 'messenger_chat_page.dart';
-import 'messenger_profile_page.dart';
 import 'contact_search_page.dart';
 import 'channel_list_page.dart';
 import 'manage_folders_page.dart';
@@ -154,6 +153,13 @@ class _MessengerListPageState extends State<MessengerListPage> {
         .where((c) => !c.isSavedMessages(widget.userPhone))
         .toList();
 
+    // Sort by last message time (newest first) — like Telegram
+    base.sort((a, b) {
+      final aTime = a.lastMessage?.createdAt ?? a.createdAt;
+      final bTime = b.lastMessage?.createdAt ?? b.createdAt;
+      return bTime.compareTo(aTime);
+    });
+
     if (_activeTabIndex == 0) return base; // "Все"
 
     // Custom folder
@@ -185,22 +191,6 @@ class _MessengerListPageState extends State<MessengerListPage> {
         ),
       ),
     ).then((_) => _loadConversations(silent: true));
-  }
-
-  void _openProfile() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MessengerProfilePage(
-          userPhone: widget.userPhone,
-          userName: _userName,
-        ),
-      ),
-    ).then((result) {
-      if (result is ProfileResult && result.displayName != null && mounted) {
-        setState(() => _userName = result.displayName!);
-      }
-    });
   }
 
   void _openContactSearch() {
@@ -254,11 +244,6 @@ class _MessengerListPageState extends State<MessengerListPage> {
                 ),
               ).then((_) => _loadConversations(silent: true));
             },
-          ),
-          IconButton(
-            icon: Icon(Icons.settings, color: Colors.white.withOpacity(0.6)),
-            tooltip: 'Профиль',
-            onPressed: _openProfile,
           ),
           IconButton(
             icon: Icon(Icons.refresh, color: Colors.white.withOpacity(0.6)),
@@ -734,13 +719,12 @@ class _FolderChatSelectorSheetState extends State<_FolderChatSelectorSheet> {
     if (c.type == ConversationType.group || c.type == ConversationType.channel) {
       return c.displayName(widget.myPhone);
     }
-    // Private chat — resolve via phone book if client
+    // Private chat — resolve via phone book
     final other = c.participants.where((p) => p.phone != widget.myPhone).toList();
     if (other.isEmpty) return c.displayName(widget.myPhone);
     return MessengerShellPage.resolveDisplayName(
       other.first.phone,
       other.first.name,
-      widget.isClient,
       widget.phoneBookNames,
     );
   }

@@ -8,7 +8,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { sendPushToPhone, sendPushNotification } = require('./report_notifications_api');
 const { getTaskPointsConfig } = require('./task_points_settings_api');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
@@ -613,6 +613,26 @@ function setupTasksAPI(app) {
     try {
       const { month, createdBy } = req.query;
       console.log('GET /api/tasks', { month, createdBy });
+
+      // SQL-level pagination (DB path)
+      if (USE_DB && isPaginationRequested(req.query)) {
+        const conditions = [];
+        const params = [];
+        let paramIdx = 1;
+        if (month) { conditions.push(`month = $${paramIdx++}`); params.push(month); }
+        if (createdBy) { conditions.push(`created_by = $${paramIdx++}`); params.push(createdBy); }
+        const where = conditions.length > 0 ? conditions.join(' AND ') : '1=1';
+
+        const paginatedResult = await db.findAllPaginated('tasks', {
+          where,
+          whereParams: params,
+          orderBy: 'created_at',
+          orderDir: 'DESC',
+          page: parseInt(req.query.page) || 1,
+          pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+        });
+        return res.json(createDbPaginatedResponse(paginatedResult, 'tasks', dbTaskToCamel));
+      }
 
       let tasks;
       if (month) {

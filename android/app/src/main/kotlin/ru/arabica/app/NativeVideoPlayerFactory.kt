@@ -68,6 +68,7 @@ class NativeVideoPlayerView(
     private var autoPlay = false
     private var looping = false
     private var isPlaying = false
+    private var isMirrored = false
 
     init {
         // Circular clipping for both views
@@ -139,6 +140,7 @@ class NativeVideoPlayerView(
 
         // Mirror horizontally for front camera recordings
         if (mirror) {
+            isMirrored = true
             textureView.scaleX = -1f
             imageView.scaleX = -1f
         }
@@ -220,6 +222,32 @@ class NativeVideoPlayerView(
 
                 override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
                     Log.d(TAG, "onVideoSizeChanged: ${videoSize.width}x${videoSize.height}")
+
+                    // Apply "cover" scaling: fill container without distortion, crop overflow.
+                    // TextureView stretches by default; we counteract by scaling the axis
+                    // that would otherwise be compressed.
+                    val vw = videoSize.width.toFloat()
+                    val vh = videoSize.height.toFloat()
+                    val cw = container.width.toFloat()
+                    val ch = container.height.toFloat()
+                    if (vw > 0 && vh > 0 && cw > 0 && ch > 0) {
+                        val videoRatio = vw / vh
+                        val containerRatio = cw / ch
+                        val mirrorSign = if (isMirrored) -1f else 1f
+                        if (videoRatio < containerRatio) {
+                            // Video is taller than container — scale Y up
+                            textureView.scaleX = 1f * mirrorSign
+                            textureView.scaleY = containerRatio / videoRatio
+                        } else if (videoRatio > containerRatio) {
+                            // Video is wider than container — scale X up
+                            textureView.scaleX = (videoRatio / containerRatio) * mirrorSign
+                            textureView.scaleY = 1f
+                        } else {
+                            textureView.scaleX = 1f * mirrorSign
+                            textureView.scaleY = 1f
+                        }
+                    }
+
                     channel.invokeMethod("onSizeChanged", mapOf(
                         "width" to videoSize.width,
                         "height" to videoSize.height

@@ -7,6 +7,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:video_player/video_player.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 
@@ -31,13 +32,9 @@ class VideoNotePlayer extends StatefulWidget {
 }
 
 class _VideoNotePlayerState extends State<VideoNotePlayer> {
-  Uint8List? _thumbnail;
-  bool _loadingThumb = true;
-
-  static const _videoUtils = MethodChannel('video_utils');
-  // Cache thumbnails across widget rebuilds (keyed by URL), max 50 entries
-  static final Map<String, Uint8List> _thumbCache = {};
-  static const int _thumbCacheLimit = 50;
+  VideoPlayerController? _controller;
+  bool _initialized = false;
+  bool _hasError = false;
 
   String get _resolvedUrl {
     if (widget.isFile) return widget.mediaUrl;
@@ -49,52 +46,35 @@ class _VideoNotePlayerState extends State<VideoNotePlayer> {
   @override
   void initState() {
     super.initState();
-    _loadThumbnail();
+    _initPlayer();
   }
 
-  Future<void> _loadThumbnail() async {
+  Future<void> _initPlayer() async {
     final url = _resolvedUrl;
-    if (url.isEmpty) {
-      if (mounted) setState(() => _loadingThumb = false);
-      return;
-    }
-
-    // Check cache first
-    if (_thumbCache.containsKey(url)) {
-      if (mounted) {
-        setState(() {
-          _thumbnail = _thumbCache[url];
-          _loadingThumb = false;
-        });
-      }
-      return;
-    }
-
+    if (url.isEmpty) return;
     try {
-      final bytes =
-          await _videoUtils.invokeMethod<Uint8List>('thumbnail', {'url': url});
-      if (bytes != null && bytes.isNotEmpty) {
-        // Evict oldest entry if cache is full
-        if (_thumbCache.length >= _thumbCacheLimit) {
-          _thumbCache.remove(_thumbCache.keys.first);
-        }
-        _thumbCache[url] = bytes;
-        if (mounted) {
-          setState(() {
-            _thumbnail = bytes;
-            _loadingThumb = false;
-          });
-        }
-      } else {
-        if (mounted) setState(() => _loadingThumb = false);
-      }
+      _controller = VideoPlayerController.networkUrl(Uri.parse(url));
+      await _controller!.initialize();
+      if (!mounted) return;
+      _controller!.setVolume(0);
+      _controller!.setLooping(true);
+      _controller!.play();
+      setState(() => _initialized = true);
     } catch (e) {
-      debugPrint('Thumbnail extraction failed: $e');
-      if (mounted) setState(() => _loadingThumb = false);
+      debugPrint('VideoNotePlayer init error: $e');
+      if (mounted) setState(() => _hasError = true);
     }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
   }
 
   void _openExpandedPlayer() {
+    // Pause inline playback while expanded view is open
+    _controller?.pause();
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -111,10 +91,16 @@ class _VideoNotePlayerState extends State<VideoNotePlayer> {
       pageBuilder: (context, _, __) => _ExpandedVideoNote(
         mediaUrl: _resolvedUrl,
         isFile: widget.isFile,
-        thumbnail: _thumbnail,
+        thumbnail: null,
         durationSeconds: widget.durationSeconds,
       ),
-    );
+    ).then((_) {
+      // Resume inline playback after expanded view is closed
+      if (mounted && _initialized) {
+        _controller?.setVolume(0);
+        _controller?.play();
+      }
+    });
   }
 
   @override
@@ -129,7 +115,7 @@ class _VideoNotePlayerState extends State<VideoNotePlayer> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Thumbnail or placeholder circle
+            // Video or placeholder circle
             Container(
               width: size,
               height: size,
@@ -137,42 +123,36 @@ class _VideoNotePlayerState extends State<VideoNotePlayer> {
                 shape: BoxShape.circle,
                 color: Color(0xFF0A2020),
               ),
-              child: _thumbnail != null
+              child: _initialized && _controller != null
                   ? ClipOval(
-                      child: Image.memory(
-                        _thumbnail!,
-                        fit: BoxFit.cover,
+                      child: SizedBox(
                         width: size,
                         height: size,
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          clipBehavior: Clip.hardEdge,
+                          child: SizedBox(
+                            width: _controller!.value.size.width,
+                            height: _controller!.value.size.height,
+                            child: VideoPlayer(_controller!),
+                          ),
+                        ),
                       ),
                     )
                   : Center(
-                      child: _loadingThumb
-                          ? const SizedBox(
+                      child: _hasError
+                          ? Icon(Icons.videocam,
+                              color: Colors.white.withOpacity(0.4), size: 40)
+                          : const SizedBox(
                               width: 24,
                               height: 24,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 color: AppColors.turquoise,
                               ),
-                            )
-                          : Icon(Icons.videocam,
-                              color: Colors.white.withOpacity(0.4), size: 40),
+                            ),
                     ),
             ),
-
-            // Play button overlay
-            if (!_loadingThumb)
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.black.withOpacity(0.55),
-                ),
-                child: const Icon(Icons.play_arrow_rounded,
-                    color: Colors.white, size: 30),
-              ),
 
             // Duration badge
             Positioned(

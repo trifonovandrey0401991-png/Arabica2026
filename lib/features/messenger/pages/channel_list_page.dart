@@ -1,6 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
-import '../models/conversation_model.dart';
 import '../services/messenger_service.dart';
 import 'messenger_chat_page.dart';
 
@@ -72,65 +73,112 @@ class _ChannelListPageState extends State<ChannelListPage> {
   Future<void> _createChannel() async {
     final nameController = TextEditingController();
     final descController = TextEditingController();
+    File? avatarFile;
 
     final result = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A2A2A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Новый канал', style: TextStyle(color: Colors.white.withOpacity(0.9))),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Название канала',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-                ),
-                focusedBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.turquoise),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF0A2A2A),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Новый канал', style: TextStyle(color: Colors.white.withOpacity(0.9))),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Avatar picker
+              GestureDetector(
+                onTap: () async {
+                  final picked = await ImagePicker().pickImage(
+                    source: ImageSource.gallery,
+                    imageQuality: 75,
+                    maxWidth: 800,
+                    maxHeight: 800,
+                  );
+                  if (picked != null) {
+                    setDialogState(() => avatarFile = File(picked.path));
+                  }
+                },
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.08),
+                    border: Border.all(color: Colors.white.withOpacity(0.15)),
+                    image: avatarFile != null
+                        ? DecorationImage(image: FileImage(avatarFile!), fit: BoxFit.cover)
+                        : null,
+                  ),
+                  child: avatarFile == null
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.camera_alt, color: AppColors.turquoise.withOpacity(0.7), size: 24),
+                            const SizedBox(height: 4),
+                            Text('Фото', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11)),
+                          ],
+                        )
+                      : null,
                 ),
               ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Название канала',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                  ),
+                  focusedBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.turquoise),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descController,
+                style: const TextStyle(color: Colors.white),
+                maxLines: 2,
+                decoration: InputDecoration(
+                  hintText: 'Описание (необязательно)',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                  ),
+                  focusedBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.turquoise),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descController,
-              style: const TextStyle(color: Colors.white),
-              maxLines: 2,
-              decoration: InputDecoration(
-                hintText: 'Описание (необязательно)',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-                ),
-                focusedBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.turquoise),
-                ),
-              ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Создать', style: TextStyle(color: AppColors.turquoise)),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Создать', style: TextStyle(color: AppColors.turquoise)),
-          ),
-        ],
       ),
     );
 
     if (result == true && nameController.text.trim().isNotEmpty) {
+      // Upload avatar if picked
+      String? avatarUrl;
+      if (avatarFile != null) {
+        avatarUrl = await MessengerService.uploadMedia(avatarFile!);
+      }
+
       final conv = await MessengerService.createChannel(
         name: nameController.text.trim(),
         description: descController.text.trim().isNotEmpty ? descController.text.trim() : null,
+        avatarUrl: avatarUrl,
       );
       if (conv != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -17,6 +17,7 @@ class Conversation {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? lastReadAt;
+  final int autoDeleteSeconds;
 
   Conversation({
     required this.id,
@@ -32,6 +33,7 @@ class Conversation {
     required this.createdAt,
     required this.updatedAt,
     this.lastReadAt,
+    this.autoDeleteSeconds = 0,
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
@@ -69,6 +71,7 @@ class Conversation {
       lastReadAt: json['last_read_at'] != null
           ? DateTime.tryParse(json['last_read_at'].toString())
           : null,
+      autoDeleteSeconds: (json['auto_delete_seconds'] as num?)?.toInt() ?? 0,
     );
   }
 

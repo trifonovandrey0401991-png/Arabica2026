@@ -12,7 +12,7 @@ const fetch = require('node-fetch');
 const { writeJsonFile, withLock } = require('../utils/async_fs');
 const { fileExists } = require('../utils/file_helpers');
 const { getMoscowTime } = require('../utils/moscow_time');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const { requireAuth } = require('../utils/session_middleware');
@@ -92,7 +92,7 @@ function camelToDbRecount(body) {
   return data;
 }
 
-function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) {
+function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints, sendPushNotification } = {}) {
 
   // POST /api/recount-reports - создание отчета пересчета с TIME_EXPIRED валидацией
   app.post('/api/recount-reports', requireAuth, async (req, res) => {
@@ -309,6 +309,22 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
       }
 
       notifyCounterUpdate('pendingRecountReports', { delta: 1 });
+
+      // Push-уведомление управляющей/админам о новом пересчёте
+      if (sendPushNotification) {
+        try {
+          const employeeName = req.body.employeeName || 'Сотрудник';
+          const shopAddress = req.body.shopAddress || '';
+          await sendPushNotification(
+            'Новый пересчёт',
+            `${employeeName} (${shopAddress})`,
+            { type: 'recount_submitted', reportId }
+          );
+        } catch (pushErr) {
+          console.error('⚠️ Push recount notification error:', pushErr.message);
+        }
+      }
+
       res.json({
         success: true,
         message: 'Отчет успешно сохранен',
@@ -331,31 +347,43 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
 
       if (USE_DB) {
         try {
-          let sql = 'SELECT * FROM recount_reports WHERE 1=1';
+          const conditions = [];
           const params = [];
           let paramIdx = 1;
 
           if (req.query.shopAddress) {
-            sql += ` AND shop_address ILIKE $${paramIdx++}`;
+            conditions.push(`shop_address ILIKE $${paramIdx++}`);
             params.push(`%${req.query.shopAddress}%`);
           }
           if (req.query.employeeName) {
-            sql += ` AND employee_name ILIKE $${paramIdx++}`;
+            conditions.push(`employee_name ILIKE $${paramIdx++}`);
             params.push(`%${req.query.employeeName}%`);
           }
           if (req.query.date) {
-            sql += ` AND (created_at AT TIME ZONE 'Europe/Moscow')::date = $${paramIdx++}`;
+            conditions.push(`(created_at AT TIME ZONE 'Europe/Moscow')::date = $${paramIdx++}`);
             params.push(req.query.date);
           }
 
-          sql += ' ORDER BY created_at DESC LIMIT 5000';
+          const where = conditions.length > 0 ? conditions.join(' AND ') : '1=1';
 
-          const result = await db.query(sql, params);
-          const reports = result.rows.map(dbRecountToCamel);
-
+          // SQL-level pagination
           if (isPaginationRequested(req.query)) {
-            return res.json(createPaginatedResponse(reports, req.query, 'reports'));
+            const paginatedResult = await db.findAllPaginated('recount_reports', {
+              where,
+              whereParams: params,
+              orderBy: 'created_at',
+              orderDir: 'DESC',
+              page: parseInt(req.query.page) || 1,
+              pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+            });
+            return res.json(createDbPaginatedResponse(paginatedResult, 'reports', dbRecountToCamel));
           }
+
+          const result = await db.query(
+            `SELECT * FROM recount_reports WHERE ${where} ORDER BY created_at DESC LIMIT 5000`,
+            params
+          );
+          const reports = result.rows.map(dbRecountToCamel);
           return res.json({ success: true, reports });
         } catch (dbErr) {
           console.error('[Recount] DB read error, falling back to files:', dbErr.message);
@@ -594,9 +622,9 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints } = {}) 
   // POST /api/recount-reports/:reportId/rating - оценка отчета пересчёта (только админ)
   app.post('/api/recount-reports/:reportId/rating', requireAuth, async (req, res) => {
     try {
-      // Оценка пересчёта — только админ
-      if (!req.user || !req.user.isAdmin) {
-        return res.status(403).json({ success: false, error: 'Только администратор может оценить отчёт пересчёта' });
+      // Оценка пересчёта — админ или управляющая
+      if (!req.user || (!req.user.isAdmin && !req.user.isManager)) {
+        return res.status(403).json({ success: false, error: 'Только администратор или управляющая может оценить отчёт пересчёта' });
       }
 
       let { reportId } = req.params;

@@ -46,7 +46,7 @@ const DELIVERY_ACK_FLUSH_MS = 2000;
 
 const CLEANUP_INTERVAL = 30000;
 const CONNECTION_TIMEOUT = 60000;
-const MAX_CONNECTIONS_PER_PHONE = 3;
+const MAX_CONNECTIONS_PER_PHONE = 1;
 const PARTICIPANTS_CACHE_TTL = 60000; // 60 сек
 
 /**
@@ -282,12 +282,32 @@ function sendToPhone(phone, data) {
   return sent;
 }
 
+/**
+ * Send to only ONE connection for a phone (the most recent one).
+ * Used for call signaling to avoid duplicate events triggering auto-reject.
+ */
+function sendToPhoneOnce(phone, data) {
+  const normalized = phone.replace(/[^\d]/g, '');
+  if (!connections.has(normalized)) return false;
+  const sockets = connections.get(normalized);
+  if (!sockets || sockets.size === 0) return false;
+  // Pick the last (most recent) socket
+  let lastSocket = null;
+  for (const s of sockets) lastSocket = s;
+  sendToSocket(lastSocket, data);
+  return true;
+}
+
 // Caller → Server: start a call
 function handleCallOffer(callerPhone, message) {
   const { targetPhone, offerSdp, callId, callerName } = message;
   if (!targetPhone || !offerSdp || !callId) return;
-  console.log(`📞 Call offer: ${maskPhone(callerPhone)} → ${maskPhone(targetPhone)} [${callId}]`);
-  sendToPhone(targetPhone, {
+  const normalizedTarget = targetPhone.replace(/[^\d]/g, '');
+  const hasWs = connections.has(normalizedTarget);
+  const connCount = hasWs ? connections.get(normalizedTarget).size : 0;
+  console.log(`📞 Call offer: ${maskPhone(callerPhone)} → ${maskPhone(targetPhone)} [${callId}] (target WS: ${hasWs}, connections: ${connCount})`);
+  // Send call_incoming to only ONE connection (avoid duplicate → auto-reject)
+  const delivered = sendToPhoneOnce(targetPhone, {
     type: 'call_incoming',
     callId,
     callerPhone,
@@ -295,6 +315,7 @@ function handleCallOffer(callerPhone, message) {
     offerSdp,
     timestamp: new Date().toISOString(),
   });
+  console.log(`📞 Call incoming ${delivered ? 'DELIVERED' : 'NOT DELIVERED'} to ${maskPhone(targetPhone)}`);
 }
 
 // Callee → Server: accept the call
@@ -568,6 +589,14 @@ function cleanupStaleConnections() {
   for (const [convId, chatTyping] of typingStatus.entries()) {
     if (chatTyping.size === 0) {
       typingStatus.delete(convId);
+    }
+  }
+
+  // Очищаем устаревшие записи wsRateLimit (окно 10 сек давно прошло)
+  const now = Date.now();
+  for (const [phone, rl] of wsRateLimit.entries()) {
+    if (now >= rl.resetAt) {
+      wsRateLimit.delete(phone);
     }
   }
 }

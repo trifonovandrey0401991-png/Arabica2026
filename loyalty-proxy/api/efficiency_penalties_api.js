@@ -11,7 +11,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
-const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
+const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 const MOSCOW_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC+3 offset in milliseconds
@@ -382,6 +382,31 @@ async function loadAttendanceForPeriod(startDate, endDate) {
   return records;
 }
 
+// ===== Rate limiter for heavy endpoints =====
+const _batchRateMap = new Map(); // phone → { count, resetAt }
+const BATCH_RATE_LIMIT = 5;     // max requests per window
+const BATCH_RATE_WINDOW = 60000; // 1 minute window
+
+function checkBatchRateLimit(phone) {
+  const now = Date.now();
+  let entry = _batchRateMap.get(phone);
+  if (!entry || now > entry.resetAt) {
+    entry = { count: 1, resetAt: now + BATCH_RATE_WINDOW };
+    _batchRateMap.set(phone, entry);
+    return true;
+  }
+  entry.count++;
+  return entry.count <= BATCH_RATE_LIMIT;
+}
+
+// Cleanup old entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [phone, entry] of _batchRateMap) {
+    if (now > entry.resetAt) _batchRateMap.delete(phone);
+  }
+}, 5 * 60 * 1000);
+
 // ===== Routes =====
 
 function setupEfficiencyPenaltiesAPI(app) {
@@ -390,6 +415,11 @@ function setupEfficiencyPenaltiesAPI(app) {
    * Batch endpoint для загрузки всех отчётов за месяц одним запросом
    */
   app.get('/api/efficiency/reports-batch', requireAuth, async (req, res) => {
+    // Rate limit: max 5 requests per minute per user
+    if (!checkBatchRateLimit(req.user?.phone || 'unknown')) {
+      return res.status(429).json({ success: false, error: 'Слишком много запросов. Подождите минуту.' });
+    }
+
     try {
       const { month } = req.query;
 
@@ -482,6 +512,22 @@ function setupEfficiencyPenaltiesAPI(app) {
         const [year, monthNum] = month.split('-').map(Number);
         const startDate = `${month}-01`;
         const endDate = `${year}-${String(monthNum).padStart(2, '0')}-${new Date(year, monthNum, 0).getDate()}`;
+        const where = 'date >= $1 AND date <= $2';
+        const whereParams = [startDate, endDate];
+
+        // SQL-level pagination
+        if (isPaginationRequested(req.query)) {
+          const paginatedResult = await db.findAllPaginated('efficiency_penalties', {
+            where,
+            whereParams,
+            orderBy: 'created_at',
+            orderDir: 'ASC',
+            page: parseInt(req.query.page) || 1,
+            pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
+          });
+          return res.json(createDbPaginatedResponse(paginatedResult, 'penalties', dbPenaltyToCamel));
+        }
+
         const result = await db.query(
           'SELECT * FROM efficiency_penalties WHERE date >= $1 AND date <= $2 ORDER BY created_at LIMIT 5000',
           [startDate, endDate]
@@ -523,6 +569,11 @@ function setupEfficiencyPenaltiesAPI(app) {
    * Заменяет ~12 отдельных запросов MyEfficiencyPage одним
    */
   app.get('/api/efficiency/supplementary-batch', requireAuth, async (req, res) => {
+    // Rate limit: same as reports-batch
+    if (!checkBatchRateLimit(req.user?.phone || 'unknown')) {
+      return res.status(429).json({ success: false, error: 'Слишком много запросов. Подождите минуту.' });
+    }
+
     try {
       const { month } = req.query;
 

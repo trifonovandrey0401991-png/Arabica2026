@@ -3,6 +3,7 @@ import 'employees_page.dart';
 import '../services/employee_service.dart';
 import 'employee_registration_page.dart';
 import '../services/employee_registration_service.dart';
+import '../models/employee_registration_model.dart';
 import '../../../core/utils/logger.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
@@ -30,12 +31,8 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
 
   Future<List<Employee>> _loadEmployees() async {
     try {
-      // Загружаем сотрудников с сервера
       final employees = await EmployeeService.getEmployees();
-      
-      // Сортируем по имени
       employees.sort((a, b) => a.name.compareTo(b.name));
-
       return employees;
     } catch (e) {
       Logger.error('Ошибка загрузки сотрудников', e);
@@ -45,14 +42,22 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
 
   Future<void> _loadVerificationStatuses() async {
     try {
-      final employees = await _loadEmployees();
+      // Один запрос вместо N отдельных — загружаем все регистрации разом
+      final allRegistrations = await EmployeeRegistrationService.getAllRegistrations();
+      final regMap = <String, EmployeeRegistration>{};
+      for (final reg in allRegistrations) {
+        final normalizedPhone = reg.phone.replaceAll(RegExp(r'[\s\+]'), '');
+        regMap[normalizedPhone] = reg;
+      }
+
+      // Используем уже загруженных сотрудников (без повторного запроса)
+      final employees = await _employeesFuture;
       for (var employee in employees) {
         if (employee.phone != null && employee.phone!.isNotEmpty) {
-          // Нормализуем телефон для ключа
           final normalizedPhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
-          final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
+          final registration = regMap[normalizedPhone];
           _verificationStatus[normalizedPhone] = registration?.isVerified ?? false;
-          _hasRegistration[normalizedPhone] = registration != null; // Отслеживаем наличие регистрации
+          _hasRegistration[normalizedPhone] = registration != null;
         }
       }
       if (mounted) {

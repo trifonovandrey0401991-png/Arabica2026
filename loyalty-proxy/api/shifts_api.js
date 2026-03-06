@@ -657,11 +657,11 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       // IDOR: проверка — владелец может обновить свой отчёт, подтверждение/оценка — только админ
       const reportOwnerPhone = existingReport.employeePhone || existingReport.phone;
       if (req.body.rating !== undefined || req.body.confirmedAt) {
-        // Подтверждение/оценка — только админ
-        if (!req.user || !req.user.isAdmin) {
-          return res.status(403).json({ success: false, error: 'Только администратор может подтвердить/оценить отчёт' });
+        // Подтверждение/оценка — админ или управляющая
+        if (!req.user || (!req.user.isAdmin && !req.user.isManager)) {
+          return res.status(403).json({ success: false, error: 'Только администратор или управляющая может подтвердить/оценить отчёт' });
         }
-      } else if (reportOwnerPhone && req.user && req.user.phone !== reportOwnerPhone && !req.user.isAdmin) {
+      } else if (reportOwnerPhone && req.user && req.user.phone !== reportOwnerPhone && !req.user.isAdmin && !req.user.isManager) {
         return res.status(403).json({ success: false, error: 'Доступ запрещён' });
       }
 
@@ -833,7 +833,8 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
           const page = parseInt(req.query.page) || 1;
           const limit = Math.min(parseInt(req.query.limit) || 50, 200);
           const offset = (page - 1) * limit;
-          const result = await db.query(`SELECT * FROM shift_handover_reports WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`, params);
+          const paginatedParams = [...params, limit, offset];
+          const result = await db.query(`SELECT * FROM shift_handover_reports WHERE ${whereClause} ORDER BY created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`, paginatedParams);
           const totalPages = Math.ceil(total / limit);
           return res.json({
             success: true,
