@@ -117,6 +117,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
   StreamSubscription? _readReceiptSub;
   StreamSubscription? _messageEditedSub;
   StreamSubscription? _messageDeliveredSub;
+  StreamSubscription? _connectionStatusSub;
   StreamSubscription? _audioCompleteSub;
 
   bool _isOtherOnline = false;
@@ -213,6 +214,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     _readReceiptSub?.cancel();
     _messageEditedSub?.cancel();
     _messageDeliveredSub?.cancel();
+    _connectionStatusSub?.cancel();
     _audioCompleteSub?.cancel();
     _positionSub?.cancel();
     _durationSub?.cancel();
@@ -228,6 +230,9 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       MessengerWsService.instance.reconnectIfNeeded();
+      // Load messages that may have been missed while app was in background
+      _loadMessages(silent: true);
+      _markAsRead();
     }
   }
 
@@ -241,8 +246,11 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
     _newMessageSub = ws.onNewMessage.listen((event) {
       if (event.conversationId == widget.conversation.id && mounted) {
+        // Deduplicate: skip if message already in list
+        if (_messages.any((m) => m.id == event.message.id)) return;
         setState(() {
           _messages.add(event.message);
+          _messagesById[event.message.id] = event.message;
         });
         // Update cache with new message
         _messagesCache[widget.conversation.id] = List.of(_messages);
@@ -365,6 +373,14 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
         }
       }
     });
+
+    // When WS reconnects after disconnection — load missed messages
+    _connectionStatusSub = ws.onConnectionStatus.listen((isConnected) {
+      if (isConnected && mounted) {
+        _loadMessages(silent: true);
+        _markAsRead();
+      }
+    });
   }
 
   Future<void> _loadMessages({bool silent = false}) async {
@@ -382,9 +398,25 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       final pinned = results[1] as List<MessengerMessage>;
       if (mounted) {
         setState(() {
-          _messages.clear();
-          _messageKeys.clear();
-          _messages.addAll(messages);
+          if (silent && _messages.isNotEmpty) {
+            // Merge: keep existing WS messages that server hasn't returned yet
+            final serverIds = <String>{for (final m in messages) m.id};
+            // Messages from WS that arrived after the server snapshot
+            final wsOnly = _messages.where((m) => !serverIds.contains(m.id)).toList();
+            _messages.clear();
+            _messageKeys.clear();
+            _messages.addAll(messages);
+            // Append WS-only messages (newer than server batch) at the end
+            for (final m in wsOnly) {
+              if (m.createdAt.isAfter(messages.last.createdAt)) {
+                _messages.add(m);
+              }
+            }
+          } else {
+            _messages.clear();
+            _messageKeys.clear();
+            _messages.addAll(messages);
+          }
           _isLoading = false;
           _isFirstLoad = false;
           _hasMoreMessages = messages.length >= 50;
@@ -394,7 +426,8 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
         if (_messagesCache.length >= _messagesCacheLimit && !_messagesCache.containsKey(widget.conversation.id)) {
           _messagesCache.remove(_messagesCache.keys.first);
         }
-        _messagesCache[widget.conversation.id] = List.of(messages);
+        _messagesCache[widget.conversation.id] = List.of(_messages);
+        _rebuildIndex();
         if (!silent) {
           _scrollToBottom();
         }
@@ -530,6 +563,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
         _replyToId = null;
         _replyToText = null;
       });
+      _messagesCache[widget.conversation.id] = List.of(_messages);
       _scrollToBottom();
     } else if (msg == null && mounted) {
       // May be blocked
@@ -636,6 +670,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
     if (msg != null && mounted) {
       setState(() => _messages.add(msg));
+      _messagesCache[widget.conversation.id] = List.of(_messages);
       _scrollToBottom();
     }
 
@@ -707,6 +742,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
     if (msg != null && mounted) {
       setState(() => _messages.add(msg));
+      _messagesCache[widget.conversation.id] = List.of(_messages);
       _scrollToBottom();
     }
 
@@ -975,6 +1011,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
             _messages.add(msg);
             _rebuildIndex();
           });
+          _messagesCache[widget.conversation.id] = List.of(_messages);
           _scrollToBottom();
         }
       }
@@ -1405,6 +1442,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
           _messages.add(msg);
           _rebuildIndex();
         });
+        _messagesCache[widget.conversation.id] = List.of(_messages);
         _scrollToBottom();
       }
     }
@@ -1429,7 +1467,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
       if (msg != null && mounted) {
         setState(() {
-          _messages.insert(0, msg);
+          _messages.add(msg);
           _messagesCache[widget.conversation.id] = List.from(_messages);
         });
         _scrollToBottom();
@@ -1470,6 +1508,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
       if (msg != null && mounted) {
         setState(() => _messages.add(msg));
+        _messagesCache[widget.conversation.id] = List.of(_messages);
         _scrollToBottom();
       }
     } catch (e) {
@@ -1527,6 +1566,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
         _pollCache[msg.id] = PollModel.fromJson(response['poll'] as Map<String, dynamic>);
       }
       setState(() => _messages.add(msg));
+      _messagesCache[widget.conversation.id] = List.of(_messages);
       _scrollToBottom();
     }
   }

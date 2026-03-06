@@ -176,6 +176,9 @@ function setupMessengerAPI(app, uploadMedia) {
         }
       });
 
+      // Invalidate WS participants cache so first message is delivered
+      if (wsNotify) wsNotify.invalidateParticipantsCache(conversationId);
+
       const conversation = await db.findById('messenger_conversations', conversationId);
       const parts = await db.query(
         'SELECT phone, name, role FROM messenger_participants WHERE conversation_id = $1',
