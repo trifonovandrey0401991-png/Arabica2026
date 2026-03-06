@@ -233,7 +233,7 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
     _previewChannel?.setMethodCallHandler(null);
     _previewChannel = null;
     final file = _recordedFile;
-    Navigator.of(context).pop(file);
+    Navigator.of(context).pop({'file': file, 'duration': _seconds});
   }
 
   @override
@@ -458,39 +458,41 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
 
         // Circular video preview using native platform view
         Center(
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: _previewViewCreated && _recordedFile != null
-                ? Stack(
-                    children: [
-                      SizedBox(
-                        width: size,
-                        height: size,
-                        child: _buildPreviewPlatformView(),
-                      ),
-                      // Loading indicator while preparing
-                      if (!_previewReady)
-                        const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.turquoise,
-                          ),
+          child: ClipOval(
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: _previewViewCreated && _recordedFile != null
+                  ? Stack(
+                      children: [
+                        SizedBox(
+                          width: size,
+                          height: size,
+                          child: _buildPreviewPlatformView(),
                         ),
-                    ],
-                  )
-                : Container(
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.black,
-                    ),
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.turquoise,
+                        // Loading indicator while preparing
+                        if (!_previewReady)
+                          const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.turquoise,
+                            ),
+                          ),
+                      ],
+                    )
+                  : Container(
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black,
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.turquoise,
+                        ),
                       ),
                     ),
-                  ),
+            ),
           ),
         ),
 
@@ -543,7 +545,6 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
       'url': _recordedFile!.path,
       'isFile': true,
       'loop': true,
-      'mirror': true, // front camera records mirrored frames
     };
 
     if (!kIsWeb && Platform.isAndroid) {

@@ -33,33 +33,25 @@ class ImageViewerPage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: GestureDetector(
-        onVerticalDragEnd: (details) {
-          // Swipe down to close
-          if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
-            Navigator.pop(context);
-          }
-        },
-        child: Center(
-          child: InteractiveViewer(
-            minScale: 0.5,
-            maxScale: 4.0,
-            child: CachedNetworkImage(
-              imageUrl: imageUrl,
-              fit: BoxFit.contain,
-              width: double.infinity,
-              height: double.infinity,
-              placeholder: (_, __) => const Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: AppColors.turquoise,
-                ),
+      body: Center(
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: CachedNetworkImage(
+            imageUrl: imageUrl,
+            fit: BoxFit.contain,
+            width: double.infinity,
+            height: double.infinity,
+            placeholder: (_, __) => const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: AppColors.turquoise,
               ),
-              errorWidget: (_, __, ___) => Icon(
-                Icons.broken_image,
-                size: 64,
-                color: Colors.white.withOpacity(0.3),
-              ),
+            ),
+            errorWidget: (_, __, ___) => Icon(
+              Icons.broken_image,
+              size: 64,
+              color: Colors.white.withOpacity(0.3),
             ),
           ),
         ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -700,19 +701,17 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
   // ========= Видео-кружки =========
 
   Future<void> _handleVideoNote() async {
-    final file = await Navigator.of(context).push<File?>(
+    final result = await Navigator.of(context).push<Map<String, dynamic>?>(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (_) => const VideoNoteRecorderPage(),
       ),
     );
 
-    if (file == null || !mounted) return;
-
-    // Duration from file length (approximate: file size doesn't tell us, so record time)
-    // The recorder stops at exactly _maxSeconds; we don't know exact seconds here.
-    // voiceDuration is set in the upload path via metadata if available, else 0.
-    int durationSecs = 0;
+    if (result == null || !mounted) return;
+    final File? file = result['file'] as File?;
+    if (file == null) return;
+    final int durationSecs = (result['duration'] as int?) ?? 0;
 
     // Upload
     String? url;
@@ -1388,15 +1387,46 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
   }
 
   void _openVideoPlayer(String videoUrl, String? senderName) {
+    // Collect all video URLs for swipe navigation
+    final videoMessages = _messages
+        .where((m) => m.type == MessageType.video && m.mediaUrl != null)
+        .toList();
+    final videoUrls = videoMessages.map((m) => m.mediaUrl!).toList();
+    final index = videoUrls.indexOf(videoUrl);
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => VideoPlayerPage(
           videoUrl: videoUrl,
           senderName: senderName,
+          videoUrls: videoUrls.length > 1 ? videoUrls : null,
+          initialIndex: index >= 0 ? index : 0,
         ),
       ),
     );
+  }
+
+  Future<void> _openFile(String fileUrl, String fileName) async {
+    final resolvedUrl = fileUrl.startsWith('http')
+        ? fileUrl
+        : '${ApiConstants.serverUrl}$fileUrl';
+    final uri = Uri.parse(resolvedUrl);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось открыть файл')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _pickAndSendImage(ImageSource source) async {
@@ -2642,6 +2672,9 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
                                       : null,
                                   onVideoTap: message.type == MessageType.video
                                       ? (url) => _openVideoPlayer(url, message.senderName ?? message.senderPhone)
+                                      : null,
+                                  onFileTap: message.type == MessageType.file
+                                      ? (url, name) => _openFile(url, name)
                                       : null,
                                 ),
                               ),

@@ -35,6 +35,8 @@ class MessageBubble extends StatelessWidget {
   final void Function(String imageUrl)? onImageTap;
   /// Callback when user taps a video to play fullscreen
   final void Function(String videoUrl)? onVideoTap;
+  /// Callback when user taps a file to download/open
+  final void Function(String fileUrl, String fileName)? onFileTap;
 
   const MessageBubble({
     super.key,
@@ -56,6 +58,7 @@ class MessageBubble extends StatelessWidget {
     this.onContactTap,
     this.onImageTap,
     this.onVideoTap,
+    this.onFileTap,
   });
 
   @override
@@ -432,7 +435,12 @@ class MessageBubble extends StatelessWidget {
         );
 
       case MessageType.file:
-        return _buildFileContent();
+        return GestureDetector(
+          onTap: message.mediaUrl != null && onFileTap != null
+              ? () => onFileTap!(message.mediaUrl!, message.fileName ?? 'Документ')
+              : null,
+          child: _buildFileContent(),
+        );
 
       case MessageType.poll:
         return pollWidget ?? Text(

@@ -403,9 +403,9 @@ class _PhotoEditorPageState extends State<PhotoEditorPage> {
     try {
       final cropped = await ImageCropper().cropImage(
         sourcePath: sourceFile.path,
-        compressQuality: 85,
-        maxWidth: 1920,
-        maxHeight: 1920,
+        compressQuality: 80,
+        maxWidth: 1280,
+        maxHeight: 1280,
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Обрезать',
