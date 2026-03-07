@@ -13,8 +13,9 @@ import 'html_stub.dart' as html if (dart.library.html) 'dart:html';
 
 // http и dart:convert оставлены для multipart загрузки фото и веб-специфичных XMLHttpRequest
 
-/// Сжатие изображения в isolate (top-level для compute)
-List<int> _compressImageIsolate(List<int> bytes) {
+/// Compress image: resize to 1280px max + JPEG quality 75%.
+/// Public top-level function for use with compute() from any module.
+List<int> compressImageIsolate(List<int> bytes) {
   try {
     final image = img.decodeImage(Uint8List.fromList(bytes));
     if (image == null) return bytes;
@@ -79,9 +80,9 @@ class PhotoUploadService {
         try {
           if (kIsWeb) {
             // На web isolate недоступен — сжимаем в основном потоке
-            bytes = _compressImageIsolate(bytes);
+            bytes = compressImageIsolate(bytes);
           } else {
-            bytes = await compute(_compressImageIsolate, bytes);
+            bytes = await compute(compressImageIsolate, bytes);
           }
           final saved = originalSize - bytes.length;
           Logger.debug('📦 После сжатия: ${bytes.length} байт (сэкономлено ${(saved / 1024).toStringAsFixed(0)} KB)');

@@ -71,22 +71,24 @@ class NativeVideoPlayerView(
     private var isMirrored = false
 
     init {
-        // Circular clipping for both views
+        // Circular clipping on CONTAINER level — so scaled children get cropped properly.
+        // clipToOutline on individual views doesn't work when scaleX/scaleY is applied
+        // (the clip region doesn't scale with the view transform).
         val ovalOutline = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
                 outline.setOval(0, 0, view.width, view.height)
             }
         }
 
-        textureView.outlineProvider = ovalOutline
-        textureView.clipToOutline = true
+        container.outlineProvider = ovalOutline
+        container.clipToOutline = true
+
         container.addView(textureView, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
         ))
 
-        imageView.outlineProvider = ovalOutline
-        imageView.clipToOutline = true
+        imageView.scaleType = ImageView.ScaleType.CENTER_CROP
         container.addView(imageView, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT

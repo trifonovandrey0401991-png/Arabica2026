@@ -281,6 +281,18 @@ class MessengerService {
     return result?['success'] == true;
   }
 
+  /// Get list of participants who have read a specific message
+  static Future<List<Map<String, dynamic>>> getMessageReaders(
+      String conversationId, String messageId) async {
+    final result = await BaseHttpService.getRaw(
+      endpoint: '$_base/conversations/$conversationId/messages/$messageId/readers',
+    );
+    if (result?['success'] == true) {
+      return (result!['readers'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    }
+    return [];
+  }
+
   // ==================== REACTIONS ====================
 
   static Future<bool> addReaction(String conversationId, String messageId, {required String phone, required String reaction}) async {
@@ -384,6 +396,26 @@ class MessengerService {
       return null;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Fetch multiple polls at once (max 50 message IDs)
+  static Future<Map<String, Map<String, dynamic>>> getPollsBatch(
+    String conversationId,
+    List<String> messageIds,
+  ) async {
+    try {
+      final result = await BaseHttpService.postRaw(
+        endpoint: '$_base/conversations/$conversationId/polls/batch',
+        body: {'messageIds': messageIds},
+      );
+      if (result != null && result['success'] == true && result['polls'] is Map) {
+        final polls = result['polls'] as Map<String, dynamic>;
+        return polls.map((k, v) => MapEntry(k, v as Map<String, dynamic>));
+      }
+      return {};
+    } catch (_) {
+      return {};
     }
   }
 
@@ -859,5 +891,64 @@ class MessengerService {
       endpoint: '$_base/conversations/$conversationId/mute',
     );
     return result ?? {'is_muted': false};
+  }
+
+  // ==================== MESSAGE TEMPLATES ====================
+
+  static Future<List<Map<String, dynamic>>> getTemplates() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_base/templates',
+      );
+      if (result != null && result['success'] == true && result['templates'] is List) {
+        return (result['templates'] as List).cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>?> createTemplate({
+    required String title,
+    required String content,
+    int sortOrder = 0,
+  }) async {
+    final result = await BaseHttpService.postRaw(
+      endpoint: '$_base/templates',
+      body: {'title': title, 'content': content, 'sortOrder': sortOrder},
+    );
+    if (result != null && result['success'] == true && result['template'] != null) {
+      return result['template'] as Map<String, dynamic>;
+    }
+    return null;
+  }
+
+  static Future<bool> deleteTemplate(int id) async {
+    return await BaseHttpService.delete(endpoint: '$_base/templates/$id');
+  }
+
+  // ==================== BROADCAST ====================
+
+  /// Send a message to multiple conversations at once (max 50)
+  static Future<Map<String, dynamic>?> broadcast({
+    required List<String> conversationIds,
+    required String content,
+    String type = 'text',
+  }) async {
+    try {
+      final result = await BaseHttpService.postRaw(
+        endpoint: '$_base/broadcast',
+        body: {
+          'conversationIds': conversationIds,
+          'content': content,
+          'type': type,
+        },
+      );
+      return result;
+    } catch (e) {
+      Logger.error('Broadcast error: $e');
+      return null;
+    }
   }
 }

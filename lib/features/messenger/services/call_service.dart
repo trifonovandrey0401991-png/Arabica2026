@@ -382,6 +382,13 @@ class CallService {
       startedAt: DateTime.now(),
     );
     _pendingCandidates.clear();
+
+    // Derive conversation ID for call history recording
+    if (_myPhone != null) {
+      final phones = [_myPhone!, event.callerPhone.replaceAll(RegExp(r'[^\d]'), '')]..sort();
+      _conversationId = 'private_${phones[0]}_${phones[1]}';
+    }
+
     _setState(CallState.incoming);
 
     // Show native incoming call screen (works even when app is minimized)

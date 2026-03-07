@@ -240,7 +240,8 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
   void dispose() {
     _timer?.cancel();
     _progressAnim.dispose();
-    _cameraCtrl?.dispose();
+    try { _cameraCtrl?.dispose(); } catch (_) {}
+    _cameraCtrl = null;
     _previewChannel?.setMethodCallHandler(null);
     super.dispose();
   }

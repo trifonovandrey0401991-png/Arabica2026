@@ -11,6 +11,7 @@ import 'contact_search_page.dart';
 import 'channel_list_page.dart';
 import 'manage_folders_page.dart';
 import 'messenger_shell_page.dart';
+import 'broadcast_page.dart';
 import '../models/chat_folder_model.dart';
 
 class MessengerListPage extends StatefulWidget {
@@ -36,9 +37,16 @@ class MessengerListPage extends StatefulWidget {
 }
 
 class _MessengerListPageState extends State<MessengerListPage> {
+  // Static cache: show instantly, refresh in background
+  static List<Conversation>? _cachedConversations;
+  static String? _cachedForPhone;
+
   List<Conversation> _conversations = [];
   Conversation? _savedConversation;
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  static const _pageSize = 30;
   String? _error;
   late String _userName;
 
@@ -49,6 +57,7 @@ class _MessengerListPageState extends State<MessengerListPage> {
 
   StreamSubscription? _newMessageSub;
   StreamSubscription? _readReceiptSub;
+  StreamSubscription? _connectionStatusSub;
   Timer? _refreshTimer;
   Timer? _debounceTimer;
 
@@ -56,7 +65,14 @@ class _MessengerListPageState extends State<MessengerListPage> {
   void initState() {
     super.initState();
     _userName = widget.userName;
-    _loadConversations();
+    // Show cached data instantly if available
+    if (_cachedConversations != null && _cachedForPhone == widget.userPhone) {
+      _conversations = _cachedConversations!;
+      _isLoading = false;
+      _loadConversations(silent: true); // Refresh in background
+    } else {
+      _loadConversations();
+    }
     _loadSavedConversation();
     _loadFolders();
     _setupWebSocket();
@@ -69,6 +85,7 @@ class _MessengerListPageState extends State<MessengerListPage> {
   void dispose() {
     _newMessageSub?.cancel();
     _readReceiptSub?.cancel();
+    _connectionStatusSub?.cancel();
     _refreshTimer?.cancel();
     _debounceTimer?.cancel();
     super.dispose();
@@ -94,6 +111,13 @@ class _MessengerListPageState extends State<MessengerListPage> {
     _readReceiptSub = ws.onReadReceipt.listen((event) {
       _debouncedReload();
     });
+
+    // Reload conversations when WS reconnects (may have missed events while disconnected)
+    _connectionStatusSub = ws.onConnectionStatus.listen((isConnected) {
+      if (isConnected) {
+        _loadConversations(silent: true);
+      }
+    });
   }
 
   Future<void> _loadConversations({bool silent = false}) async {
@@ -105,25 +129,41 @@ class _MessengerListPageState extends State<MessengerListPage> {
     }
 
     try {
-      final conversations = await MessengerService.getConversations(widget.userPhone);
+      final conversations = await MessengerService.getConversations(
+        widget.userPhone, limit: _pageSize, offset: 0);
       if (mounted) {
         setState(() {
-          // Only replace list if server returned non-empty result
-          // This prevents dialogs from disappearing on temporary server hiccups
           if (conversations.isNotEmpty || _conversations.isEmpty) {
             _conversations = conversations;
+            _cachedConversations = conversations;
+            _cachedForPhone = widget.userPhone;
           }
           _isLoading = false;
+          _hasMore = conversations.length >= _pageSize;
         });
       }
     } catch (e) {
-      // On error — keep existing list, just stop loading spinner
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _loadMoreConversations() async {
+    if (_isLoadingMore || !_hasMore) return;
+    _isLoadingMore = true;
+    try {
+      final more = await MessengerService.getConversations(
+        widget.userPhone, limit: _pageSize, offset: _conversations.length);
+      if (mounted) {
+        setState(() {
+          _conversations.addAll(more);
+          _cachedConversations = _conversations;
+          _hasMore = more.length >= _pageSize;
+        });
+      }
+    } catch (_) {}
+    _isLoadingMore = false;
   }
 
   Future<void> _loadSavedConversation() async {
@@ -245,6 +285,21 @@ class _MessengerListPageState extends State<MessengerListPage> {
               ).then((_) => _loadConversations(silent: true));
             },
           ),
+          if (!widget.isClient)
+            IconButton(
+              icon: Icon(Icons.send_outlined, color: Colors.white.withOpacity(0.6)),
+              tooltip: 'Рассылка',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BroadcastPage(userPhone: widget.userPhone),
+                  ),
+                ).then((sent) {
+                  if (sent == true) _loadConversations(silent: true);
+                });
+              },
+            ),
           IconButton(
             icon: Icon(Icons.refresh, color: Colors.white.withOpacity(0.6)),
             onPressed: () => _loadConversations(),
@@ -521,7 +576,15 @@ class _MessengerListPageState extends State<MessengerListPage> {
 
     return Stack(
       children: [
-        RefreshIndicator(
+        NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollEndNotification &&
+                notification.metrics.pixels >= notification.metrics.maxScrollExtent - 200) {
+              _loadMoreConversations();
+            }
+            return false;
+          },
+          child: RefreshIndicator(
           color: AppColors.turquoise,
           backgroundColor: AppColors.night,
           onRefresh: () => _loadConversations(),
@@ -544,6 +607,7 @@ class _MessengerListPageState extends State<MessengerListPage> {
               );
             },
           ),
+        ),
         ),
         // FAB "+" — only visible inside a custom folder
         if (isInFolder)

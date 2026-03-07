@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,18 +12,21 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/services/photo_upload_service.dart' show compressImageIsolate;
 import '../models/conversation_model.dart';
 import '../models/message_model.dart';
 import '../services/messenger_service.dart';
 import '../services/messenger_ws_service.dart';
 import '../services/voice_recorder_service.dart';
 import '../services/call_service.dart';
+import '../services/offline_message_queue.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/album_bubble.dart';
 import '../widgets/message_input_bar.dart';
 import '../widgets/message_context_menu.dart';
 import '../widgets/pinned_message_bar.dart';
 import '../widgets/combined_media_picker.dart';
+import '../widgets/template_picker.dart';
 import 'call_page.dart';
 import 'group_info_page.dart';
 import 'messenger_shell_page.dart';
@@ -81,8 +85,9 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
   // Edit mode
   String? _editingMessageId;
 
-  // Pinned message
-  MessengerMessage? _pinnedMessage;
+  // Pinned messages (multiple pins support)
+  List<MessengerMessage> _pinnedMessages = [];
+  int _currentPinnedIndex = 0;
   bool _isBlocked = false; // true if WE blocked the other user
 
   /// Is current user admin of the channel (can post)?
@@ -124,6 +129,8 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
   StreamSubscription? _messageDeliveredSub;
   StreamSubscription? _connectionStatusSub;
   StreamSubscription? _audioCompleteSub;
+  StreamSubscription? _queueSentSub;
+  StreamSubscription? _queueFailedSub;
 
   bool _isOtherOnline = false;
 
@@ -179,6 +186,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     _refreshParticipantReadTimes();
     _checkBlockStatus();
     _checkMuteStatus();
+    _setupOfflineQueue();
 
     _scrollController.addListener(() {
       if (_scrollController.hasClients &&
@@ -237,6 +245,8 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     _messageDeliveredSub?.cancel();
     _connectionStatusSub?.cancel();
     _audioCompleteSub?.cancel();
+    _queueSentSub?.cancel();
+    _queueFailedSub?.cancel();
     _positionSub?.cancel();
     _durationSub?.cancel();
     _typingTimer?.cancel();
@@ -258,6 +268,33 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     }
   }
 
+  void _setupOfflineQueue() {
+    final queue = OfflineMessageQueue.instance;
+    queue.init();
+    _queueSentSub = queue.onSent.listen((event) {
+      if (!mounted) return;
+      final idx = _messages.indexWhere((m) => m.id == event.tempId);
+      if (idx != -1) {
+        setState(() {
+          _messages[idx] = event.message;
+          _messagesById.remove(event.tempId);
+          _messagesById[event.message.id] = event.message;
+        });
+        _messagesCache[widget.conversation.id] = List.of(_messages);
+      }
+    });
+    _queueFailedSub = queue.onFailed.listen((tempId) {
+      if (!mounted) return;
+      final idx = _messages.indexWhere((m) => m.id == tempId);
+      if (idx != -1) {
+        setState(() {
+          _messages[idx] = _messages[idx].copyWith(isFailed: true, isPending: false);
+          _messagesById[tempId] = _messages[idx];
+        });
+      }
+    });
+  }
+
   void _setupWebSocket() {
     final ws = MessengerWsService.instance;
 
@@ -270,6 +307,22 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       if (event.conversationId == widget.conversation.id && mounted) {
         // Deduplicate: O(1) lookup via index map
         if (_messagesById.containsKey(event.message.id)) return;
+
+        // Dedup WS vs pending: if this is my own message, replace pending instead of adding
+        if (event.message.senderPhone == widget.userPhone) {
+          final pendingIdx = _messages.lastIndexWhere((m) => m.isPending && m.senderPhone == widget.userPhone);
+          if (pendingIdx != -1) {
+            setState(() {
+              final pendingId = _messages[pendingIdx].id;
+              _messages[pendingIdx] = event.message;
+              _messagesById.remove(pendingId);
+              _messagesById[event.message.id] = event.message;
+            });
+            _messagesCache[widget.conversation.id] = List.of(_messages);
+            return;
+          }
+        }
+
         setState(() {
           _messages.add(event.message);
           _messagesById[event.message.id] = event.message;
@@ -306,9 +359,10 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
     _messageDeletedSub = ws.onMessageDeleted.listen((event) {
       if (event.conversationId == widget.conversation.id && mounted) {
-        // Clear pinned message if it was deleted
-        if (_pinnedMessage?.id == event.messageId) {
-          _pinnedMessage = null;
+        // Remove pinned message if it was deleted
+        _pinnedMessages.removeWhere((m) => m.id == event.messageId);
+        if (_currentPinnedIndex >= _pinnedMessages.length) {
+          _currentPinnedIndex = _pinnedMessages.isEmpty ? 0 : _pinnedMessages.length - 1;
         }
         _updateMessage(event.messageId, (msg) => MessengerMessage(
           id: msg.id,
@@ -415,10 +469,14 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
             _messageKeys.clear();
             _messages.addAll(messages);
             // Append WS-only messages (newer than server batch) at the end
-            for (final m in wsOnly) {
-              if (m.createdAt.isAfter(messages.last.createdAt)) {
-                _messages.add(m);
+            if (messages.isNotEmpty) {
+              for (final m in wsOnly) {
+                if (m.createdAt.isAfter(messages.last.createdAt)) {
+                  _messages.add(m);
+                }
               }
+            } else {
+              _messages.addAll(wsOnly);
             }
           } else {
             _messages.clear();
@@ -428,7 +486,8 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
           _isLoading = false;
           _isFirstLoad = false;
           _hasMoreMessages = messages.length >= 50;
-          _pinnedMessage = pinned.isNotEmpty ? pinned.first : null;
+          _pinnedMessages = pinned;
+          _currentPinnedIndex = 0;
         });
         // Update cache — limit to avoid unbounded memory growth
         if (_messagesCache.length >= _messagesCacheLimit && !_messagesCache.containsKey(widget.conversation.id)) {
@@ -436,6 +495,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
         }
         _messagesCache[widget.conversation.id] = List.of(_messages);
         _rebuildIndex();
+        _batchLoadPolls(_messages);
         if (!silent) {
           _scrollToBottom();
         }
@@ -622,7 +682,16 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       }
       _messagesCache[widget.conversation.id] = List.of(_messages);
     } else {
-      // Failed — mark as failed
+      // Failed — add to offline queue for auto-retry
+      OfflineMessageQueue.instance.enqueue(QueuedMessage(
+        conversationId: widget.conversation.id,
+        senderPhone: widget.userPhone,
+        senderName: widget.userName,
+        type: MessageType.text,
+        content: text,
+        replyToId: savedReplyToId,
+        tempId: tempId,
+      ));
       final idx = _messages.indexWhere((m) => m.id == tempId);
       if (idx != -1) {
         setState(() {
@@ -632,10 +701,52 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Не удалось отправить сообщение'),
+          content: Text('Нет связи — сообщение отправится автоматически'),
           backgroundColor: AppColors.error,
         ),
       );
+    }
+  }
+
+  /// Retry sending a failed message
+  Future<void> _retryMessage(MessengerMessage failedMsg) async {
+    // Mark as pending again
+    final idx = _messages.indexWhere((m) => m.id == failedMsg.id);
+    if (idx == -1) return;
+
+    final pendingMsg = failedMsg.copyWith(isPending: true, isFailed: false);
+    setState(() {
+      _messages[idx] = pendingMsg;
+      _messagesById[failedMsg.id] = pendingMsg;
+    });
+
+    final msg = await MessengerService.sendMessage(
+      conversationId: widget.conversation.id,
+      senderPhone: widget.userPhone,
+      senderName: widget.userName,
+      type: failedMsg.type,
+      content: failedMsg.content,
+      replyToId: failedMsg.replyToId,
+      mediaUrl: failedMsg.mediaUrl,
+    );
+
+    if (!mounted) return;
+
+    final retryIdx = _messages.indexWhere((m) => m.id == failedMsg.id);
+    if (retryIdx == -1) return;
+
+    if (msg != null) {
+      setState(() {
+        _messages[retryIdx] = msg;
+        _messagesById.remove(failedMsg.id);
+        _messagesById[msg.id] = msg;
+      });
+      _messagesCache[widget.conversation.id] = List.of(_messages);
+    } else {
+      setState(() {
+        _messages[retryIdx] = failedMsg.copyWith(isFailed: true, isPending: false);
+        _messagesById[failedMsg.id] = _messages[retryIdx];
+      });
     }
   }
 
@@ -732,7 +843,10 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     );
 
     if (msg != null && mounted) {
-      setState(() => _messages.add(msg));
+      setState(() {
+        _messages.add(msg);
+        _messagesById[msg.id] = msg;
+      });
       _messagesCache[widget.conversation.id] = List.of(_messages);
       _scrollToBottom();
     }
@@ -802,7 +916,10 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     );
 
     if (msg != null && mounted) {
-      setState(() => _messages.add(msg));
+      setState(() {
+        _messages.add(msg);
+        _messagesById[msg.id] = msg;
+      });
       _messagesCache[widget.conversation.id] = List.of(_messages);
       _scrollToBottom();
     }
@@ -844,7 +961,8 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     });
 
     try {
-      await _audioPlayer.play(UrlSource(message.mediaUrl!));
+      final voiceUrl = message.mediaUrl!.startsWith('http') ? message.mediaUrl! : '${ApiConstants.serverUrl}${message.mediaUrl!}';
+      await _audioPlayer.play(UrlSource(voiceUrl));
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -872,6 +990,20 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
   // ========= Вложения =========
 
+  void _showTemplatePicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => TemplatePicker(
+        onSelect: (text) {
+          _textController.text = text;
+          _textController.selection = TextSelection.collapsed(offset: text.length);
+        },
+      ),
+    );
+  }
+
   void _toggleMediaPicker() {
     if (mounted) {
       setState(() {
@@ -897,6 +1029,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     if (msg != null && mounted) {
       setState(() {
         _messages.add(msg);
+        _messagesById[msg.id] = msg;
         _messagesCache[widget.conversation.id] = List.from(_messages);
       });
       _scrollToBottom();
@@ -917,6 +1050,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     if (msg != null && mounted) {
       setState(() {
         _messages.add(msg);
+        _messagesById[msg.id] = msg;
         _messagesCache[widget.conversation.id] = List.from(_messages);
       });
       _scrollToBottom();
@@ -1154,6 +1288,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       if (msg != null && mounted) {
         setState(() {
           _messages.add(msg);
+          _messagesById[msg.id] = msg;
           _messagesCache[widget.conversation.id] = List.from(_messages);
         });
         _scrollToBottom();
@@ -1516,7 +1651,22 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
   }
 
   Future<void> _uploadAndSendPhotos(List<File> files, {String? mediaGroupId}) async {
-    for (final file in files) {
+    for (var file in files) {
+      // Compress photo if larger than 500KB (resize 1280px + JPEG 75%)
+      try {
+        final bytes = await file.readAsBytes();
+        if (bytes.length > 512 * 1024) {
+          final compressed = await compute(compressImageIsolate, bytes.toList());
+          if (compressed.length < bytes.length) {
+            final tmpPath = '${file.path}_compressed.jpg';
+            final tmpFile = File(tmpPath);
+            await tmpFile.writeAsBytes(compressed);
+            file = tmpFile;
+          }
+        }
+      } catch (_) {
+        // Compression failed — upload original
+      }
       final url = await MessengerService.uploadMedia(file);
       if (url == null) continue;
 
@@ -1560,6 +1710,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       if (msg != null && mounted) {
         setState(() {
           _messages.add(msg);
+          _messagesById[msg.id] = msg;
           _messagesCache[widget.conversation.id] = List.from(_messages);
         });
         _scrollToBottom();
@@ -1599,7 +1750,10 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       );
 
       if (msg != null && mounted) {
-        setState(() => _messages.add(msg));
+        setState(() {
+          _messages.add(msg);
+          _messagesById[msg.id] = msg;
+        });
         _messagesCache[widget.conversation.id] = List.of(_messages);
         _scrollToBottom();
       }
@@ -1615,6 +1769,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
   // ========= Polls =========
 
   final Map<String, PollModel> _pollCache = {};
+  static const int _pollCacheLimit = 100;
 
   Widget _buildPollWidget(MessengerMessage message) {
     final poll = _pollCache[message.id];
@@ -1657,9 +1812,36 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       if (response['poll'] != null) {
         _pollCache[msg.id] = PollModel.fromJson(response['poll'] as Map<String, dynamic>);
       }
-      setState(() => _messages.add(msg));
+      setState(() {
+        _messages.add(msg);
+        _messagesById[msg.id] = msg;
+      });
       _messagesCache[widget.conversation.id] = List.of(_messages);
       _scrollToBottom();
+    }
+  }
+
+  /// Batch-load polls for all poll messages in one request
+  Future<void> _batchLoadPolls(List<MessengerMessage> messages) async {
+    final pollMsgIds = messages
+        .where((m) => m.type == MessageType.poll && !_pollCache.containsKey(m.id))
+        .map((m) => m.id)
+        .toList();
+    if (pollMsgIds.isEmpty) return;
+
+    final pollsMap = await MessengerService.getPollsBatch(
+      widget.conversation.id,
+      pollMsgIds,
+    );
+    if (pollsMap.isNotEmpty && mounted) {
+      setState(() {
+        for (final entry in pollsMap.entries) {
+          if (_pollCache.length >= _pollCacheLimit) {
+            _pollCache.remove(_pollCache.keys.first);
+          }
+          _pollCache[entry.key] = PollModel.fromJson(entry.value);
+        }
+      });
     }
   }
 
@@ -1668,6 +1850,9 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     final data = await MessengerService.getPoll(widget.conversation.id, messageId);
     if (data != null) {
       final poll = PollModel.fromJson(data);
+      if (_pollCache.length >= _pollCacheLimit) {
+        _pollCache.remove(_pollCache.keys.first);
+      }
       _pollCache[messageId] = poll;
       return poll;
     }
@@ -1799,7 +1984,10 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
         setState(() {
           final idx = _messages.indexWhere((m) => m.id == message.id);
           if (idx != -1) _messages[idx] = _messages[idx].copyWith(isPinned: false);
-          if (_pinnedMessage?.id == message.id) _pinnedMessage = null;
+          _pinnedMessages.removeWhere((m) => m.id == message.id);
+          if (_currentPinnedIndex >= _pinnedMessages.length) {
+            _currentPinnedIndex = _pinnedMessages.isEmpty ? 0 : _pinnedMessages.length - 1;
+          }
         });
       }
     } else {
@@ -1808,15 +1996,17 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
         setState(() {
           final idx = _messages.indexWhere((m) => m.id == message.id);
           if (idx != -1) _messages[idx] = _messages[idx].copyWith(isPinned: true);
-          _pinnedMessage = message;
+          _pinnedMessages.insert(0, message);
+          _currentPinnedIndex = 0;
         });
       }
     }
   }
 
   void _scrollToPinnedMessage() {
-    if (_pinnedMessage == null) return;
-    final idx = _messages.indexWhere((m) => m.id == _pinnedMessage!.id);
+    if (_pinnedMessages.isEmpty) return;
+    final pinned = _pinnedMessages[_currentPinnedIndex];
+    final idx = _messages.indexWhere((m) => m.id == pinned.id);
     if (idx != -1) {
       // Each message is roughly 60-80px. Scroll to approximate position.
       _scrollController.animateTo(
@@ -1825,6 +2015,77 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
         curve: Curves.easeOut,
       );
     }
+  }
+
+  void _showReadersList(MessengerMessage message) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.night,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: MessengerService.getMessageReaders(widget.conversation.id, message.id),
+          builder: (ctx, snapshot) {
+            final readers = snapshot.data ?? [];
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                Container(width: 40, height: 4, decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(2))),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Прочитали (${readers.length})',
+                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                if (snapshot.connectionState == ConnectionState.waiting)
+                  const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: CircularProgressIndicator(color: AppColors.turquoise, strokeWidth: 2),
+                  )
+                else if (readers.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text('Никто ещё не прочитал',
+                        style: TextStyle(color: Colors.white.withOpacity(0.5))),
+                  )
+                else
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.4),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: readers.length,
+                      itemBuilder: (_, i) {
+                        final r = readers[i];
+                        final name = r['name'] ?? r['phone'] ?? '';
+                        final avatar = r['avatar_url'] as String?;
+                        return ListTile(
+                          dense: true,
+                          leading: CircleAvatar(
+                            radius: 18,
+                            backgroundColor: AppColors.emerald,
+                            backgroundImage: avatar != null ? NetworkImage(avatar) : null,
+                            child: avatar == null
+                                ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                    style: const TextStyle(color: Colors.white, fontSize: 14))
+                                : null,
+                          ),
+                          title: Text(name, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                        );
+                      },
+                    ),
+                  ),
+                const SizedBox(height: 16),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _forwardMessage(MessengerMessage message) async {
@@ -2398,8 +2659,6 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
   @override
   Widget build(BuildContext context) {
-    // Rebuild reply index once per build (O(n)) instead of O(n) per visible message
-    _rebuildIndex();
     final isGroup = widget.conversation.type == ConversationType.group;
     final isChannel = widget.conversation.type == ConversationType.channel;
     final isGroupOrChannel = isGroup || isChannel;
@@ -2552,11 +2811,18 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       body: Column(
         children: [
           // Pinned message bar
-          if (_pinnedMessage != null)
+          if (_pinnedMessages.isNotEmpty)
             PinnedMessageBar(
-              message: _pinnedMessage!,
+              messages: _pinnedMessages,
+              currentIndex: _currentPinnedIndex,
               onTap: _scrollToPinnedMessage,
-              onUnpin: () => _togglePin(_pinnedMessage!),
+              onUnpin: () => _togglePin(_pinnedMessages[_currentPinnedIndex]),
+              onNext: _pinnedMessages.length > 1 ? () {
+                setState(() {
+                  _currentPinnedIndex = (_currentPinnedIndex + 1) % _pinnedMessages.length;
+                });
+                _scrollToPinnedMessage();
+              } : null,
             ),
           // Messages
           Expanded(
@@ -2762,6 +3028,12 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
                                   onFileTap: message.type == MessageType.file
                                       ? (url, name) => _openFile(url, name)
                                       : null,
+                                  onRetry: message.isFailed
+                                      ? () => _retryMessage(message)
+                                      : null,
+                                  onReadersListTap: (isMine && isGroup && !message.isPending && !message.isFailed)
+                                      ? () => _showReadersList(message)
+                                      : null,
                                 ),
                               ),
                               ),
@@ -2796,6 +3068,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
             textController: _textController,
             isEditing: _editingMessageId != null,
             onCancelEdit: _cancelEditing,
+            onTemplateTap: widget.isClient ? null : () => _showTemplatePicker(),
           ),
 
           // Combined media picker (Emoji + Stickers + GIF)

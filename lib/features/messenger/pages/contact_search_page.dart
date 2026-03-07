@@ -47,6 +47,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
   List<MessengerContact> _allContacts = [];
   List<MessengerContact> _contacts = [];
   bool _isLoading = true;
+  String? _error;
   // Tracks whether contacts permission is actually granted (checked at load time)
   bool _permissionGranted = false;
 
@@ -101,7 +102,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _isLoading = false; _error = 'Не удалось загрузить контакты'; });
     }
   }
 
@@ -424,6 +425,8 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.turquoise, strokeWidth: 2.5))
+                : _error != null
+                    ? Center(child: Text(_error!, style: TextStyle(color: Colors.white.withOpacity(0.5))))
                 : _contacts.isEmpty
                     ? _buildEmptyState()
                     : ListView.builder(

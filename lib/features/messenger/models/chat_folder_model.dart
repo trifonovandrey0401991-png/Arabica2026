@@ -21,7 +21,7 @@ class ChatFolder {
   factory ChatFolder.fromJson(Map<String, dynamic> json) {
     List<String> ids = [];
     if (json['conversation_ids'] is List) {
-      ids = (json['conversation_ids'] as List).cast<String>();
+      ids = (json['conversation_ids'] as List).whereType<String>().toList();
     }
     return ChatFolder(
       id: json['id'] as String? ?? '',

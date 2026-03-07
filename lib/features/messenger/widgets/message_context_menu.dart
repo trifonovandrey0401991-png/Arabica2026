@@ -321,8 +321,9 @@ class _ContextMenuOverlay extends StatelessWidget {
 
     if (canDeleteForAll) {
       items.add(_MenuItem(Icons.delete_forever_rounded, 'Удалить у всех', () async {
-        Navigator.pop(context);
         final ok = await MessageContextMenu.confirmDelete(context);
+        if (!context.mounted) return;
+        Navigator.pop(context);
         if (ok) onDeleteConfirmed(message)();
       }, iconColor: AppColors.error, textColor: AppColors.error));
     }

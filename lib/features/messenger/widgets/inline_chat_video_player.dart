@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 
-/// Inline video player for messenger chat (Telegram-style).
-/// Auto-plays muted + looping. Tap opens fullscreen player.
+/// Telegram-style inline video player for messenger chat.
+/// Auto-loads and plays muted+looping when visible. Tap opens fullscreen.
 class InlineChatVideoPlayer extends StatefulWidget {
   final String videoUrl;
   final String? thumbnailUrl;
@@ -27,6 +28,8 @@ class _InlineChatVideoPlayerState extends State<InlineChatVideoPlayer> {
   bool _initialized = false;
   bool _hasError = false;
   bool _isMuted = true;
+  bool _isLoading = false;
+  bool _visible = false;
 
   String get _resolvedUrl {
     final url = widget.videoUrl;
@@ -34,13 +37,26 @@ class _InlineChatVideoPlayerState extends State<InlineChatVideoPlayer> {
     return '${ApiConstants.serverUrl}$url';
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _initPlayer();
+  String? get _resolvedThumbUrl {
+    final url = widget.thumbnailUrl;
+    if (url == null) return null;
+    if (url.startsWith('http')) return url;
+    return '${ApiConstants.serverUrl}$url';
   }
 
-  Future<void> _initPlayer() async {
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initAndPlay() async {
+    if (_isLoading) return;
+    if (_initialized && _controller != null) {
+      _controller!.play();
+      return;
+    }
+    setState(() => _isLoading = true);
     try {
       _controller = VideoPlayerController.networkUrl(Uri.parse(_resolvedUrl));
       await _controller!.initialize();
@@ -48,17 +64,37 @@ class _InlineChatVideoPlayerState extends State<InlineChatVideoPlayer> {
       _controller!.setVolume(0);
       _controller!.setLooping(true);
       _controller!.play();
-      setState(() => _initialized = true);
+      setState(() {
+        _initialized = true;
+        _isLoading = false;
+      });
     } catch (e) {
       debugPrint('InlineChatVideoPlayer error: $e');
-      if (mounted) setState(() => _hasError = true);
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
+  void _onVisibilityChanged(VisibilityInfo info) {
+    final nowVisible = info.visibleFraction > 0.3;
+    if (nowVisible == _visible) return;
+    _visible = nowVisible;
+
+    if (nowVisible) {
+      // Became visible — auto-load and play
+      if (!_initialized && !_isLoading && !_hasError) {
+        _initAndPlay();
+      } else if (_initialized && _controller != null) {
+        _controller!.play();
+      }
+    } else {
+      // Scrolled away — pause to save resources
+      _controller?.pause();
+    }
   }
 
   void _toggleMute() {
@@ -69,20 +105,37 @@ class _InlineChatVideoPlayerState extends State<InlineChatVideoPlayer> {
     });
   }
 
+  void _retry() {
+    _controller?.dispose();
+    _controller = null;
+    _initialized = false;
+    setState(() => _hasError = false);
+    _initAndPlay();
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Max width like Telegram — roughly 70% of screen, capped at 300
     final maxWidth = (MediaQuery.of(context).size.width * 0.7).clamp(200.0, 300.0);
 
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
-          child: _initialized && _controller != null
-              ? _buildVideoView(maxWidth)
-              : _buildPlaceholder(maxWidth),
+    return VisibilityDetector(
+      key: Key('video_${widget.videoUrl}'),
+      onVisibilityChanged: _onVisibilityChanged,
+      child: GestureDetector(
+        onTap: () {
+          if (_hasError) {
+            _retry();
+          } else if (_initialized) {
+            widget.onTap?.call();
+          }
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: _initialized && _controller != null
+                ? _buildVideoView(maxWidth)
+                : _buildPlaceholder(maxWidth),
+          ),
         ),
       ),
     );
@@ -98,7 +151,6 @@ class _InlineChatVideoPlayerState extends State<InlineChatVideoPlayer> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Video
           FittedBox(
             fit: BoxFit.cover,
             clipBehavior: Clip.hardEdge,
@@ -134,7 +186,7 @@ class _InlineChatVideoPlayerState extends State<InlineChatVideoPlayer> {
   }
 
   Widget _buildPlaceholder(double maxWidth) {
-    final height = maxWidth * 0.75; // 4:3 default ratio
+    final height = maxWidth * 0.75;
 
     return SizedBox(
       width: maxWidth,
@@ -143,9 +195,9 @@ class _InlineChatVideoPlayerState extends State<InlineChatVideoPlayer> {
         alignment: Alignment.center,
         children: [
           // Thumbnail or dark background
-          if (widget.thumbnailUrl != null && !_hasError)
+          if (_resolvedThumbUrl != null && !_hasError)
             CachedNetworkImage(
-              imageUrl: widget.thumbnailUrl!,
+              imageUrl: _resolvedThumbUrl!,
               fit: BoxFit.cover,
               width: maxWidth,
               height: height,
@@ -160,8 +212,8 @@ class _InlineChatVideoPlayerState extends State<InlineChatVideoPlayer> {
               color: Colors.black.withOpacity(0.3),
               child: Icon(Icons.videocam, size: 32, color: Colors.white.withOpacity(0.2)),
             ),
-          // Loading or play icon
-          if (!_hasError)
+          // Loading indicator or error retry
+          if (_isLoading)
             const SizedBox(
               width: 28,
               height: 28,
@@ -170,7 +222,7 @@ class _InlineChatVideoPlayerState extends State<InlineChatVideoPlayer> {
                 color: AppColors.turquoise,
               ),
             )
-          else
+          else if (_hasError)
             Container(
               width: 52,
               height: 52,
@@ -178,8 +230,9 @@ class _InlineChatVideoPlayerState extends State<InlineChatVideoPlayer> {
                 shape: BoxShape.circle,
                 color: Colors.black.withOpacity(0.5),
               ),
-              child: const Icon(Icons.play_arrow_rounded, size: 34, color: Colors.white),
+              child: const Icon(Icons.refresh_rounded, size: 34, color: Colors.white),
             ),
+          // No icon when idle — video will auto-load on visibility
         ],
       ),
     );

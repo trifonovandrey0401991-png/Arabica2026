@@ -73,9 +73,9 @@ class MessengerMessage {
     }
 
     return MessengerMessage(
-      id: json['id'] as String,
+      id: (json['id'] as String?) ?? '',
       conversationId: (json['conversation_id'] as String?) ?? '',
-      senderPhone: json['sender_phone'] as String,
+      senderPhone: (json['sender_phone'] as String?) ?? '',
       senderName: json['sender_name'] as String?,
       type: _parseType(json['type'] as String?),
       content: json['content'] as String?,

@@ -17,6 +17,7 @@ class MessageInputBar extends StatefulWidget {
   final TextEditingController? textController;
   final bool isEditing;
   final VoidCallback? onCancelEdit;
+  final VoidCallback? onTemplateTap;
 
   const MessageInputBar({
     super.key,
@@ -35,6 +36,7 @@ class MessageInputBar extends StatefulWidget {
     this.textController,
     this.isEditing = false,
     this.onCancelEdit,
+    this.onTemplateTap,
   });
 
   @override
@@ -178,6 +180,12 @@ class _MessageInputBarState extends State<MessageInputBar> {
   Widget _buildNormalRow() {
     return Row(
       children: [
+        // Template button (quick replies)
+        if (widget.onTemplateTap != null)
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: _buildIconButton(Icons.text_snippet_outlined, widget.onTemplateTap),
+          ),
         // "+" button — attachments
         _buildPlusButton(),
         const SizedBox(width: 6),

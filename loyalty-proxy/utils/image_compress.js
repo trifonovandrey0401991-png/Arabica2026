@@ -30,6 +30,7 @@ async function compressUpload(req, res, next) {
   }
 
   try {
+    const path = require('path');
     const originalSize = req.file.size;
 
     const compressed = await sharp(req.file.path)
@@ -38,8 +39,19 @@ async function compressUpload(req, res, next) {
       .jpeg({ quality: JPEG_QUALITY })
       .toBuffer();
 
-    await fsp.writeFile(req.file.path, compressed);
+    // sharp converts to JPEG — rename file if extension was not .jpg/.jpeg
+    const ext = path.extname(req.file.path).toLowerCase();
+    if (ext !== '.jpg' && ext !== '.jpeg') {
+      const newPath = req.file.path.replace(/\.[^.]+$/, '.jpg');
+      await fsp.writeFile(newPath, compressed);
+      await fsp.unlink(req.file.path).catch(() => {});
+      req.file.path = newPath;
+      req.file.filename = path.basename(newPath);
+    } else {
+      await fsp.writeFile(req.file.path, compressed);
+    }
     req.file.size = compressed.length;
+    req.file.mimetype = 'image/jpeg';
 
     const savedPercent = Math.round((1 - compressed.length / originalSize) * 100);
     if (savedPercent > 5) {
@@ -52,4 +64,34 @@ async function compressUpload(req, res, next) {
   next();
 }
 
-module.exports = { compressUpload };
+const THUMB_SIZE = 200;
+const THUMB_QUALITY = 60;
+
+/**
+ * Generate thumbnail for uploaded image.
+ * Creates a small JPEG at {original_path}_thumb.jpg
+ * Returns thumbnail filename or null if failed/not applicable.
+ */
+async function generateThumbnail(filePath) {
+  if (!sharp) return null;
+  try {
+    const path = require('path');
+    const ext = path.extname(filePath).toLowerCase();
+    if (!['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext)) return null;
+
+    const thumbFilename = path.basename(filePath, ext) + '_thumb.jpg';
+    const thumbPath = path.join(path.dirname(filePath), thumbFilename);
+
+    await sharp(filePath)
+      .resize(THUMB_SIZE, THUMB_SIZE, { fit: 'cover' })
+      .jpeg({ quality: THUMB_QUALITY })
+      .toFile(thumbPath);
+
+    return thumbFilename;
+  } catch (e) {
+    console.error('[Thumbnail] Failed:', e.message);
+    return null;
+  }
+}
+
+module.exports = { compressUpload, generateThumbnail };

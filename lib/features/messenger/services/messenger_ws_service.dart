@@ -214,13 +214,10 @@ class MessengerWsService {
         },
       );
 
-      _isConnected = true;
       _reconnectAttempts = 0;
-      _connectionStatusController.add(true);
       _startPing();
-      requestOnlineUsers();
 
-      Logger.debug('💬 Messenger WS: connected');
+      Logger.debug('💬 Messenger WS: channel opened, waiting for server confirmation');
     } catch (e) {
       Logger.error('💬 Messenger WS: connection error: $e');
       _isConnected = false;
@@ -250,6 +247,7 @@ class MessengerWsService {
   }
 
   void _handleMessage(dynamic data) {
+    if (_isDisposed) return;
     try {
       final message = jsonDecode(data.toString()) as Map<String, dynamic>;
       final type = message['type'] as String?;
@@ -374,6 +372,9 @@ class MessengerWsService {
           break;
 
         case 'connected':
+          _isConnected = true;
+          _connectionStatusController.add(true);
+          requestOnlineUsers();
           Logger.debug('💬 Messenger WS: server confirmed connection');
           break;
 

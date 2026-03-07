@@ -15,6 +15,8 @@ const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 const pushService = require('../utils/push_service');
 const dataCache = require('../utils/data_cache');
+const { getMoscowTime } = require('../utils/moscow_time');
+const { normalizePhone } = require('../utils/file_helpers');
 
 // WebSocket уведомления (опционально)
 let wsNotify = null;
@@ -31,6 +33,13 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
  */
 function generateId(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+}
+
+/**
+ * Escape special ILIKE characters: % _ \
+ */
+function escapeIlike(str) {
+  return str.replace(/[\\%_]/g, c => '\\' + c);
 }
 
 /**
@@ -62,7 +71,7 @@ function setupMessengerAPI(app, uploadMedia) {
   app.get('/api/messenger/conversations', requireAuth, async (req, res) => {
     try {
       const { limit = 50, offset = 0 } = req.query;
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
       const parsedLimit = Math.min(parseInt(limit) || 50, 100);
       const parsedOffset = parseInt(offset) || 0;
 
@@ -141,8 +150,8 @@ function setupMessengerAPI(app, uploadMedia) {
       const { phone2, name1, name2 } = req.body;
       if (!phone2) return res.status(400).json({ success: false, error: 'phone2 required' });
 
-      const p1 = req.user.phone.replace(/[^\d]/g, '');
-      const p2 = phone2.replace(/[^\d]/g, '');
+      const p1 = normalizePhone(req.user.phone);
+      const p2 = normalizePhone(phone2);
 
       // Стабильный ID — sorted phones
       const sorted = [p1, p2].sort();
@@ -222,7 +231,7 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(400).json({ success: false, error: 'Maximum 100 participants' });
       }
 
-      const normalizedCreator = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedCreator = normalizePhone(req.user.phone);
       const conversationId = generateId('group');
 
       await db.transaction(async (client) => {
@@ -241,7 +250,7 @@ function setupMessengerAPI(app, uploadMedia) {
 
         // Остальные участники — members
         for (const p of participants) {
-          const pPhone = (p.phone || p).toString().replace(/[^\d]/g, '');
+          const pPhone = normalizePhone((p.phone || p).toString());
           if (pPhone === normalizedCreator) continue; // уже добавлен
           const pName = p.name || null;
           await client.query(
@@ -275,7 +284,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/conversations/:id', requireAuth, async (req, res) => {
     try {
-      const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
+      const requesterPhone = normalizePhone(req.user.phone);
       const conversation = await db.findById('messenger_conversations', req.params.id);
       if (!conversation) return res.status(404).json({ success: false, error: 'Conversation not found' });
 
@@ -309,12 +318,12 @@ function setupMessengerAPI(app, uploadMedia) {
       if (!conversation) return res.status(404).json({ success: false, error: 'Not found' });
       if (conversation.type !== 'group') return res.status(400).json({ success: false, error: 'Only groups can be updated' });
 
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
       if (conversation.creator_phone !== normalizedPhone) {
         return res.status(403).json({ success: false, error: 'Only creator can update group' });
       }
 
-      const updates = { updated_at: new Date().toISOString() };
+      const updates = { updated_at: getMoscowTime().toISOString() };
       if (name !== undefined) updates.name = name;
       if (avatarUrl !== undefined) updates.avatar_url = avatarUrl;
 
@@ -334,7 +343,13 @@ function setupMessengerAPI(app, uploadMedia) {
       const conversation = await db.findById('messenger_conversations', req.params.id);
       if (!conversation) return res.status(404).json({ success: false, error: 'Not found' });
 
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
+      if (!(await isParticipant(req.params.id, normalizedPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
+      if (conversation.type === 'private') {
+        return res.status(400).json({ success: false, error: 'Cannot delete private conversations' });
+      }
       if (conversation.type === 'group' && conversation.creator_phone !== normalizedPhone) {
         return res.status(403).json({ success: false, error: 'Only creator can delete group' });
       }
@@ -368,14 +383,14 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(400).json({ success: false, error: 'Group not found' });
       }
 
-      const normalizedRequester = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedRequester = normalizePhone(req.user.phone);
       if (conversation.creator_phone !== normalizedRequester) {
         return res.status(403).json({ success: false, error: 'Only creator can add members' });
       }
 
       const added = [];
       for (const p of phones) {
-        const pPhone = (p.phone || p).toString().replace(/[^\d]/g, '');
+        const pPhone = normalizePhone((p.phone || p).toString());
         const pName = p.name || null;
         try {
           await db.query(
@@ -408,12 +423,16 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(400).json({ success: false, error: 'Group not found' });
       }
 
-      const normalizedRequester = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedRequester = normalizePhone(req.user.phone);
       if (conversation.creator_phone !== normalizedRequester) {
         return res.status(403).json({ success: false, error: 'Only creator can remove members' });
       }
 
-      const targetPhone = req.params.phone.replace(/[^\d]/g, '');
+      const targetPhone = normalizePhone(req.params.phone);
+      // Creator cannot remove themselves — use /leave endpoint instead
+      if (targetPhone === normalizedRequester) {
+        return res.status(400).json({ success: false, error: 'Creator cannot remove themselves' });
+      }
       await db.query(
         'DELETE FROM messenger_participants WHERE conversation_id = $1 AND phone = $2',
         [req.params.id, targetPhone]
@@ -432,7 +451,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.post('/api/messenger/conversations/:id/leave', requireAuth, async (req, res) => {
     try {
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
       await db.query(
         'DELETE FROM messenger_participants WHERE conversation_id = $1 AND phone = $2',
         [req.params.id, normalizedPhone]
@@ -458,7 +477,7 @@ function setupMessengerAPI(app, uploadMedia) {
       const { limit = 50, before } = req.query;
       const conversationId = req.params.id;
 
-      const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
+      const requesterPhone = normalizePhone(req.user.phone);
 
       // Security: verify requester is a participant of this conversation
       if (!(await isParticipant(conversationId, requesterPhone))) {
@@ -501,19 +520,23 @@ function setupMessengerAPI(app, uploadMedia) {
   app.post('/api/messenger/conversations/:id/messages', requireAuth, async (req, res) => {
     try {
       // Rate limit check
-      const rateLimitPhone = req.user.phone.replace(/[^\d]/g, '');
+      const rateLimitPhone = normalizePhone(req.user.phone);
       if (!checkMessageRateLimit(rateLimitPhone)) {
         return res.status(429).json({ success: false, error: 'Too many messages. Try again in a minute.' });
       }
 
       const { type = 'text', content, mediaUrl, voiceDuration, replyToId, fileName, fileSize, mediaGroupId } = req.body;
+      // Content length limit
+      if (content && content.length > 10000) {
+        return res.status(400).json({ success: false, error: 'Message too long (max 10000 chars)' });
+      }
       // SECURITY: берём телефон из токена авторизации, игнорируем req.body.senderPhone
       let senderName = req.user.name || null;
 
       // Fallback: если имя не в токене, ищем в профиле мессенджера / сотрудниках / клиентах
       if (!senderName) {
         try {
-          const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+          const normalizedPhone = normalizePhone(req.user.phone);
           // 1. messenger_profiles
           const prof = await db.query(
             'SELECT display_name FROM messenger_profiles WHERE phone = $1',
@@ -525,7 +548,7 @@ function setupMessengerAPI(app, uploadMedia) {
             // 2. employees (from cache)
             const employees = dataCache.getEmployees();
             if (employees) {
-              const emp = employees.find(e => (e.phone || '').replace(/[^\d]/g, '') === normalizedPhone);
+              const emp = employees.find(e => normalizePhone(e.phone) === normalizedPhone);
               if (emp?.name) senderName = emp.name;
             }
             // 3. clients table
@@ -538,7 +561,7 @@ function setupMessengerAPI(app, uploadMedia) {
       }
 
       const conversationId = req.params.id;
-      const normalizedSender = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedSender = normalizePhone(req.user.phone);
 
       // Проверяем что отправитель — участник
       const participant = await db.query(
@@ -589,30 +612,32 @@ function setupMessengerAPI(app, uploadMedia) {
         reply_to_id: replyToId || null,
         reactions: JSON.stringify({}),
         is_deleted: false,
-        created_at: new Date().toISOString(),
+        created_at: getMoscowTime().toISOString(),
         file_name: type === 'file' ? (fileName || null) : null,
         file_size: type === 'file' ? (fileSize || null) : null,
         media_group_id: (type === 'image' || type === 'video') ? (mediaGroupId || null) : null,
       };
 
-      await db.insert('messenger_messages', message);
-
-      // Обновляем updated_at разговора
-      await db.updateById('messenger_conversations', conversationId, {
-        updated_at: new Date().toISOString()
+      // Transaction: insert message + update conversation + update unread counters
+      await db.transaction(async (client) => {
+        await client.query(
+          `INSERT INTO messenger_messages (id, conversation_id, sender_phone, sender_name, type, content, media_url, voice_duration, reply_to_id, reactions, is_deleted, created_at, file_name, file_size, media_group_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+          [message.id, message.conversation_id, message.sender_phone, message.sender_name, message.type, message.content, message.media_url, message.voice_duration, message.reply_to_id, message.reactions, message.is_deleted, message.created_at, message.file_name, message.file_size, message.media_group_id]
+        );
+        await client.query(
+          'UPDATE messenger_conversations SET updated_at = $1 WHERE id = $2',
+          [getMoscowTime().toISOString(), conversationId]
+        );
+        await client.query(
+          'UPDATE messenger_participants SET last_read_at = NOW(), unread_count = 0 WHERE conversation_id = $1 AND phone = $2',
+          [conversationId, normalizedSender]
+        );
+        await client.query(
+          'UPDATE messenger_participants SET unread_count = unread_count + 1 WHERE conversation_id = $1 AND phone != $2',
+          [conversationId, normalizedSender]
+        );
       });
-
-      // Обновляем last_read_at для отправителя + обнуляем его unread
-      await db.query(
-        'UPDATE messenger_participants SET last_read_at = NOW(), unread_count = 0 WHERE conversation_id = $1 AND phone = $2',
-        [conversationId, normalizedSender]
-      );
-
-      // Инкрементируем unread_count для остальных участников
-      await db.query(
-        'UPDATE messenger_participants SET unread_count = unread_count + 1 WHERE conversation_id = $1 AND phone != $2',
-        [conversationId, normalizedSender]
-      );
 
       // WebSocket уведомление (targeted)
       const responseMessage = { ...message, reactions: {} };
@@ -654,7 +679,7 @@ function setupMessengerAPI(app, uploadMedia) {
           // Не отправляем push онлайн-пользователям
           if (wsNotify && wsNotify.isUserOnline(p.phone)) continue;
           // Не отправляем push замьюченным пользователям
-          if (p.muted_until && new Date(p.muted_until) > new Date()) continue;
+          if (p.muted_until && new Date(p.muted_until) > getMoscowTime()) continue;
           pushService.sendPushToPhone(p.phone, pushTitle, pushPreview, {
             type: 'messenger_message',
             conversationId,
@@ -663,7 +688,7 @@ function setupMessengerAPI(app, uploadMedia) {
           }, 'messenger_channel').catch(() => {});
         }
       } catch (e) {
-        // Push ошибки не блокируют ответ
+        console.error('[Messenger] Push notification error:', e.message);
       }
 
       res.json({ success: true, message: responseMessage });
@@ -684,7 +709,11 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(400).json({ success: false, error: 'content required' });
       }
 
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
+      if (!(await isParticipant(req.params.id, normalizedPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
+
       const message = await db.findById('messenger_messages', req.params.msgId);
       if (!message || message.conversation_id !== req.params.id) {
         return res.status(404).json({ success: false, error: 'Message not found' });
@@ -712,7 +741,7 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(400).json({ success: false, error: 'Cannot edit messages older than 5 minutes' });
       }
 
-      const editedAt = new Date().toISOString();
+      const editedAt = getMoscowTime().toISOString();
       await db.updateById('messenger_messages', req.params.msgId, {
         content: content.trim(),
         edited_at: editedAt,
@@ -738,7 +767,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.post('/api/messenger/conversations/:id/messages/:msgId/delivered', requireAuth, async (req, res) => {
     try {
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
       if (!(await isParticipant(req.params.id, normalizedPhone))) {
         return res.status(403).json({ success: false, error: 'Not a participant' });
       }
@@ -768,7 +797,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.delete('/api/messenger/conversations/:id/messages/:msgId', requireAuth, async (req, res) => {
     try {
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
       const mode = req.query.mode || 'forAll';
       const message = await db.findById('messenger_messages', req.params.msgId);
       if (!message || message.conversation_id !== req.params.id) {
@@ -846,7 +875,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/conversations/:id/messages/search', requireAuth, async (req, res) => {
     try {
-      const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
+      const requesterPhone = normalizePhone(req.user.phone);
       if (!(await isParticipant(req.params.id, requesterPhone))) {
         return res.status(403).json({ success: false, error: 'Not a participant' });
       }
@@ -860,7 +889,7 @@ function setupMessengerAPI(app, uploadMedia) {
            AND content ILIKE $2
          ORDER BY created_at DESC
          LIMIT $3`,
-        [req.params.id, `%${searchQuery}%`, Math.min(parseInt(limit) || 50, 200)]
+        [req.params.id, `%${escapeIlike(searchQuery)}%`, Math.min(parseInt(limit) || 50, 200)]
       );
 
       res.json({ success: true, messages: result.rows.reverse() });
@@ -879,8 +908,8 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.post('/api/messenger/conversations/:id/read', requireAuth, async (req, res) => {
     try {
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
-      const now = new Date().toISOString();
+      const normalizedPhone = normalizePhone(req.user.phone);
+      const now = getMoscowTime().toISOString();
 
       await db.query(
         'UPDATE messenger_participants SET last_read_at = $1, unread_count = 0 WHERE conversation_id = $2 AND phone = $3',
@@ -911,7 +940,10 @@ function setupMessengerAPI(app, uploadMedia) {
       const { reaction } = req.body;
       if (!reaction) return res.status(400).json({ success: false, error: 'reaction required' });
 
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
+      if (!(await isParticipant(req.params.id, normalizedPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
 
       // Атомарная операция: FOR UPDATE предотвращает потерю реакций при одновременных запросах
       const reactions = await db.transaction(async (client) => {
@@ -955,7 +987,10 @@ function setupMessengerAPI(app, uploadMedia) {
       const { reaction } = req.query;
       if (!reaction) return res.status(400).json({ success: false, error: 'reaction required' });
 
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
+      if (!(await isParticipant(req.params.id, normalizedPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
 
       // Атомарная операция: FOR UPDATE предотвращает потерю реакций при одновременных запросах
       const reactions = await db.transaction(async (client) => {
@@ -1001,7 +1036,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.put('/api/messenger/conversations/:id/messages/:msgId/pin', requireAuth, async (req, res) => {
     try {
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
       if (!(await isParticipant(req.params.id, normalizedPhone))) {
         return res.status(403).json({ success: false, error: 'Not a participant' });
       }
@@ -1011,7 +1046,7 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(404).json({ success: false, error: 'Message not found' });
       }
 
-      const pinnedAt = new Date().toISOString();
+      const pinnedAt = getMoscowTime().toISOString();
       await db.updateById('messenger_messages', req.params.msgId, {
         is_pinned: true,
         pinned_at: pinnedAt,
@@ -1026,7 +1061,7 @@ function setupMessengerAPI(app, uploadMedia) {
             messageId: req.params.msgId,
             pinnedBy: normalizedPhone,
             pinnedAt,
-            timestamp: new Date().toISOString(),
+            timestamp: getMoscowTime().toISOString(),
           });
         } catch (e) { console.error('WS pin notify error:', e.message); }
       }
@@ -1044,7 +1079,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.delete('/api/messenger/conversations/:id/messages/:msgId/pin', requireAuth, async (req, res) => {
     try {
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
       if (!(await isParticipant(req.params.id, normalizedPhone))) {
         return res.status(403).json({ success: false, error: 'Not a participant' });
       }
@@ -1066,7 +1101,7 @@ function setupMessengerAPI(app, uploadMedia) {
             type: 'message_unpinned',
             conversationId: req.params.id,
             messageId: req.params.msgId,
-            timestamp: new Date().toISOString(),
+            timestamp: getMoscowTime().toISOString(),
           });
         } catch (e) { console.error('WS unpin notify error:', e.message); }
       }
@@ -1084,18 +1119,58 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/conversations/:id/pinned', requireAuth, async (req, res) => {
     try {
-      const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
+      const requesterPhone = normalizePhone(req.user.phone);
       if (!(await isParticipant(req.params.id, requesterPhone))) {
         return res.status(403).json({ success: false, error: 'Not a participant' });
       }
 
       const result = await db.query(
-        `SELECT * FROM messenger_messages WHERE conversation_id = $1 AND is_pinned = true ORDER BY pinned_at DESC`,
+        `SELECT * FROM messenger_messages WHERE conversation_id = $1 AND is_pinned = true ORDER BY pinned_at DESC LIMIT 50`,
         [req.params.id]
       );
       res.json({ success: true, messages: result.rows });
     } catch (error) {
       console.error('[Messenger] GET pinned error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * GET /api/messenger/conversations/:id/messages/:msgId/readers
+   * Get list of participants who have read a specific message
+   */
+  app.get('/api/messenger/conversations/:id/messages/:msgId/readers', requireAuth, async (req, res) => {
+    try {
+      const requesterPhone = normalizePhone(req.user.phone);
+      if (!(await isParticipant(req.params.id, requesterPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
+
+      // Get message created_at
+      const msgResult = await db.query(
+        'SELECT created_at, sender_phone FROM messenger_messages WHERE id = $1 AND conversation_id = $2',
+        [req.params.msgId, req.params.id]
+      );
+      if (msgResult.rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'Message not found' });
+      }
+
+      const { created_at, sender_phone } = msgResult.rows[0];
+
+      // Find participants whose last_read_at >= message.created_at (excluding sender)
+      const readersResult = await db.query(
+        `SELECT p.phone, COALESCE(pr.display_name, p.name) AS name, pr.avatar_url, p.last_read_at
+         FROM messenger_participants p
+         LEFT JOIN messenger_profiles pr ON pr.phone = p.phone
+         WHERE p.conversation_id = $1 AND p.phone != $2 AND p.last_read_at >= $3
+         ORDER BY p.last_read_at DESC
+         LIMIT 200`,
+        [req.params.id, sender_phone, created_at]
+      );
+
+      res.json({ success: true, readers: readersResult.rows });
+    } catch (error) {
+      console.error('[Messenger] GET readers error:', error.message);
       res.status(500).json({ success: false, error: error.message });
     }
   });
@@ -1116,12 +1191,17 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(400).json({ success: false, error: 'sourceMessageId and targetConversationIds[] required' });
       }
 
-      const senderPhone = req.user.phone.replace(/[^\d]/g, '');
+      const senderPhone = normalizePhone(req.user.phone);
       const senderName = req.user.name || senderPhone;
 
       // Get source message
       const source = await db.findById('messenger_messages', sourceMessageId);
       if (!source) return res.status(404).json({ success: false, error: 'Source message not found' });
+
+      // Security: verify sender is participant of source conversation
+      if (!(await isParticipant(source.conversation_id, senderPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant of source conversation' });
+      }
 
       const forwardedFromName = source.sender_name || source.sender_phone;
       const results = [];
@@ -1154,7 +1234,7 @@ function setupMessengerAPI(app, uploadMedia) {
         }
 
         const msgId = generateId('msg');
-        const now = new Date().toISOString();
+        const now = getMoscowTime().toISOString();
         const message = {
           id: msgId,
           conversation_id: targetConvId,
@@ -1174,8 +1254,26 @@ function setupMessengerAPI(app, uploadMedia) {
           forwarded_from_name: forwardedFromName,
         };
 
-        await db.insert('messenger_messages', message);
-        await db.updateById('messenger_conversations', targetConvId, { updated_at: now });
+        // Transaction: insert forwarded message + update unread
+        await db.transaction(async (client) => {
+          await client.query(
+            `INSERT INTO messenger_messages (id, conversation_id, sender_phone, sender_name, type, content, media_url, voice_duration, reply_to_id, reactions, is_deleted, created_at, file_name, file_size, forwarded_from_id, forwarded_from_name)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+            [message.id, message.conversation_id, message.sender_phone, message.sender_name, message.type, message.content, message.media_url, message.voice_duration, message.reply_to_id, message.reactions, message.is_deleted, message.created_at, message.file_name, message.file_size, message.forwarded_from_id, message.forwarded_from_name]
+          );
+          await client.query(
+            'UPDATE messenger_conversations SET updated_at = $1 WHERE id = $2',
+            [now, targetConvId]
+          );
+          await client.query(
+            'UPDATE messenger_participants SET last_read_at = NOW(), unread_count = 0 WHERE conversation_id = $1 AND phone = $2',
+            [targetConvId, senderPhone]
+          );
+          await client.query(
+            'UPDATE messenger_participants SET unread_count = unread_count + 1 WHERE conversation_id = $1 AND phone != $2',
+            [targetConvId, senderPhone]
+          );
+        });
 
         const responseMessage = { ...message, reactions: {} };
         if (wsNotify) {
@@ -1246,12 +1344,12 @@ function setupMessengerAPI(app, uploadMedia) {
    * Загрузка медиа-файлов (фото, видео, голосовые)
    */
   if (uploadMedia) {
-    const { compressUpload } = require('../utils/image_compress');
+    const { compressUpload, generateThumbnail } = require('../utils/image_compress');
     const { compressVideo } = require('../utils/video_compress');
 
     app.post('/api/messenger/upload', requireAuth, (req, res, next) => {
       // Rate limit check before accepting file
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
       if (!checkUploadRateLimit(phone)) {
         return res.status(429).json({ success: false, error: 'Too many uploads. Try again in a minute.' });
       }
@@ -1304,9 +1402,18 @@ function setupMessengerAPI(app, uploadMedia) {
         const mediaUrl = `https://arabica26.ru/messenger-media/${finalFilename}`;
         console.log(`[Messenger] Upload: ${finalFilename} (${(req.file.size / 1024).toFixed(1)}KB)`);
 
+        // Generate thumbnail for images (async, don't block response)
+        let thumbUrl = null;
+        const finalPath = path.join(path.dirname(req.file.path), finalFilename);
+        const thumbFilename = await generateThumbnail(finalPath);
+        if (thumbFilename) {
+          thumbUrl = `https://arabica26.ru/messenger-media/${thumbFilename}`;
+        }
+
         res.json({
           success: true,
           url: mediaUrl,
+          thumbUrl,
           filename: finalFilename,
           originalName: req.file.originalname,
           fileSize: req.file.size,
@@ -1351,19 +1458,20 @@ function setupMessengerAPI(app, uploadMedia) {
         );
       } else {
         // С запросом — фильтруем по phone/name
+        const escapedQuery = escapeIlike(searchQuery);
         employeesResult = await db.query(
           `SELECT phone, name, 'employee' as user_type FROM employees
            WHERE (phone ILIKE $1 OR name ILIKE $1)
              AND phone IS NOT NULL
            LIMIT $2`,
-          [`%${searchQuery}%`, parsedLimit]
+          [`%${escapedQuery}%`, parsedLimit]
         );
         clientsResult = await db.query(
           `SELECT phone, name, 'client' as user_type FROM clients
            WHERE (phone ILIKE $1 OR name ILIKE $1)
              AND phone IS NOT NULL
            LIMIT $2`,
-          [`%${searchQuery}%`, parsedLimit]
+          [`%${escapedQuery}%`, parsedLimit]
         );
       }
 
@@ -1395,9 +1503,12 @@ function setupMessengerAPI(app, uploadMedia) {
     try {
       const { phones } = req.body;
       if (!phones || !phones.length) return res.json({ success: true, contacts: [] });
+      if (!Array.isArray(phones) || phones.length > 1000) {
+        return res.status(400).json({ success: false, error: 'phones must be an array with max 1000 items' });
+      }
 
       // Нормализуем телефоны
-      const normalizedPhones = phones.map(p => p.toString().replace(/[^\d]/g, '')).filter(p => p.length >= 10);
+      const normalizedPhones = phones.map(p => normalizePhone(p.toString())).filter(p => p.length >= 10);
       if (!normalizedPhones.length) return res.json({ success: true, contacts: [] });
 
       // Ищем среди employees
@@ -1439,7 +1550,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/unread', requireAuth, async (req, res) => {
     try {
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
 
       // Оптимизировано: SUM по денормализованному unread_count вместо COUNT по всем сообщениям
       const result = await db.query(`
@@ -1467,7 +1578,7 @@ function setupMessengerAPI(app, uploadMedia) {
       const { phone } = req.query;
       if (!phone) return res.status(400).json({ success: false, error: 'phone required' });
 
-      const normalizedPhone = phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(phone);
       const result = await db.query(
         'SELECT phone, display_name, avatar_url, updated_at FROM messenger_profiles WHERE phone = $1',
         [normalizedPhone]
@@ -1491,18 +1602,22 @@ function setupMessengerAPI(app, uploadMedia) {
     try {
       const { displayName, avatarUrl } = req.body;
 
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
+
+      // Allow explicit clearing: pass '' to clear, undefined to keep current
+      const displayNameVal = displayName !== undefined ? (displayName || null) : undefined;
+      const avatarUrlVal = avatarUrl !== undefined ? (avatarUrl || null) : undefined;
 
       const result = await db.query(`
         INSERT INTO messenger_profiles (phone, display_name, avatar_url, updated_at)
         VALUES ($1, $2, $3, NOW())
         ON CONFLICT (phone)
         DO UPDATE SET
-          display_name = COALESCE($2, messenger_profiles.display_name),
-          avatar_url = COALESCE($3, messenger_profiles.avatar_url),
+          display_name = ${displayNameVal !== undefined ? '$2' : 'messenger_profiles.display_name'},
+          avatar_url = ${avatarUrlVal !== undefined ? '$3' : 'messenger_profiles.avatar_url'},
           updated_at = NOW()
         RETURNING phone, display_name, avatar_url, updated_at
-      `, [normalizedPhone, displayName || null, avatarUrl || null]);
+      `, [normalizedPhone, displayNameVal !== undefined ? displayNameVal : null, avatarUrlVal !== undefined ? avatarUrlVal : null]);
 
       res.json({
         success: true,
@@ -1529,8 +1644,8 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(400).json({ success: false, error: 'callId, targetPhone and offerSdp required' });
       }
 
-      const normalizedTarget = targetPhone.replace(/[^\d]/g, '');
-      const normalizedCaller = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedTarget = normalizePhone(targetPhone);
+      const normalizedCaller = normalizePhone(req.user.phone);
 
       // Check block status (either direction)
       const blockCheck = await db.query(
@@ -1586,13 +1701,13 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(400).json({ success: false, error: 'conversationId, calleePhone and status required' });
       }
 
-      const callerPhone = req.user.phone.replace(/[^\d]/g, '');
+      const callerPhone = normalizePhone(req.user.phone);
       if (!(await isParticipant(conversationId, callerPhone))) {
         return res.status(403).json({ success: false, error: 'Not a participant' });
       }
 
       const callerName  = req.user.name || callerPhone;
-      const now = new Date().toISOString();
+      const now = getMoscowTime().toISOString();
       const msgId = `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
       const _dur = durationSeconds || 0;
@@ -1647,7 +1762,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/saved', requireAuth, async (req, res) => {
     try {
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
 
       const conversationId = `private_${phone}_${phone}`;
 
@@ -1706,7 +1821,7 @@ function setupMessengerAPI(app, uploadMedia) {
       const { name, description, avatar_url } = req.body;
       if (!name) return res.status(400).json({ success: false, error: 'name required' });
 
-      const creatorPhone = req.user.phone.replace(/[^\d]/g, '');
+      const creatorPhone = normalizePhone(req.user.phone);
 
       // Check role — only developers can create channels
       const { isDeveloper } = require('./shop_managers_api');
@@ -1758,7 +1873,8 @@ function setupMessengerAPI(app, uploadMedia) {
          (SELECT COUNT(*) FROM messenger_participants WHERE conversation_id = c.id) as subscriber_count
          FROM messenger_conversations c
          WHERE c.type = 'channel'
-         ORDER BY c.created_at DESC`
+         ORDER BY c.created_at DESC
+         LIMIT 200`
       );
 
       res.json({ success: true, channels: result.rows });
@@ -1775,7 +1891,7 @@ function setupMessengerAPI(app, uploadMedia) {
   app.post('/api/messenger/channels/:id/subscribe', requireAuth, async (req, res) => {
     try {
       const channelId = req.params.id;
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
       const name = req.user.name || null;
 
       // Verify it's a channel
@@ -1804,7 +1920,13 @@ function setupMessengerAPI(app, uploadMedia) {
   app.post('/api/messenger/channels/:id/unsubscribe', requireAuth, async (req, res) => {
     try {
       const channelId = req.params.id;
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
+
+      // Verify it's a channel
+      const conv = await db.findById('messenger_conversations', channelId);
+      if (!conv || conv.type !== 'channel') {
+        return res.status(404).json({ success: false, error: 'Channel not found' });
+      }
 
       // Don't allow admin to unsubscribe
       const participant = await db.query(
@@ -1835,7 +1957,7 @@ function setupMessengerAPI(app, uploadMedia) {
   app.put('/api/messenger/channels/:id/role', requireAuth, async (req, res) => {
     try {
       const channelId = req.params.id;
-      const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
+      const requesterPhone = normalizePhone(req.user.phone);
       const { phone, role } = req.body;
 
       if (!phone || !role || !['writer', 'member'].includes(role)) {
@@ -1851,7 +1973,7 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(403).json({ success: false, error: 'Only channel admin can change roles' });
       }
 
-      const targetPhone = phone.replace(/[^\d]/g, '');
+      const targetPhone = normalizePhone(phone);
 
       // Cannot change own role
       if (targetPhone === requesterPhone) {
@@ -1879,7 +2001,7 @@ function setupMessengerAPI(app, uploadMedia) {
   app.get('/api/messenger/sticker-packs', requireAuth, async (req, res) => {
     try {
       const result = await db.query(
-        'SELECT * FROM messenger_sticker_packs ORDER BY is_default DESC, created_at ASC'
+        'SELECT * FROM messenger_sticker_packs ORDER BY is_default DESC, created_at ASC LIMIT 100'
       );
       res.json({ success: true, packs: result.rows });
     } catch (error) {
@@ -1911,7 +2033,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/favorite-stickers', requireAuth, async (req, res) => {
     try {
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
       const result = await db.query(
         "SELECT sticker_url, created_at FROM favorite_stickers WHERE phone = $1 AND (type = 'sticker' OR type IS NULL) ORDER BY created_at DESC",
         [phone]
@@ -1930,7 +2052,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.post('/api/messenger/favorite-stickers', requireAuth, async (req, res) => {
     try {
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
       const { stickerUrl } = req.body;
       if (!stickerUrl) {
         return res.status(400).json({ success: false, error: 'stickerUrl is required' });
@@ -1962,7 +2084,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.delete('/api/messenger/favorite-stickers', requireAuth, async (req, res) => {
     try {
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
       const stickerUrl = req.query.url;
       if (!stickerUrl) {
         return res.status(400).json({ success: false, error: 'url query param is required' });
@@ -1984,7 +2106,7 @@ function setupMessengerAPI(app, uploadMedia) {
   // Multer storage for custom stickers — separate directory from messenger-media
   const customStickerStorage = multer.diskStorage({
     destination: async (req, file, cb) => {
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
       const dir = path.join(DATA_DIR, 'custom-stickers', phone);
       await fsp.mkdir(dir, { recursive: true });
       cb(null, dir);
@@ -2009,7 +2131,7 @@ function setupMessengerAPI(app, uploadMedia) {
    * Upload custom sticker from gallery. Resizes to 512px, saves as PNG, adds to favorites.
    */
   app.post('/api/messenger/custom-stickers/upload', requireAuth, (req, res, next) => {
-    const phone = req.user.phone.replace(/[^\d]/g, '');
+    const phone = normalizePhone(req.user.phone);
     if (!checkUploadRateLimit(phone)) {
       return res.status(429).json({ success: false, error: 'Слишком много загрузок. Попробуйте через минуту.' });
     }
@@ -2018,7 +2140,7 @@ function setupMessengerAPI(app, uploadMedia) {
     try {
       if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
 
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
 
       // Check limit: max 100 custom stickers per user
       const countResult = await db.query(
@@ -2092,6 +2214,16 @@ function setupMessengerAPI(app, uploadMedia) {
   const gifCache = new Map();
   const GIF_CACHE_TTL = 10 * 60 * 1000; // 10 min for search
   const GIF_TRENDING_TTL = 60 * 60 * 1000; // 1 hour for trending
+  const GIF_CACHE_MAX_SIZE = 200; // max cached search/trending results
+
+  function gifCacheSet(key, value) {
+    if (gifCache.size >= GIF_CACHE_MAX_SIZE) {
+      // Remove oldest entry
+      const oldest = gifCache.keys().next().value;
+      gifCache.delete(oldest);
+    }
+    gifCache.set(key, value);
+  }
 
   // Cleanup stale GIF cache entries every 30 minutes
   setInterval(() => {
@@ -2126,18 +2258,19 @@ function setupMessengerAPI(app, uploadMedia) {
       const giphyKey = process.env.GIPHY_API_KEY;
       if (!giphyKey) return res.json({ success: true, gifs: [] });
 
-      const cacheKey = `search_${query}_${limit}`;
+      const parsedGifLimit = Math.min(Math.max(parseInt(limit) || 20, 1), 50);
+      const cacheKey = `search_${query}_${parsedGifLimit}`;
       const cached = gifCache.get(cacheKey);
       if (cached && Date.now() - cached.ts < GIF_CACHE_TTL) {
         return res.json({ success: true, gifs: cached.data });
       }
 
-      const url = `https://api.giphy.com/v1/gifs/search?api_key=${giphyKey}&q=${encodeURIComponent(query)}&limit=${limit}&rating=pg-13&lang=ru`;
+      const url = `https://api.giphy.com/v1/gifs/search?api_key=${giphyKey}&q=${encodeURIComponent(query)}&limit=${parsedGifLimit}&rating=pg-13&lang=ru`;
       const response = await fetch(url);
       const data = await response.json();
 
       const gifs = parseGiphyResults(data);
-      gifCache.set(cacheKey, { data: gifs, ts: Date.now() });
+      gifCacheSet(cacheKey, { data: gifs, ts: Date.now() });
       res.json({ success: true, gifs });
     } catch (error) {
       console.error('[Messenger] GIF search error:', error.message);
@@ -2155,18 +2288,19 @@ function setupMessengerAPI(app, uploadMedia) {
       const giphyKey = process.env.GIPHY_API_KEY;
       if (!giphyKey) return res.json({ success: true, gifs: [] });
 
-      const cacheKey = `trending_${limit}`;
+      const parsedTrendLimit = Math.min(Math.max(parseInt(limit) || 20, 1), 50);
+      const cacheKey = `trending_${parsedTrendLimit}`;
       const cached = gifCache.get(cacheKey);
       if (cached && Date.now() - cached.ts < GIF_TRENDING_TTL) {
         return res.json({ success: true, gifs: cached.data });
       }
 
-      const url = `https://api.giphy.com/v1/gifs/trending?api_key=${giphyKey}&limit=${limit}&rating=pg-13`;
+      const url = `https://api.giphy.com/v1/gifs/trending?api_key=${giphyKey}&limit=${parsedTrendLimit}&rating=pg-13`;
       const response = await fetch(url);
       const data = await response.json();
 
       const gifs = parseGiphyResults(data);
-      gifCache.set(cacheKey, { data: gifs, ts: Date.now() });
+      gifCacheSet(cacheKey, { data: gifs, ts: Date.now() });
       res.json({ success: true, gifs });
     } catch (error) {
       console.error('[Messenger] GIF trending error:', error.message);
@@ -2182,7 +2316,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/favorite-gifs', requireAuth, async (req, res) => {
     try {
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
       const result = await db.query(
         "SELECT sticker_url, created_at FROM favorite_stickers WHERE phone = $1 AND type = 'gif' ORDER BY created_at DESC",
         [phone]
@@ -2200,7 +2334,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.post('/api/messenger/favorite-gifs', requireAuth, async (req, res) => {
     try {
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
       const { gifUrl } = req.body;
       if (!gifUrl) {
         return res.status(400).json({ success: false, error: 'gifUrl is required' });
@@ -2232,7 +2366,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.delete('/api/messenger/favorite-gifs', requireAuth, async (req, res) => {
     try {
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
       const gifUrl = req.query.url;
       if (!gifUrl) {
         return res.status(400).json({ success: false, error: 'url query param is required' });
@@ -2258,7 +2392,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/search', requireAuth, async (req, res) => {
     try {
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
       const { query: searchQuery, limit = 20 } = req.query;
 
       if (!searchQuery || searchQuery.trim().length < 2) {
@@ -2266,6 +2400,7 @@ function setupMessengerAPI(app, uploadMedia) {
       }
 
       const q = searchQuery.trim();
+      const qEscaped = escapeIlike(q);
       const parsedLimit = Math.min(parseInt(limit) || 20, 50);
 
       // Find user's conversation IDs (for scoping search to own chats)
@@ -2279,6 +2414,16 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.json({ success: true, contacts: [], groups: [], messages: [] });
       }
 
+      // Get blocked phones to exclude from search results
+      const blocksResult = await db.query(
+        `SELECT blocker_phone, blocked_phone FROM messenger_blocks
+         WHERE blocker_phone = $1 OR blocked_phone = $1`,
+        [phone]
+      );
+      const blockedPhones = blocksResult.rows.map(r =>
+        r.blocker_phone === phone ? r.blocked_phone : r.blocker_phone
+      );
+
       // Three parallel searches
       const [contactsResult, groupsResult, messagesResult] = await Promise.all([
         // 1. Contacts: people from my conversations whose name matches
@@ -2289,10 +2434,11 @@ function setupMessengerAPI(app, uploadMedia) {
            WHERE p.conversation_id = ANY($1)
              AND p.phone != $2
              AND p.name IS NOT NULL AND p.name != ''
-             AND (p.name ILIKE '%' || $3 || '%' OR p.phone ILIKE '%' || $3 || '%' OR similarity(p.name, $3) > 0.2)
-           ORDER BY p.phone, similarity(p.name, $3) DESC
-           LIMIT $4`,
-          [myConvIds, phone, q, parsedLimit]
+             AND (p.name ILIKE '%' || $3 || '%' OR p.phone ILIKE '%' || $3 || '%' OR similarity(p.name, $4) > 0.2)
+             ${blockedPhones.length > 0 ? 'AND p.phone != ALL($6)' : ''}
+           ORDER BY p.phone, similarity(p.name, $4) DESC
+           LIMIT $5`,
+          blockedPhones.length > 0 ? [myConvIds, phone, qEscaped, q, parsedLimit, blockedPhones] : [myConvIds, phone, qEscaped, q, parsedLimit]
         ),
 
         // 2. Groups: group conversations whose name matches
@@ -2302,10 +2448,10 @@ function setupMessengerAPI(app, uploadMedia) {
            JOIN messenger_participants p ON p.conversation_id = c.id AND p.phone = $1
            WHERE c.type = 'group'
              AND c.name IS NOT NULL AND c.name != ''
-             AND (c.name ILIKE '%' || $2 || '%' OR similarity(c.name, $2) > 0.2)
-           ORDER BY similarity(c.name, $2) DESC
-           LIMIT $3`,
-          [phone, q, parsedLimit]
+             AND (c.name ILIKE '%' || $2 || '%' OR similarity(c.name, $3) > 0.2)
+           ORDER BY similarity(c.name, $3) DESC
+           LIMIT $4`,
+          [phone, qEscaped, q, parsedLimit]
         ),
 
         // 3. Messages: search message content in my conversations
@@ -2317,10 +2463,10 @@ function setupMessengerAPI(app, uploadMedia) {
            WHERE m.conversation_id = ANY($1)
              AND m.is_deleted = false
              AND m.content IS NOT NULL AND m.content != ''
-             AND (m.content ILIKE '%' || $2 || '%' OR similarity(m.content, $2) > 0.15)
-           ORDER BY similarity(m.content, $2) DESC, m.created_at DESC
-           LIMIT $3`,
-          [myConvIds, q, parsedLimit]
+             AND (m.content ILIKE '%' || $2 || '%' OR similarity(m.content, $3) > 0.15)
+           ORDER BY similarity(m.content, $3) DESC, m.created_at DESC
+           LIMIT $4`,
+          [myConvIds, qEscaped, q, parsedLimit]
         ),
       ]);
 
@@ -2350,7 +2496,10 @@ function setupMessengerAPI(app, uploadMedia) {
       }
 
       const conversationId = req.params.id;
-      const senderPhone = req.user.phone.replace(/[^\d]/g, '');
+      const senderPhone = normalizePhone(req.user.phone);
+      if (!(await isParticipant(conversationId, senderPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
       const senderName = req.user.name || null;
 
       const msgId = generateId('msg');
@@ -2403,43 +2552,52 @@ function setupMessengerAPI(app, uploadMedia) {
       }
 
       const pollId = req.params.pollId;
-      const phone = req.user.phone.replace(/[^\d]/g, '');
-
-      const poll = await db.findById('messenger_polls', pollId);
-      if (!poll) return res.status(404).json({ success: false, error: 'Poll not found' });
-      if (poll.closed) return res.status(400).json({ success: false, error: 'Poll is closed' });
-
-      const idx = String(optionIndex);
-      const votes = poll.votes || {};
-
-      // Check if already voted for this option
-      if (votes[idx] && votes[idx].includes(phone)) {
-        return res.json({ success: true, votes }); // already voted
+      const phone = normalizePhone(req.user.phone);
+      if (!(await isParticipant(req.params.id, phone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
       }
 
-      // If not multiple choice — remove previous vote
-      if (!poll.multiple_choice) {
-        for (const key of Object.keys(votes)) {
-          if (votes[key]) {
-            votes[key] = votes[key].filter(p => p !== phone);
+      // Atomic poll vote with FOR UPDATE to prevent race conditions
+      const { votes, conversationId: pollConvId, messageId: pollMsgId } = await db.transaction(async (client) => {
+        const result = await client.query(
+          'SELECT * FROM messenger_polls WHERE id = $1 FOR UPDATE',
+          [pollId]
+        );
+        if (result.rows.length === 0) throw { status: 404, message: 'Poll not found' };
+        const poll = result.rows[0];
+        if (poll.closed) throw { status: 400, message: 'Poll is closed' };
+
+        const idx = String(optionIndex);
+        const votes = poll.votes || {};
+
+        // Check if already voted for this option
+        if (votes[idx] && votes[idx].includes(phone)) {
+          return { votes, conversationId: poll.conversation_id, messageId: poll.message_id };
+        }
+
+        // If not multiple choice — remove previous vote
+        if (!poll.multiple_choice) {
+          for (const key of Object.keys(votes)) {
+            if (votes[key]) {
+              votes[key] = votes[key].filter(p => p !== phone);
+            }
           }
         }
-      }
 
-      // Add vote
-      if (!votes[idx]) votes[idx] = [];
-      votes[idx].push(phone);
+        // Add vote
+        if (!votes[idx]) votes[idx] = [];
+        votes[idx].push(phone);
 
-      await db.query(
-        'UPDATE messenger_polls SET votes = $1::jsonb WHERE id = $2',
-        [JSON.stringify(votes), pollId]
-      );
+        await client.query(
+          'UPDATE messenger_polls SET votes = $1::jsonb WHERE id = $2',
+          [JSON.stringify(votes), pollId]
+        );
+        return { votes, conversationId: poll.conversation_id, messageId: poll.message_id };
+      });
 
-      // Broadcast poll update
-      const conversationId = req.params.id;
+      // Broadcast poll update — use poll.conversation_id, not req.params.id
+      const conversationId = pollConvId || req.params.id;
       if (wsNotify) {
-        const sockets = wsNotify.broadcastToConversation || null;
-        // Use a simpler approach — send poll_voted event
         try {
           const members = await db.query(
             'SELECT phone FROM messenger_participants WHERE conversation_id = $1',
@@ -2450,9 +2608,9 @@ function setupMessengerAPI(app, uploadMedia) {
               type: 'poll_voted',
               conversationId,
               pollId,
-              messageId: poll.message_id,
+              messageId: pollMsgId,
               votes,
-              timestamp: new Date().toISOString()
+              timestamp: getMoscowTime().toISOString()
             });
           }
         } catch (_) { /* ws notification not critical */ }
@@ -2472,7 +2630,10 @@ function setupMessengerAPI(app, uploadMedia) {
   app.delete('/api/messenger/conversations/:id/poll/:pollId/vote', requireAuth, async (req, res) => {
     try {
       const pollId = req.params.pollId;
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
+      if (!(await isParticipant(req.params.id, phone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
 
       const poll = await db.findById('messenger_polls', pollId);
       if (!poll) return res.status(404).json({ success: false, error: 'Poll not found' });
@@ -2504,7 +2665,10 @@ function setupMessengerAPI(app, uploadMedia) {
   app.post('/api/messenger/conversations/:id/poll/:pollId/close', requireAuth, async (req, res) => {
     try {
       const pollId = req.params.pollId;
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
+      if (!(await isParticipant(req.params.id, phone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
 
       const poll = await db.findById('messenger_polls', pollId);
       if (!poll) return res.status(404).json({ success: false, error: 'Poll not found' });
@@ -2530,7 +2694,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/conversations/:id/poll/:msgId', requireAuth, async (req, res) => {
     try {
-      const requesterPhone = req.user.phone.replace(/[^\d]/g, '');
+      const requesterPhone = normalizePhone(req.user.phone);
       if (!(await isParticipant(req.params.id, requesterPhone))) {
         return res.status(403).json({ success: false, error: 'Not a participant' });
       }
@@ -2549,6 +2713,228 @@ function setupMessengerAPI(app, uploadMedia) {
     }
   });
 
+  /**
+   * POST /api/messenger/conversations/:id/polls/batch
+   * Fetch multiple polls by message IDs at once.
+   * Body: { messageIds: string[] } (max 50)
+   */
+  app.post('/api/messenger/conversations/:id/polls/batch', requireAuth, async (req, res) => {
+    try {
+      const requesterPhone = normalizePhone(req.user.phone);
+      if (!(await isParticipant(req.params.id, requesterPhone))) {
+        return res.status(403).json({ success: false, error: 'Not a participant' });
+      }
+
+      const { messageIds } = req.body;
+      if (!Array.isArray(messageIds) || messageIds.length === 0) {
+        return res.json({ success: true, polls: {} });
+      }
+
+      const ids = messageIds.slice(0, 50);
+      const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
+      const result = await db.query(
+        `SELECT * FROM messenger_polls WHERE message_id IN (${placeholders})`,
+        ids
+      );
+
+      const polls = {};
+      for (const row of result.rows) {
+        polls[row.message_id] = row;
+      }
+      res.json({ success: true, polls });
+    } catch (error) {
+      console.error('[Messenger] POST polls/batch error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ==================== MESSAGE TEMPLATES ====================
+
+  /**
+   * GET /api/messenger/templates
+   * Get user's message templates (quick replies).
+   */
+  app.get('/api/messenger/templates', requireAuth, async (req, res) => {
+    try {
+      const phone = normalizePhone(req.user.phone);
+      const result = await db.query(
+        `SELECT id, title, content, sort_order, created_at
+         FROM messenger_templates
+         WHERE phone = $1 AND is_deleted = false
+         ORDER BY sort_order ASC, created_at DESC`,
+        [phone]
+      );
+      res.json({ success: true, templates: result.rows });
+    } catch (error) {
+      console.error('[Messenger] GET templates error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * POST /api/messenger/templates
+   * Create a message template.
+   * Body: { title: string, content: string, sortOrder?: number }
+   */
+  app.post('/api/messenger/templates', requireAuth, async (req, res) => {
+    try {
+      const phone = normalizePhone(req.user.phone);
+      const { title, content, sortOrder = 0 } = req.body;
+
+      if (!title || !content) {
+        return res.status(400).json({ success: false, error: 'title and content required' });
+      }
+
+      const result = await db.query(
+        `INSERT INTO messenger_templates (phone, title, content, sort_order, created_at)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, title, content, sort_order, created_at`,
+        [phone, title.slice(0, 100), content.slice(0, 2000), sortOrder, getMoscowTime().toISOString()]
+      );
+      res.json({ success: true, template: result.rows[0] });
+    } catch (error) {
+      console.error('[Messenger] POST template error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * PUT /api/messenger/templates/:id
+   * Update a message template.
+   * Body: { title?: string, content?: string, sortOrder?: number }
+   */
+  app.put('/api/messenger/templates/:id', requireAuth, async (req, res) => {
+    try {
+      const phone = normalizePhone(req.user.phone);
+      const { title, content, sortOrder } = req.body;
+
+      const sets = [];
+      const vals = [req.params.id, phone];
+      let idx = 3;
+
+      if (title !== undefined) { sets.push(`title = $${idx++}`); vals.push(title.slice(0, 100)); }
+      if (content !== undefined) { sets.push(`content = $${idx++}`); vals.push(content.slice(0, 2000)); }
+      if (sortOrder !== undefined) { sets.push(`sort_order = $${idx++}`); vals.push(sortOrder); }
+
+      if (sets.length === 0) {
+        return res.status(400).json({ success: false, error: 'Nothing to update' });
+      }
+
+      const result = await db.query(
+        `UPDATE messenger_templates SET ${sets.join(', ')}
+         WHERE id = $1 AND phone = $2 AND is_deleted = false
+         RETURNING id, title, content, sort_order, created_at`,
+        vals
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'Template not found' });
+      }
+      res.json({ success: true, template: result.rows[0] });
+    } catch (error) {
+      console.error('[Messenger] PUT template error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * DELETE /api/messenger/templates/:id
+   * Soft-delete a message template.
+   */
+  app.delete('/api/messenger/templates/:id', requireAuth, async (req, res) => {
+    try {
+      const phone = normalizePhone(req.user.phone);
+      const result = await db.query(
+        `UPDATE messenger_templates SET is_deleted = true
+         WHERE id = $1 AND phone = $2 AND is_deleted = false`,
+        [req.params.id, phone]
+      );
+      if (result.rowCount === 0) {
+        return res.status(404).json({ success: false, error: 'Template not found' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Messenger] DELETE template error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ==================== BROADCAST ====================
+
+  /**
+   * POST /api/messenger/broadcast
+   * Send a message to multiple conversations at once (for managers).
+   * Body: { conversationIds: string[], content: string, type?: 'text' }
+   * Requires manager/admin role.
+   */
+  app.post('/api/messenger/broadcast', requireAuth, async (req, res) => {
+    try {
+      const senderPhone = normalizePhone(req.user.phone);
+      const { conversationIds, content, type = 'text' } = req.body;
+
+      if (!Array.isArray(conversationIds) || conversationIds.length === 0) {
+        return res.status(400).json({ success: false, error: 'conversationIds required' });
+      }
+      if (!content || content.length === 0) {
+        return res.status(400).json({ success: false, error: 'content required' });
+      }
+      if (conversationIds.length > 50) {
+        return res.status(400).json({ success: false, error: 'Max 50 conversations per broadcast' });
+      }
+
+      const results = [];
+      for (const convId of conversationIds) {
+        try {
+          // Verify sender is participant
+          if (!(await isParticipant(convId, senderPhone))) continue;
+
+          const senderName = req.user.name || senderPhone;
+          let msgResult;
+          await db.transaction(async (client) => {
+            msgResult = await client.query(
+              `INSERT INTO messenger_messages (conversation_id, sender_phone, sender_name, type, content, created_at)
+               VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING *`,
+              [convId, senderPhone, senderName, type, content]
+            );
+            await client.query(
+              'UPDATE messenger_participants SET last_read_at = NOW(), unread_count = 0 WHERE conversation_id = $1 AND phone = $2',
+              [convId, senderPhone]
+            );
+            await client.query(
+              'UPDATE messenger_participants SET unread_count = unread_count + 1 WHERE conversation_id = $1 AND phone != $2',
+              [convId, senderPhone]
+            );
+          });
+
+          // WS notification
+          if (wsNotify && msgResult.rows[0]) {
+            try {
+              const convPhones = await getConversationPhones(convId);
+              for (const phone of convPhones) {
+                if (phone !== senderPhone) {
+                  wsNotify.sendToPhone(phone, {
+                    type: 'new_message',
+                    conversationId: convId,
+                    message: msgResult.rows[0],
+                  });
+                }
+              }
+            } catch (e) { /* WS notify best-effort */ }
+          }
+
+          results.push({ conversationId: convId, success: true });
+        } catch (e) {
+          results.push({ conversationId: convId, success: false, error: e.message });
+        }
+      }
+
+      res.json({ success: true, results, sent: results.filter(r => r.success).length });
+    } catch (error) {
+      console.error('[Messenger] Broadcast error:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ==================== BLOCK / UNBLOCK ====================
 
   /**
@@ -2557,8 +2943,8 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.post('/api/messenger/block', requireAuth, async (req, res) => {
     try {
-      const blockerPhone = req.user.phone.replace(/[^\d]/g, '');
-      const blockedPhone = (req.body.blockedPhone || '').replace(/[^\d]/g, '');
+      const blockerPhone = normalizePhone(req.user.phone);
+      const blockedPhone = normalizePhone(req.body.blockedPhone);
       if (!blockedPhone) return res.status(400).json({ success: false, error: 'blockedPhone required' });
       if (blockerPhone === blockedPhone) return res.status(400).json({ success: false, error: 'Cannot block yourself' });
 
@@ -2581,8 +2967,8 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.delete('/api/messenger/block', requireAuth, async (req, res) => {
     try {
-      const blockerPhone = req.user.phone.replace(/[^\d]/g, '');
-      const blockedPhone = (req.query.blockedPhone || '').replace(/[^\d]/g, '');
+      const blockerPhone = normalizePhone(req.user.phone);
+      const blockedPhone = normalizePhone(req.query.blockedPhone);
       if (!blockedPhone) return res.status(400).json({ success: false, error: 'blockedPhone required' });
 
       await db.query(
@@ -2603,10 +2989,10 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/blocks', requireAuth, async (req, res) => {
     try {
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
 
       const result = await db.query(
-        'SELECT blocked_phone, created_at FROM messenger_blocks WHERE blocker_phone = $1 ORDER BY created_at DESC',
+        'SELECT blocked_phone, created_at FROM messenger_blocks WHERE blocker_phone = $1 ORDER BY created_at DESC LIMIT 500',
         [phone]
       );
 
@@ -2625,7 +3011,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/folders', requireAuth, async (req, res) => {
     try {
-      const phone = req.user.phone.replace(/[^\d]/g, '');
+      const phone = normalizePhone(req.user.phone);
 
       const result = await db.query(
         'SELECT * FROM messenger_folders WHERE phone = $1 ORDER BY sort_order, created_at',
@@ -2645,7 +3031,7 @@ function setupMessengerAPI(app, uploadMedia) {
   app.post('/api/messenger/folders', requireAuth, async (req, res) => {
     try {
       const { name, filterType = 'manual', sortOrder = 0 } = req.body;
-      const cleanPhone = req.user.phone.replace(/[^\d]/g, '');
+      const cleanPhone = normalizePhone(req.user.phone);
       if (!name) return res.status(400).json({ success: false, error: 'name required' });
 
       const id = `folder_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
@@ -2669,6 +3055,7 @@ function setupMessengerAPI(app, uploadMedia) {
   app.put('/api/messenger/folders/:id', requireAuth, async (req, res) => {
     try {
       const { name, sortOrder } = req.body;
+      const ownerPhone = normalizePhone(req.user.phone);
       const sets = [];
       const vals = [];
       let idx = 1;
@@ -2676,8 +3063,8 @@ function setupMessengerAPI(app, uploadMedia) {
       if (sortOrder !== undefined) { sets.push(`sort_order = $${idx++}`); vals.push(sortOrder); }
       if (sets.length === 0) return res.status(400).json({ success: false, error: 'nothing to update' });
 
-      vals.push(req.params.id);
-      await db.query(`UPDATE messenger_folders SET ${sets.join(', ')} WHERE id = $${idx}`, vals);
+      vals.push(req.params.id, ownerPhone);
+      await db.query(`UPDATE messenger_folders SET ${sets.join(', ')} WHERE id = $${idx} AND phone = $${idx + 1}`, vals);
       res.json({ success: true });
     } catch (error) {
       console.error('[Messenger] PUT folder error:', error.message);
@@ -2691,7 +3078,8 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.delete('/api/messenger/folders/:id', requireAuth, async (req, res) => {
     try {
-      await db.query('DELETE FROM messenger_folders WHERE id = $1', [req.params.id]);
+      const ownerPhone = normalizePhone(req.user.phone);
+      await db.query('DELETE FROM messenger_folders WHERE id = $1 AND phone = $2', [req.params.id, ownerPhone]);
       res.json({ success: true });
     } catch (error) {
       console.error('[Messenger] DELETE folder error:', error.message);
@@ -2707,13 +3095,14 @@ function setupMessengerAPI(app, uploadMedia) {
     try {
       const { conversationId } = req.body;
       if (!conversationId) return res.status(400).json({ success: false, error: 'conversationId required' });
+      const ownerPhone = normalizePhone(req.user.phone);
 
       await db.query(
         `UPDATE messenger_folders
          SET conversation_ids = conversation_ids || $1::jsonb
-         WHERE id = $2
+         WHERE id = $2 AND phone = $3
            AND NOT conversation_ids @> $1::jsonb`,
-        [JSON.stringify([conversationId]), req.params.id]
+        [JSON.stringify([conversationId]), req.params.id, ownerPhone]
       );
       res.json({ success: true });
     } catch (error) {
@@ -2728,11 +3117,12 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.delete('/api/messenger/folders/:id/conversations/:convId', requireAuth, async (req, res) => {
     try {
+      const ownerPhone = normalizePhone(req.user.phone);
       await db.query(
         `UPDATE messenger_folders
          SET conversation_ids = conversation_ids - $1
-         WHERE id = $2`,
-        [req.params.convId, req.params.id]
+         WHERE id = $2 AND phone = $3`,
+        [req.params.convId, req.params.id, ownerPhone]
       );
       // Note: JSONB - operator removes a string element from an array
       res.json({ success: true });
@@ -2781,7 +3171,7 @@ function setupMessengerAPI(app, uploadMedia) {
   app.get('/api/messenger/conversations/:id/media', requireAuth, async (req, res) => {
     try {
       const conversationId = req.params.id;
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
       const limit = Math.min(parseInt(req.query.limit) || 50, 200);
       const offset = parseInt(req.query.offset) || 0;
 
@@ -2821,7 +3211,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.post('/api/messenger/messages/hide', requireAuth, async (req, res) => {
     try {
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
       const { messageIds } = req.body;
       if (!Array.isArray(messageIds) || messageIds.length === 0) {
         return res.status(400).json({ success: false, error: 'messageIds array required' });
@@ -2853,8 +3243,8 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.get('/api/messenger/common-groups', requireAuth, async (req, res) => {
     try {
-      const myPhone = req.user.phone.replace(/[^\d]/g, '');
-      const targetPhone = (req.query.phone || '').replace(/[^\d]/g, '');
+      const myPhone = normalizePhone(req.user.phone);
+      const targetPhone = normalizePhone(req.query.phone);
       if (!targetPhone) {
         return res.status(400).json({ success: false, error: 'phone parameter required' });
       }
@@ -2866,7 +3256,8 @@ function setupMessengerAPI(app, uploadMedia) {
          WHERE c.type = 'group'
            AND EXISTS (SELECT 1 FROM messenger_participants WHERE conversation_id = c.id AND phone = $1)
            AND EXISTS (SELECT 1 FROM messenger_participants WHERE conversation_id = c.id AND phone = $2)
-         ORDER BY c.updated_at DESC`,
+         ORDER BY c.updated_at DESC
+         LIMIT 100`,
         [myPhone, targetPhone]
       );
 
@@ -2888,11 +3279,11 @@ function setupMessengerAPI(app, uploadMedia) {
   app.post('/api/messenger/conversations/:id/mute', requireAuth, async (req, res) => {
     try {
       const conversationId = req.params.id;
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
       const { duration } = req.body;
 
       let mutedUntil;
-      const now = new Date();
+      const now = getMoscowTime();
       switch (duration) {
         case '1h': mutedUntil = new Date(now.getTime() + 60 * 60 * 1000); break;
         case '8h': mutedUntil = new Date(now.getTime() + 8 * 60 * 60 * 1000); break;
@@ -2919,7 +3310,7 @@ function setupMessengerAPI(app, uploadMedia) {
   app.delete('/api/messenger/conversations/:id/mute', requireAuth, async (req, res) => {
     try {
       const conversationId = req.params.id;
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
 
       await db.query(
         'UPDATE messenger_participants SET muted_until = NULL WHERE conversation_id = $1 AND phone = $2',
@@ -2939,7 +3330,7 @@ function setupMessengerAPI(app, uploadMedia) {
   app.get('/api/messenger/conversations/:id/mute', requireAuth, async (req, res) => {
     try {
       const conversationId = req.params.id;
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
 
       const result = await db.query(
         'SELECT muted_until FROM messenger_participants WHERE conversation_id = $1 AND phone = $2',
@@ -2947,7 +3338,7 @@ function setupMessengerAPI(app, uploadMedia) {
       );
 
       const mutedUntil = result.rows[0]?.muted_until;
-      const isMuted = mutedUntil && new Date(mutedUntil) > new Date();
+      const isMuted = mutedUntil && new Date(mutedUntil) > getMoscowTime();
 
       res.json({ success: true, is_muted: !!isMuted, muted_until: mutedUntil || null });
     } catch (error) {
@@ -2967,7 +3358,7 @@ function setupMessengerAPI(app, uploadMedia) {
    */
   app.put('/api/messenger/conversations/:id/auto-delete', requireAuth, async (req, res) => {
     try {
-      const normalizedPhone = req.user.phone.replace(/[^\d]/g, '');
+      const normalizedPhone = normalizePhone(req.user.phone);
       const conversationId = req.params.id;
       const { seconds = 0 } = req.body;
 
@@ -3007,7 +3398,7 @@ function setupMessengerAPI(app, uploadMedia) {
         type: 'system',
         content: systemContent,
         is_deleted: false,
-        created_at: new Date().toISOString(),
+        created_at: getMoscowTime().toISOString(),
       };
       await db.upsert('messenger_messages', systemMsg);
 
@@ -3034,9 +3425,10 @@ function setupMessengerAPI(app, uploadMedia) {
   // ============================================
   // AUTO-DELETE SCHEDULER (runs every 5 minutes)
   // ============================================
-  const { getMoscowTime } = require('../utils/moscow_time');
-
+  let autoDeleteRunning = false;
   setInterval(async () => {
+    if (autoDeleteRunning) return;
+    autoDeleteRunning = true;
     try {
       // Find conversations with auto-delete enabled
       const convs = await db.query(
@@ -3064,6 +3456,8 @@ function setupMessengerAPI(app, uploadMedia) {
       }
     } catch (error) {
       console.error('[AutoDelete] Scheduler error:', error.message);
+    } finally {
+      autoDeleteRunning = false;
     }
   }, 5 * 60 * 1000); // Every 5 minutes
 

@@ -52,7 +52,7 @@ class Conversation {
     }
 
     return Conversation(
-      id: json['id'] as String,
+      id: (json['id'] as String?) ?? '',
       type: (json['type'] as String?) == 'group'
           ? ConversationType.group
           : (json['type'] as String?) == 'channel'

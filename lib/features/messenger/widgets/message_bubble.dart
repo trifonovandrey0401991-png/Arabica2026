@@ -4,9 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/api_constants.dart';
 import '../models/message_model.dart';
 import 'video_note_player.dart';
 import 'inline_chat_video_player.dart';
+
+String _resolveMediaUrl(String url) {
+  if (url.startsWith('http')) return url;
+  return '${ApiConstants.serverUrl}$url';
+}
 
 class MessageBubble extends StatelessWidget {
   final MessengerMessage message;
@@ -37,6 +43,10 @@ class MessageBubble extends StatelessWidget {
   final void Function(String videoUrl)? onVideoTap;
   /// Callback when user taps a file to download/open
   final void Function(String fileUrl, String fileName)? onFileTap;
+  /// Callback when user taps the error icon to retry sending
+  final VoidCallback? onRetry;
+  /// Callback when user taps read ticks to see readers list
+  final VoidCallback? onReadersListTap;
 
   const MessageBubble({
     super.key,
@@ -59,6 +69,8 @@ class MessageBubble extends StatelessWidget {
     this.onImageTap,
     this.onVideoTap,
     this.onFileTap,
+    this.onRetry,
+    this.onReadersListTap,
   });
 
   @override
@@ -312,7 +324,7 @@ class MessageBubble extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 250, maxHeight: 300),
               child: message.mediaUrl != null
                   ? CachedNetworkImage(
-                      imageUrl: message.mediaUrl!,
+                      imageUrl: _resolveMediaUrl(message.mediaUrl!),
                       fit: BoxFit.cover,
                       placeholder: (_, __) => Container(
                         width: 200,
@@ -459,7 +471,7 @@ class MessageBubble extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 250, maxHeight: 250),
             child: message.mediaUrl != null
                 ? CachedNetworkImage(
-                    imageUrl: message.mediaUrl!,
+                    imageUrl: _resolveMediaUrl(message.mediaUrl!),
                     fit: BoxFit.cover,
                     placeholder: (_, __) => Container(
                       width: 200,
@@ -579,7 +591,17 @@ class MessageBubble extends StatelessWidget {
   Widget _buildReadTick() {
     // Optimistic send states
     if (message.isFailed) {
-      return Icon(Icons.error_outline, size: 12, color: Colors.red.withOpacity(0.8));
+      return GestureDetector(
+        onTap: onRetry,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 12, color: Colors.red.withOpacity(0.8)),
+            const SizedBox(width: 2),
+            Text('повтор', style: TextStyle(fontSize: 9, color: Colors.red.withOpacity(0.7))),
+          ],
+        ),
+      );
     }
     if (message.isPending) {
       return Icon(Icons.access_time, size: 12, color: Colors.white.withOpacity(0.4));
@@ -601,19 +623,31 @@ class MessageBubble extends StatelessWidget {
       return Icon(Icons.check, size: 12, color: Colors.white.withOpacity(0.45));
     } else {
       // Group chat
+      Widget tickIcon;
       if (readersCount >= totalOtherCount) {
-        // All read → 2 white ticks
-        return Icon(Icons.done_all, size: 12, color: Colors.white.withOpacity(0.85));
+        tickIcon = Icon(Icons.done_all, size: 12, color: Colors.white.withOpacity(0.85));
       } else if (readersCount > 0) {
-        // Some read → 2 half-white ticks
-        return Icon(Icons.done_all, size: 12, color: Colors.white.withOpacity(0.6));
+        tickIcon = Icon(Icons.done_all, size: 12, color: Colors.white.withOpacity(0.6));
       } else if (deliveredCount > 0) {
-        // Delivered but nobody read → 2 grey ticks
-        return Icon(Icons.done_all, size: 12, color: Colors.white.withOpacity(0.45));
+        tickIcon = Icon(Icons.done_all, size: 12, color: Colors.white.withOpacity(0.45));
       } else {
-        // Nobody received → 1 grey tick
-        return Icon(Icons.check, size: 12, color: Colors.white.withOpacity(0.45));
+        tickIcon = Icon(Icons.check, size: 12, color: Colors.white.withOpacity(0.45));
       }
+      // Make ticks tappable in groups to show readers list
+      if (onReadersListTap != null && readersCount > 0) {
+        return GestureDetector(
+          onTap: onReadersListTap,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              tickIcon,
+              const SizedBox(width: 2),
+              Text('$readersCount', style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.5))),
+            ],
+          ),
+        );
+      }
+      return tickIcon;
     }
   }
 
@@ -866,7 +900,7 @@ class MessageBubble extends StatelessWidget {
                 height: 150,
                 child: message.mediaUrl != null
                     ? CachedNetworkImage(
-                        imageUrl: message.mediaUrl!,
+                        imageUrl: _resolveMediaUrl(message.mediaUrl!),
                         fit: BoxFit.contain,
                         placeholder: (_, __) => Center(
                           child: CircularProgressIndicator(

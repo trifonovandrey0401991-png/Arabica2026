@@ -34,13 +34,25 @@ class _ChannelListPageState extends State<ChannelListPage> {
     _loadChannels();
   }
 
+  String? _error;
+
   Future<void> _loadChannels() async {
-    final channels = await MessengerService.getChannels();
-    if (mounted) {
-      setState(() {
-        _channels = channels;
-        _isLoading = false;
-      });
+    try {
+      final channels = await MessengerService.getChannels();
+      if (mounted) {
+        setState(() {
+          _channels = channels;
+          _isLoading = false;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = 'Не удалось загрузить каналы';
+        });
+      }
     }
   }
 
@@ -214,6 +226,25 @@ class _ChannelListPageState extends State<ChannelListPage> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.turquoise))
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: Colors.white.withOpacity(0.3)),
+                      const SizedBox(height: 12),
+                      Text(_error!, style: TextStyle(color: Colors.white.withOpacity(0.5))),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: () {
+                          setState(() { _isLoading = true; _error = null; });
+                          _loadChannels();
+                        },
+                        child: const Text('Повторить', style: TextStyle(color: AppColors.turquoise)),
+                      ),
+                    ],
+                  ),
+                )
           : _channels.isEmpty
               ? Center(
                   child: Column(

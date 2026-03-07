@@ -47,8 +47,8 @@ class GifPickerState extends State<GifPicker> {
     ]);
     if (mounted) {
       setState(() {
-        _favorites = results[0] as List<String>;
-        _gifs = results[1] as List<Map<String, dynamic>>;
+        _favorites = (results[0] is List<String>) ? results[0] as List<String> : <String>[];
+        _gifs = (results[1] is List<Map<String, dynamic>>) ? results[1] as List<Map<String, dynamic>> : <Map<String, dynamic>>[];
         _isLoading = false;
       });
     }

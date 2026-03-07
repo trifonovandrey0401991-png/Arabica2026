@@ -39,6 +39,7 @@ dependencies:
   excel: ^4.0.0
   video_player: ^2.9.5
   video_player_platform_interface: ^6.3.0
+  visibility_detector: ^0.4.0+2
   chewie: ^1.7.5
   image: ^4.3.0
   app_settings: ^5.1.1

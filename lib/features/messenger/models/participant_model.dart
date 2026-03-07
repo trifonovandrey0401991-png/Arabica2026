@@ -17,7 +17,7 @@ class Participant {
 
   factory Participant.fromJson(Map<String, dynamic> json) {
     return Participant(
-      phone: json['phone'] as String,
+      phone: (json['phone'] as String?) ?? '',
       name: json['name'] as String?,
       role: (json['role'] as String?) ?? 'member',
       joinedAt: json['joined_at'] != null

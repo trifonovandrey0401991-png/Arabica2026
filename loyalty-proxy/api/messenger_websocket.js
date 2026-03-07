@@ -12,7 +12,7 @@
 
 const WebSocket = require('ws');
 const db = require('../utils/db');
-const { maskPhone } = require('../utils/file_helpers');
+const { maskPhone, normalizePhone } = require('../utils/file_helpers');
 
 // Проверка session token
 let sessionMiddleware;
@@ -44,10 +44,27 @@ const deliveryAckBatch = new Map();
 let deliveryAckTimer = null;
 const DELIVERY_ACK_FLUSH_MS = 2000;
 
+// WS message rate limit: max messages per window per user
+const wsMessageRate = new Map(); // phone → { count, resetAt }
+const WS_MSG_RATE_WINDOW = 60000; // 60 seconds
+const WS_MSG_RATE_MAX = 120; // max 120 WS messages per minute (typing, pings, etc.)
+
 const CLEANUP_INTERVAL = 30000;
 const CONNECTION_TIMEOUT = 60000;
 const MAX_CONNECTIONS_PER_PHONE = 1;
 const PARTICIPANTS_CACHE_TTL = 60000; // 60 сек
+
+// Offline event queue: stores important events for offline users
+// Map<phone, Array<{ data, timestamp }>>
+const offlineQueue = new Map();
+const OFFLINE_QUEUE_MAX = 100; // max events per user
+const OFFLINE_QUEUE_TTL = 24 * 60 * 60 * 1000; // 24h
+// Only queue these event types (skip typing, online_status, pong, etc.)
+const QUEUEABLE_EVENTS = new Set([
+  'new_message', 'message_deleted', 'message_edited',
+  'reaction_added', 'reaction_removed', 'read_receipt',
+  'unread_count_update'
+]);
 
 /**
  * Получить телефоны участников разговора (с кэшем)
@@ -86,7 +103,7 @@ function invalidateParticipantsCache(conversationId) {
  * Инициализация WebSocket сервера для мессенджера
  */
 function setupMessengerWebSocket(server) {
-  const wss = new WebSocket.Server({ noServer: true });
+  const wss = new WebSocket.Server({ noServer: true, maxPayload: 64 * 1024 }); // 64KB max payload
 
   console.log('✅ Messenger WebSocket initialized (noServer mode, path: /ws/messenger)');
 
@@ -120,8 +137,13 @@ function setupMessengerWebSocket(server) {
       return;
     }
 
-    userPhone = tokenUser.phone || userPhone;
-    const normalizedPhone = userPhone.replace(/[^\d]/g, '');
+    // SECURITY: always use phone from verified token, never from URL param
+    if (!tokenUser.phone) {
+      ws.close(4003, 'Token missing phone');
+      return;
+    }
+    userPhone = tokenUser.phone;
+    const normalizedPhone = normalizePhone(userPhone);
 
     // Rate limit: prevent reconnection storms
     const now = Date.now();
@@ -163,6 +185,9 @@ function setupMessengerWebSocket(server) {
       timestamp: new Date().toISOString()
     });
 
+    // Deliver queued offline events
+    flushOfflineQueue(normalizedPhone, ws);
+
     // Оповещаем всех об онлайн статусе
     broadcastOnlineStatus(normalizedPhone, true);
 
@@ -185,6 +210,19 @@ function setupMessengerWebSocket(server) {
 
     ws.on('message', (data) => {
       try {
+        // Per-message rate limit
+        const msgNow = Date.now();
+        const mr = wsMessageRate.get(normalizedPhone);
+        if (mr && msgNow < mr.resetAt) {
+          mr.count++;
+          if (mr.count > WS_MSG_RATE_MAX) {
+            sendToSocket(ws, { type: 'error', error: 'rate_limit', message: 'Too many messages' });
+            return;
+          }
+        } else {
+          wsMessageRate.set(normalizedPhone, { count: 1, resetAt: msgNow + WS_MSG_RATE_WINDOW });
+        }
+
         const message = JSON.parse(data.toString());
         handleMessage(normalizedPhone, message, ws);
       } catch (e) {
@@ -236,7 +274,7 @@ function handleMessage(phone, message, ws) {
       handleTypingStop(phone, conversationId);
       break;
     case 'get_online_users':
-      sendOnlineUsersList(ws);
+      sendOnlineUsersList(ws, phone);
       break;
     case 'ping':
       sendToSocket(ws, { type: 'pong', timestamp: new Date().toISOString() });
@@ -272,7 +310,7 @@ function handleMessage(phone, message, ws) {
  * Returns true if at least one connection received the message.
  */
 function sendToPhone(phone, data) {
-  const normalized = phone.replace(/[^\d]/g, '');
+  const normalized = normalizePhone(phone);
   if (!connections.has(normalized)) return false;
   let sent = false;
   for (const socket of connections.get(normalized)) {
@@ -287,7 +325,7 @@ function sendToPhone(phone, data) {
  * Used for call signaling to avoid duplicate events triggering auto-reject.
  */
 function sendToPhoneOnce(phone, data) {
-  const normalized = phone.replace(/[^\d]/g, '');
+  const normalized = normalizePhone(phone);
   if (!connections.has(normalized)) return false;
   const sockets = connections.get(normalized);
   if (!sockets || sockets.size === 0) return false;
@@ -299,10 +337,37 @@ function sendToPhoneOnce(phone, data) {
 }
 
 // Caller → Server: start a call
-function handleCallOffer(callerPhone, message) {
+async function handleCallOffer(callerPhone, message) {
   const { targetPhone, offerSdp, callId, callerName } = message;
   if (!targetPhone || !offerSdp || !callId) return;
-  const normalizedTarget = targetPhone.replace(/[^\d]/g, '');
+  const normalizedTarget = normalizePhone(targetPhone);
+
+  // Check block status
+  try {
+    const blockCheck = await db.query(
+      'SELECT 1 FROM messenger_blocks WHERE (blocker_phone = $1 AND blocked_phone = $2) OR (blocker_phone = $2 AND blocked_phone = $1) LIMIT 1',
+      [callerPhone, normalizedTarget]
+    );
+    if (blockCheck.rows.length > 0) {
+      sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'blocked' });
+      return;
+    }
+  } catch (_) { /* non-critical, proceed with call */ }
+
+  // Check that caller and target share at least one conversation
+  try {
+    const sharedConv = await db.query(
+      `SELECT 1 FROM messenger_participants p1
+       JOIN messenger_participants p2 ON p1.conversation_id = p2.conversation_id
+       WHERE p1.phone = $1 AND p2.phone = $2 LIMIT 1`,
+      [callerPhone, normalizedTarget]
+    );
+    if (sharedConv.rows.length === 0) {
+      sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'no_shared_conversation' });
+      return;
+    }
+  } catch (_) { /* non-critical, proceed with call */ }
+
   const hasWs = connections.has(normalizedTarget);
   const connCount = hasWs ? connections.get(normalizedTarget).size : 0;
   console.log(`📞 Call offer: ${maskPhone(callerPhone)} → ${maskPhone(targetPhone)} [${callId}] (target WS: ${hasWs}, connections: ${connCount})`);
@@ -371,8 +436,12 @@ function handleCallHangup(fromPhone, message) {
   });
 }
 
-function handleTypingStart(phone, conversationId) {
+async function handleTypingStart(phone, conversationId) {
   if (!conversationId) return;
+
+  // Verify participant before broadcasting typing
+  const members = await getConversationPhones(conversationId);
+  if (!members.has(phone)) return;
 
   if (!typingStatus.has(conversationId)) {
     typingStatus.set(conversationId, new Map());
@@ -416,8 +485,11 @@ function clearTypingStatus(phone) {
 function handleDeliveryAck(phone, message) {
   const { messageIds, conversationId } = message;
   if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) return;
+  if (!conversationId) return;
 
-  for (const msgId of messageIds) {
+  // Limit batch size to prevent abuse
+  const limitedIds = messageIds.slice(0, 100);
+  for (const msgId of limitedIds) {
     if (!deliveryAckBatch.has(msgId)) {
       deliveryAckBatch.set(msgId, { phones: new Set(), conversationId });
     }
@@ -442,23 +514,18 @@ async function flushDeliveryAcks() {
     for (const [msgId, { phones, conversationId }] of batch.entries()) {
       const phonesArray = [...phones];
 
-      // Update DB: merge delivered_to arrays (add phones that aren't already there)
-      await db.query(
+      // Update DB + return sender info in one query (avoids N+1)
+      const result = await db.query(
         `UPDATE messenger_messages
          SET delivered_to = (
            SELECT jsonb_agg(DISTINCT val)
            FROM jsonb_array_elements_text(COALESCE(delivered_to, '[]'::jsonb) || $2::jsonb) AS val
          )
-         WHERE id = $1`,
+         WHERE id = $1
+         RETURNING sender_phone, delivered_to`,
         [msgId, JSON.stringify(phonesArray)]
       );
 
-      // Notify the sender that their message was delivered
-      // We need sender_phone to send notification back
-      const result = await db.query(
-        'SELECT sender_phone, delivered_to FROM messenger_messages WHERE id = $1',
-        [msgId]
-      );
       if (result.rows.length > 0) {
         const senderPhone = result.rows[0].sender_phone;
         const deliveredTo = result.rows[0].delivered_to || [];
@@ -493,10 +560,25 @@ async function broadcastToConversation(conversationId, data, excludePhone = null
     } catch (_) { /* non-critical */ }
   }
 
-  for (const [phone, sockets] of connections.entries()) {
-    if (phone !== excludePhone && members.has(phone) && !blockedByRecipients.has(phone)) {
+  for (const memberPhone of members) {
+    if (memberPhone === excludePhone || blockedByRecipients.has(memberPhone)) continue;
+
+    const sockets = connections.get(memberPhone);
+    if (sockets && sockets.size > 0) {
+      // Online — deliver immediately
       for (const socket of sockets) {
         sendToSocket(socket, data);
+      }
+    } else if (data.type && QUEUEABLE_EVENTS.has(data.type)) {
+      // Offline — queue for later delivery
+      if (!offlineQueue.has(memberPhone)) {
+        offlineQueue.set(memberPhone, []);
+      }
+      const queue = offlineQueue.get(memberPhone);
+      queue.push({ data, timestamp: Date.now() });
+      // Trim to limit
+      if (queue.length > OFFLINE_QUEUE_MAX) {
+        queue.splice(0, queue.length - OFFLINE_QUEUE_MAX);
       }
     }
   }
@@ -542,18 +624,53 @@ async function broadcastOnlineStatus(phone, isOnline) {
   }
 }
 
-function sendOnlineUsersList(ws) {
-  const onlineUsers = [];
-  for (const [phone, status] of onlineStatus.entries()) {
-    if (status.online) {
-      onlineUsers.push({ phone, lastSeen: status.lastSeen.toISOString() });
+async function sendOnlineUsersList(ws, requesterPhone) {
+  try {
+    // Only return online users who share a conversation with the requester
+    const result = await db.query(
+      `SELECT DISTINCT mp.phone FROM messenger_participants mp
+       WHERE mp.conversation_id IN (
+         SELECT conversation_id FROM messenger_participants WHERE phone = $1
+       ) AND mp.phone != $1`,
+      [requesterPhone]
+    );
+    const sharedPhones = new Set(result.rows.map(r => r.phone));
+
+    const onlineUsers = [];
+    for (const [phone, status] of onlineStatus.entries()) {
+      if (status.online && sharedPhones.has(phone)) {
+        onlineUsers.push({ phone, lastSeen: status.lastSeen.toISOString() });
+      }
     }
+    sendToSocket(ws, {
+      type: 'online_users_list',
+      users: onlineUsers,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('[Messenger WS] Error sending online users list:', err.message);
   }
-  sendToSocket(ws, {
-    type: 'online_users_list',
-    users: onlineUsers,
-    timestamp: new Date().toISOString()
-  });
+}
+
+/**
+ * Flush queued offline events to a reconnecting user
+ */
+function flushOfflineQueue(phone, ws) {
+  const queue = offlineQueue.get(phone);
+  if (!queue || queue.length === 0) return;
+
+  const now = Date.now();
+  let sent = 0;
+  for (const item of queue) {
+    // Skip expired events
+    if (now - item.timestamp > OFFLINE_QUEUE_TTL) continue;
+    sendToSocket(ws, item.data);
+    sent++;
+  }
+  offlineQueue.delete(phone);
+  if (sent > 0) {
+    console.log(`📬 Flushed ${sent} queued events for ${maskPhone(phone)}`);
+  }
 }
 
 function sendToSocket(ws, data) {
@@ -575,7 +692,8 @@ function cleanupStaleConnections() {
     }
     if (sockets.size === 0) {
       connections.delete(phone);
-      onlineStatus.delete(phone);
+      onlineStatus.set(phone, { lastSeen: new Date(), online: false });
+      broadcastOnlineStatus(phone, false);
     }
   }
 
@@ -597,6 +715,23 @@ function cleanupStaleConnections() {
   for (const [phone, rl] of wsRateLimit.entries()) {
     if (now >= rl.resetAt) {
       wsRateLimit.delete(phone);
+    }
+  }
+
+  // Очищаем устаревшие записи wsMessageRate
+  for (const [phone, mr] of wsMessageRate.entries()) {
+    if (now >= mr.resetAt) {
+      wsMessageRate.delete(phone);
+    }
+  }
+
+  // Очищаем устаревшие offline-очереди (старше 24 часов)
+  for (const [phone, queue] of offlineQueue.entries()) {
+    const fresh = queue.filter(item => now - item.timestamp < OFFLINE_QUEUE_TTL);
+    if (fresh.length === 0) {
+      offlineQueue.delete(phone);
+    } else if (fresh.length !== queue.length) {
+      offlineQueue.set(phone, fresh);
     }
   }
 }
@@ -666,7 +801,7 @@ async function notifyReadReceipt(conversationId, phone, timestamp) {
 }
 
 function isUserOnline(phone) {
-  const normalizedPhone = phone.replace(/[^\d]/g, '');
+  const normalizedPhone = normalizePhone(phone);
   const status = onlineStatus.get(normalizedPhone);
   return status?.online === true;
 }

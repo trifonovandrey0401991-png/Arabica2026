@@ -93,7 +93,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       ),
     );
 
-    if (source == null) return;
+    if (source == null || !mounted) return;
 
     try {
       final picked = await ImagePicker().pickImage(
@@ -102,16 +102,16 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
         maxWidth: 800,
         maxHeight: 800,
       );
-      if (picked == null) return;
+      if (picked == null || !mounted) return;
 
       final url = await MessengerService.uploadMedia(File(picked.path));
-      if (url != null) {
+      if (url != null && mounted) {
         await MessengerService.updateGroup(
           _conversation.id,
           phone: widget.userPhone,
           avatarUrl: url,
         );
-        _refresh();
+        if (mounted) _refresh();
       }
     } catch (e) {
       if (mounted) {

@@ -42,7 +42,7 @@ class PollModel {
     }
 
     return PollModel(
-      id: json['id'] as String,
+      id: (json['id'] as String?) ?? '',
       conversationId: json['conversation_id'] as String? ?? '',
       messageId: json['message_id'] as String? ?? '',
       question: json['question'] as String? ?? '',

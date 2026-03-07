@@ -192,7 +192,7 @@ class _MediaGalleryPageState extends State<MediaGalleryPage> {
         builder: (_) => ConversationPickerPage(userPhone: widget.userPhone),
       ),
     );
-    if (targetIds == null || targetIds.isEmpty) return;
+    if (targetIds == null || targetIds.isEmpty || !mounted) return;
 
     int successCount = 0;
     for (final msgId in messageIds) {

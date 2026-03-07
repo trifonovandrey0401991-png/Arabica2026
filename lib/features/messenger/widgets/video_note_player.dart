@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:io' show File, Platform;
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
@@ -8,12 +8,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 
-/// Circular video note widget for messenger chat.
+/// Circular video note widget for messenger chat (Telegram-style).
 ///
-/// Shows a thumbnail (first frame) with play button in the chat list.
+/// Auto-loads and plays muted when visible (like InlineChatVideoPlayer).
 /// On tap: opens expanded view in center of screen with circular progress ring.
 class VideoNotePlayer extends StatefulWidget {
   final String mediaUrl;
@@ -35,6 +36,8 @@ class _VideoNotePlayerState extends State<VideoNotePlayer> {
   VideoPlayerController? _controller;
   bool _initialized = false;
   bool _hasError = false;
+  bool _isLoading = false;
+  bool _visible = false;
 
   String get _resolvedUrl {
     if (widget.isFile) return widget.mediaUrl;
@@ -44,36 +47,61 @@ class _VideoNotePlayerState extends State<VideoNotePlayer> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _initPlayer();
-  }
-
-  Future<void> _initPlayer() async {
-    final url = _resolvedUrl;
-    if (url.isEmpty) return;
-    try {
-      _controller = VideoPlayerController.networkUrl(Uri.parse(url));
-      await _controller!.initialize();
-      if (!mounted) return;
-      _controller!.setVolume(0);
-      _controller!.setLooping(true);
-      _controller!.play();
-      setState(() => _initialized = true);
-    } catch (e) {
-      debugPrint('VideoNotePlayer init error: $e');
-      if (mounted) setState(() => _hasError = true);
-    }
-  }
-
-  @override
   void dispose() {
     _controller?.dispose();
     super.dispose();
   }
 
+  Future<void> _initAndPlay() async {
+    if (_isLoading) return;
+    if (_initialized && _controller != null) {
+      _controller!.play();
+      return;
+    }
+    final url = _resolvedUrl;
+    if (url.isEmpty) return;
+    setState(() => _isLoading = true);
+    try {
+      _controller = widget.isFile
+          ? VideoPlayerController.file(File(url))
+          : VideoPlayerController.networkUrl(Uri.parse(url));
+      await _controller!.initialize();
+      if (!mounted) return;
+      _controller!.setVolume(0);
+      _controller!.setLooping(true);
+      _controller!.play();
+      setState(() {
+        _initialized = true;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('VideoNotePlayer init error: $e');
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _onVisibilityChanged(VisibilityInfo info) {
+    final nowVisible = info.visibleFraction > 0.3;
+    if (nowVisible == _visible) return;
+    _visible = nowVisible;
+
+    if (nowVisible) {
+      if (!_initialized && !_isLoading && !_hasError) {
+        _initAndPlay();
+      } else if (_initialized && _controller != null) {
+        _controller!.play();
+      }
+    } else {
+      _controller?.pause();
+    }
+  }
+
   void _openExpandedPlayer() {
-    // Pause inline playback while expanded view is open
     _controller?.pause();
     showGeneralDialog(
       context: context,
@@ -95,8 +123,7 @@ class _VideoNotePlayerState extends State<VideoNotePlayer> {
         durationSeconds: widget.durationSeconds,
       ),
     ).then((_) {
-      // Resume inline playback after expanded view is closed
-      if (mounted && _initialized) {
+      if (mounted && _initialized && _visible) {
         _controller?.setVolume(0);
         _controller?.play();
       }
@@ -107,75 +134,93 @@ class _VideoNotePlayerState extends State<VideoNotePlayer> {
   Widget build(BuildContext context) {
     const double size = 180;
 
-    return GestureDetector(
-      onTap: _openExpandedPlayer,
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Video or placeholder circle
-            Container(
-              width: size,
-              height: size,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFF0A2020),
-              ),
-              child: _initialized && _controller != null
-                  ? ClipOval(
-                      child: SizedBox(
-                        width: size,
-                        height: size,
-                        child: FittedBox(
-                          fit: BoxFit.cover,
-                          clipBehavior: Clip.hardEdge,
-                          child: SizedBox(
-                            width: _controller!.value.size.width,
-                            height: _controller!.value.size.height,
-                            child: VideoPlayer(_controller!),
+    return VisibilityDetector(
+      key: Key('vnote_${widget.mediaUrl}'),
+      onVisibilityChanged: _onVisibilityChanged,
+      child: GestureDetector(
+        onTap: () {
+          if (_hasError) {
+            _controller?.dispose();
+            _controller = null;
+            _initialized = false;
+            setState(() => _hasError = false);
+            _initAndPlay();
+          } else if (_initialized) {
+            _openExpandedPlayer();
+          }
+        },
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Video or placeholder circle
+              Container(
+                width: size,
+                height: size,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFF0A2020),
+                ),
+                child: _initialized && _controller != null
+                    ? ClipOval(
+                        child: SizedBox(
+                          width: size,
+                          height: size,
+                          child: FittedBox(
+                            fit: BoxFit.cover,
+                            clipBehavior: Clip.hardEdge,
+                            child: SizedBox(
+                              width: _controller!.value.size.width,
+                              height: _controller!.value.size.height,
+                              child: VideoPlayer(_controller!),
+                            ),
                           ),
                         ),
+                      )
+                    : Center(
+                        child: _hasError
+                            ? Icon(Icons.refresh_rounded,
+                                color: Colors.white.withOpacity(0.4), size: 40)
+                            : _isLoading
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.turquoise,
+                                    ),
+                                  )
+                                : Icon(Icons.play_circle_outline,
+                                    color: Colors.white.withOpacity(0.3),
+                                    size: 40),
                       ),
-                    )
-                  : Center(
-                      child: _hasError
-                          ? Icon(Icons.videocam,
-                              color: Colors.white.withOpacity(0.4), size: 40)
-                          : const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.turquoise,
-                              ),
-                            ),
-                    ),
-            ),
+              ),
 
-            // Duration badge
-            Positioned(
-              bottom: 8,
-              right: 6,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.55),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  _formatDuration(widget.durationSeconds ?? 0),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+              // Duration badge
+              Positioned(
+                bottom: 8,
+                right: 6,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.55),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    _formatDuration(widget.durationSeconds ?? 0),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -228,7 +273,6 @@ class _ExpandedVideoNoteState extends State<_ExpandedVideoNote> {
     switch (call.method) {
       case 'onReady':
         setState(() => _isReady = true);
-        // Auto-play with sound when ready
         _channel?.invokeMethod('play');
         setState(() => _isPlaying = true);
         _startProgressPolling();
@@ -280,7 +324,6 @@ class _ExpandedVideoNoteState extends State<_ExpandedVideoNote> {
     if (!_isReady) return;
 
     if (_isCompleted) {
-      // Replay
       setState(() {
         _isCompleted = false;
         _isPlaying = true;
@@ -290,12 +333,10 @@ class _ExpandedVideoNoteState extends State<_ExpandedVideoNote> {
       _channel?.invokeMethod('play');
       _startProgressPolling();
     } else if (_isPlaying) {
-      // Pause
       _channel?.invokeMethod('pause');
       _stopProgressPolling();
       setState(() => _isPlaying = false);
     } else {
-      // Resume
       _channel?.invokeMethod('play');
       setState(() => _isPlaying = true);
       _startProgressPolling();
@@ -356,9 +397,7 @@ class _ExpandedVideoNoteState extends State<_ExpandedVideoNote> {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        // Native video view (always present once created)
                         _buildPlatformView(videoSize),
-                        // Thumbnail overlay (shown when loading or completed)
                         if (_isCompleted || !_isReady)
                           _buildThumbnail(videoSize),
                       ],
@@ -495,14 +534,12 @@ class _CircleProgressPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - strokeWidth) / 2;
 
-    // Background circle
     final bgPaint = Paint()
       ..color = backgroundColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth;
     canvas.drawCircle(center, radius, bgPaint);
 
-    // Progress arc
     if (progress > 0) {
       final progressPaint = Paint()
         ..color = progressColor
@@ -513,7 +550,7 @@ class _CircleProgressPainter extends CustomPainter {
       final sweepAngle = 2 * pi * progress;
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
-        -pi / 2, // start from top
+        -pi / 2,
         sweepAngle,
         false,
         progressPaint,
