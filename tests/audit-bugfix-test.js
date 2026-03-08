@@ -578,6 +578,129 @@ console.log('\n[H42] client_prizes — маппинг DB ↔ JSON');
 }
 
 // ─────────────────────────────────────────────────────────────
+// H31: shift_transfers — DB mapping functions
+// ─────────────────────────────────────────────────────────────
+console.log('\n[H31] shift_transfers — маппинг DB ↔ JSON');
+
+{
+  function dbRowToTransfer(row) {
+    return {
+      id: row.id,
+      fromEmployeeId: row.from_employee_id,
+      fromEmployeeName: row.from_employee_name,
+      toEmployeeId: row.to_employee_id || null,
+      toEmployeeName: row.to_employee_name || null,
+      scheduleEntryId: row.schedule_entry_id,
+      shiftDate: row.shift_date,
+      shopAddress: row.shop_address,
+      shopName: row.shop_name,
+      shiftType: row.shift_type,
+      comment: row.comment || null,
+      status: row.status,
+      acceptedBy: row.accepted_by || [],
+      rejectedBy: row.rejected_by || [],
+      acceptedByEmployeeId: row.accepted_by_employee_id || null,
+      acceptedByEmployeeName: row.accepted_by_employee_name || null,
+      acceptedAt: row.accepted_at ? new Date(row.accepted_at).toISOString() : null,
+      approvedEmployeeId: row.approved_employee_id || null,
+      approvedEmployeeName: row.approved_employee_name || null,
+      resolvedAt: row.resolved_at ? new Date(row.resolved_at).toISOString() : null,
+      isReadByRecipient: row.is_read_by_recipient || false,
+      isReadByAdmin: row.is_read_by_admin || false,
+      createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+    };
+  }
+
+  function transferToDbRow(t) {
+    return {
+      id: t.id,
+      from_employee_id: t.fromEmployeeId,
+      from_employee_name: t.fromEmployeeName,
+      to_employee_id: t.toEmployeeId || null,
+      to_employee_name: t.toEmployeeName || null,
+      schedule_entry_id: t.scheduleEntryId || null,
+      shift_date: t.shiftDate,
+      shop_address: t.shopAddress || null,
+      shop_name: t.shopName || null,
+      shift_type: t.shiftType || null,
+      comment: t.comment || null,
+      status: t.status,
+      accepted_by: JSON.stringify(t.acceptedBy || []),
+      rejected_by: JSON.stringify(t.rejectedBy || []),
+      accepted_by_employee_id: t.acceptedByEmployeeId || null,
+      accepted_by_employee_name: t.acceptedByEmployeeName || null,
+      accepted_at: t.acceptedAt || null,
+      approved_employee_id: t.approvedEmployeeId || null,
+      approved_employee_name: t.approvedEmployeeName || null,
+      resolved_at: t.resolvedAt || null,
+      is_read_by_recipient: t.isReadByRecipient || false,
+      is_read_by_admin: t.isReadByAdmin || false,
+      created_at: t.createdAt || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  // Round-trip: transfer → DB → transfer
+  const original = {
+    id: 'transfer_test_123',
+    fromEmployeeId: 'emp_1',
+    fromEmployeeName: 'Иванов',
+    toEmployeeId: null,
+    toEmployeeName: null,
+    scheduleEntryId: 'entry_1',
+    shiftDate: '2026-03-08',
+    shopAddress: 'ул. Ленина 1',
+    shopName: 'Арабика Центр',
+    shiftType: 'morning',
+    comment: 'Не могу выйти',
+    status: 'pending',
+    acceptedBy: [{ employeeId: 'emp_2', employeeName: 'Петров', acceptedAt: '2026-03-08T10:00:00Z' }],
+    rejectedBy: [],
+    acceptedByEmployeeId: null,
+    acceptedByEmployeeName: null,
+    acceptedAt: null,
+    approvedEmployeeId: null,
+    approvedEmployeeName: null,
+    resolvedAt: null,
+    isReadByRecipient: false,
+    isReadByAdmin: false,
+    createdAt: '2026-03-08T09:00:00.000Z',
+  };
+
+  const dbRow = transferToDbRow(original);
+  assert(dbRow.from_employee_id === 'emp_1', 'transferToDbRow: fromEmployeeId → from_employee_id');
+  assert(dbRow.shift_date === '2026-03-08', 'transferToDbRow: shiftDate → shift_date');
+  assert(dbRow.shop_name === 'Арабика Центр', 'transferToDbRow: shopName → shop_name');
+  assert(typeof dbRow.accepted_by === 'string', 'transferToDbRow: acceptedBy → JSON string');
+  assert(JSON.parse(dbRow.accepted_by).length === 1, 'transferToDbRow: acceptedBy содержит 1 элемент');
+
+  const restored = dbRowToTransfer(dbRow);
+  assert(restored.id === original.id, 'Round-trip: id совпадает');
+  assert(restored.fromEmployeeId === original.fromEmployeeId, 'Round-trip: fromEmployeeId');
+  assert(restored.shiftDate === original.shiftDate, 'Round-trip: shiftDate');
+  assert(restored.status === 'pending', 'Round-trip: status');
+  assert(restored.toEmployeeId === null, 'Round-trip: toEmployeeId null (broadcast)');
+  assert(restored.comment === 'Не могу выйти', 'Round-trip: comment');
+
+  // Approved transfer
+  const approved = {
+    ...original,
+    status: 'approved',
+    approvedEmployeeId: 'emp_2',
+    approvedEmployeeName: 'Петров',
+    resolvedAt: '2026-03-08T12:00:00.000Z',
+    isReadByAdmin: true,
+  };
+
+  const approvedRow = transferToDbRow(approved);
+  const approvedRestored = dbRowToTransfer(approvedRow);
+  assert(approvedRestored.status === 'approved', 'Approved: status');
+  assert(approvedRestored.approvedEmployeeId === 'emp_2', 'Approved: approvedEmployeeId');
+  assert(approvedRestored.isReadByAdmin === true, 'Approved: isReadByAdmin true');
+  assert(approvedRestored.resolvedAt !== null, 'Approved: resolvedAt не null');
+}
+
+// ─────────────────────────────────────────────────────────────
 // ИТОГО
 // ─────────────────────────────────────────────────────────────
 console.log(`\n${'='.repeat(50)}`);

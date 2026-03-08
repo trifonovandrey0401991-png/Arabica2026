@@ -15,6 +15,7 @@ const db = require('../utils/db');
 const { getMoscowTime } = require('../utils/moscow_time');
 
 const USE_DB_WORK_SCHEDULE = process.env.USE_DB_WORK_SCHEDULE === 'true';
+const USE_DB_SHIFT_TRANSFERS = process.env.USE_DB_SHIFT_TRANSFERS === 'true';
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -31,8 +32,76 @@ const {
   notifyOthersDeclined,
 } = require('./shift_transfers_notifications');
 
+// DB ↔ JSON mapping
+function dbRowToTransfer(row) {
+  return {
+    id: row.id,
+    fromEmployeeId: row.from_employee_id,
+    fromEmployeeName: row.from_employee_name,
+    toEmployeeId: row.to_employee_id || null,
+    toEmployeeName: row.to_employee_name || null,
+    scheduleEntryId: row.schedule_entry_id,
+    shiftDate: row.shift_date,
+    shopAddress: row.shop_address,
+    shopName: row.shop_name,
+    shiftType: row.shift_type,
+    comment: row.comment || null,
+    status: row.status,
+    acceptedBy: row.accepted_by || [],
+    rejectedBy: row.rejected_by || [],
+    acceptedByEmployeeId: row.accepted_by_employee_id || null,
+    acceptedByEmployeeName: row.accepted_by_employee_name || null,
+    acceptedAt: row.accepted_at ? new Date(row.accepted_at).toISOString() : null,
+    approvedEmployeeId: row.approved_employee_id || null,
+    approvedEmployeeName: row.approved_employee_name || null,
+    resolvedAt: row.resolved_at ? new Date(row.resolved_at).toISOString() : null,
+    isReadByRecipient: row.is_read_by_recipient || false,
+    isReadByAdmin: row.is_read_by_admin || false,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+  };
+}
+
+function transferToDbRow(t) {
+  return {
+    id: t.id,
+    from_employee_id: t.fromEmployeeId,
+    from_employee_name: t.fromEmployeeName,
+    to_employee_id: t.toEmployeeId || null,
+    to_employee_name: t.toEmployeeName || null,
+    schedule_entry_id: t.scheduleEntryId || null,
+    shift_date: t.shiftDate,
+    shop_address: t.shopAddress || null,
+    shop_name: t.shopName || null,
+    shift_type: t.shiftType || null,
+    comment: t.comment || null,
+    status: t.status,
+    accepted_by: JSON.stringify(t.acceptedBy || []),
+    rejected_by: JSON.stringify(t.rejectedBy || []),
+    accepted_by_employee_id: t.acceptedByEmployeeId || null,
+    accepted_by_employee_name: t.acceptedByEmployeeName || null,
+    accepted_at: t.acceptedAt || null,
+    approved_employee_id: t.approvedEmployeeId || null,
+    approved_employee_name: t.approvedEmployeeName || null,
+    resolved_at: t.resolvedAt || null,
+    is_read_by_recipient: t.isReadByRecipient || false,
+    is_read_by_admin: t.isReadByAdmin || false,
+    created_at: t.createdAt || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
 // Helper functions
 async function loadShiftTransfers() {
+  // DB first
+  if (USE_DB_SHIFT_TRANSFERS) {
+    try {
+      const rows = await db.query('SELECT * FROM shift_transfers ORDER BY created_at DESC');
+      if (rows.length > 0) return rows.map(dbRowToTransfer);
+    } catch (dbErr) {
+      console.error('[ShiftTransfers] DB load error:', dbErr.message);
+    }
+  }
+  // Fallback: JSON
   try {
     if (await fileExists(SHIFT_TRANSFERS_FILE)) {
       const data = await fsp.readFile(SHIFT_TRANSFERS_FILE, 'utf8');
@@ -45,8 +114,41 @@ async function loadShiftTransfers() {
 }
 
 async function saveShiftTransfers(requests) {
+  // Always write JSON
   const data = { requests, updatedAt: new Date().toISOString() };
   await writeJsonFile(SHIFT_TRANSFERS_FILE, data);
+  // Dual-write to DB
+  if (USE_DB_SHIFT_TRANSFERS) {
+    try {
+      for (const t of requests) {
+        await db.upsert('shift_transfers', transferToDbRow(t));
+      }
+    } catch (dbErr) {
+      console.error('[ShiftTransfers] DB save error:', dbErr.message);
+    }
+  }
+}
+
+// Save single transfer to DB (for individual updates without re-saving all)
+async function saveOneTransferToDb(transfer) {
+  if (USE_DB_SHIFT_TRANSFERS) {
+    try {
+      await db.upsert('shift_transfers', transferToDbRow(transfer));
+    } catch (dbErr) {
+      console.error('[ShiftTransfers] DB saveOne error:', dbErr.message);
+    }
+  }
+}
+
+// Delete single transfer from DB
+async function deleteTransferFromDb(transferId) {
+  if (USE_DB_SHIFT_TRANSFERS) {
+    try {
+      await db.deleteById('shift_transfers', transferId);
+    } catch (dbErr) {
+      console.error('[ShiftTransfers] DB delete error:', dbErr.message);
+    }
+  }
 }
 
 // Cleanup expired transfers (older than 30 days with pending status)
@@ -675,8 +777,10 @@ function setupShiftTransfersAPI(app) {
         return res.status(404).json({ success: false, error: 'Request not found' });
       }
 
+      const deletedId = requests[index].id;
       requests.splice(index, 1);
       await saveShiftTransfers(requests);
+      await deleteTransferFromDb(deletedId);
 
       res.json({ success: true });
     } catch (error) {
@@ -684,7 +788,7 @@ function setupShiftTransfersAPI(app) {
     }
   });
 
-  console.log('✅ Shift Transfers API initialized (with multiple acceptances support)');
+  console.log(`✅ Shift Transfers API initialized (with multiple acceptances support)${USE_DB_SHIFT_TRANSFERS ? ' [DB mode]' : ''}`);
 }
 
 module.exports = { setupShiftTransfersAPI };

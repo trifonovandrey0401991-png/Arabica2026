@@ -770,6 +770,36 @@ CREATE TABLE IF NOT EXISTS client_prizes (
 CREATE INDEX IF NOT EXISTS idx_client_prizes_phone_status ON client_prizes(client_phone, status);
 CREATE INDEX IF NOT EXISTS idx_client_prizes_qr_token ON client_prizes(qr_token);
 
+CREATE TABLE IF NOT EXISTS shift_transfers (
+  id TEXT PRIMARY KEY,
+  from_employee_id TEXT,
+  from_employee_name TEXT,
+  to_employee_id TEXT,
+  to_employee_name TEXT,
+  schedule_entry_id TEXT,
+  shift_date TEXT,
+  shop_address TEXT,
+  shop_name TEXT,
+  shift_type TEXT,
+  comment TEXT,
+  status TEXT DEFAULT 'pending',
+  accepted_by JSONB DEFAULT '[]'::jsonb,
+  rejected_by JSONB DEFAULT '[]'::jsonb,
+  accepted_by_employee_id TEXT,
+  accepted_by_employee_name TEXT,
+  accepted_at TIMESTAMPTZ,
+  approved_employee_id TEXT,
+  approved_employee_name TEXT,
+  resolved_at TIMESTAMPTZ,
+  is_read_by_recipient BOOLEAN DEFAULT false,
+  is_read_by_admin BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_shift_transfers_status ON shift_transfers(status);
+CREATE INDEX IF NOT EXISTS idx_shift_transfers_from ON shift_transfers(from_employee_id);
+CREATE INDEX IF NOT EXISTS idx_shift_transfers_to ON shift_transfers(to_employee_id);
+
 CREATE TABLE IF NOT EXISTS employee_registrations (
   id TEXT PRIMARY KEY,
   data JSONB NOT NULL,
