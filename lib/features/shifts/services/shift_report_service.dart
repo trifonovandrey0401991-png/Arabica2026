@@ -113,11 +113,13 @@ class ShiftReportService {
     String? employeeName,
     String? shopAddress,
     DateTime? date,
+    DateTime? since,
   }) => _base.getReports(
     queryParams: BaseReportService.buildQueryParams({
       'employeeName': employeeName,
       'shopAddress': shopAddress,
       'date': date?.toIso8601String().split('T')[0],
+      'since': since?.toUtc().toIso8601String(),
     }),
   );
 
@@ -128,11 +130,13 @@ class ShiftReportService {
     String? employeeName,
     String? shopAddress,
     DateTime? date,
+    DateTime? since,
   }) => _base.getReportsForCurrentUser(
     queryParams: BaseReportService.buildQueryParams({
       'employeeName': employeeName,
       'shopAddress': shopAddress,
       'date': date?.toIso8601String().split('T')[0],
+      'since': since?.toUtc().toIso8601String(),
     }),
   );
 

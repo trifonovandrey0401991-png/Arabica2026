@@ -27,6 +27,7 @@ import '../../coffee_machine/widgets/counter_region_selector.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../ai_training/services/ai_toggle_service.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница с вопросами пересчета
 class RecountQuestionsPage extends StatefulWidget {
@@ -48,6 +49,7 @@ class RecountQuestionsPage extends StatefulWidget {
 }
 
 class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
+  static const _cacheKey = 'recount_questions';
   static final Color _goldLight = Color(0xFFE8C860);
 
   List<RecountQuestion>? _selectedQuestions; // 30 выбранных вопросов
@@ -117,39 +119,48 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         }
       }
 
+      // Check cache first for questions catalog
+      final cached = CacheManager.get<List<RecountQuestion>>(_cacheKey);
+
       // Пытаемся найти магазин по адресу и загрузить с остатками из DBF
       List<RecountQuestion> allQuestions;
 
-      Logger.debug('📦 [RECOUNT] ========================================');
-      Logger.debug('📦 [RECOUNT] Начало загрузки, адрес: "${widget.shopAddress}"');
+      if (cached != null) {
+        allQuestions = cached;
+        Logger.debug('📦 [RECOUNT] Использован кэш: ${allQuestions.length} вопросов');
+      } else {
+        Logger.debug('📦 [RECOUNT] ========================================');
+        Logger.debug('📦 [RECOUNT] Начало загрузки, адрес: "${widget.shopAddress}"');
 
-      final shopId = await ShopService.findShopIdByAddress(widget.shopAddress);
-      Logger.debug('📦 [RECOUNT] Результат поиска shopId: $shopId');
+        final shopId = await ShopService.findShopIdByAddress(widget.shopAddress);
+        Logger.debug('📦 [RECOUNT] Результат поиска shopId: $shopId');
 
-      if (shopId != null) {
-        // Проверяем, есть ли синхронизированные товары для этого магазина
-        final hasProducts = await RecountQuestionService.hasShopProducts(shopId);
-        Logger.debug('📦 [RECOUNT] hasShopProducts($shopId) = $hasProducts');
+        if (shopId != null) {
+          // Проверяем, есть ли синхронизированные товары для этого магазина
+          final hasProducts = await RecountQuestionService.hasShopProducts(shopId);
+          Logger.debug('📦 [RECOUNT] hasShopProducts($shopId) = $hasProducts');
 
-        if (hasProducts) {
-          Logger.debug('📦 [RECOUNT] Загружаем товары из DBF каталога магазина...');
-          allQuestions = await RecountQuestionService.getQuestionsFromShopProducts(
-            shopId: shopId,
-            onlyWithStock: true,
-          );
+          if (hasProducts) {
+            Logger.debug('📦 [RECOUNT] Загружаем товары из DBF каталога магазина...');
+            allQuestions = await RecountQuestionService.getQuestionsFromShopProducts(
+              shopId: shopId,
+              onlyWithStock: true,
+            );
 
-          final withStock = allQuestions.where((q) => q.stock > 0).length;
-          Logger.debug('📦 [RECOUNT] Загружено из DBF: ${allQuestions.length} товаров, с остатком > 0: $withStock');
+            final withStock = allQuestions.where((q) => q.stock > 0).length;
+            Logger.debug('📦 [RECOUNT] Загружено из DBF: ${allQuestions.length} товаров, с остатком > 0: $withStock');
+          } else {
+            Logger.debug('📦 [RECOUNT] Нет синхронизированных товаров, загружаем из общего каталога');
+            allQuestions = await RecountQuestion.loadQuestions();
+          }
         } else {
-          Logger.debug('📦 [RECOUNT] Нет синхронизированных товаров, загружаем из общего каталога');
+          Logger.debug('📦 [RECOUNT] Магазин НЕ НАЙДЕН по адресу, загружаем из общего каталога');
           allQuestions = await RecountQuestion.loadQuestions();
         }
-      } else {
-        Logger.debug('📦 [RECOUNT] Магазин НЕ НАЙДЕН по адресу, загружаем из общего каталога');
-        allQuestions = await RecountQuestion.loadQuestions();
-      }
 
-      Logger.debug('📦 [RECOUNT] ========================================');
+        CacheManager.set(_cacheKey, allQuestions);
+        Logger.debug('📦 [RECOUNT] ========================================');
+      }
 
       // Выбираем вопросы по алгоритму с учетом настройки
       Logger.debug('📦 [RECOUNT] Вызов selectQuestions с totalCount=$questionsCount, всего вопросов: ${allQuestions.length}');

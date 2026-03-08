@@ -12,6 +12,7 @@ import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/delete_confirmation_dialog.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница управления вопросами пересменки
 class ShiftQuestionsManagementPage extends StatefulWidget {
@@ -22,6 +23,7 @@ class ShiftQuestionsManagementPage extends StatefulWidget {
 }
 
 class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementPage> {
+  static const _cacheKey = 'shift_questions_mgmt';
   List<ShiftQuestion> _questions = [];
   List<ShiftQuestion> _filteredQuestions = [];
   bool _isLoading = true;
@@ -73,12 +75,23 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
   }
 
   Future<void> _loadQuestions() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-    });
+    // Check cache first
+    final cached = CacheManager.get<List<ShiftQuestion>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _questions = cached;
+        _applyFilters();
+        _isLoading = false;
+      });
+    } else {
+      if (mounted) setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
       final questions = await ShiftQuestionService.getQuestions();
+      CacheManager.set(_cacheKey, questions);
       if (!mounted) return;
       setState(() {
         _questions = questions;

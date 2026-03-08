@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
+import '../../../core/utils/disk_cache.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../orders/pages/cart_page.dart';
 import '../../recipes/models/recipe_model.dart';
@@ -106,7 +107,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
   }
 
   Future<void> _loadMenu() async {
-    // Step 1: Show cached data instantly
+    // Step 1: Show memory-cached data instantly
     final cached = CacheManager.get<List<MenuItem>>(_cacheKey);
     if (cached != null && mounted) {
       setState(() {
@@ -114,6 +115,23 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
         _isLoading = false;
       });
       _animationController.forward();
+    }
+
+    // Step 1b: If no memory cache, try disk cache (survives app restart)
+    if (cached == null) {
+      final diskData = await DiskCache.read('menu_items');
+      if (diskData != null && diskData['items'] is List && mounted) {
+        final diskItems = (diskData['items'] as List)
+            .map((j) => MenuItem.fromJson(Map<String, dynamic>.from(j)))
+            .toList();
+        if (diskItems.isNotEmpty) {
+          setState(() {
+            _menuItems = diskItems;
+            _isLoading = false;
+          });
+          _animationController.forward();
+        }
+      }
     }
 
     // Step 2: Fetch fresh data from server
@@ -136,8 +154,11 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
         _isLoading = false;
       });
 
-      // Step 3: Save to cache
+      // Step 3: Save to memory cache + disk cache
       CacheManager.set(_cacheKey, items, duration: const Duration(minutes: 15));
+      DiskCache.write('menu_items', {
+        'items': items.map((i) => i.toJson()).toList(),
+      });
 
       if (cached == null) _animationController.forward();
     } catch (e) {

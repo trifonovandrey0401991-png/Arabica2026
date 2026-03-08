@@ -5,6 +5,7 @@ import '../services/shift_question_service.dart';
 import '../../shops/models/shop_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница сводного отчёта по пересменке (таблица вопросы x магазины)
 class ShiftSummaryReportPage extends StatefulWidget {
@@ -28,6 +29,7 @@ class ShiftSummaryReportPage extends StatefulWidget {
 }
 
 class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
+  static const _cacheKey = 'shift_summary';
   List<ShiftQuestion> _questions = [];
   bool _isLoading = true;
 
@@ -76,6 +78,17 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
   }
 
   Future<void> _loadData() async {
+    // Check cache first
+    final cached = CacheManager.get<List<ShiftQuestion>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _questions = cached.where((q) => q.isYesNo || q.isNumberOnly).toList();
+        _isLoading = false;
+      });
+    } else {
+      if (mounted) setState(() => _isLoading = true);
+    }
+
     try {
       // Загружаем вопросы
       final questions = await ShiftQuestionService.getQuestions();
@@ -94,6 +107,9 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
           _reportsByShop.putIfAbsent(key, () => report);
         }
       }
+
+      // Save to cache
+      CacheManager.set(_cacheKey, questions);
 
       if (!mounted) return;
       setState(() {

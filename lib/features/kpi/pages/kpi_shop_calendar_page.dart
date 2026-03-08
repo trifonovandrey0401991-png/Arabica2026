@@ -10,6 +10,7 @@ import 'kpi_shops_list_page.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/widgets/shop_icon.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/utils/cache_manager.dart';
 
 bool isSameDay(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
@@ -25,6 +26,7 @@ class KPIShopCalendarPage extends StatefulWidget {
 
 class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
     with SingleTickerProviderStateMixin {
+  static const _cacheKey = 'kpi_shops';
   late TabController _tabController;
 
   // Состояние для вкладки "Магазин" (календарь)
@@ -63,9 +65,19 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
   }
 
   Future<void> _loadShops() async {
+    // Check cache first
+    final cached = CacheManager.get<List<Shop>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _shops = cached;
+        _isLoading = false;
+      });
+    }
+
     try {
       if (mounted) setState(() => _isLoading = true);
       final shops = await ShopService.getShopsForCurrentUser();
+      CacheManager.set(_cacheKey, shops);
       if (mounted) {
         setState(() {
           _shops = shops;

@@ -10,6 +10,7 @@ import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_products_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Режимы отображения страницы
 enum _SearchMode {
@@ -26,6 +27,8 @@ class ProductSearchPage extends StatefulWidget {
 }
 
 class _ProductSearchPageState extends State<ProductSearchPage> {
+  static const _cacheKey = 'product_search';
+
   /// Таймаут для определения устаревших данных (5 минут)
   static final Duration _staleDataTimeout = Duration(minutes: 5);
 
@@ -62,7 +65,16 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
 
   /// Загрузить магазины и информацию о синхронизации
   Future<void> _loadData() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Check cache first
+    final cached = CacheManager.get<List<Shop>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _shops = cached;
+        _isLoading = false;
+      });
+    } else {
+      if (mounted) setState(() => _isLoading = true);
+    }
 
     try {
       // Загружаем параллельно
@@ -76,6 +88,7 @@ class _ProductSearchPageState extends State<ProductSearchPage> {
       final syncInfoList = results[1] as List<ShopSyncInfo>;
       final photos = results[2] as Map<String, String>;
 
+      CacheManager.set(_cacheKey, shops);
       if (!mounted) return;
       setState(() {
         _shops = shops;

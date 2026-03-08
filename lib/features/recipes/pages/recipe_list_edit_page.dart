@@ -6,6 +6,7 @@ import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 class RecipeListEditPage extends StatefulWidget {
   const RecipeListEditPage({super.key});
@@ -15,6 +16,7 @@ class RecipeListEditPage extends StatefulWidget {
 }
 
 class _RecipeListEditPageState extends State<RecipeListEditPage> {
+  static const _cacheKey = 'recipe_list_edit';
   static final _primaryColorLight = Color(0xFF00695C);
 
   List<Recipe> _recipes = [];
@@ -29,9 +31,20 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
   }
 
   Future<void> _loadRecipes() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Check cache first
+    final cached = CacheManager.get<List<Recipe>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _recipes = cached;
+        _isLoading = false;
+      });
+    } else {
+      if (mounted) setState(() => _isLoading = true);
+    }
+
     try {
       final recipes = await RecipeService.getRecipes();
+      CacheManager.set(_cacheKey, recipes);
       if (mounted) {
         setState(() {
           _recipes = recipes;

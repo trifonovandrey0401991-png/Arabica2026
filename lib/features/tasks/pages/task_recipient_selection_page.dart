@@ -4,6 +4,7 @@ import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Группа получателей
 enum RecipientGroup {
@@ -39,6 +40,7 @@ class TaskRecipientSelectionPage extends StatefulWidget {
 }
 
 class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage> {
+  static const _cacheKey = 'task_recipients';
   RecipientGroup _selectedGroup = RecipientGroup.all;
   List<Employee> _allEmployees = [];
   Set<String> _selectedIds = {};
@@ -60,10 +62,20 @@ class _TaskRecipientSelectionPageState extends State<TaskRecipientSelectionPage>
   }
 
   Future<void> _loadEmployees() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Check cache first
+    final cached = CacheManager.get<List<Employee>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _allEmployees = cached;
+        _isLoading = false;
+      });
+    } else {
+      if (mounted) setState(() => _isLoading = true);
+    }
 
     try {
       final employees = await EmployeeService.getEmployees();
+      CacheManager.set(_cacheKey, employees);
       if (!mounted) return;
       setState(() {
         // Показываем всех сотрудников

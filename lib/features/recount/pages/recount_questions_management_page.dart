@@ -7,6 +7,7 @@ import '../models/recount_question_model.dart';
 import '../services/recount_question_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница управления товарами пересчета
 class RecountQuestionsManagementPage extends StatefulWidget {
@@ -61,10 +62,19 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
     }
   }
 
+  static const _cacheKey = 'recount_questions_mgmt';
+
   Future<void> _loadProducts() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-    });
+    // Show cached data instantly
+    final cached = CacheManager.get<List<RecountQuestion>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _products = cached;
+        _isLoading = false;
+      });
+    } else {
+      if (mounted) setState(() => _isLoading = true);
+    }
 
     try {
       final products = await RecountQuestionService.getQuestions();
@@ -73,11 +83,10 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         _products = products;
         _isLoading = false;
       });
+      CacheManager.set(_cacheKey, products);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

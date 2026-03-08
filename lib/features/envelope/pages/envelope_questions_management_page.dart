@@ -8,6 +8,7 @@ import '../services/envelope_question_service.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница управления вопросами формирования конверта
 class EnvelopeQuestionsManagementPage extends StatefulWidget {
@@ -18,6 +19,7 @@ class EnvelopeQuestionsManagementPage extends StatefulWidget {
 }
 
 class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManagementPage> {
+  static const _cacheKey = 'envelope_questions_mgmt';
   List<EnvelopeQuestion> _questions = [];
   bool _isLoading = true;
 
@@ -28,10 +30,20 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
   }
 
   Future<void> _loadQuestions() async {
-    if (mounted) setState(() => _isLoading = true);
+    // Check cache first
+    final cached = CacheManager.get<List<EnvelopeQuestion>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _questions = cached;
+        _isLoading = false;
+      });
+    } else {
+      if (mounted) setState(() => _isLoading = true);
+    }
 
     try {
       final questions = await EnvelopeQuestionService.getQuestions();
+      CacheManager.set(_cacheKey, questions);
       if (!mounted) return;
       setState(() {
         _questions = questions;

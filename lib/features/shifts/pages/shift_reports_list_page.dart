@@ -155,7 +155,9 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         catch (e) { Logger.error('Ошибка загрузки магазинов', e); }
       }(),
       () async {
-        try { serverReports = await ShiftReportService.getReportsForCurrentUser(); }
+        try { serverReports = await ShiftReportService.getReportsForCurrentUser(
+          since: DateTime.now().subtract(const Duration(days: 31)),
+        ); }
         catch (e) { Logger.error('Ошибка загрузки отчетов с сервера', e); }
       }(),
       () async {

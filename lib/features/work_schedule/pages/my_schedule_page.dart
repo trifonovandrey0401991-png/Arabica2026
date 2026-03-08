@@ -12,6 +12,7 @@ import '../../kpi/services/kpi_service.dart';
 import '../../kpi/models/kpi_models.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница моего графика (для просмотра личного графика сотрудника)
 class MySchedulePage extends StatefulWidget {
@@ -22,6 +23,7 @@ class MySchedulePage extends StatefulWidget {
 }
 
 class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProviderStateMixin {
+  static const _cacheKey = 'my_schedule';
   late TabController _tabController;
   DateTime _selectedMonth = DateTime.now();
   WorkSchedule? _schedule;
@@ -158,10 +160,19 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     Logger.debug('Загрузка графика для сотрудника: $_employeeId');
     Logger.debug('Месяц: ${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}');
 
-    if (mounted) setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    // Check cache first
+    final cached = CacheManager.get<WorkSchedule>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _schedule = cached;
+        _isLoading = false;
+      });
+    } else {
+      if (mounted) setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
 
     try {
       final schedule = await WorkScheduleService.getEmployeeSchedule(
@@ -172,6 +183,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       Logger.info('График загружен: ${schedule.entries.length} записей');
       final shiftTimes = await WorkScheduleService.getShiftTimesForEntries(schedule.entries);
 
+      CacheManager.set(_cacheKey, schedule);
       if (mounted) {
         setState(() {
           _schedule = schedule;

@@ -12,6 +12,7 @@ import 'package:arabica_app/shared/widgets/app_cached_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/delete_confirmation_dialog.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница управления вопросами сдачи смены
 class ShiftHandoverQuestionsManagementPage extends StatefulWidget {
@@ -24,6 +25,8 @@ class ShiftHandoverQuestionsManagementPage extends StatefulWidget {
 class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQuestionsManagementPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+
+  static const _cacheKey = 'handover_questions_mgmt';
 
   // Вопросы сдачи смены
   List<ShiftHandoverQuestion> _questions = [];
@@ -82,12 +85,22 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
   }
 
   Future<void> _loadQuestions() async {
-    if (mounted) setState(() {
-      _isLoading = true;
-    });
+    // Check cache first
+    final cached = CacheManager.get<List<ShiftHandoverQuestion>>(_cacheKey);
+    if (cached != null && mounted) {
+      setState(() {
+        _questions = cached;
+        _isLoading = false;
+      });
+    } else {
+      if (mounted) setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
       final questions = await ShiftHandoverQuestionService.getQuestions();
+      CacheManager.set(_cacheKey, questions);
       if (!mounted) return;
       setState(() {
         _questions = questions;

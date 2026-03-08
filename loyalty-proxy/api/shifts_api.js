@@ -251,7 +251,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
   app.get('/api/shift-reports', requireEmployee, async (req, res) => {
     try {
-      const { employeeName, shopAddress, date, status, shiftType } = req.query;
+      const { employeeName, shopAddress, date, since, status, shiftType } = req.query;
 
       if (USE_DB_SHIFTS) {
         try {
@@ -280,6 +280,10 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
           if (shiftType) {
             conditions.push(`shift_type = $${paramIdx++}`);
             whereParams.push(shiftType);
+          }
+          if (since) {
+            conditions.push(`created_at >= $${paramIdx++}::timestamptz`);
+            whereParams.push(since);
           }
 
           const where = conditions.length > 0 ? conditions.join(' AND ') : undefined;
