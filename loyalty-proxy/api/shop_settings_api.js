@@ -10,7 +10,7 @@ const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_SHOP_SETTINGS === 'true';
 
@@ -18,7 +18,7 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 function setupShopSettingsAPI(app) {
   // Получить настройки магазина
-  app.get('/api/shop-settings/:shopAddress', requireAuth, async (req, res) => {
+  app.get('/api/shop-settings/:shopAddress', requireEmployee, async (req, res) => {
     try {
       const shopAddress = decodeURIComponent(req.params.shopAddress);
       console.log('GET /api/shop-settings:', shopAddress);
@@ -57,7 +57,7 @@ function setupShopSettingsAPI(app) {
   });
 
   // Сохранить настройки магазина
-  app.post('/api/shop-settings', requireAuth, async (req, res) => {
+  app.post('/api/shop-settings', requireEmployee, async (req, res) => {
     try {
       console.log('📝 POST /api/shop-settings');
       console.log('   Shop settings for:', req.body?.shopAddress || 'unknown');
@@ -174,7 +174,7 @@ function setupShopSettingsAPI(app) {
   });
 
   // Получить следующий номер документа для магазина
-  app.get('/api/shop-settings/:shopAddress/document-number', requireAuth, async (req, res) => {
+  app.get('/api/shop-settings/:shopAddress/document-number', requireEmployee, async (req, res) => {
     try {
       const shopAddress = decodeURIComponent(req.params.shopAddress);
       console.log('GET /api/shop-settings/:shopAddress/document-number:', shopAddress);
@@ -220,7 +220,7 @@ function setupShopSettingsAPI(app) {
   });
 
   // Обновить номер документа для магазина
-  app.post('/api/shop-settings/:shopAddress/document-number', requireAuth, async (req, res) => {
+  app.post('/api/shop-settings/:shopAddress/document-number', requireEmployee, async (req, res) => {
     try {
       const shopAddress = decodeURIComponent(req.params.shopAddress);
       const { documentNumber } = req.body;

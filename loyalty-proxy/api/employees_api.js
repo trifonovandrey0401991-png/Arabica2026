@@ -12,7 +12,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const dataCache = require('../utils/data_cache');
 const db = require('../utils/db');
 const { createDbPaginatedResponse } = require('../utils/pagination');
-const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { requireEmployee, requireAdmin } = require('../utils/session_middleware');
 
 const { loadShopManagers, saveShopManagers, normalizePhone: normPhone } = require('./shop_managers_api');
 
@@ -70,7 +70,7 @@ function parseBool(value) {
 function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse, invalidateCache } = {}) {
 
   // GET /api/employees - получить всех сотрудников
-  app.get('/api/employees', requireAuth, async (req, res) => {
+  app.get('/api/employees', requireEmployee, async (req, res) => {
     try {
       console.log('GET /api/employees');
       let employees;
@@ -152,7 +152,7 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
   });
 
   // GET /api/employees/:id - получить сотрудника по ID
-  app.get('/api/employees/:id', requireAuth, async (req, res) => {
+  app.get('/api/employees/:id', requireEmployee, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       console.log('GET /api/employees:', id);

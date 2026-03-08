@@ -130,6 +130,7 @@ class LoyaltyGamificationService {
       }
       return null;
     } catch (e) {
+      if (e is PendingPrizeException) rethrow;
       Logger.error('Ошибка прокрутки колеса', e);
       return null;
     }

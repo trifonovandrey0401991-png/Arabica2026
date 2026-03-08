@@ -11,7 +11,7 @@ const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const { compressUpload } = require('../utils/image_compress');
 const { generateId } = require('../utils/id_generator');
 
@@ -65,7 +65,7 @@ const uploadRecipePhoto = multer({
 function setupRecipesAPI(app) {
   // POST /api/recipes/upload-photo - загрузить фото рецепта
   // ВАЖНО: этот route должен быть ПЕРЕД /api/recipes/:id
-  app.post('/api/recipes/upload-photo', requireAuth, uploadRecipePhoto.single('photo'), compressUpload, async (req, res) => {
+  app.post('/api/recipes/upload-photo', requireEmployee, uploadRecipePhoto.single('photo'), compressUpload, async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ success: false, error: 'Файл не загружен' });
@@ -87,7 +87,7 @@ function setupRecipesAPI(app) {
   });
 
   // GET /api/recipes - получить все рецепты
-  app.get('/api/recipes', requireAuth, async (req, res) => {
+  app.get('/api/recipes', requireEmployee, async (req, res) => {
     try {
       console.log('GET /api/recipes');
 
@@ -136,7 +136,7 @@ function setupRecipesAPI(app) {
   });
 
   // GET /api/recipes/:id - получить рецепт по ID
-  app.get('/api/recipes/:id', requireAuth, async (req, res) => {
+  app.get('/api/recipes/:id', requireEmployee, async (req, res) => {
     try {
       const safeId = sanitizeId(req.params.id);
 
@@ -163,7 +163,7 @@ function setupRecipesAPI(app) {
   });
 
   // GET /api/recipes/photo/:recipeId - получить фото рецепта
-  app.get('/api/recipes/photo/:recipeId', requireAuth, async (req, res) => {
+  app.get('/api/recipes/photo/:recipeId', requireEmployee, async (req, res) => {
     try {
       const safeRecipeId = sanitizeId(req.params.recipeId);
       const photoPath = path.join(RECIPE_PHOTOS_DIR, `${safeRecipeId}.jpg`);
@@ -182,7 +182,7 @@ function setupRecipesAPI(app) {
   });
 
   // POST /api/recipes - создать новый рецепт
-  app.post('/api/recipes', requireAuth, async (req, res) => {
+  app.post('/api/recipes', requireEmployee, async (req, res) => {
     try {
       const { name, category, price, pointsPrice, ingredients, steps } = req.body;
       console.log('POST /api/recipes:', name);
@@ -220,7 +220,7 @@ function setupRecipesAPI(app) {
   });
 
   // PUT /api/recipes/:id - обновить рецепт
-  app.put('/api/recipes/:id', requireAuth, async (req, res) => {
+  app.put('/api/recipes/:id', requireEmployee, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       const updates = req.body;
@@ -260,7 +260,7 @@ function setupRecipesAPI(app) {
   });
 
   // DELETE /api/recipes/:id - удалить рецепт
-  app.delete('/api/recipes/:id', requireAuth, async (req, res) => {
+  app.delete('/api/recipes/:id', requireEmployee, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/recipes:', id);

@@ -10,7 +10,7 @@ const path = require('path');
 const { writeJsonFile } = require('../utils/async_fs');
 const { fileExists } = require('../utils/file_helpers');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_RECOUNT === 'true';
@@ -87,7 +87,7 @@ module.exports = function setupRecountPointsAPI(app) {
   // =====================================================
   // GET /api/recount-points - получить баллы всех сотрудников
   // =====================================================
-  app.get('/api/recount-points', requireAuth, async (req, res) => {
+  app.get('/api/recount-points', requireEmployee, async (req, res) => {
     try {
       console.log('📥 GET /api/recount-points');
 
@@ -130,7 +130,7 @@ module.exports = function setupRecountPointsAPI(app) {
   // =====================================================
   // GET /api/recount-points/:phone - получить баллы сотрудника
   // =====================================================
-  app.get('/api/recount-points/:phone', requireAuth, async (req, res) => {
+  app.get('/api/recount-points/:phone', requireEmployee, async (req, res) => {
     try {
       const { phone } = req.params;
       const normalizedPhone = phone.replace(/[^\d]/g, '');
@@ -175,7 +175,7 @@ module.exports = function setupRecountPointsAPI(app) {
   // =====================================================
   // PUT /api/recount-points/:phone - обновить баллы сотрудника
   // =====================================================
-  app.put('/api/recount-points/:phone', requireAuth, async (req, res) => {
+  app.put('/api/recount-points/:phone', requireEmployee, async (req, res) => {
     try {
       const { phone } = req.params;
       const { points, adminName, employeeName, reason } = req.body;
@@ -245,7 +245,7 @@ module.exports = function setupRecountPointsAPI(app) {
   // =====================================================
   // POST /api/recount-points/init - инициализировать баллы всем
   // =====================================================
-  app.post('/api/recount-points/init', requireAuth, async (req, res) => {
+  app.post('/api/recount-points/init', requireEmployee, async (req, res) => {
     try {
       console.log('📤 POST /api/recount-points/init');
 
@@ -303,7 +303,7 @@ module.exports = function setupRecountPointsAPI(app) {
   // =====================================================
   // GET /api/recount-settings - получить общие настройки
   // =====================================================
-  app.get('/api/recount-settings', requireAuth, async (req, res) => {
+  app.get('/api/recount-settings', requireEmployee, async (req, res) => {
     try {
       console.log('📥 GET /api/recount-settings');
 
@@ -373,13 +373,13 @@ module.exports = function setupRecountPointsAPI(app) {
   };
 
   // Регистрируем PUT и POST handlers
-  app.put('/api/recount-settings', requireAuth, updateRecountSettings);
-  app.post('/api/recount-settings', requireAuth, updateRecountSettings);
+  app.put('/api/recount-settings', requireEmployee, updateRecountSettings);
+  app.post('/api/recount-settings', requireEmployee, updateRecountSettings);
 
   // =====================================================
   // PATCH /api/recount-reports/:id/verify-photo - верифицировать фото
   // =====================================================
-  app.patch('/api/recount-reports/:id/verify-photo', requireAuth, async (req, res) => {
+  app.patch('/api/recount-reports/:id/verify-photo', requireEmployee, async (req, res) => {
     try {
       const { id } = req.params;
       const { photoIndex, status, adminName, employeePhone } = req.body;

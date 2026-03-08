@@ -9,7 +9,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const https = require('https');
 const { fileExists } = require('../utils/file_helpers');
-const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { requireEmployee, requireAdmin } = require('../utils/session_middleware');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
 
 const cigaretteVision = require('../modules/cigarette-vision');
@@ -142,7 +142,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ ТОВАРЫ ============
 
   // Получить товары с информацией об обучении
-  app.get('/api/cigarette-vision/products', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/products', requireEmployee, async (req, res) => {
     try {
       const { productGroup, shopAddress, search, sort, filter } = req.query;
 
@@ -209,7 +209,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить группы товаров
-  app.get('/api/cigarette-vision/products/groups', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/products/groups', requireEmployee, async (req, res) => {
     try {
       await loadRecountQuestions();
       const groups = cigaretteVision.getProductGroups(recountQuestionsCache);
@@ -223,7 +223,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ СТАТИСТИКА ============
 
   // Получить статистику обучения
-  app.get('/api/cigarette-vision/stats', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/stats', requireEmployee, async (req, res) => {
     try {
       await loadRecountQuestions();
       const stats = await cigaretteVision.getTrainingStats(recountQuestionsCache);
@@ -237,7 +237,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ ОБРАЗЦЫ ДЛЯ ОБУЧЕНИЯ ============
 
   // Загрузить образец для обучения (с аннотациями bounding boxes)
-  app.post('/api/cigarette-vision/samples', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/samples', requireEmployee, async (req, res) => {
     try {
       const {
         imageBase64,
@@ -288,7 +288,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить образцы для товара
-  app.get('/api/cigarette-vision/samples', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/samples', requireEmployee, async (req, res) => {
     try {
       const { productId } = req.query;
 
@@ -343,7 +343,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ ДЕТЕКЦИЯ (ML) ============
 
   // Детекция и подсчёт пачек
-  app.post('/api/cigarette-vision/detect', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/detect', requireEmployee, async (req, res) => {
     try {
       const { imageBase64, productId } = req.body;
 
@@ -364,7 +364,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Проверка выкладки
-  app.post('/api/cigarette-vision/display-check', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/display-check', requireEmployee, async (req, res) => {
     try {
       const { imageBase64, shopAddress, productId } = req.body;
 
@@ -397,7 +397,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ СТАТУС МОДЕЛИ ============
 
   // Получить статус модели YOLO
-  app.get('/api/cigarette-vision/model-status', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/model-status', requireEmployee, async (req, res) => {
     try {
       const status = await cigaretteVision.getModelStatus();
       res.json({ success: true, ...status });
@@ -455,7 +455,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // E1: Версия датасета
-  app.get('/api/cigarette-vision/dataset-version', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/dataset-version', requireEmployee, async (req, res) => {
     try {
       const version = await cigaretteVision.getDatasetVersion();
       res.json({ success: true, ...version });
@@ -466,7 +466,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // E2: Отчёт о точности ИИ по всем товарам
-  app.get('/api/cigarette-vision/accuracy-report', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/accuracy-report', requireEmployee, async (req, res) => {
     try {
       const report = await cigaretteVision.getAccuracyReport();
       res.json({ success: true, ...report });
@@ -479,7 +479,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ НАСТРОЙКИ ============
 
   // Получить настройки
-  app.get('/api/cigarette-vision/settings', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/settings', requireEmployee, async (req, res) => {
     try {
       const settings = await cigaretteVision.getSettings();
       res.json({ success: true, settings });
@@ -490,7 +490,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Обновить настройки
-  app.put('/api/cigarette-vision/settings', requireAuth, async (req, res) => {
+  app.put('/api/cigarette-vision/settings', requireEmployee, async (req, res) => {
     try {
       const {
         requiredRecountPhotos,
@@ -557,7 +557,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ POSITIVE SAMPLES API ============
 
   // Получить статистику positive samples
-  app.get('/api/cigarette-vision/positive-samples/stats', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/positive-samples/stats', requireEmployee, async (req, res) => {
     try {
       const stats = await cigaretteVision.getPositiveSamplesStats();
       res.json({ success: true, ...stats });
@@ -568,7 +568,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Ручной запуск очистки старых positive samples (для админа)
-  app.post('/api/cigarette-vision/positive-samples/cleanup', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/positive-samples/cleanup', requireEmployee, async (req, res) => {
     try {
       const result = await cigaretteVision.cleanupOldPositiveSamples();
       res.json({ success: true, ...result });
@@ -581,7 +581,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ ВСЕ ОБРАЗЦЫ (для админки) ============
 
   // Получить все образцы с фильтрацией
-  app.get('/api/cigarette-vision/samples/all', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/samples/all', requireEmployee, async (req, res) => {
     try {
       const { productId, type, limit, offset } = req.query;
       let samples = await cigaretteVision.loadSamples();
@@ -624,7 +624,7 @@ async function setupCigaretteVisionAPI(app) {
   // Детекция и подсчёт с сохранением в counting датасет
   // Используется для пересчёта товаров
   // ВАЖНО: Сохраняет ВСЕ фото для товаров с isAiActive=true (для обучения)
-  app.post('/api/cigarette-vision/count-with-training', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/count-with-training', requireEmployee, async (req, res) => {
     try {
       const { imageBase64, productId, productName, shopAddress, isAiActive, employeeAnswer, selectedRegion } = req.body;
 
@@ -683,7 +683,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ COUNTING SAMPLES API ============
 
   // Получить фото пересчёта для товара
-  app.get('/api/cigarette-vision/counting-samples/:productId', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/counting-samples/:productId', requireEmployee, async (req, res) => {
     try {
       const { productId } = req.params;
       const samples = await cigaretteVision.getCountingSamplesForProduct(productId);
@@ -708,7 +708,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Отдача изображений counting
-  app.get('/api/cigarette-vision/counting-images/:fileName', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/counting-images/:fileName', requireEmployee, async (req, res) => {
     try {
       const paths = cigaretteVision.getTrainingPaths(cigaretteVision.TRAINING_TYPES.COUNTING);
       const imagePath = path.join(paths.imagesDir, sanitizeFileName(req.params.fileName));
@@ -728,7 +728,7 @@ async function setupCigaretteVisionAPI(app) {
 
   // Отправить фото из отчёта пересчёта в counting-pending (по решению админа)
   // Фото уже на сервере — читаем по photoUrl, не передаём base64 с телефона
-  app.post('/api/cigarette-vision/submit-report-photo-for-training', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/submit-report-photo-for-training', requireEmployee, async (req, res) => {
     try {
       const { photoUrl, productId, productName, shopAddress, employeeAnswer, selectedRegion } = req.body;
 
@@ -775,7 +775,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ COUNTING PENDING API (ожидающие подтверждения) ============
 
   // Получить все pending фото (для админа)
-  app.get('/api/cigarette-vision/counting-pending', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/counting-pending', requireEmployee, async (req, res) => {
     try {
       console.log('[Counting Pending] GET all pending, user:', req.user?.name || req.user?.phone || 'unknown');
       const samples = await cigaretteVision.getAllPendingCountingSamples();
@@ -788,7 +788,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить pending фото для товара
-  app.get('/api/cigarette-vision/counting-pending/product/:productId', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/counting-pending/product/:productId', requireEmployee, async (req, res) => {
     try {
       const { productId } = req.params;
       const samples = await cigaretteVision.getPendingCountingSamplesForProduct(productId);
@@ -800,7 +800,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Добавить/обновить рамки (bounding boxes) к pending фото — сотрудник обвёл на телефоне
-  app.patch('/api/cigarette-vision/counting-pending/:sampleId/boxes', requireAuth, async (req, res) => {
+  app.patch('/api/cigarette-vision/counting-pending/:sampleId/boxes', requireEmployee, async (req, res) => {
     try {
       const { sampleId } = req.params;
       const { boundingBoxes } = req.body;
@@ -816,7 +816,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Подтвердить pending фото (переместить в training)
-  app.post('/api/cigarette-vision/counting-pending/:sampleId/approve', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/counting-pending/:sampleId/approve', requireEmployee, async (req, res) => {
     try {
       const { sampleId } = req.params;
       const result = await cigaretteVision.approveCountingPendingSample(sampleId);
@@ -843,7 +843,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Отдача изображений pending
-  app.get('/api/cigarette-vision/counting-pending-images/:fileName', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/counting-pending-images/:fileName', requireEmployee, async (req, res) => {
     try {
       const paths = cigaretteVision.getCountingPendingPaths();
       const imagePath = path.join(paths.imagesDir, sanitizeFileName(req.params.fileName));
@@ -862,7 +862,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ СТАТИСТИКА РАЗДЕЛЬНЫХ ДАТАСЕТОВ ============
 
   // Получить статистику датасета display (пересменка)
-  app.get('/api/cigarette-vision/typed-stats/display', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/typed-stats/display', requireEmployee, async (req, res) => {
     try {
       const stats = await cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.DISPLAY);
       res.json({ success: true, ...stats });
@@ -873,7 +873,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить статистику датасета counting (пересчёт)
-  app.get('/api/cigarette-vision/typed-stats/counting', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/typed-stats/counting', requireEmployee, async (req, res) => {
     try {
       const stats = await cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.COUNTING);
       res.json({ success: true, ...stats });
@@ -884,7 +884,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить объединённую статистику обоих датасетов
-  app.get('/api/cigarette-vision/typed-stats', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/typed-stats', requireEmployee, async (req, res) => {
     try {
       const displayStats = await cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.DISPLAY);
       const countingStats = await cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.COUNTING);
@@ -909,7 +909,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Очистка раздельных датасетов
-  app.post('/api/cigarette-vision/typed-cleanup/:type', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/typed-cleanup/:type', requireEmployee, async (req, res) => {
     try {
       const { type } = req.params;
       const { maxAgeDays } = req.body;
@@ -1019,7 +1019,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ СИСТЕМА ОБРАТНОЙ СВЯЗИ И АВТООТКЛЮЧЕНИЯ ИИ ============
 
   // Сообщить об ошибке ИИ
-  app.post('/api/cigarette-vision/report-error', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/report-error', requireEmployee, async (req, res) => {
     try {
       const {
         productId,
@@ -1053,7 +1053,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить статус ИИ для товара
-  app.get('/api/cigarette-vision/product-ai-status/:productId', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/product-ai-status/:productId', requireEmployee, async (req, res) => {
     try {
       const { productId } = req.params;
       const status = await cigaretteVision.getProductAiStatus(productId);
@@ -1065,7 +1065,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Проверить отключен ли ИИ для товара (быстрая проверка)
-  app.get('/api/cigarette-vision/is-ai-disabled/:productId', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/is-ai-disabled/:productId', requireEmployee, async (req, res) => {
     try {
       const { productId } = req.params;
       const isDisabled = await cigaretteVision.isProductAiDisabled(productId);
@@ -1076,7 +1076,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Сбросить счётчик ошибок и включить ИИ (админ)
-  app.post('/api/cigarette-vision/reset-product-ai/:productId', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/reset-product-ai/:productId', requireEmployee, async (req, res) => {
     try {
       const { productId } = req.params;
       const result = await cigaretteVision.resetProductAiErrors(productId);
@@ -1088,7 +1088,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Решение админа по ошибке ИИ (подтвердить или отклонить)
-  app.post('/api/cigarette-vision/admin-ai-decision', requireAuth, async (req, res) => {
+  app.post('/api/cigarette-vision/admin-ai-decision', requireEmployee, async (req, res) => {
     try {
       const {
         productId,
@@ -1135,7 +1135,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить список всех проблемных товаров
-  app.get('/api/cigarette-vision/problematic-products', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/problematic-products', requireEmployee, async (req, res) => {
     try {
       const products = await cigaretteVision.getProblematicProducts();
       res.json({ success: true, products, count: products.length });
@@ -1146,7 +1146,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Получить проблемные фото для товара
-  app.get('/api/cigarette-vision/problem-samples/:productId', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/problem-samples/:productId', requireEmployee, async (req, res) => {
     try {
       const { productId } = req.params;
       const result = await cigaretteVision.getProblemSamples(productId);
@@ -1158,7 +1158,7 @@ async function setupCigaretteVisionAPI(app) {
   });
 
   // Отдача проблемных фото (для просмотра)
-  app.get('/api/cigarette-vision/problem-samples/:productId/:fileName', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/problem-samples/:productId/:fileName', requireEmployee, async (req, res) => {
     try {
       const { productId, fileName } = req.params;
       const filePath = path.join(cigaretteVision.PROBLEM_SAMPLES_DIR, sanitizeFileName(productId), sanitizeFileName(fileName));
@@ -1176,7 +1176,7 @@ async function setupCigaretteVisionAPI(app) {
   // ============ EMBEDDING CATALOG (1000+ products) ============
 
   // Get embedding catalog stats
-  app.get('/api/cigarette-vision/embedding-catalog/stats', requireAuth, async (req, res) => {
+  app.get('/api/cigarette-vision/embedding-catalog/stats', requireEmployee, async (req, res) => {
     try {
       if (!yoloWrapper || !yoloWrapper.getCatalogStats) {
         return res.json({ loaded: false, productCount: 0, totalEmbeddings: 0, error: 'YOLO wrapper not available' });

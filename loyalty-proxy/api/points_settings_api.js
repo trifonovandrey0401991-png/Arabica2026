@@ -10,7 +10,7 @@ const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { invalidatePointsSettings } = require('../utils/data_cache');
-const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { requireEmployee, requireAdmin } = require('../utils/session_middleware');
 const db = require('../utils/db');
 
 // Round to 1 decimal place to avoid float errors (e.g. -4.3999999999999995 → -4.4)
@@ -322,7 +322,7 @@ function calculateShiftHandoverPoints(rating, settings) {
 
 function setupPointsSettingsAPI(app) {
   // GET /api/points-settings/test - Get test points settings
-  app.get('/api/points-settings/test', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/test', requireEmployee, async (req, res) => {
     try {
       await ensureDir();
 
@@ -407,7 +407,7 @@ function setupPointsSettingsAPI(app) {
   });
 
   // GET /api/points-settings/test/calculate - Calculate points for a score
-  app.get('/api/points-settings/test/calculate', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/test/calculate', requireEmployee, async (req, res) => {
     try {
       const score = parseInt(req.query.score) || 0;
 
@@ -440,7 +440,7 @@ function setupPointsSettingsAPI(app) {
   // ===== ATTENDANCE POINTS SETTINGS =====
 
   // GET /api/points-settings/attendance - Get attendance points settings
-  app.get('/api/points-settings/attendance', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/attendance', requireEmployee, async (req, res) => {
     try {
       await ensureDir();
 
@@ -531,7 +531,7 @@ function setupPointsSettingsAPI(app) {
   // ===== SHIFT POINTS SETTINGS (Пересменка) =====
 
   // GET /api/points-settings/shift - Get shift points settings
-  app.get('/api/points-settings/shift', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/shift', requireEmployee, async (req, res) => {
     try {
       await ensureDir();
 
@@ -629,7 +629,7 @@ function setupPointsSettingsAPI(app) {
   });
 
   // GET /api/points-settings/shift/calculate - Calculate points for a rating
-  app.get('/api/points-settings/shift/calculate', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/shift/calculate', requireEmployee, async (req, res) => {
     try {
       const rating = parseInt(req.query.rating) || 1;
 
@@ -662,7 +662,7 @@ function setupPointsSettingsAPI(app) {
   // ===== RECOUNT POINTS SETTINGS (Пересчет) =====
 
   // GET /api/points-settings/recount - Get recount points settings
-  app.get('/api/points-settings/recount', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/recount', requireEmployee, async (req, res) => {
     try {
       await ensureDir();
 
@@ -760,7 +760,7 @@ function setupPointsSettingsAPI(app) {
   });
 
   // GET /api/points-settings/recount/calculate - Calculate points for a rating
-  app.get('/api/points-settings/recount/calculate', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/recount/calculate', requireEmployee, async (req, res) => {
     try {
       const rating = parseInt(req.query.rating) || 1;
 
@@ -793,7 +793,7 @@ function setupPointsSettingsAPI(app) {
   // ===== RKO POINTS SETTINGS (РКО) =====
 
   // GET /api/points-settings/rko - Get RKO points settings
-  app.get('/api/points-settings/rko', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/rko', requireEmployee, async (req, res) => {
     try {
       await ensureDir();
 
@@ -888,7 +888,7 @@ function setupPointsSettingsAPI(app) {
   // ===== SHIFT HANDOVER POINTS SETTINGS (Сдать смену) =====
 
   // GET /api/points-settings/shift-handover - Get shift handover points settings
-  app.get('/api/points-settings/shift-handover', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/shift-handover', requireEmployee, async (req, res) => {
     try {
       await ensureDir();
 
@@ -986,7 +986,7 @@ function setupPointsSettingsAPI(app) {
   });
 
   // GET /api/points-settings/shift-handover/calculate - Calculate points for a rating
-  app.get('/api/points-settings/shift-handover/calculate', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/shift-handover/calculate', requireEmployee, async (req, res) => {
     try {
       const rating = parseInt(req.query.rating) || 1;
 
@@ -1019,7 +1019,7 @@ function setupPointsSettingsAPI(app) {
   // ===== REVIEWS POINTS SETTINGS (Отзывы) =====
 
   // GET /api/points-settings/reviews - Get reviews points settings
-  app.get('/api/points-settings/reviews', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/reviews', requireEmployee, async (req, res) => {
     try {
       await ensureDir();
 
@@ -1098,7 +1098,7 @@ function setupPointsSettingsAPI(app) {
   // ===== PRODUCT SEARCH POINTS SETTINGS (Поиск товара) =====
 
   // GET /api/points-settings/product-search - Get product search points settings
-  app.get('/api/points-settings/product-search', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/product-search', requireEmployee, async (req, res) => {
     try {
       await ensureDir();
 
@@ -1185,7 +1185,7 @@ function setupPointsSettingsAPI(app) {
   // ===== ORDERS POINTS SETTINGS (Заказы клиентов) =====
 
   // GET /api/points-settings/orders - Get orders points settings
-  app.get('/api/points-settings/orders', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/orders', requireEmployee, async (req, res) => {
     try {
       await ensureDir();
 
@@ -1264,7 +1264,7 @@ function setupPointsSettingsAPI(app) {
   // ===== ENVELOPE POINTS SETTINGS (Конверт) =====
 
   // GET /api/points-settings/envelope - Get envelope points settings
-  app.get('/api/points-settings/envelope', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/envelope', requireEmployee, async (req, res) => {
     try {
       await ensureDir();
 
@@ -1362,7 +1362,7 @@ function setupPointsSettingsAPI(app) {
   // ===== COFFEE MACHINE POINTS SETTINGS (Счётчик кофемашин) =====
 
   // GET /api/points-settings/coffee-machine - Get coffee machine points settings
-  app.get('/api/points-settings/coffee-machine', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/coffee-machine', requireEmployee, async (req, res) => {
     try {
       await ensureDir();
 
@@ -1436,7 +1436,7 @@ function setupPointsSettingsAPI(app) {
 
   // GET /api/points-settings/manager - Get manager points settings
   // With migration from old format (subordinateQuality/reviewPercentage -> confirmed/rejected)
-  app.get('/api/points-settings/manager', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/manager', requireEmployee, async (req, res) => {
     try {
       await ensureDir();
 

@@ -9,7 +9,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const db = require('../utils/db');
 const USE_DB_ORDERS = process.env.USE_DB_ORDERS === 'true';
 const USE_DB_TASKS = process.env.USE_DB_TASKS === 'true';
@@ -125,7 +125,7 @@ function setupDashboardBatchAPI(app) {
    * GET /api/dashboard/counters?phone={phone}&employeeId={id}
    * Возвращает все счётчики для бейджей главного меню одним запросом
    */
-  app.get('/api/dashboard/counters', requireAuth, async (req, res) => {
+  app.get('/api/dashboard/counters', requireEmployee, async (req, res) => {
     try {
       const { phone, employeeId, employeeName } = req.query;
       console.log(`📊 GET /api/dashboard/counters phone=${maskPhone(phone)}`);

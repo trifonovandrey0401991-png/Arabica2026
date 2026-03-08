@@ -11,7 +11,7 @@ const { sanitizeId, fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
-const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { requireEmployee, requireAdmin } = require('../utils/session_middleware');
 const { getMoscowTime } = require('../utils/moscow_time');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -89,7 +89,7 @@ function getPreviousMonth() {
 
 function setupBonusPenaltiesAPI(app, { sendPushToPhone } = {}) {
   // GET /api/bonus-penalties - получить премии/штрафы за месяц
-  app.get('/api/bonus-penalties', requireAuth, async (req, res) => {
+  app.get('/api/bonus-penalties', requireEmployee, async (req, res) => {
     try {
       const month = req.query.month || getCurrentMonth();
       const employeeId = req.query.employeeId;
@@ -348,7 +348,7 @@ function setupBonusPenaltiesAPI(app, { sendPushToPhone } = {}) {
   });
 
   // GET /api/bonus-penalties/summary/:employeeId - получить сводку для сотрудника
-  app.get('/api/bonus-penalties/summary/:employeeId', requireAuth, async (req, res) => {
+  app.get('/api/bonus-penalties/summary/:employeeId', requireEmployee, async (req, res) => {
     try {
       const { employeeId } = req.params;
 

@@ -11,7 +11,7 @@ const visionModule = require('../modules/z-report-vision');
 const intelligenceModule = require('../modules/z-report-intelligence');
 const { sanitizeId } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 
 // Директория для изображений шаблонов
 const TEMPLATE_IMAGES_DIR = path.join(__dirname, '../data/template-images');
@@ -29,7 +29,7 @@ async function setupZReportAPI(app) {
   // ============ ШАБЛОНЫ ============
 
   // Получить все шаблоны
-  app.get('/api/z-report/templates', requireAuth, async (req, res) => {
+  app.get('/api/z-report/templates', requireEmployee, async (req, res) => {
     try {
       const { shopId } = req.query;
       const templates = await templatesModule.getTemplates(shopId);
@@ -44,7 +44,7 @@ async function setupZReportAPI(app) {
   });
 
   // Найти шаблон для магазина (MUST be before /:id to avoid shadowing)
-  app.get('/api/z-report/templates/find', requireAuth, async (req, res) => {
+  app.get('/api/z-report/templates/find', requireEmployee, async (req, res) => {
     try {
       const { shopId } = req.query;
       const template = await templatesModule.findTemplateForShop(shopId);
@@ -56,7 +56,7 @@ async function setupZReportAPI(app) {
   });
 
   // Получить шаблон по ID
-  app.get('/api/z-report/templates/:id', requireAuth, async (req, res) => {
+  app.get('/api/z-report/templates/:id', requireEmployee, async (req, res) => {
     try {
       const template = await templatesModule.getTemplate(req.params.id);
       if (template) {
@@ -71,7 +71,7 @@ async function setupZReportAPI(app) {
   });
 
   // Сохранить шаблон
-  app.post('/api/z-report/templates', requireAuth, async (req, res) => {
+  app.post('/api/z-report/templates', requireEmployee, async (req, res) => {
     try {
       const { template, sampleImage, regionSetImages } = req.body;
 
@@ -95,7 +95,7 @@ async function setupZReportAPI(app) {
   });
 
   // Удалить шаблон
-  app.delete('/api/z-report/templates/:id', requireAuth, async (req, res) => {
+  app.delete('/api/z-report/templates/:id', requireEmployee, async (req, res) => {
     try {
       await templatesModule.deleteTemplate(req.params.id);
 
@@ -110,7 +110,7 @@ async function setupZReportAPI(app) {
   });
 
   // Обновить статистику шаблона
-  app.post('/api/z-report/templates/:id/stats', requireAuth, async (req, res) => {
+  app.post('/api/z-report/templates/:id/stats', requireEmployee, async (req, res) => {
     try {
       const { wasSuccessful } = req.body;
       await templatesModule.updateTemplateStats(req.params.id, wasSuccessful);
@@ -124,7 +124,7 @@ async function setupZReportAPI(app) {
   // ============ ИЗОБРАЖЕНИЯ ШАБЛОНОВ ============
 
   // Получить основное изображение шаблона
-  app.get('/api/z-report/templates/:id/image', requireAuth, async (req, res) => {
+  app.get('/api/z-report/templates/:id/image', requireEmployee, async (req, res) => {
     try {
       const imagePath = path.join(TEMPLATE_IMAGES_DIR, `${sanitizeId(req.params.id)}.jpg`);
       try {
@@ -142,7 +142,7 @@ async function setupZReportAPI(app) {
   // ============ ИЗОБРАЖЕНИЯ ФОРМАТОВ (REGION SETS) ============
 
   // Сохранить изображение для формата
-  app.post('/api/z-report/templates/:templateId/region-sets/:setId/image', requireAuth, async (req, res) => {
+  app.post('/api/z-report/templates/:templateId/region-sets/:setId/image', requireEmployee, async (req, res) => {
     try {
       const { templateId, setId } = req.params;
       const { imageBase64 } = req.body;
@@ -160,7 +160,7 @@ async function setupZReportAPI(app) {
   });
 
   // Получить изображение формата
-  app.get('/api/z-report/templates/:templateId/region-sets/:setId/image', requireAuth, async (req, res) => {
+  app.get('/api/z-report/templates/:templateId/region-sets/:setId/image', requireEmployee, async (req, res) => {
     try {
       const templateId = sanitizeId(req.params.templateId);
       const setId = sanitizeId(req.params.setId);
@@ -186,7 +186,7 @@ async function setupZReportAPI(app) {
   });
 
   // Удалить изображение формата
-  app.delete('/api/z-report/templates/:templateId/region-sets/:setId/image', requireAuth, async (req, res) => {
+  app.delete('/api/z-report/templates/:templateId/region-sets/:setId/image', requireEmployee, async (req, res) => {
     try {
       const templateId = sanitizeId(req.params.templateId);
       const setId = sanitizeId(req.params.setId);
@@ -208,7 +208,7 @@ async function setupZReportAPI(app) {
   // ============ РАСПОЗНАВАНИЕ ============
 
   // Распознать Z-отчёт
-  app.post('/api/z-report/parse', requireAuth, async (req, res) => {
+  app.post('/api/z-report/parse', requireEmployee, async (req, res) => {
     try {
       const { imageBase64, shopAddress, explicitRegions } = req.body;
 
@@ -255,7 +255,7 @@ async function setupZReportAPI(app) {
   });
 
   // Распознать с использованием шаблона
-  app.post('/api/z-report/parse-with-template', requireAuth, async (req, res) => {
+  app.post('/api/z-report/parse-with-template', requireEmployee, async (req, res) => {
     try {
       const { imageBase64, templateId } = req.body;
 
@@ -285,7 +285,7 @@ async function setupZReportAPI(app) {
   // ============ ОБУЧЕНИЕ ============
 
   // Сохранить образец для обучения
-  app.post('/api/z-report/training-samples', requireAuth, async (req, res) => {
+  app.post('/api/z-report/training-samples', requireEmployee, async (req, res) => {
     try {
       const { imageBase64, rawText, correctData, recognizedData, shopId, templateId, fieldRegions } = req.body;
 
@@ -322,7 +322,7 @@ async function setupZReportAPI(app) {
   });
 
   // Получить статистику обучения
-  app.get('/api/z-report/training-stats', requireAuth, async (req, res) => {
+  app.get('/api/z-report/training-stats', requireEmployee, async (req, res) => {
     try {
       const stats = await templatesModule.getTrainingStats();
       res.json({ success: true, ...stats });
@@ -333,7 +333,7 @@ async function setupZReportAPI(app) {
   });
 
   // Получить список образцов (без изображений)
-  app.get('/api/z-report/training-samples', requireAuth, async (req, res) => {
+  app.get('/api/z-report/training-samples', requireEmployee, async (req, res) => {
     try {
       const { shopId } = req.query;
       const samples = await templatesModule.getTrainingSamplesList(shopId || null);
@@ -345,7 +345,7 @@ async function setupZReportAPI(app) {
   });
 
   // Получить изображение образца
-  app.get('/api/z-report/training-samples/:id/image', requireAuth, async (req, res) => {
+  app.get('/api/z-report/training-samples/:id/image', requireEmployee, async (req, res) => {
     try {
       const imagePath = templatesModule.getTrainingSampleImagePath(sanitizeId(req.params.id));
       try {
@@ -361,7 +361,7 @@ async function setupZReportAPI(app) {
   });
 
   // Удалить образец
-  app.delete('/api/z-report/training-samples/:id', requireAuth, async (req, res) => {
+  app.delete('/api/z-report/training-samples/:id', requireEmployee, async (req, res) => {
     try {
       const deleted = await templatesModule.deleteTrainingSample(sanitizeId(req.params.id));
 
@@ -384,7 +384,7 @@ async function setupZReportAPI(app) {
   // ============ INTELLIGENCE ============
 
   // Получить ожидаемые диапазоны для магазина
-  app.get('/api/z-report/intelligence', requireAuth, async (req, res) => {
+  app.get('/api/z-report/intelligence', requireEmployee, async (req, res) => {
     try {
       const { shopAddress } = req.query;
       const intelligence = await intelligenceModule.loadZReportIntelligence();
@@ -414,7 +414,7 @@ async function setupZReportAPI(app) {
   });
 
   // Статистика точности по всем магазинам
-  app.get('/api/z-report/intelligence/stats', requireAuth, async (req, res) => {
+  app.get('/api/z-report/intelligence/stats', requireEmployee, async (req, res) => {
     try {
       const intelligence = await intelligenceModule.loadZReportIntelligence();
       const profiles = intelligence?.shopProfiles || {};
@@ -463,7 +463,7 @@ async function setupZReportAPI(app) {
   });
 
   // Принудительно перестроить intelligence
-  app.post('/api/z-report/intelligence/rebuild', requireAuth, async (req, res) => {
+  app.post('/api/z-report/intelligence/rebuild', requireEmployee, async (req, res) => {
     try {
       const data = await intelligenceModule.buildZReportIntelligence();
       const shopCount = data?.shopProfiles ? Object.keys(data.shopProfiles).length : 0;

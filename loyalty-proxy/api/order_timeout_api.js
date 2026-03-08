@@ -13,7 +13,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { dbOrderToCamel } = require('../modules/orders');
 const { dbInsertPenalties } = require('./efficiency_penalties_api');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 
 // Директории
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -326,7 +326,7 @@ async function checkExpiredOrders() {
 // Настройка API и scheduler
 function setupOrderTimeoutAPI(app) {
   // GET /api/points-settings/orders - получить настройки
-  app.get('/api/points-settings/orders', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/orders', requireEmployee, async (req, res) => {
     try {
       console.log('GET /api/points-settings/orders');
       const settings = await getOrderSettings();
@@ -337,7 +337,7 @@ function setupOrderTimeoutAPI(app) {
   });
 
   // PUT /api/points-settings/orders - обновить настройки
-  app.put('/api/points-settings/orders', requireAuth, async (req, res) => {
+  app.put('/api/points-settings/orders', requireEmployee, async (req, res) => {
     try {
       console.log('PUT /api/points-settings/orders');
       const { timeoutMinutes, missedOrderPenalty } = req.body;

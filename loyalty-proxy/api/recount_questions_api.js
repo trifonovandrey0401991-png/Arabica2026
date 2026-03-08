@@ -11,7 +11,7 @@ const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
-const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { requireEmployee, requireAdmin } = require('../utils/session_middleware');
 const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_RECOUNT_QUESTIONS === 'true';
@@ -28,7 +28,7 @@ const RECOUNT_QUESTIONS_DIR = `${DATA_DIR}/recount-questions`;
 
 function setupRecountQuestionsAPI(app, { upload } = {}) {
   // Получить все вопросы пересчета
-  app.get('/api/recount-questions', requireAuth, async (req, res) => {
+  app.get('/api/recount-questions', requireEmployee, async (req, res) => {
     try {
       console.log('GET /api/recount-questions:', req.query);
 
@@ -79,7 +79,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
   });
 
   // Создать вопрос пересчета
-  app.post('/api/recount-questions', requireAuth, async (req, res) => {
+  app.post('/api/recount-questions', requireEmployee, async (req, res) => {
     try {
       console.log('POST /api/recount-questions:', JSON.stringify(req.body).substring(0, 200));
 
@@ -120,7 +120,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
   });
 
   // Обновить вопрос пересчета
-  app.put('/api/recount-questions/:questionId', requireAuth, async (req, res) => {
+  app.put('/api/recount-questions/:questionId', requireEmployee, async (req, res) => {
     try {
       const { questionId } = req.params;
       const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -169,7 +169,7 @@ function setupRecountQuestionsAPI(app, { upload } = {}) {
 
   // Загрузить эталонное фото для вопроса пересчета
   if (upload) {
-    app.post('/api/recount-questions/:questionId/reference-photo', requireAuth, upload.single('photo'), async (req, res) => {
+    app.post('/api/recount-questions/:questionId/reference-photo', requireEmployee, upload.single('photo'), async (req, res) => {
       try {
         const { questionId } = req.params;
         const { shopAddress } = req.body;

@@ -13,7 +13,7 @@ const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { invalidateShiftHandoverQuestions } = require('../utils/data_cache');
 const { compressUpload } = require('../utils/image_compress');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const { generateId } = require('../utils/id_generator');
 const db = require('../utils/db');
 
@@ -37,7 +37,7 @@ function dbRowToQuestion(row) {
 
 function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) {
   // GET all questions
-  app.get('/api/shift-handover-questions', requireAuth, async (req, res) => {
+  app.get('/api/shift-handover-questions', requireEmployee, async (req, res) => {
     try {
       console.log('GET /api/shift-handover-questions:', req.query);
 
@@ -74,7 +74,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
   });
 
   // GET one question by ID
-  app.get('/api/shift-handover-questions/:questionId', requireAuth, async (req, res) => {
+  app.get('/api/shift-handover-questions/:questionId', requireEmployee, async (req, res) => {
     try {
       const { questionId } = req.params;
       const sanitizedId = sanitizeId(questionId);
@@ -102,7 +102,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
   });
 
   // POST create question
-  app.post('/api/shift-handover-questions', requireAuth, async (req, res) => {
+  app.post('/api/shift-handover-questions', requireEmployee, async (req, res) => {
     try {
       console.log('POST /api/shift-handover-questions:', JSON.stringify(req.body).substring(0, 200));
 
@@ -138,7 +138,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
   });
 
   // PUT update question
-  app.put('/api/shift-handover-questions/:questionId', requireAuth, async (req, res) => {
+  app.put('/api/shift-handover-questions/:questionId', requireEmployee, async (req, res) => {
     try {
       const { questionId } = req.params;
       const sanitizedId = sanitizeId(questionId);
@@ -185,7 +185,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
 
   // Upload reference photo
   if (uploadShiftHandoverPhoto) {
-    app.post('/api/shift-handover-questions/:questionId/reference-photo', requireAuth, uploadShiftHandoverPhoto.single('photo'), compressUpload, async (req, res) => {
+    app.post('/api/shift-handover-questions/:questionId/reference-photo', requireEmployee, uploadShiftHandoverPhoto.single('photo'), compressUpload, async (req, res) => {
       try {
         const { questionId } = req.params;
         const { shopAddress } = req.body;
@@ -239,7 +239,7 @@ function setupShiftHandoverQuestionsAPI(app, { uploadShiftHandoverPhoto } = {}) 
   }
 
   // DELETE question
-  app.delete('/api/shift-handover-questions/:questionId', requireAuth, async (req, res) => {
+  app.delete('/api/shift-handover-questions/:questionId', requireEmployee, async (req, res) => {
     try {
       const { questionId } = req.params;
       const sanitizedId = sanitizeId(questionId);

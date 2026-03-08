@@ -386,7 +386,7 @@ function cleanupStaleConnections() {
  * Оповестить о новом сообщении в чате
  * Вызывается из REST API при отправке сообщения
  */
-function notifyNewMessage(chatId, message, excludePhone = null) {
+function notifyNewMessage(chatId, message, excludePhone = null, recipientPhones = null) {
   const notification = {
     type: 'new_message',
     chatId,
@@ -394,10 +394,23 @@ function notifyNewMessage(chatId, message, excludePhone = null) {
     timestamp: new Date().toISOString()
   };
 
-  for (const [phone, sockets] of connections.entries()) {
-    if (phone !== excludePhone) {
-      for (const socket of sockets) {
-        sendToSocket(socket, notification);
+  // If recipientPhones provided, only send to those participants
+  if (recipientPhones && recipientPhones.length > 0) {
+    const normalizedRecipients = new Set(recipientPhones.map(p => (p || '').replace(/[^\d]/g, '')));
+    for (const [phone, sockets] of connections.entries()) {
+      if (phone !== excludePhone && normalizedRecipients.has(phone)) {
+        for (const socket of sockets) {
+          sendToSocket(socket, notification);
+        }
+      }
+    }
+  } else {
+    // Fallback: broadcast to all (backward compatibility)
+    for (const [phone, sockets] of connections.entries()) {
+      if (phone !== excludePhone) {
+        for (const socket of sockets) {
+          sendToSocket(socket, notification);
+        }
       }
     }
   }
@@ -406,79 +419,77 @@ function notifyNewMessage(chatId, message, excludePhone = null) {
 }
 
 /**
+ * Helper: send notification only to specified participants (or all if not provided)
+ */
+function sendToParticipants(notification, recipientPhones) {
+  if (recipientPhones && recipientPhones.length > 0) {
+    const normalized = new Set(recipientPhones.map(p => (p || '').replace(/[^\d]/g, '')));
+    for (const [phone, sockets] of connections.entries()) {
+      if (normalized.has(phone)) {
+        for (const socket of sockets) {
+          sendToSocket(socket, notification);
+        }
+      }
+    }
+  } else {
+    for (const sockets of connections.values()) {
+      for (const socket of sockets) {
+        sendToSocket(socket, notification);
+      }
+    }
+  }
+}
+
+/**
  * Оповестить об удалении сообщения
  */
-function notifyMessageDeleted(chatId, messageId) {
-  const notification = {
+function notifyMessageDeleted(chatId, messageId, recipientPhones = null) {
+  sendToParticipants({
     type: 'message_deleted',
     chatId,
     messageId,
     timestamp: new Date().toISOString()
-  };
-
-  for (const sockets of connections.values()) {
-    for (const socket of sockets) {
-      sendToSocket(socket, notification);
-    }
-  }
+  }, recipientPhones);
 }
 
 /**
  * Оповестить об очистке чата
  */
-function notifyChatCleared(chatId, deletedCount) {
-  const notification = {
+function notifyChatCleared(chatId, deletedCount, recipientPhones = null) {
+  sendToParticipants({
     type: 'chat_cleared',
     chatId,
     deletedCount,
     timestamp: new Date().toISOString()
-  };
-
-  for (const sockets of connections.values()) {
-    for (const socket of sockets) {
-      sendToSocket(socket, notification);
-    }
-  }
+  }, recipientPhones);
 }
 
 /**
  * Оповестить о добавлении реакции
  */
-function notifyReactionAdded(chatId, messageId, reaction, phone) {
-  const notification = {
+function notifyReactionAdded(chatId, messageId, reaction, phone, recipientPhones = null) {
+  sendToParticipants({
     type: 'reaction_added',
     chatId,
     messageId,
     reaction,
     phone,
     timestamp: new Date().toISOString()
-  };
-
-  for (const sockets of connections.values()) {
-    for (const socket of sockets) {
-      sendToSocket(socket, notification);
-    }
-  }
+  }, recipientPhones);
 }
 
 /**
  * Оповестить об удалении реакции
  */
-function notifyReactionRemoved(chatId, messageId, reaction, phone) {
-  const notification = {
+function notifyReactionRemoved(chatId, messageId, reaction, phone, recipientPhones = null) {
+  sendToParticipants({
     type: 'reaction_removed',
     chatId,
     messageId,
     reaction,
     phone,
     timestamp: new Date().toISOString()
-  };
-
-  for (const sockets of connections.values()) {
-    for (const socket of sockets) {
-      sendToSocket(socket, notification);
-    }
-  }
+  }, recipientPhones);
 }
 
 /**

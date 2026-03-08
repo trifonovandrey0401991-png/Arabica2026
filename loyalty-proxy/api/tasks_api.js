@@ -13,7 +13,7 @@ const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const { notifyEmployeeCounter } = require('./counters_websocket');
 const { getMoscowTime } = require('../utils/moscow_time');
 
@@ -517,7 +517,7 @@ function setupTasksAPI(app) {
   // ===== TASKS =====
 
   // POST /api/tasks - Create a task
-  app.post('/api/tasks', requireAuth, async (req, res) => {
+  app.post('/api/tasks', requireEmployee, async (req, res) => {
     try {
       const task = req.body;
       console.log('POST /api/tasks:', task.title);
@@ -609,7 +609,7 @@ function setupTasksAPI(app) {
   });
 
   // GET /api/tasks - Get all tasks
-  app.get('/api/tasks', requireAuth, async (req, res) => {
+  app.get('/api/tasks', requireEmployee, async (req, res) => {
     try {
       const { month, createdBy } = req.query;
       console.log('GET /api/tasks', { month, createdBy });
@@ -661,7 +661,7 @@ function setupTasksAPI(app) {
   });
 
   // GET /api/tasks/:id - Get a single task with its assignments
-  app.get('/api/tasks/:id', requireAuth, async (req, res) => {
+  app.get('/api/tasks/:id', requireEmployee, async (req, res) => {
     try {
       const { id } = req.params;
       console.log('GET /api/tasks/:id', id);
@@ -686,7 +686,7 @@ function setupTasksAPI(app) {
   // ===== TASK ASSIGNMENTS =====
 
   // GET /api/task-assignments - Get assignments (filtered)
-  app.get('/api/task-assignments', requireAuth, async (req, res) => {
+  app.get('/api/task-assignments', requireEmployee, async (req, res) => {
     try {
       const { assigneeId, status, month, taskId } = req.query;
       console.log('GET /api/task-assignments', { assigneeId, status, month, taskId });
@@ -736,7 +736,7 @@ function setupTasksAPI(app) {
   });
 
   // POST /api/task-assignments/:id/respond - Respond to a task
-  app.post('/api/task-assignments/:id/respond', requireAuth, async (req, res) => {
+  app.post('/api/task-assignments/:id/respond', requireEmployee, async (req, res) => {
     try {
       const { id } = req.params;
       const { responseText, responsePhotos } = req.body;
@@ -796,7 +796,7 @@ function setupTasksAPI(app) {
   });
 
   // POST /api/task-assignments/:id/decline - Decline a task
-  app.post('/api/task-assignments/:id/decline', requireAuth, async (req, res) => {
+  app.post('/api/task-assignments/:id/decline', requireEmployee, async (req, res) => {
     try {
       const { id } = req.params;
       const { reason } = req.body;
@@ -819,8 +819,9 @@ function setupTasksAPI(app) {
             });
           }
 
+          const now = getMoscowTime();
           assignment.status = 'declined';
-          assignment.declinedAt = new Date().toISOString();
+          assignment.declinedAt = now.toISOString();
           assignment.declineReason = reason || null;
 
           await saveMonthAssignments(monthKey, data);
@@ -828,6 +829,31 @@ function setupTasksAPI(app) {
           // Get task info
           const tasks = await getAllTasks();
           const task = tasks.find(t => t.id === assignment.taskId);
+          const taskTitle = task ? task.title : 'Неизвестная задача';
+
+          // Create penalty for declining
+          const config = await getTaskPointsConfig();
+          const penaltyPoints = config.regularTasks ? config.regularTasks.penaltyPoints : -3;
+          const penalty = {
+            id: `task_declined_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            employeeName: assignment.assigneeName,
+            category: 'regular_task_penalty',
+            categoryName: 'Отклонённая задача',
+            points: penaltyPoints,
+            reason: `Задача "${taskTitle}" отклонена сотрудником${reason ? ': ' + reason : ''}`,
+            date: now.toISOString().split('T')[0],
+            createdAt: now.toISOString(),
+            taskId: assignment.taskId,
+            assignmentId: assignment.id
+          };
+          await savePenalty(penalty);
+
+          // Push notification to admins
+          await sendPushNotification(
+            'Задача отклонена',
+            `${assignment.assigneeName} отклонил задачу "${taskTitle}"`,
+            { type: 'task_declined_admin', assignmentId: assignment.id, taskId: assignment.taskId }
+          );
 
           return res.json({
             success: true,
@@ -844,7 +870,7 @@ function setupTasksAPI(app) {
   });
 
   // POST /api/task-assignments/:id/review - Review a task (admin)
-  app.post('/api/task-assignments/:id/review', requireAuth, async (req, res) => {
+  app.post('/api/task-assignments/:id/review', requireEmployee, async (req, res) => {
     try {
       const { id } = req.params;
       const { approved, reviewedBy, reviewComment } = req.body;
@@ -867,9 +893,10 @@ function setupTasksAPI(app) {
             });
           }
 
+          const now = getMoscowTime();
           assignment.status = approved ? 'approved' : 'rejected';
           assignment.reviewedBy = reviewedBy || 'admin';
-          assignment.reviewedAt = new Date().toISOString();
+          assignment.reviewedAt = now.toISOString();
           assignment.reviewComment = reviewComment || null;
 
           await saveMonthAssignments(monthKey, data);
@@ -877,6 +904,37 @@ function setupTasksAPI(app) {
           // Get task info
           const tasks = await getAllTasks();
           const task = tasks.find(t => t.id === assignment.taskId);
+          const taskTitle = task ? task.title : 'Неизвестная задача';
+
+          // If rejected — apply penalty and notify employee
+          if (!approved) {
+            const config = await getTaskPointsConfig();
+            const penaltyPoints = config.regularTasks ? config.regularTasks.penaltyPoints : -3;
+            const penalty = {
+              id: `task_rejected_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              employeeName: assignment.assigneeName,
+              category: 'regular_task_penalty',
+              categoryName: 'Задача отклонена администратором',
+              points: penaltyPoints,
+              reason: `Ответ на задачу "${taskTitle}" отклонён${reviewComment ? ': ' + reviewComment : ''}`,
+              date: now.toISOString().split('T')[0],
+              createdAt: now.toISOString(),
+              taskId: assignment.taskId,
+              assignmentId: assignment.id
+            };
+            await savePenalty(penalty);
+
+            // Push notification to employee
+            const employeePhone = await getEmployeePhoneById(assignment.assigneeId);
+            if (employeePhone) {
+              await sendPushToPhone(
+                employeePhone,
+                'Задача отклонена',
+                `Ваш ответ на задачу "${taskTitle}" отклонён. Начислен штраф ${penaltyPoints} баллов.`,
+                { type: 'task_rejected', assignmentId: assignment.id, taskId: assignment.taskId }
+              );
+            }
+          }
 
           return res.json({
             success: true,
@@ -893,7 +951,7 @@ function setupTasksAPI(app) {
   });
 
   // GET /api/task-assignments/stats - Get statistics for reports
-  app.get('/api/task-assignments/stats', requireAuth, async (req, res) => {
+  app.get('/api/task-assignments/stats', requireEmployee, async (req, res) => {
     try {
       const { month } = req.query;
       console.log('GET /api/task-assignments/stats', { month });
@@ -927,7 +985,7 @@ function setupTasksAPI(app) {
   });
 
   // GET /api/task-assignments/unviewed-expired-count - Count unviewed expired tasks
-  app.get('/api/task-assignments/unviewed-expired-count', requireAuth, async (req, res) => {
+  app.get('/api/task-assignments/unviewed-expired-count', requireEmployee, async (req, res) => {
     try {
       console.log('GET /api/task-assignments/unviewed-expired-count');
 
@@ -949,7 +1007,7 @@ function setupTasksAPI(app) {
   });
 
   // POST /api/task-assignments/mark-expired-viewed - Mark all expired tasks as viewed
-  app.post('/api/task-assignments/mark-expired-viewed', requireAuth, async (req, res) => {
+  app.post('/api/task-assignments/mark-expired-viewed', requireEmployee, async (req, res) => {
     try {
       console.log('POST /api/task-assignments/mark-expired-viewed');
 

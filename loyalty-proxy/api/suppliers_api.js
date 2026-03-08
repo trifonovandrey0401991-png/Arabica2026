@@ -8,10 +8,10 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
-const { writeJsonFile } = require('../utils/async_fs');
+const { writeJsonFile, ensureDir } = require('../utils/async_fs');
 const db = require('../utils/db');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SUPPLIERS_DIR = `${DATA_DIR}/suppliers`;
@@ -19,7 +19,7 @@ const USE_DB = process.env.USE_DB_SUPPLIERS === 'true';
 
 function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
   // GET /api/suppliers - получить всех поставщиков
-  app.get('/api/suppliers', requireAuth, async (req, res) => {
+  app.get('/api/suppliers', requireEmployee, async (req, res) => {
     try {
       console.log('GET /api/suppliers');
       let suppliers;
@@ -73,7 +73,7 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
   });
 
   // GET /api/suppliers/:id - получить поставщика по ID
-  app.get('/api/suppliers/:id', requireAuth, async (req, res) => {
+  app.get('/api/suppliers/:id', requireEmployee, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       console.log('GET /api/suppliers:', id);
@@ -101,7 +101,7 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
   });
 
   // POST /api/suppliers - создать нового поставщика
-  app.post('/api/suppliers', requireAuth, async (req, res) => {
+  app.post('/api/suppliers', requireEmployee, async (req, res) => {
     try {
       console.log('POST /api/suppliers:', JSON.stringify(req.body).substring(0, 200));
 
@@ -143,6 +143,12 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
           updated_at: now
         });
         supplier = dbSupplierToCamel(row);
+
+        // Dual-write: JSON backup
+        try {
+          await ensureDir(SUPPLIERS_DIR);
+          await writeJsonFile(path.join(SUPPLIERS_DIR, `${id}.json`), supplier);
+        } catch (e) { console.error('Supplier JSON backup write error:', e.message); }
       } else {
         supplier = {
           id,
@@ -172,7 +178,7 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
   });
 
   // PUT /api/suppliers/:id - обновить поставщика
-  app.put('/api/suppliers/:id', requireAuth, async (req, res) => {
+  app.put('/api/suppliers/:id', requireEmployee, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       console.log('PUT /api/suppliers:', id);
@@ -210,6 +216,12 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
           updated_at: new Date().toISOString()
         });
         supplier = dbSupplierToCamel(row);
+
+        // Dual-write: JSON backup
+        try {
+          await ensureDir(SUPPLIERS_DIR);
+          await writeJsonFile(path.join(SUPPLIERS_DIR, `${id}.json`), supplier);
+        } catch (e) { console.error('Supplier JSON backup update error:', e.message); }
       } else {
         const supplierFile = path.join(SUPPLIERS_DIR, `${id}.json`);
         if (!await fileExists(supplierFile)) {
@@ -248,7 +260,7 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
   });
 
   // DELETE /api/suppliers/:id - удалить поставщика
-  app.delete('/api/suppliers/:id', requireAuth, async (req, res) => {
+  app.delete('/api/suppliers/:id', requireEmployee, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/suppliers:', id);
@@ -256,6 +268,12 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
       if (USE_DB) {
         const deleted = await db.deleteById('suppliers', id);
         if (!deleted) return res.status(404).json({ success: false, error: 'Поставщик не найден' });
+
+        // Dual-write: remove JSON backup
+        try {
+          const supplierFile = path.join(SUPPLIERS_DIR, `${id}.json`);
+          if (await fileExists(supplierFile)) await fsp.unlink(supplierFile);
+        } catch (e) { console.error('Supplier JSON backup delete error:', e.message); }
       } else {
         const supplierFile = path.join(SUPPLIERS_DIR, `${id}.json`);
         if (!await fileExists(supplierFile)) {

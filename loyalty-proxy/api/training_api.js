@@ -13,7 +13,7 @@ const { sanitizeId, isPathSafe, fileExists } = require('../utils/file_helpers');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_TRAINING === 'true';
@@ -67,7 +67,7 @@ const uploadTrainingArticleMedia = multer({
 
 function setupTrainingAPI(app) {
   // GET /api/training-articles
-  app.get('/api/training-articles', requireAuth, async (req, res) => {
+  app.get('/api/training-articles', requireEmployee, async (req, res) => {
     try {
       if (USE_DB) {
         if (isPaginationRequested(req.query)) {
@@ -107,7 +107,7 @@ function setupTrainingAPI(app) {
   });
 
   // POST /api/training-articles
-  app.post('/api/training-articles', requireAuth, async (req, res) => {
+  app.post('/api/training-articles', requireEmployee, async (req, res) => {
     try {
       const article = {
         id: generateId('training_article'),
@@ -141,7 +141,7 @@ function setupTrainingAPI(app) {
   });
 
   // PUT /api/training-articles/:id
-  app.put('/api/training-articles/:id', requireAuth, async (req, res) => {
+  app.put('/api/training-articles/:id', requireEmployee, async (req, res) => {
     try {
       const safeId = sanitizeId(req.params.id);
       const articleFile = path.join(TRAINING_ARTICLES_DIR, `${safeId}.json`);
@@ -177,7 +177,7 @@ function setupTrainingAPI(app) {
   });
 
   // DELETE /api/training-articles/:id
-  app.delete('/api/training-articles/:id', requireAuth, async (req, res) => {
+  app.delete('/api/training-articles/:id', requireEmployee, async (req, res) => {
     try {
       const safeId = sanitizeId(req.params.id);
       const articleFile = path.join(TRAINING_ARTICLES_DIR, `${safeId}.json`);
@@ -202,7 +202,7 @@ function setupTrainingAPI(app) {
   });
 
   // Загрузка изображения для статьи обучения
-  app.post('/api/training-articles/upload-image', requireAuth, uploadTrainingArticleMedia.single('image'), (req, res) => {
+  app.post('/api/training-articles/upload-image', requireEmployee, uploadTrainingArticleMedia.single('image'), (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ success: false, error: 'Файл не загружен' });
@@ -223,7 +223,7 @@ function setupTrainingAPI(app) {
   });
 
   // Удаление изображения статьи обучения
-  app.delete('/api/training-articles/delete-image/:filename', requireAuth, async (req, res) => {
+  app.delete('/api/training-articles/delete-image/:filename', requireEmployee, async (req, res) => {
     try {
       const filename = path.basename(req.params.filename);
       const filePath = path.join(TRAINING_ARTICLES_MEDIA_DIR, filename);

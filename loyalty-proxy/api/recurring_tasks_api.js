@@ -13,7 +13,7 @@ const { sendPushToPhone, sendPushNotification } = require('./report_notification
 const { dbInsertPenalties } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_RECURRING_TASKS === 'true';
 
@@ -607,7 +607,7 @@ function setupRecurringTasksAPI(app) {
   console.log('Setting up Recurring Tasks API...');
 
   // GET /api/recurring-tasks - Список всех шаблонов
-  app.get('/api/recurring-tasks', requireAuth, async (req, res) => {
+  app.get('/api/recurring-tasks', requireEmployee, async (req, res) => {
     try {
       const templates = await loadTemplates();
       if (isPaginationRequested(req.query)) {
@@ -621,7 +621,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // GET /api/recurring-tasks/instances/list - Список экземпляров
-  app.get('/api/recurring-tasks/instances/list', requireAuth, async (req, res) => {
+  app.get('/api/recurring-tasks/instances/list', requireEmployee, async (req, res) => {
     try {
       const { assigneeId, assigneePhone, date, status, yearMonth } = req.query;
 
@@ -701,7 +701,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks/instances/:id/complete - Выполнить задачу
-  app.post('/api/recurring-tasks/instances/:id/complete', requireAuth, async (req, res) => {
+  app.post('/api/recurring-tasks/instances/:id/complete', requireEmployee, async (req, res) => {
     try {
       const { responseText, responsePhotos } = req.body;
       const instanceId = req.params.id;
@@ -759,7 +759,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // GET /api/recurring-tasks/:id - Шаблон по ID (должен быть после instances/list!)
-  app.get('/api/recurring-tasks/:id', requireAuth, async (req, res) => {
+  app.get('/api/recurring-tasks/:id', requireEmployee, async (req, res) => {
     try {
       const templates = await loadTemplates();
       const task = templates.find(t => t.id === req.params.id);
@@ -774,7 +774,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks - Создать шаблон
-  app.post('/api/recurring-tasks', requireAuth, async (req, res) => {
+  app.post('/api/recurring-tasks', requireEmployee, async (req, res) => {
     try {
       const {
         title,
@@ -840,7 +840,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // PUT /api/recurring-tasks/:id - Обновить шаблон
-  app.put('/api/recurring-tasks/:id', requireAuth, async (req, res) => {
+  app.put('/api/recurring-tasks/:id', requireEmployee, async (req, res) => {
     try {
       const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
@@ -890,7 +890,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // PUT /api/recurring-tasks/:id/toggle-pause - Пауза/возобновить
-  app.put('/api/recurring-tasks/:id/toggle-pause', requireAuth, async (req, res) => {
+  app.put('/api/recurring-tasks/:id/toggle-pause', requireEmployee, async (req, res) => {
     try {
       const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
@@ -912,7 +912,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // DELETE /api/recurring-tasks/:id - Удалить шаблон
-  app.delete('/api/recurring-tasks/:id', requireAuth, async (req, res) => {
+  app.delete('/api/recurring-tasks/:id', requireEmployee, async (req, res) => {
     try {
       const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
@@ -942,7 +942,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks/generate-daily - Ручная генерация (для тестирования)
-  app.post('/api/recurring-tasks/generate-daily', requireAuth, async (req, res) => {
+  app.post('/api/recurring-tasks/generate-daily', requireEmployee, async (req, res) => {
     try {
       const date = req.body.date || getToday();
       const count = await generateDailyTasks(date);
@@ -954,7 +954,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks/check-expired - Ручная проверка expired
-  app.post('/api/recurring-tasks/check-expired', requireAuth, async (req, res) => {
+  app.post('/api/recurring-tasks/check-expired', requireEmployee, async (req, res) => {
     try {
       const count = await checkExpiredTasks();
       res.json({ success: true, expiredCount: count });
@@ -965,7 +965,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks/send-reminders - Ручная отправка напоминаний (для тестирования)
-  app.post('/api/recurring-tasks/send-reminders', requireAuth, async (req, res) => {
+  app.post('/api/recurring-tasks/send-reminders', requireEmployee, async (req, res) => {
     try {
       const count = await sendScheduledReminders();
       res.json({ success: true, sentCount: count, currentTime: getCurrentTime() });

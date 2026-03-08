@@ -5,7 +5,7 @@ const { isAdminPhoneAsync } = require('../utils/admin_cache');
 const { maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const { getMoscowTime } = require('../utils/moscow_time');
 
 const USE_DB = process.env.USE_DB_EMPLOYEE_CHATS === 'true';
@@ -381,7 +381,7 @@ function randomString(length) {
 
 function setupEmployeeChatAPI(app) {
   // ===== GET ALL CHATS FOR USER =====
-  app.get('/api/employee-chats', requireAuth, async (req, res) => {
+  app.get('/api/employee-chats', requireEmployee, async (req, res) => {
     try {
       const { phone } = req.query;
       const isAdminUser = await isAdminPhoneAsync(phone);
@@ -589,7 +589,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== GET MESSAGES FOR CHAT =====
-  app.get('/api/employee-chats/:chatId/messages', requireAuth, async (req, res) => {
+  app.get('/api/employee-chats/:chatId/messages', requireEmployee, async (req, res) => {
     try {
       const { chatId } = req.params;
       const { phone, limit = 50, before } = req.query;
@@ -656,7 +656,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== SEND MESSAGE =====
-  app.post('/api/employee-chats/:chatId/messages', requireAuth, async (req, res) => {
+  app.post('/api/employee-chats/:chatId/messages', requireEmployee, async (req, res) => {
     try {
       const { chatId } = req.params;
       const { senderPhone, senderName, text, imageUrl } = req.body;
@@ -726,9 +726,9 @@ function setupEmployeeChatAPI(app) {
         }).catch(e => console.error('Push error:', e.message));
       }
 
-      // WebSocket: мгновенное уведомление о новом сообщении
+      // WebSocket: мгновенное уведомление о новом сообщении (only to chat participants)
       if (wsNotify) {
-        wsNotify.notifyNewMessage(chatId, message, senderPhone);
+        wsNotify.notifyNewMessage(chatId, message, senderPhone, recipients);
       }
 
       res.json({ success: true, message });
@@ -739,7 +739,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== MARK CHAT AS READ =====
-  app.post('/api/employee-chats/:chatId/read', requireAuth, async (req, res) => {
+  app.post('/api/employee-chats/:chatId/read', requireEmployee, async (req, res) => {
     try {
       const { chatId } = req.params;
       const { phone } = req.body;
@@ -788,7 +788,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== CREATE/GET PRIVATE CHAT =====
-  app.post('/api/employee-chats/private', requireAuth, async (req, res) => {
+  app.post('/api/employee-chats/private', requireEmployee, async (req, res) => {
     try {
       const { phone1, phone2 } = req.body;
       console.log('POST /api/employee-chats/private:', maskPhone(phone1), maskPhone(phone2));
@@ -829,7 +829,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== CREATE/GET SHOP CHAT =====
-  app.post('/api/employee-chats/shop', requireAuth, async (req, res) => {
+  app.post('/api/employee-chats/shop', requireEmployee, async (req, res) => {
     try {
       const { shopAddress, phone } = req.body;
       console.log('POST /api/employee-chats/shop:', shopAddress, 'phone:', maskPhone(phone));
@@ -873,7 +873,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== GET SHOP CHAT MEMBERS =====
-  app.get('/api/employee-chats/shop/:shopAddress/members', requireAuth, async (req, res) => {
+  app.get('/api/employee-chats/shop/:shopAddress/members', requireEmployee, async (req, res) => {
     try {
       const { shopAddress } = req.params;
       console.log('GET /api/employee-chats/shop/:shopAddress/members:', shopAddress);
@@ -905,7 +905,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== ADD MEMBERS TO SHOP CHAT =====
-  app.post('/api/employee-chats/shop/:shopAddress/members', requireAuth, async (req, res) => {
+  app.post('/api/employee-chats/shop/:shopAddress/members', requireEmployee, async (req, res) => {
     try {
       const { shopAddress } = req.params;
       const { phones } = req.body;
@@ -950,7 +950,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== REMOVE MEMBER FROM SHOP CHAT (admin only) =====
-  app.delete('/api/employee-chats/shop/:shopAddress/members/:phone', requireAuth, async (req, res) => {
+  app.delete('/api/employee-chats/shop/:shopAddress/members/:phone', requireEmployee, async (req, res) => {
     try {
       const { shopAddress, phone } = req.params;
       const { requesterPhone } = req.query;
@@ -987,7 +987,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== CLEAR CHAT MESSAGES (admin only) =====
-  app.post('/api/employee-chats/:chatId/clear', requireAuth, async (req, res) => {
+  app.post('/api/employee-chats/:chatId/clear', requireEmployee, async (req, res) => {
     try {
       const { chatId } = req.params;
       const { mode, requesterPhone } = req.body; // "previous_month" | "all"
@@ -1043,9 +1043,10 @@ function setupEmployeeChatAPI(app) {
         }
       }
 
-      // WebSocket: уведомление об очистке чата
+      // WebSocket: уведомление об очистке чата (only to chat participants)
       if (wsNotify && deletedCount > 0) {
-        wsNotify.notifyChatCleared(chatId, deletedCount);
+        const participants = await getChatParticipants(chat);
+        wsNotify.notifyChatCleared(chatId, deletedCount, participants);
       }
 
       res.json({ success: true, deletedCount });
@@ -1056,7 +1057,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== DELETE MESSAGE (admin only) =====
-  app.delete('/api/employee-chats/:chatId/messages/:messageId', requireAuth, async (req, res) => {
+  app.delete('/api/employee-chats/:chatId/messages/:messageId', requireEmployee, async (req, res) => {
     try {
       const { chatId, messageId } = req.params;
       const { requesterPhone } = req.query;
@@ -1090,9 +1091,10 @@ function setupEmployeeChatAPI(app) {
         }
       }
 
-      // WebSocket: уведомление об удалении сообщения
+      // WebSocket: уведомление об удалении сообщения (only to chat participants)
       if (wsNotify) {
-        wsNotify.notifyMessageDeleted(chatId, messageId);
+        const participants = await getChatParticipants(chat);
+        wsNotify.notifyMessageDeleted(chatId, messageId, participants);
       }
 
       res.json({ success: true });
@@ -1103,7 +1105,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== SEARCH MESSAGES IN CHAT =====
-  app.get('/api/employee-chats/:chatId/messages/search', requireAuth, async (req, res) => {
+  app.get('/api/employee-chats/:chatId/messages/search', requireEmployee, async (req, res) => {
     try {
       const { chatId } = req.params;
       const { query, limit = 50 } = req.query;
@@ -1134,7 +1136,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== ADD REACTION TO MESSAGE =====
-  app.post('/api/employee-chats/:chatId/messages/:messageId/reactions', requireAuth, async (req, res) => {
+  app.post('/api/employee-chats/:chatId/messages/:messageId/reactions', requireEmployee, async (req, res) => {
     try {
       const { chatId, messageId } = req.params;
       const { phone, reaction } = req.body; // reaction: emoji string like "👍", "❤️", etc.
@@ -1183,9 +1185,10 @@ function setupEmployeeChatAPI(app) {
         }
       }
 
-      // WebSocket: уведомление о реакции
+      // WebSocket: уведомление о реакции (only to chat participants)
       if (wsNotify) {
-        wsNotify.notifyReactionAdded(chatId, messageId, reaction, phone);
+        const participants = await getChatParticipants(chat);
+        wsNotify.notifyReactionAdded(chatId, messageId, reaction, phone, participants);
       }
 
       res.json({ success: true, reactions: message.reactions });
@@ -1196,7 +1199,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== REMOVE REACTION FROM MESSAGE =====
-  app.delete('/api/employee-chats/:chatId/messages/:messageId/reactions', requireAuth, async (req, res) => {
+  app.delete('/api/employee-chats/:chatId/messages/:messageId/reactions', requireEmployee, async (req, res) => {
     try {
       const { chatId, messageId } = req.params;
       const { phone, reaction } = req.query;
@@ -1241,9 +1244,10 @@ function setupEmployeeChatAPI(app) {
         }
       }
 
-      // WebSocket: уведомление об удалении реакции
+      // WebSocket: уведомление об удалении реакции (only to chat participants)
       if (wsNotify) {
-        wsNotify.notifyReactionRemoved(chatId, messageId, reaction, phone);
+        const participants = await getChatParticipants(chat);
+        wsNotify.notifyReactionRemoved(chatId, messageId, reaction, phone, participants);
       }
 
       res.json({ success: true, reactions: message.reactions || {} });
@@ -1254,7 +1258,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== FORWARD MESSAGE =====
-  app.post('/api/employee-chats/:targetChatId/messages/forward', requireAuth, async (req, res) => {
+  app.post('/api/employee-chats/:targetChatId/messages/forward', requireEmployee, async (req, res) => {
     try {
       const { targetChatId } = req.params;
       const { sourceChatId, sourceMessageId, senderPhone, senderName } = req.body;
@@ -1340,7 +1344,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== GET CLIENTS LIST FOR GROUP SELECTION =====
-  app.get('/api/clients/list', requireAuth, async (req, res) => {
+  app.get('/api/clients/list', requireEmployee, async (req, res) => {
     try {
       console.log('GET /api/clients/list');
       const clients = await getClientsForGroupSelection();
@@ -1352,7 +1356,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== CREATE GROUP CHAT (admin only) =====
-  app.post('/api/employee-chats/group', requireAuth, async (req, res) => {
+  app.post('/api/employee-chats/group', requireEmployee, async (req, res) => {
     try {
       const { creatorPhone, creatorName, name, imageUrl, participants } = req.body;
       console.log('POST /api/employee-chats/group:', name, 'creator:', creatorPhone, 'participants:', participants?.length);
@@ -1414,7 +1418,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== UPDATE GROUP CHAT (creator only) =====
-  app.put('/api/employee-chats/group/:groupId', requireAuth, async (req, res) => {
+  app.put('/api/employee-chats/group/:groupId', requireEmployee, async (req, res) => {
     try {
       const { groupId } = req.params;
       const { requesterPhone, name, imageUrl } = req.body;
@@ -1454,7 +1458,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== ADD MEMBERS TO GROUP (creator only) =====
-  app.post('/api/employee-chats/group/:groupId/members', requireAuth, async (req, res) => {
+  app.post('/api/employee-chats/group/:groupId/members', requireEmployee, async (req, res) => {
     try {
       const { groupId } = req.params;
       const { requesterPhone, phones } = req.body;
@@ -1501,7 +1505,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== REMOVE MEMBER FROM GROUP (creator only) =====
-  app.delete('/api/employee-chats/group/:groupId/members/:phone', requireAuth, async (req, res) => {
+  app.delete('/api/employee-chats/group/:groupId/members/:phone', requireEmployee, async (req, res) => {
     try {
       const { groupId, phone } = req.params;
       const { requesterPhone } = req.query;
@@ -1549,7 +1553,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== LEAVE GROUP (participant) =====
-  app.post('/api/employee-chats/group/:groupId/leave', requireAuth, async (req, res) => {
+  app.post('/api/employee-chats/group/:groupId/leave', requireEmployee, async (req, res) => {
     try {
       const { groupId } = req.params;
       const { phone } = req.body;
@@ -1590,7 +1594,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== DELETE GROUP (creator only) =====
-  app.delete('/api/employee-chats/group/:groupId', requireAuth, async (req, res) => {
+  app.delete('/api/employee-chats/group/:groupId', requireEmployee, async (req, res) => {
     try {
       const { groupId } = req.params;
       const { requesterPhone } = req.query;
@@ -1623,7 +1627,7 @@ function setupEmployeeChatAPI(app) {
   });
 
   // ===== GET GROUP INFO =====
-  app.get('/api/employee-chats/group/:groupId', requireAuth, async (req, res) => {
+  app.get('/api/employee-chats/group/:groupId', requireEmployee, async (req, res) => {
     try {
       const { groupId } = req.params;
       console.log('GET /api/employee-chats/group/:groupId:', groupId);

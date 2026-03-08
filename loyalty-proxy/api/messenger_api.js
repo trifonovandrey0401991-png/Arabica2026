@@ -736,7 +736,7 @@ function setupMessengerAPI(app, uploadMedia) {
 
       // Within 5 minutes
       const createdAt = new Date(message.created_at);
-      const minutesAgo = (Date.now() - createdAt.getTime()) / (1000 * 60);
+      const minutesAgo = (getMoscowTime().getTime() - createdAt.getTime()) / (1000 * 60);
       if (minutesAgo > 5) {
         return res.status(400).json({ success: false, error: 'Cannot edit messages older than 5 minutes' });
       }
@@ -840,7 +840,7 @@ function setupMessengerAPI(app, uploadMedia) {
 
       // Check 1-hour limit for forAll
       const createdAt = new Date(message.created_at);
-      const minutesAgo = (Date.now() - createdAt.getTime()) / (1000 * 60);
+      const minutesAgo = (getMoscowTime().getTime() - createdAt.getTime()) / (1000 * 60);
       if (minutesAgo > 60) {
         return res.status(400).json({ success: false, error: 'Cannot delete for all — older than 1 hour' });
       }
@@ -3437,7 +3437,7 @@ function setupMessengerAPI(app, uploadMedia) {
       if (convs.rows.length === 0) return;
 
       for (const conv of convs.rows) {
-        const cutoff = new Date(Date.now() - conv.auto_delete_seconds * 1000).toISOString();
+        const cutoff = new Date(getMoscowTime().getTime() - conv.auto_delete_seconds * 1000).toISOString();
         const deleted = await db.query(
           `UPDATE messenger_messages SET is_deleted = true
            WHERE conversation_id = $1 AND is_deleted = false AND created_at < $2 AND type != 'system'

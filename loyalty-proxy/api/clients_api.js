@@ -14,7 +14,7 @@ const { createPaginatedResponse, createDbPaginatedResponse, isPaginationRequeste
 const { fileExists, maskPhone, sanitizePhone } = require('../utils/file_helpers');
 const { writeJsonFile, withLock } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireAuth, requireEmployee } = require('../utils/session_middleware');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
@@ -349,7 +349,7 @@ function setupClientsAPI(app) {
         }
       }
 
-      const unreadCount = messages.filter(m => m.senderType === 'admin' && !m.isReadByClient).length;
+      const unreadCount = messages.filter(m => (m.senderType === 'admin' || m.from === 'admin') && !m.isReadByClient && !m.readByClient).length;
       res.json({ success: true, messages, unreadCount });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -420,7 +420,7 @@ function setupClientsAPI(app) {
         await withLock(filePath, async () => {
           const content = await fsp.readFile(filePath, 'utf8');
           const dialog = JSON.parse(content);
-          dialog.messages.forEach(m => { if (m.from === 'admin') m.readByClient = true; });
+          dialog.messages.forEach(m => { if (m.from === 'admin' || m.senderType === 'admin') m.readByClient = true; });
           await writeJsonFile(filePath, dialog);
         });
       }
@@ -453,7 +453,7 @@ function setupClientsAPI(app) {
         await withLock(filePath, async () => {
           const content = await fsp.readFile(filePath, 'utf8');
           const dialog = JSON.parse(content);
-          dialog.messages.forEach(m => { if (m.from === 'client') m.readByAdmin = true; });
+          dialog.messages.forEach(m => { if (m.from === 'client' || m.senderType === 'client') m.readByAdmin = true; });
           await writeJsonFile(filePath, dialog);
         });
       }
@@ -512,7 +512,7 @@ function setupClientsAPI(app) {
         }
       }
 
-      const unreadCount = messages.filter(m => m.senderType === 'manager' && !m.isReadByClient).length;
+      const unreadCount = messages.filter(m => (m.senderType === 'manager' || m.from === 'manager') && !m.isReadByClient && !m.readByClient).length;
       res.json({ success: true, messages, unreadCount });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -1079,7 +1079,7 @@ function setupClientsAPI(app) {
   // ========== FREE DRINKS COUNTER (Геймификация) ==========
 
   // POST /api/clients/:phone/free-drink - увеличить счётчик бесплатных напитков
-  app.post('/api/clients/:phone/free-drink', requireAuth, async (req, res) => {
+  app.post('/api/clients/:phone/free-drink', requireEmployee, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const count = parseInt(req.body.count) || 1;
@@ -1113,7 +1113,7 @@ function setupClientsAPI(app) {
   });
 
   // POST /api/clients/:phone/sync-free-drinks - синхронизировать счётчик из внешнего API
-  app.post('/api/clients/:phone/sync-free-drinks', requireAuth, async (req, res) => {
+  app.post('/api/clients/:phone/sync-free-drinks', requireEmployee, async (req, res) => {
     try {
       const phone = sanitizePhone(req.params.phone);
       const { freeDrinksGiven } = req.body;

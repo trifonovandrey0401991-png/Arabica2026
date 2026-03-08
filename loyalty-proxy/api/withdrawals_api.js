@@ -11,7 +11,7 @@ const { fileExists, sanitizeId, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const { notifyCounterUpdate } = require('./counters_websocket');
 
 const USE_DB = process.env.USE_DB_WITHDRAWALS === 'true';
@@ -192,7 +192,7 @@ async function updateMainCashBalance(shopAddress, type, amount) {
 
 function setupWithdrawalsAPI(app) {
   // GET /api/withdrawals - получить все выемки с опциональными фильтрами
-  app.get('/api/withdrawals', requireAuth, async (req, res) => {
+  app.get('/api/withdrawals', requireEmployee, async (req, res) => {
     try {
       const { shopAddress, type, fromDate, toDate } = req.query;
 
@@ -275,7 +275,7 @@ function setupWithdrawalsAPI(app) {
   });
 
   // POST /api/withdrawals - создать новую выемку
-  app.post('/api/withdrawals', requireAuth, async (req, res) => {
+  app.post('/api/withdrawals', requireEmployee, async (req, res) => {
     try {
       const {
         shopAddress,
@@ -363,7 +363,7 @@ function setupWithdrawalsAPI(app) {
   });
 
   // PATCH /api/withdrawals/:id/confirm - подтвердить выемку
-  app.patch('/api/withdrawals/:id/confirm', requireAuth, async (req, res) => {
+  app.patch('/api/withdrawals/:id/confirm', requireEmployee, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       console.log('PATCH /api/withdrawals/:id/confirm', id);
@@ -400,7 +400,7 @@ function setupWithdrawalsAPI(app) {
   });
 
   // DELETE /api/withdrawals/:id - удалить выемку
-  app.delete('/api/withdrawals/:id', requireAuth, async (req, res) => {
+  app.delete('/api/withdrawals/:id', requireEmployee, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
@@ -424,7 +424,7 @@ function setupWithdrawalsAPI(app) {
   });
 
   // PATCH /api/withdrawals/:id/cancel - отменить выемку
-  app.patch('/api/withdrawals/:id/cancel', requireAuth, async (req, res) => {
+  app.patch('/api/withdrawals/:id/cancel', requireEmployee, async (req, res) => {
     try {
       const id = sanitizeId(req.params.id);
       const { cancelledBy, cancelReason } = req.body;
@@ -467,7 +467,7 @@ function setupWithdrawalsAPI(app) {
   // ===== MAIN CASH CORRECTIONS (developer only) =====
 
   // GET /api/main-cash/correction?shopAddress=...
-  app.get('/api/main-cash/correction', requireAuth, async (req, res) => {
+  app.get('/api/main-cash/correction', requireEmployee, async (req, res) => {
     try {
       if (!req.user.isAdmin) {
         return res.status(403).json({ success: false, error: 'Доступ запрещён' });
@@ -493,7 +493,7 @@ function setupWithdrawalsAPI(app) {
   });
 
   // POST /api/main-cash/correction
-  app.post('/api/main-cash/correction', requireAuth, async (req, res) => {
+  app.post('/api/main-cash/correction', requireEmployee, async (req, res) => {
     try {
       if (!req.user.isAdmin) {
         return res.status(403).json({ success: false, error: 'Доступ запрещён' });

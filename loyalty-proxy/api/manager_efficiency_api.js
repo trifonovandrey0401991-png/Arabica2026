@@ -16,7 +16,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const { getMoscowTime } = require('../utils/moscow_time');
 const db = require('../utils/db');
 
@@ -245,7 +245,9 @@ async function loadHandoverReportsDB(month) {
 async function loadPenaltiesDB(month) {
   const [year, monthNum] = month.split('-').map(Number);
   const start = `${month}-01`;
-  const end = `${year}-${String(monthNum + 1).padStart(2, '0')}-01`;
+  const nextYear = monthNum === 12 ? year + 1 : year;
+  const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
+  const end = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
   const result = await db.query(
     'SELECT shop_address, entity_name, employee_name, points, category FROM efficiency_penalties WHERE date >= $1::date AND date < $2::date',
     [start, end]
@@ -891,7 +893,7 @@ async function calculateManagerEfficiency(phone, month) {
  */
 function setupManagerEfficiencyAPI(app) {
   // GET /api/manager-efficiency - Get manager efficiency for a month
-  app.get('/api/manager-efficiency', requireAuth, async (req, res) => {
+  app.get('/api/manager-efficiency', requireEmployee, async (req, res) => {
     try {
       const { phone, month } = req.query;
 
@@ -933,7 +935,7 @@ function setupManagerEfficiencyAPI(app) {
   });
 
   // GET /api/manager-efficiency/team-task-penalties - штрафы команды за задачи за месяц
-  app.get('/api/manager-efficiency/team-task-penalties', requireAuth, async (req, res) => {
+  app.get('/api/manager-efficiency/team-task-penalties', requireEmployee, async (req, res) => {
     try {
       const { month } = req.query;
       const managerPhone = (req.session?.userPhone || req.session?.phone || '').replace(/\D/g, '');

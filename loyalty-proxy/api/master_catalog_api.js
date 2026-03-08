@@ -13,7 +13,7 @@ const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { requireEmployee, requireAdmin } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_MASTER_CATALOG === 'true';
 
@@ -406,7 +406,7 @@ function setupMasterCatalogAPI(app) {
    * GET /api/master-catalog
    * Получить все продукты мастер-каталога
    */
-  app.get('/api/master-catalog', requireAuth, async (req, res) => {
+  app.get('/api/master-catalog', requireEmployee, async (req, res) => {
     try {
       const { group, search, limit, offset } = req.query;
 
@@ -698,7 +698,7 @@ function setupMasterCatalogAPI(app) {
    * GET /api/master-catalog/groups/list
    * Получить список групп товаров
    */
-  app.get('/api/master-catalog/groups/list', requireAuth, async (req, res) => {
+  app.get('/api/master-catalog/groups/list', requireEmployee, async (req, res) => {
     try {
       const products = await loadProducts();
       const groupsSet = new Set();
@@ -726,7 +726,7 @@ function setupMasterCatalogAPI(app) {
    *   shopId: ID магазина
    *   kod: код товара в магазине
    */
-  app.get('/api/master-catalog/by-shop-code', requireAuth, async (req, res) => {
+  app.get('/api/master-catalog/by-shop-code', requireEmployee, async (req, res) => {
     try {
       const { shopId, kod } = req.query;
 
@@ -758,7 +758,7 @@ function setupMasterCatalogAPI(app) {
    * GET /api/master-catalog/stats
    * Статистика мастер-каталога
    */
-  app.get('/api/master-catalog/stats', requireAuth, async (req, res) => {
+  app.get('/api/master-catalog/stats', requireEmployee, async (req, res) => {
     try {
       const products = await loadProducts();
       const mappings = await loadMappings();
@@ -804,7 +804,7 @@ function setupMasterCatalogAPI(app) {
    * GET /api/master-catalog/pending-codes
    * Получить список кодов ожидающих подтверждения
    */
-  app.get('/api/master-catalog/pending-codes', requireAuth, async (req, res) => {
+  app.get('/api/master-catalog/pending-codes', requireEmployee, async (req, res) => {
     try {
       const pending = await loadPendingCodes();
 
@@ -1087,7 +1087,7 @@ function setupMasterCatalogAPI(app) {
    * Поддерживает пагинацию: limit, offset
    * Поддерживает кэширование (TTL 30 сек) для ускорения повторных запросов
    */
-  app.get('/api/master-catalog/for-training', requireAuth, async (req, res) => {
+  app.get('/api/master-catalog/for-training', requireEmployee, async (req, res) => {
     try {
       const { productGroup, shopAddress, limit, offset, grouped } = req.query;
       // shopAddress - если передан, возвращаем perShopDisplayStats только для этого магазина
@@ -1419,7 +1419,7 @@ function setupMasterCatalogAPI(app) {
    * Лёгкий поиск товаров для привязки pending-кода к существующей карточке
    * Возвращает: id, name, group, barcode, additionalBarcodes, barcodesCount, productPhotoUrl
    */
-  app.get('/api/master-catalog/search-for-assign', requireAuth, async (req, res) => {
+  app.get('/api/master-catalog/search-for-assign', requireEmployee, async (req, res) => {
     try {
       const { search } = req.query;
       if (!search || search.length < 2) {
@@ -1614,7 +1614,7 @@ function setupMasterCatalogAPI(app) {
    * Лёгкий эндпоинт: возвращает Map barcode → productPhotoUrl
    * Фото = первый sample с templateId=5 (очень крупно, 70% кадра)
    */
-  app.get('/api/master-catalog/product-photos', requireAuth, async (req, res) => {
+  app.get('/api/master-catalog/product-photos', requireEmployee, async (req, res) => {
     try {
       const samples = await cigaretteVision.loadSamples();
       const photos = {};
@@ -1757,7 +1757,7 @@ function setupMasterCatalogAPI(app) {
    * Получить продукт по ID
    * ВАЖНО: Этот маршрут должен быть ПОСЛЕ всех конкретных путей!
    */
-  app.get('/api/master-catalog/:id', requireAuth, async (req, res) => {
+  app.get('/api/master-catalog/:id', requireEmployee, async (req, res) => {
     try {
       const products = await loadProducts();
       const product = products.find((p) => p.id === req.params.id);

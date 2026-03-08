@@ -9,7 +9,7 @@ const path = require('path');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { requireEmployee, requireAdmin } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_TASK_POINTS === 'true';
 
@@ -83,7 +83,7 @@ function setupTaskPointsSettingsAPI(app) {
   console.log('Setting up Task Points Settings API...');
 
   // GET /api/points-settings/regular-tasks - Настройки обычных задач
-  app.get('/api/points-settings/regular-tasks', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/regular-tasks', requireEmployee, async (req, res) => {
     try {
       const config = await loadConfig();
       res.json({
@@ -133,7 +133,7 @@ function setupTaskPointsSettingsAPI(app) {
   });
 
   // GET /api/points-settings/recurring-tasks - Настройки циклических задач
-  app.get('/api/points-settings/recurring-tasks', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/recurring-tasks', requireEmployee, async (req, res) => {
     try {
       const config = await loadConfig();
       res.json({
@@ -183,7 +183,7 @@ function setupTaskPointsSettingsAPI(app) {
   });
 
   // GET /api/points-settings/tasks - Получить все настройки сразу
-  app.get('/api/points-settings/tasks', requireAuth, async (req, res) => {
+  app.get('/api/points-settings/tasks', requireEmployee, async (req, res) => {
     try {
       const config = await loadConfig();
       res.json({

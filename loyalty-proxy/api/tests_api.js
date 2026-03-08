@@ -11,7 +11,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
-const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { requireEmployee, requireAdmin } = require('../utils/session_middleware');
 const { generateId } = require('../utils/id_generator');
 
 const USE_DB = process.env.USE_DB_TESTS === 'true';
@@ -138,7 +138,7 @@ async function assignTestPoints(result) {
 function setupTestsAPI(app) {
   // ===== TEST QUESTIONS =====
 
-  app.get('/api/test-questions', requireAuth, async (req, res) => {
+  app.get('/api/test-questions', requireEmployee, async (req, res) => {
     try {
       if (USE_DB) {
         if (isPaginationRequested(req.query)) {
@@ -267,7 +267,7 @@ function setupTestsAPI(app) {
 
   // ===== TEST RESULTS =====
 
-  app.get('/api/test-results', requireAuth, async (req, res) => {
+  app.get('/api/test-results', requireEmployee, async (req, res) => {
     try {
       console.log('GET /api/test-results');
 
@@ -307,7 +307,7 @@ function setupTestsAPI(app) {
     }
   });
 
-  app.post('/api/test-results', requireAuth, async (req, res) => {
+  app.post('/api/test-results', requireEmployee, async (req, res) => {
     try {
       console.log('POST /api/test-results employee:', req.body?.employeeName, 'test:', req.body?.testId);
       const result = {
@@ -348,7 +348,7 @@ function setupTestsAPI(app) {
 
   // ===== TEST SETTINGS (duration etc.) =====
 
-  app.get('/api/test-settings', requireAuth, async (req, res) => {
+  app.get('/api/test-settings', requireEmployee, async (req, res) => {
     try {
       let settings = { durationMinutes: 7, minimumScore: 0 };
 

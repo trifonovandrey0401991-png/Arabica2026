@@ -11,10 +11,13 @@
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
-const { isAdminPhone, isManagerPhone, normalizePhone } = require('./admin_cache');
+const { isAdminPhone, isManagerPhone, isEmployeePhone, normalizePhone } = require('./admin_cache');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const SESSIONS_DIR = path.join(DATA_DIR, 'auth-sessions');
+const USE_DB_AUTH = process.env.USE_DB_AUTH === 'true';
+let db;
+try { db = require('./db'); } catch (_) { /* db not available */ }
 
 // In-memory index: sessionToken -> { phone, name, expiresAt }
 const tokenIndex = new Map();
@@ -28,29 +31,56 @@ const INDEX_REBUILD_INTERVAL_MS = 5 * 60 * 1000; // 5 минут
  */
 async function rebuildTokenIndex() {
   try {
-    // Async check avoids blocking the event loop (fs.existsSync was synchronous)
-    try { await fsp.access(SESSIONS_DIR); } catch { return; }
-
-    const files = await fsp.readdir(SESSIONS_DIR);
-    const jsonFiles = files.filter(f => f.endsWith('.json'));
     const now = Date.now();
 
     // Очищаем старый индекс
     tokenIndex.clear();
 
-    for (const file of jsonFiles) {
-      try {
-        const content = await fsp.readFile(path.join(SESSIONS_DIR, file), 'utf8');
-        const session = JSON.parse(content);
+    // 1. Read from JSON files (primary source)
+    try {
+      await fsp.access(SESSIONS_DIR);
+      const files = await fsp.readdir(SESSIONS_DIR);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
 
-        if (session.sessionToken && session.expiresAt > now) {
-          tokenIndex.set(session.sessionToken, {
-            phone: session.phone,
-            name: session.name,
-            expiresAt: session.expiresAt,
-          });
+      for (const file of jsonFiles) {
+        try {
+          const content = await fsp.readFile(path.join(SESSIONS_DIR, file), 'utf8');
+          const session = JSON.parse(content);
+
+          if (session.sessionToken && session.expiresAt > now) {
+            tokenIndex.set(session.sessionToken, {
+              phone: session.phone,
+              name: session.name,
+              expiresAt: session.expiresAt,
+            });
+          }
+        } catch (e) { /* skip invalid files */ }
+      }
+    } catch (_) { /* SESSIONS_DIR may not exist */ }
+
+    // 2. Supplement from DB (catches sessions not yet written to JSON)
+    if (USE_DB_AUTH && db) {
+      try {
+        const result = await db.query(
+          `SELECT session_token, phone, expires_at FROM auth_sessions WHERE expires_at > NOW()`
+        );
+        let dbAdded = 0;
+        for (const row of result.rows) {
+          if (row.session_token && !tokenIndex.has(row.session_token)) {
+            tokenIndex.set(row.session_token, {
+              phone: row.phone,
+              name: null,
+              expiresAt: new Date(row.expires_at).getTime(),
+            });
+            dbAdded++;
+          }
         }
-      } catch (e) { /* skip invalid files */ }
+        if (dbAdded > 0) {
+          console.log(`[SessionMiddleware] Added ${dbAdded} sessions from DB`);
+        }
+      } catch (dbErr) {
+        console.error('[SessionMiddleware] DB read error:', dbErr.message);
+      }
     }
 
     lastIndexBuild = now;
@@ -209,6 +239,26 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+/**
+ * Middleware: требует что пользователь — сотрудник (не клиент)
+ * Возвращает 401 если не авторизован, 403 если не сотрудник
+ */
+function requireEmployee(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      error: 'Требуется авторизация. Войдите в приложение.'
+    });
+  }
+  if (!isEmployeePhone(req.user.phone)) {
+    return res.status(403).json({
+      success: false,
+      error: 'Доступ только для сотрудников.'
+    });
+  }
+  next();
+}
+
 module.exports = {
   sessionMiddleware,
   initSessionMiddleware,
@@ -219,4 +269,5 @@ module.exports = {
   verifyToken,
   requireAuth,
   requireAdmin,
+  requireEmployee,
 };

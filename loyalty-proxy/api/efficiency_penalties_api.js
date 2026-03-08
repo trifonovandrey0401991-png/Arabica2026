@@ -13,7 +13,7 @@ const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const db = require('../utils/db');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const MOSCOW_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC+3 offset in milliseconds
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -414,7 +414,7 @@ function setupEfficiencyPenaltiesAPI(app) {
    * GET /api/efficiency/reports-batch
    * Batch endpoint для загрузки всех отчётов за месяц одним запросом
    */
-  app.get('/api/efficiency/reports-batch', requireAuth, async (req, res) => {
+  app.get('/api/efficiency/reports-batch', requireEmployee, async (req, res) => {
     // Rate limit: max 5 requests per minute per user
     if (!checkBatchRateLimit(req.user?.phone || 'unknown')) {
       return res.status(429).json({ success: false, error: 'Слишком много запросов. Подождите минуту.' });
@@ -491,7 +491,7 @@ function setupEfficiencyPenaltiesAPI(app) {
    * GET /api/efficiency-penalties
    * Получить штрафы эффективности за месяц
    */
-  app.get('/api/efficiency-penalties', requireAuth, async (req, res) => {
+  app.get('/api/efficiency-penalties', requireEmployee, async (req, res) => {
     try {
       const { month } = req.query;
 
@@ -568,7 +568,7 @@ function setupEfficiencyPenaltiesAPI(app) {
    * (штрафы, задачи, отзывы, товарные вопросы, заказы, РКО)
    * Заменяет ~12 отдельных запросов MyEfficiencyPage одним
    */
-  app.get('/api/efficiency/supplementary-batch', requireAuth, async (req, res) => {
+  app.get('/api/efficiency/supplementary-batch', requireEmployee, async (req, res) => {
     // Rate limit: same as reports-batch
     if (!checkBatchRateLimit(req.user?.phone || 'unknown')) {
       return res.status(429).json({ success: false, error: 'Слишком много запросов. Подождите минуту.' });

@@ -15,7 +15,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, maskPhone } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const pushService = require('../utils/push_service');
 const { notifyCounterUpdate } = require('./counters_websocket');
 
@@ -90,7 +90,7 @@ function setupReportNotificationsAPI(app) {
   console.log('Setting up Report Notifications API...');
 
   // GET /api/report-notifications - Получить все уведомления
-  app.get('/api/report-notifications', requireAuth, async (req, res) => {
+  app.get('/api/report-notifications', requireEmployee, async (req, res) => {
     try {
       const notifications = await loadNotifications();
       res.json({ success: true, notifications });
@@ -101,7 +101,7 @@ function setupReportNotificationsAPI(app) {
   });
 
   // GET /api/report-notifications/unviewed-counts - Получить количество непросмотренных по типам
-  app.get('/api/report-notifications/unviewed-counts', requireAuth, async (req, res) => {
+  app.get('/api/report-notifications/unviewed-counts', requireEmployee, async (req, res) => {
     try {
       const notifications = await loadNotifications();
       const counts = {
@@ -131,7 +131,7 @@ function setupReportNotificationsAPI(app) {
   });
 
   // POST /api/report-notifications - Создать уведомление о новом отчёте
-  app.post('/api/report-notifications', requireAuth, async (req, res) => {
+  app.post('/api/report-notifications', requireEmployee, async (req, res) => {
     try {
       const {
         reportType,      // Тип отчёта: shift_handover, recount, test, shift_report, attendance, rko
@@ -188,7 +188,7 @@ function setupReportNotificationsAPI(app) {
   });
 
   // PATCH /api/report-notifications/:id/view - Отметить уведомление как просмотренное
-  app.patch('/api/report-notifications/:id/view', requireAuth, async (req, res) => {
+  app.patch('/api/report-notifications/:id/view', requireEmployee, async (req, res) => {
     try {
       const { id } = req.params;
       const { adminName } = req.body;
@@ -215,7 +215,7 @@ function setupReportNotificationsAPI(app) {
   });
 
   // PATCH /api/report-notifications/view-by-report - Отметить просмотренным по ID отчёта
-  app.patch('/api/report-notifications/view-by-report', requireAuth, async (req, res) => {
+  app.patch('/api/report-notifications/view-by-report', requireEmployee, async (req, res) => {
     try {
       const { reportType, reportId, adminName } = req.body;
 
@@ -247,7 +247,7 @@ function setupReportNotificationsAPI(app) {
   });
 
   // POST /api/report-notifications/mark-all-viewed - Отметить все уведомления типа как просмотренные
-  app.post('/api/report-notifications/mark-all-viewed', requireAuth, async (req, res) => {
+  app.post('/api/report-notifications/mark-all-viewed', requireEmployee, async (req, res) => {
     try {
       const { reportType, adminName } = req.body;
 
@@ -277,7 +277,7 @@ function setupReportNotificationsAPI(app) {
   });
 
   // DELETE /api/report-notifications/cleanup - Удалить старые просмотренные уведомления (старше 30 дней)
-  app.delete('/api/report-notifications/cleanup', requireAuth, async (req, res) => {
+  app.delete('/api/report-notifications/cleanup', requireEmployee, async (req, res) => {
     try {
       const notifications = await loadNotifications();
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -304,7 +304,7 @@ function setupReportNotificationsAPI(app) {
 
   // POST /api/push/report-status - Отправить push сотруднику о статусе отчёта
   // Используется при одобрении/отклонении отчётов админом
-  app.post('/api/push/report-status', requireAuth, async (req, res) => {
+  app.post('/api/push/report-status', requireEmployee, async (req, res) => {
     try {
       const {
         employeePhone,   // Телефон сотрудника
@@ -356,7 +356,7 @@ function setupReportNotificationsAPI(app) {
   });
 
   // POST /api/push/test-assigned - Отправить push о назначении теста
-  app.post('/api/push/test-assigned', requireAuth, async (req, res) => {
+  app.post('/api/push/test-assigned', requireEmployee, async (req, res) => {
     try {
       const {
         employeePhone,   // Телефон сотрудника
@@ -393,7 +393,7 @@ function setupReportNotificationsAPI(app) {
   });
 
   // POST /api/push/schedule-updated - Отправить push об изменении графика
-  app.post('/api/push/schedule-updated', requireAuth, async (req, res) => {
+  app.post('/api/push/schedule-updated', requireEmployee, async (req, res) => {
     try {
       const {
         employeePhone,   // Телефон сотрудника

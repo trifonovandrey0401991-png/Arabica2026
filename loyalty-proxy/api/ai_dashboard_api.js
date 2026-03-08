@@ -10,7 +10,7 @@
 const path = require('path');
 const fsp = require('fs').promises;
 const { fileExists } = require('../utils/file_helpers');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const db = require('../utils/db');
 
 const USE_DB_Z = process.env.USE_DB_Z_REPORT === 'true' || process.env.USE_DB_ENVELOPE === 'true';
@@ -189,7 +189,7 @@ function setupAiDashboardAPI(app) {
   console.log('[AI Dashboard] Инициализация...');
 
   // GET /api/ai-dashboard/metrics — все метрики одним запросом
-  app.get('/api/ai-dashboard/metrics', requireAuth, async (req, res) => {
+  app.get('/api/ai-dashboard/metrics', requireEmployee, async (req, res) => {
     try {
       const [zReport, coffeeMachine, cigaretteVision, shiftAi] = await Promise.all([
         getZReportMetrics(),
@@ -215,7 +215,7 @@ function setupAiDashboardAPI(app) {
   });
 
   // GET /api/ai-dashboard/retrain-status — статус YOLO авто-обучения
-  app.get('/api/ai-dashboard/retrain-status', requireAuth, async (req, res) => {
+  app.get('/api/ai-dashboard/retrain-status', requireEmployee, async (req, res) => {
     try {
       const { getRetrainStatus } = require('./yolo_retrain_scheduler');
       const status = await getRetrainStatus();
@@ -227,7 +227,7 @@ function setupAiDashboardAPI(app) {
   });
 
   // POST /api/ai-dashboard/retrain — ручной запуск обучения YOLO
-  app.post('/api/ai-dashboard/retrain', requireAuth, async (req, res) => {
+  app.post('/api/ai-dashboard/retrain', requireEmployee, async (req, res) => {
     try {
       const { triggerManualRetrain } = require('./yolo_retrain_scheduler');
       const result = await triggerManualRetrain();
@@ -239,7 +239,7 @@ function setupAiDashboardAPI(app) {
   });
 
   // POST /api/ai-dashboard/trigger-recount-training — запуск обучения в фоне (async)
-  app.post('/api/ai-dashboard/trigger-recount-training', requireAuth, (req, res) => {
+  app.post('/api/ai-dashboard/trigger-recount-training', requireEmployee, (req, res) => {
     if (_recountTrainState.status === 'running') {
       return res.json({ success: false, error: 'already_running', state: _recountTrainState });
     }
@@ -250,17 +250,17 @@ function setupAiDashboardAPI(app) {
   });
 
   // GET /api/ai-dashboard/recount-train-status — статус текущего/последнего обучения
-  app.get('/api/ai-dashboard/recount-train-status', requireAuth, (req, res) => {
+  app.get('/api/ai-dashboard/recount-train-status', requireEmployee, (req, res) => {
     res.json({ success: true, ..._recountTrainState });
   });
 
   // GET /api/ai-dashboard/recount-train-schedule — получить расписание
-  app.get('/api/ai-dashboard/recount-train-schedule', requireAuth, (req, res) => {
+  app.get('/api/ai-dashboard/recount-train-schedule', requireEmployee, (req, res) => {
     res.json({ success: true, scheduledTime: _scheduleTime });
   });
 
   // POST /api/ai-dashboard/recount-train-schedule — сохранить/удалить расписание
-  app.post('/api/ai-dashboard/recount-train-schedule', requireAuth, async (req, res) => {
+  app.post('/api/ai-dashboard/recount-train-schedule', requireEmployee, async (req, res) => {
     try {
       const { time } = req.body; // "HH:mm" или null для отключения
       _scheduleTime = time || null;
@@ -302,7 +302,7 @@ function setupAiDashboardAPI(app) {
   });
 
   // GET /api/ai-dashboard/ai-toggles — получить состояние переключателей ИИ
-  app.get('/api/ai-dashboard/ai-toggles', requireAuth, async (req, res) => {
+  app.get('/api/ai-dashboard/ai-toggles', requireEmployee, async (req, res) => {
     try {
       const row = await db.findById('app_settings', 'ai_toggles', 'key');
       const defaults = { zReport: true, coffeeMachine: true, cigaretteVision: true, shiftAi: true };
@@ -315,7 +315,7 @@ function setupAiDashboardAPI(app) {
   });
 
   // PUT /api/ai-dashboard/ai-toggles — обновить переключатели ИИ
-  app.put('/api/ai-dashboard/ai-toggles', requireAuth, async (req, res) => {
+  app.put('/api/ai-dashboard/ai-toggles', requireEmployee, async (req, res) => {
     try {
       const { toggles } = req.body;
       if (!toggles || typeof toggles !== 'object') {

@@ -10,7 +10,7 @@ const path = require('path');
 const { fileExists, sanitizeId } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { requireEmployee, requireAdmin } = require('../utils/session_middleware');
 
 const USE_DB = process.env.USE_DB_WORK_SCHEDULE === 'true';
 
@@ -96,7 +96,7 @@ async function saveSchedule(schedule) {
 
 function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   // GET /api/work-schedule?month=YYYY-MM - получить график на месяц
-  app.get('/api/work-schedule', requireAuth, async (req, res) => {
+  app.get('/api/work-schedule', requireEmployee, async (req, res) => {
     try {
       const month = req.query.month;
       if (!month) {
@@ -128,7 +128,7 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // GET /api/work-schedule/employee/:employeeId?month=YYYY-MM - график сотрудника
-  app.get('/api/work-schedule/employee/:employeeId', requireAuth, async (req, res) => {
+  app.get('/api/work-schedule/employee/:employeeId', requireEmployee, async (req, res) => {
     try {
       const employeeId = req.params.employeeId;
       const month = req.query.month;
@@ -162,7 +162,7 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // POST /api/work-schedule - создать/обновить смену
-  app.post('/api/work-schedule', requireAuth, async (req, res) => {
+  app.post('/api/work-schedule', requireEmployee, async (req, res) => {
     try {
       const entry = req.body;
       if (!entry.month || !entry.employeeId || !entry.date || !entry.shiftType) {
@@ -294,7 +294,7 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // DELETE /api/work-schedule/:entryId - удалить смену
-  app.delete('/api/work-schedule/:entryId', requireAuth, async (req, res) => {
+  app.delete('/api/work-schedule/:entryId', requireEmployee, async (req, res) => {
     try {
       const entryId = sanitizeId(req.params.entryId);
       const month = req.query.month;
@@ -332,7 +332,7 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // POST /api/work-schedule/bulk - массовое создание смен
-  app.post('/api/work-schedule/bulk', requireAuth, async (req, res) => {
+  app.post('/api/work-schedule/bulk', requireEmployee, async (req, res) => {
     try {
       const entries = req.body.entries;
       if (!Array.isArray(entries) || entries.length === 0) {
@@ -453,7 +453,7 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // POST /api/work-schedule/template - сохранить/применить шаблон
-  app.post('/api/work-schedule/template', requireAuth, async (req, res) => {
+  app.post('/api/work-schedule/template', requireEmployee, async (req, res) => {
     try {
       const action = req.body.action; // 'save' или 'apply'
       const template = req.body.template;
@@ -488,7 +488,7 @@ function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
   });
 
   // GET /api/work-schedule/template - получить список шаблонов
-  app.get('/api/work-schedule/template', requireAuth, async (req, res) => {
+  app.get('/api/work-schedule/template', requireEmployee, async (req, res) => {
     try {
       const templates = [];
 

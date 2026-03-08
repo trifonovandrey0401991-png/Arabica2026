@@ -11,7 +11,7 @@ const sharp = require('sharp');
 const { fileExists } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const { isPaginationRequested, createPaginatedResponse } = require('../utils/pagination');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const db = require('../utils/db');
 
 const USE_DB = process.env.USE_DB_SHIFT_AI === 'true';
@@ -234,7 +234,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ ТОВАРЫ ============
 
   // Получить товары с настройками ИИ
-  app.get('/api/shift-ai/products', requireAuth, async (req, res) => {
+  app.get('/api/shift-ai/products', requireEmployee, async (req, res) => {
     try {
       const { shopId, group } = req.query;
 
@@ -273,7 +273,7 @@ function setupShiftAiVerificationAPI(app) {
   });
 
   // Получить группы товаров
-  app.get('/api/shift-ai/product-groups', requireAuth, async (req, res) => {
+  app.get('/api/shift-ai/product-groups', requireEmployee, async (req, res) => {
     try {
       const catalog = await loadMasterCatalog();
       const groups = [...new Set(catalog.map(p => p.group).filter(Boolean))];
@@ -287,7 +287,7 @@ function setupShiftAiVerificationAPI(app) {
   });
 
   // Обновить настройки ИИ для товара
-  app.put('/api/shift-ai/products/:barcode', requireAuth, async (req, res) => {
+  app.put('/api/shift-ai/products/:barcode', requireEmployee, async (req, res) => {
     try {
       const { barcode } = req.params;
       const { isAiActive } = req.body;
@@ -316,7 +316,7 @@ function setupShiftAiVerificationAPI(app) {
   });
 
   // Получить активные товары для магазина (для проверки при пересменке)
-  app.get('/api/shift-ai/active-products/:shopId', requireAuth, async (req, res) => {
+  app.get('/api/shift-ai/active-products/:shopId', requireEmployee, async (req, res) => {
     try {
       const { shopId } = req.params;
 
@@ -349,7 +349,7 @@ function setupShiftAiVerificationAPI(app) {
   app.post('/api/shift-ai/verify', (req, res, next) => {
     console.log(`[ShiftAI] POST /api/shift-ai/verify — user=${req.user?.phone || 'NONE'}, auth=${req.headers.authorization ? 'YES' : 'NO'}, bodySize=${JSON.stringify(req.body || {}).length}`);
     next();
-  }, requireAuth, async (req, res) => {
+  }, requireEmployee, async (req, res) => {
     try {
       const { imagesBase64, shopAddress } = req.body;
 
@@ -566,7 +566,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ АННОТАЦИИ ============
 
   // Сохранить аннотацию (BBox) от сотрудника
-  app.post('/api/shift-ai/annotations', requireAuth, async (req, res) => {
+  app.post('/api/shift-ai/annotations', requireEmployee, async (req, res) => {
     try {
       const {
         imageBase64,
@@ -656,7 +656,7 @@ function setupShiftAiVerificationAPI(app) {
 
   // Перепроверить товар в выделенной области BBox с помощью YOLO
   // Используется когда сотрудник выделяет товар на фото после неудачного распознавания
-  app.post('/api/shift-ai/verify-bbox', requireAuth, async (req, res) => {
+  app.post('/api/shift-ai/verify-bbox', requireEmployee, async (req, res) => {
     try {
       const {
         imageBase64,
@@ -814,7 +814,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ ГОТОВНОСТЬ ДЛЯ МАГАЗИНА ============
 
   // Проверить готовность ИИ для конкретного магазина (per-shop)
-  app.get('/api/shift-ai/readiness/:shopAddress', requireAuth, async (req, res) => {
+  app.get('/api/shift-ai/readiness/:shopAddress', requireEmployee, async (req, res) => {
     try {
       const { shopAddress } = req.params;
       const decodedAddress = decodeURIComponent(shopAddress);
@@ -873,7 +873,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ СТАТУС ============
 
   // Получить статус модели YOLO
-  app.get('/api/shift-ai/model-status', requireAuth, async (req, res) => {
+  app.get('/api/shift-ai/model-status', requireEmployee, async (req, res) => {
     try {
       const status = await checkModelStatus();
 
@@ -902,7 +902,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ ОСТАТКИ ============
 
   // Получить остатки товара
-  app.get('/api/shift-ai/stock/:shopAddress/:barcode', requireAuth, async (req, res) => {
+  app.get('/api/shift-ai/stock/:shopAddress/:barcode', requireEmployee, async (req, res) => {
     try {
       const { shopAddress, barcode } = req.params;
 
@@ -925,7 +925,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ СТАТИСТИКА ============
 
   // Получить статистику обучения
-  app.get('/api/shift-ai/stats', requireAuth, async (req, res) => {
+  app.get('/api/shift-ai/stats', requireEmployee, async (req, res) => {
     try {
       const catalog = await loadMasterCatalog();
       const aiSettings = await loadAiSettings();
@@ -965,7 +965,7 @@ function setupShiftAiVerificationAPI(app) {
   // ============ АННОТАЦИИ: APPROVE / REJECT ============
 
   // Одобрить аннотацию — загрузить фото для обучения YOLO
-  app.put('/api/shift-ai/annotations/:id/approve', requireAuth, async (req, res) => {
+  app.put('/api/shift-ai/annotations/:id/approve', requireEmployee, async (req, res) => {
     try {
       const { id } = req.params;
       const annotationFile = path.join(SHIFT_AI_ANNOTATIONS_DIR, `${id}.json`);
@@ -1035,7 +1035,7 @@ function setupShiftAiVerificationAPI(app) {
   });
 
   // Отклонить аннотацию — НЕ использовать для обучения
-  app.put('/api/shift-ai/annotations/:id/reject', requireAuth, async (req, res) => {
+  app.put('/api/shift-ai/annotations/:id/reject', requireEmployee, async (req, res) => {
     try {
       const { id } = req.params;
       const annotationFile = path.join(SHIFT_AI_ANNOTATIONS_DIR, `${id}.json`);

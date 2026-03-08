@@ -69,6 +69,17 @@ function isManagerPhone(phone) {
 }
 
 /**
+ * Проверить, является ли телефон сотрудником (есть в кэше сотрудников)
+ * Клиенты НЕ попадают в кэш — только сотрудники, управляющие, заведующие, разработчики
+ * @param {string} phone - Телефон для проверки
+ * @returns {boolean} - true если сотрудник
+ */
+function isEmployeePhone(phone) {
+  if (!phone) return false;
+  return adminCache.has(normalizePhone(phone));
+}
+
+/**
  * Async версия isAdminPhone (для совместимости с employee_chat_api)
  */
 async function isAdminPhoneAsync(phone) {
@@ -250,6 +261,7 @@ module.exports = {
   isAdminPhone,
   isAdminPhoneAsync,
   isManagerPhone,
+  isEmployeePhone,
   preloadAdminCache,
   startPeriodicRebuild,
   invalidateCache,

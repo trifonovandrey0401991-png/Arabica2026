@@ -17,7 +17,7 @@ const { writeJsonFile } = require('../utils/async_fs');
 const { notifyCounterUpdate } = require('./counters_websocket');
 const db = require('../utils/db');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const { generateId } = require('../utils/id_generator');
 
 const USE_DB_HANDOVER = process.env.USE_DB_SHIFT_HANDOVER === 'true';
@@ -248,7 +248,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
 
   // ========== SHIFT REPORTS (Пересменка) ==========
 
-  app.get('/api/shift-reports', requireAuth, async (req, res) => {
+  app.get('/api/shift-reports', requireEmployee, async (req, res) => {
     try {
       const { employeeName, shopAddress, date, status, shiftType } = req.query;
 
@@ -374,7 +374,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
     }
   });
 
-  app.post('/api/shift-reports', requireAuth, async (req, res) => {
+  app.post('/api/shift-reports', requireEmployee, async (req, res) => {
     try {
       const { getShiftSettings } = require('./shift_automation_scheduler');
       const settings = await getShiftSettings();
@@ -541,7 +541,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // GET - Get single shift report by ID
-  app.get('/api/shift-reports/:id', requireAuth, async (req, res) => {
+  app.get('/api/shift-reports/:id', requireEmployee, async (req, res) => {
     try {
       const reportId = decodeURIComponent(req.params.id);
       let report = null;
@@ -601,7 +601,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // PUT - Update shift report (confirm/rate)
-  app.put('/api/shift-reports/:id', requireAuth, async (req, res) => {
+  app.put('/api/shift-reports/:id', requireEmployee, async (req, res) => {
     try {
       const reportId = decodeURIComponent(req.params.id);
       let existingReport = null;
@@ -800,7 +800,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   // ========== SHIFT HANDOVER REPORTS (Сдача смены) ==========
 
   // GET /api/shift-handover-reports - получить все отчеты сдачи смены
-  app.get('/api/shift-handover-reports', requireAuth, async (req, res) => {
+  app.get('/api/shift-handover-reports', requireEmployee, async (req, res) => {
     try {
       console.log('GET /api/shift-handover-reports:', req.query);
 
@@ -902,7 +902,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // GET /api/shift-handover-reports/:id - получить отчет по ID
-  app.get('/api/shift-handover-reports/:id', requireAuth, async (req, res) => {
+  app.get('/api/shift-handover-reports/:id', requireEmployee, async (req, res) => {
     try {
       const rawId = decodeURIComponent(req.params.id);
       const safeId = sanitizeId(rawId); // для файловых путей
@@ -935,7 +935,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // POST /api/shift-handover-reports - создать отчет
-  app.post('/api/shift-handover-reports', requireAuth, async (req, res) => {
+  app.post('/api/shift-handover-reports', requireEmployee, async (req, res) => {
     try {
       const report = req.body;
       console.log('POST /api/shift-handover-reports:', report.id);
@@ -985,7 +985,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // PUT /api/shift-handover-reports/:id - обновить отчет (подтвердить/отклонить)
-  app.put('/api/shift-handover-reports/:id', requireAuth, async (req, res) => {
+  app.put('/api/shift-handover-reports/:id', requireEmployee, async (req, res) => {
     try {
       const rawId = decodeURIComponent(req.params.id);
       const safeId = sanitizeId(rawId); // для файловых путей
@@ -1073,7 +1073,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // DELETE /api/shift-handover-reports/:id - удалить отчет
-  app.delete('/api/shift-handover-reports/:id', requireAuth, async (req, res) => {
+  app.delete('/api/shift-handover-reports/:id', requireEmployee, async (req, res) => {
     try {
       const rawId = decodeURIComponent(req.params.id);
       const safeId = sanitizeId(rawId);
@@ -1103,7 +1103,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // GET /api/shift-handover/pending - получить pending отчёты (не сданные смены)
-  app.get('/api/shift-handover/pending', requireAuth, async (req, res) => {
+  app.get('/api/shift-handover/pending', requireEmployee, async (req, res) => {
     try {
       const pending = getPendingShiftHandoverReports ? await getPendingShiftHandoverReports() : [];
       console.log(`GET /api/shift-handover/pending: found ${pending.length} pending`);
@@ -1119,7 +1119,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
   });
 
   // GET /api/shift-handover/failed - получить failed отчёты (не в срок)
-  app.get('/api/shift-handover/failed', requireAuth, async (req, res) => {
+  app.get('/api/shift-handover/failed', requireEmployee, async (req, res) => {
     try {
       const failed = getFailedShiftHandoverReports ? await getFailedShiftHandoverReports() : [];
       console.log(`GET /api/shift-handover/failed: found ${failed.length} failed`);

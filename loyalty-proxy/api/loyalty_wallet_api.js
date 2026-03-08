@@ -17,7 +17,7 @@ const { v4: uuidv4 } = require('uuid');
 const { fileExists, loadJsonFile } = require('../utils/file_helpers');
 const { writeJsonFile } = require('../utils/async_fs');
 const db = require('../utils/db');
-const { requireAuth, requireAdmin } = require('../utils/session_middleware');
+const { requireAuth, requireAdmin, requireEmployee } = require('../utils/session_middleware');
 const { getMoscowTime } = require('../utils/moscow_time');
 const { sendPushToAdminsAndDevelopers } = require('../utils/push_service');
 
@@ -490,7 +490,7 @@ function setupLoyaltyWalletAPI(app) {
   });
 
   // POST /api/loyalty/scan-redemption - employee scans redemption QR
-  app.post('/api/loyalty/scan-redemption', requireAuth, async (req, res) => {
+  app.post('/api/loyalty/scan-redemption', requireEmployee, async (req, res) => {
     try {
       const { qrToken } = req.body;
       if (!qrToken) return res.status(400).json({ success: false, error: 'QR token required' });
@@ -591,7 +591,7 @@ function setupLoyaltyWalletAPI(app) {
   });
 
   // POST /api/loyalty/confirm-redemption - employee confirms drink delivery, points deducted
-  app.post('/api/loyalty/confirm-redemption', requireAuth, async (req, res) => {
+  app.post('/api/loyalty/confirm-redemption', requireEmployee, async (req, res) => {
     try {
       const { redemptionId, employeePhone, shopAddress } = req.body;
       if (!redemptionId) return res.status(400).json({ success: false, error: 'Redemption ID required' });

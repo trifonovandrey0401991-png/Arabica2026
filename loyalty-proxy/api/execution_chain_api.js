@@ -14,7 +14,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { fileExists, writeJsonFile } = require('../utils/file_helpers');
 const { getMoscowDateString, getMoscowTime } = require('../utils/moscow_time');
-const { requireAuth } = require('../utils/session_middleware');
+const { requireEmployee } = require('../utils/session_middleware');
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 // Feature flags для чтения из БД
@@ -500,7 +500,7 @@ function setupExecutionChainAPI(app) {
   console.log('[ExecutionChain] Setting up Execution Chain API...');
 
   // GET /api/execution-chain/config — получить конфиг
-  app.get('/api/execution-chain/config', requireAuth, async (req, res) => {
+  app.get('/api/execution-chain/config', requireEmployee, async (req, res) => {
     try {
       const config = await loadConfig();
       res.json({ success: true, ...config, availableModules: AVAILABLE_MODULES });
@@ -511,7 +511,7 @@ function setupExecutionChainAPI(app) {
   });
 
   // PUT /api/execution-chain/config — сохранить конфиг
-  app.put('/api/execution-chain/config', requireAuth, async (req, res) => {
+  app.put('/api/execution-chain/config', requireEmployee, async (req, res) => {
     try {
       const { enabled, steps } = req.body;
 
@@ -550,7 +550,7 @@ function setupExecutionChainAPI(app) {
   });
 
   // GET /api/execution-chain/status — статус выполнения
-  app.get('/api/execution-chain/status', requireAuth, async (req, res) => {
+  app.get('/api/execution-chain/status', requireEmployee, async (req, res) => {
     try {
       const { employeeName, shopAddress } = req.query;
       // Дата — сегодня по Москве (UTC+3)
