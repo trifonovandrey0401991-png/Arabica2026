@@ -210,49 +210,56 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
 
       let employee;
 
-      if (USE_DB) {
-        const row = await db.insert('employees', {
-          id,
-          referral_code: referralCode,
-          name: req.body.name.trim(),
-          position: req.body.position || null,
-          department: req.body.department || null,
-          phone: req.body.phone || null,
-          email: req.body.email || null,
-          is_admin: false, // Roles managed ONLY via shop-managers
-          is_manager: false, // Roles managed ONLY via shop-managers
-          employee_name: req.body.employeeName || null,
-          preferred_work_days: req.body.preferredWorkDays || [],
-          preferred_shops: req.body.preferredShops || [],
-          shift_preferences: req.body.shiftPreferences || {},
-          created_at: now,
-          updated_at: now
-        });
-        employee = dbEmployeeToCamel(row);
-      } else {
-        if (!await fileExists(EMPLOYEES_DIR)) {
-          await fsp.mkdir(EMPLOYEES_DIR, { recursive: true });
-        }
+      // Build camelCase employee object (used for JSON + response)
+      employee = {
+        id,
+        referralCode,
+        name: req.body.name.trim(),
+        position: req.body.position || null,
+        department: req.body.department || null,
+        phone: req.body.phone || null,
+        email: req.body.email || null,
+        isAdmin: false, // Roles managed ONLY via shop-managers
+        isManager: false, // Roles managed ONLY via shop-managers
+        employeeName: req.body.employeeName || null,
+        preferredWorkDays: req.body.preferredWorkDays || [],
+        preferredShops: req.body.preferredShops || [],
+        shiftPreferences: req.body.shiftPreferences || {},
+        createdAt: now,
+        updatedAt: now,
+      };
 
-        employee = {
-          id,
-          referralCode,
-          name: req.body.name.trim(),
-          position: req.body.position || null,
-          department: req.body.department || null,
-          phone: req.body.phone || null,
-          email: req.body.email || null,
-          isAdmin: false, // Roles managed ONLY via shop-managers
-          isManager: false, // Roles managed ONLY via shop-managers
-          employeeName: req.body.employeeName || null,
-          preferredWorkDays: req.body.preferredWorkDays || [],
-          preferredShops: req.body.preferredShops || [],
-          shiftPreferences: req.body.shiftPreferences || {},
-          createdAt: now,
-          updatedAt: now,
-        };
-        const employeeFile = path.join(EMPLOYEES_DIR, `${id}.json`);
-        await writeJsonFile(employeeFile, employee);
+      // 1. Always write JSON (admin_cache reads from JSON files)
+      if (!await fileExists(EMPLOYEES_DIR)) {
+        await fsp.mkdir(EMPLOYEES_DIR, { recursive: true });
+      }
+      const employeeFile = path.join(EMPLOYEES_DIR, `${id}.json`);
+      await writeJsonFile(employeeFile, employee);
+
+      // 2. Write to DB if enabled
+      if (USE_DB) {
+        try {
+          const row = await db.insert('employees', {
+            id,
+            referral_code: referralCode,
+            name: req.body.name.trim(),
+            position: req.body.position || null,
+            department: req.body.department || null,
+            phone: req.body.phone || null,
+            email: req.body.email || null,
+            is_admin: false,
+            is_manager: false,
+            employee_name: req.body.employeeName || null,
+            preferred_work_days: req.body.preferredWorkDays || [],
+            preferred_shops: req.body.preferredShops || [],
+            shift_preferences: req.body.shiftPreferences || {},
+            created_at: now,
+            updated_at: now
+          });
+          employee = dbEmployeeToCamel(row);
+        } catch (dbErr) {
+          console.error('[Employees] DB insert error:', dbErr.message);
+        }
       }
 
       console.log('✅ Сотрудник создан:', id);
@@ -296,27 +303,62 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
 
       let employee;
 
+      // Read existing employee (from DB or JSON)
+      let existing = null;
       if (USE_DB) {
-        const existing = await db.findById('employees', id);
-        if (!existing) return res.status(404).json({ success: false, error: 'Сотрудник не найден' });
+        existing = await db.findById('employees', id);
+      }
+      if (!existing) {
+        const employeeFile = path.join(EMPLOYEES_DIR, `${id}.json`);
+        if (await fileExists(employeeFile)) {
+          existing = JSON.parse(await fsp.readFile(employeeFile, 'utf8'));
+        }
+      }
+      if (!existing) return res.status(404).json({ success: false, error: 'Сотрудник не найден' });
 
-        const updateData = { updated_at: new Date().toISOString() };
-        // Обязательные поля
-        updateData.name = req.body.name.trim();
-        updateData.referral_code = req.body.referralCode || existing.referral_code;
-        // Опциональные — обновляем только если переданы
-        if (req.body.position !== undefined) updateData.position = req.body.position;
-        if (req.body.department !== undefined) updateData.department = req.body.department;
-        if (req.body.phone !== undefined) updateData.phone = req.body.phone;
-        if (req.body.email !== undefined) updateData.email = req.body.email;
-        // isAdmin/isManager ignored — roles managed ONLY via shop-managers
-        if (req.body.employeeName !== undefined) updateData.employee_name = req.body.employeeName;
-        if (req.body.preferredWorkDays !== undefined) updateData.preferred_work_days = req.body.preferredWorkDays;
-        if (req.body.preferredShops !== undefined) updateData.preferred_shops = req.body.preferredShops;
-        if (req.body.shiftPreferences !== undefined) updateData.shift_preferences = req.body.shiftPreferences;
+      // Build updated employee (camelCase for JSON + response)
+      employee = {
+        id,
+        referralCode: req.body.referralCode || existing.referralCode || existing.referral_code,
+        name: req.body.name.trim(),
+        position: req.body.position !== undefined ? req.body.position : (existing.position || null),
+        department: req.body.department !== undefined ? req.body.department : (existing.department || null),
+        phone: req.body.phone !== undefined ? req.body.phone : (existing.phone || null),
+        email: req.body.email !== undefined ? req.body.email : (existing.email || null),
+        isAdmin: existing.isAdmin || existing.is_admin || false,
+        isManager: existing.isManager || existing.is_manager || false,
+        employeeName: req.body.employeeName !== undefined ? req.body.employeeName : (existing.employeeName || existing.employee_name || null),
+        preferredWorkDays: req.body.preferredWorkDays !== undefined ? req.body.preferredWorkDays : (existing.preferredWorkDays || existing.preferred_work_days || []),
+        preferredShops: req.body.preferredShops !== undefined ? req.body.preferredShops : (existing.preferredShops || existing.preferred_shops || []),
+        shiftPreferences: req.body.shiftPreferences !== undefined ? req.body.shiftPreferences : (existing.shiftPreferences || existing.shift_preferences || {}),
+        createdAt: existing.createdAt || existing.created_at || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-        const row = await db.updateById('employees', id, updateData);
-        employee = dbEmployeeToCamel(row);
+      // 1. Always write JSON
+      const employeeFile = path.join(EMPLOYEES_DIR, `${id}.json`);
+      await writeJsonFile(employeeFile, employee);
+
+      // 2. Update DB if enabled
+      if (USE_DB) {
+        try {
+          const updateData = { updated_at: new Date().toISOString() };
+          updateData.name = req.body.name.trim();
+          updateData.referral_code = req.body.referralCode || existing.referral_code || existing.referralCode;
+          if (req.body.position !== undefined) updateData.position = req.body.position;
+          if (req.body.department !== undefined) updateData.department = req.body.department;
+          if (req.body.phone !== undefined) updateData.phone = req.body.phone;
+          if (req.body.email !== undefined) updateData.email = req.body.email;
+          if (req.body.employeeName !== undefined) updateData.employee_name = req.body.employeeName;
+          if (req.body.preferredWorkDays !== undefined) updateData.preferred_work_days = req.body.preferredWorkDays;
+          if (req.body.preferredShops !== undefined) updateData.preferred_shops = req.body.preferredShops;
+          if (req.body.shiftPreferences !== undefined) updateData.shift_preferences = req.body.shiftPreferences;
+
+          const row = await db.updateById('employees', id, updateData);
+          if (row) employee = dbEmployeeToCamel(row);
+        } catch (dbErr) {
+          console.error('[Employees] DB update error:', dbErr.message);
+        }
 
         // Cascade phone change to all related tables
         if (req.body.phone && existing.phone && req.body.phone !== existing.phone) {
@@ -389,35 +431,6 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
             console.error('⚠️ Phone cascade error (employee record updated OK):', cascErr.message);
           }
         }
-      } else {
-        const employeeFile = path.join(EMPLOYEES_DIR, `${id}.json`);
-        if (!await fileExists(employeeFile)) {
-          return res.status(404).json({ success: false, error: 'Сотрудник не найден' });
-        }
-
-        // Читаем существующие данные для сохранения createdAt
-        const oldContent = await fsp.readFile(employeeFile, 'utf8');
-        const oldEmployee = JSON.parse(oldContent);
-
-        employee = {
-          id,
-          referralCode: req.body.referralCode || oldEmployee.referralCode,
-          name: req.body.name.trim(),
-          position: req.body.position !== undefined ? req.body.position : oldEmployee.position,
-          department: req.body.department !== undefined ? req.body.department : oldEmployee.department,
-          phone: req.body.phone !== undefined ? req.body.phone : oldEmployee.phone,
-          email: req.body.email !== undefined ? req.body.email : oldEmployee.email,
-          isAdmin: oldEmployee.isAdmin, // Roles managed ONLY via shop-managers
-          isManager: oldEmployee.isManager, // Roles managed ONLY via shop-managers
-          employeeName: req.body.employeeName !== undefined ? req.body.employeeName : oldEmployee.employeeName,
-          preferredWorkDays: req.body.preferredWorkDays !== undefined ? req.body.preferredWorkDays : oldEmployee.preferredWorkDays,
-          preferredShops: req.body.preferredShops !== undefined ? req.body.preferredShops : oldEmployee.preferredShops,
-          shiftPreferences: req.body.shiftPreferences !== undefined ? req.body.shiftPreferences : oldEmployee.shiftPreferences,
-          createdAt: oldEmployee.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-
-        await writeJsonFile(employeeFile, employee);
       }
 
       console.log('✅ Сотрудник обновлен:', id);
@@ -443,27 +456,32 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
 
       let employeePhone = null;
 
+      // Find employee (DB or JSON)
+      let existing = null;
       if (USE_DB) {
-        // Читаем телефон перед удалением для инвалидации кэша
-        const existing = await db.findById('employees', id);
-        if (!existing) return res.status(404).json({ success: false, error: 'Сотрудник не найден' });
-        employeePhone = existing.phone;
-
-        await db.deleteById('employees', id);
-      } else {
-        const employeeFile = path.join(EMPLOYEES_DIR, `${id}.json`);
-        if (!await fileExists(employeeFile)) {
-          return res.status(404).json({ success: false, error: 'Сотрудник не найден' });
-        }
-
-        // Читаем телефон перед удалением для инвалидации кэша
+        existing = await db.findById('employees', id);
+      }
+      const employeeFile = path.join(EMPLOYEES_DIR, `${id}.json`);
+      if (!existing && await fileExists(employeeFile)) {
         try {
-          const content = await fsp.readFile(employeeFile, 'utf8');
-          const employee = JSON.parse(content);
-          employeePhone = employee.phone;
+          existing = JSON.parse(await fsp.readFile(employeeFile, 'utf8'));
         } catch (e) { /* ignore */ }
+      }
+      if (!existing) return res.status(404).json({ success: false, error: 'Сотрудник не найден' });
+      employeePhone = existing.phone;
 
-        await fsp.unlink(employeeFile);
+      // 1. Always delete JSON
+      try {
+        if (await fileExists(employeeFile)) await fsp.unlink(employeeFile);
+      } catch (e) { /* ignore */ }
+
+      // 2. Delete from DB if enabled
+      if (USE_DB) {
+        try {
+          await db.deleteById('employees', id);
+        } catch (dbErr) {
+          console.error('[Employees] DB delete error:', dbErr.message);
+        }
       }
 
       console.log('✅ Сотрудник удален:', id);

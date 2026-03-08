@@ -255,9 +255,24 @@ function setupEnvelopeAPI(app) {
         updatedAt: new Date().toISOString(),
       };
 
+      // 1. Always write JSON
       await writeJsonFile(filePath, question);
-      console.log('Вопрос конверта создан:', filePath);
 
+      // 2. Write to DB if enabled
+      if (USE_DB) {
+        try {
+          await db.upsert('envelope_questions', {
+            id: questionId,
+            data: question,
+            created_at: question.createdAt,
+            updated_at: question.updatedAt,
+          });
+        } catch (dbErr) {
+          console.error('[Envelope] DB question create error:', dbErr.message);
+        }
+      }
+
+      console.log('Вопрос конверта создан:', filePath);
       res.json({ success: true, question });
     } catch (error) {
       console.error('Ошибка создания вопроса конверта:', error);
@@ -295,9 +310,24 @@ function setupEnvelopeAPI(app) {
       question.updatedAt = new Date().toISOString();
       if (!question.createdAt) question.createdAt = new Date().toISOString();
 
+      // 1. Always write JSON
       await writeJsonFile(filePath, question);
-      console.log('Вопрос конверта обновлен:', filePath);
 
+      // 2. Write to DB if enabled
+      if (USE_DB) {
+        try {
+          await db.upsert('envelope_questions', {
+            id,
+            data: question,
+            created_at: question.createdAt,
+            updated_at: question.updatedAt,
+          });
+        } catch (dbErr) {
+          console.error('[Envelope] DB question update error:', dbErr.message);
+        }
+      }
+
+      console.log('Вопрос конверта обновлен:', filePath);
       res.json({ success: true, question });
     } catch (error) {
       console.error('Ошибка обновления вопроса конверта:', error);
@@ -314,13 +344,29 @@ function setupEnvelopeAPI(app) {
       const sanitizedId2 = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(ENVELOPE_QUESTIONS_DIR, `${sanitizedId2}.json`);
 
-      if (!await fileExists(filePath)) {
-        return res.status(404).json({ success: false, error: 'Вопрос не найден' });
+      // 1. Always delete JSON
+      if (await fileExists(filePath)) {
+        await fsp.unlink(filePath);
+      } else {
+        // Check DB before returning 404
+        if (USE_DB) {
+          const dbRow = await db.findById('envelope_questions', id);
+          if (!dbRow) return res.status(404).json({ success: false, error: 'Вопрос не найден' });
+        } else {
+          return res.status(404).json({ success: false, error: 'Вопрос не найден' });
+        }
       }
 
-      await fsp.unlink(filePath);
-      console.log('Вопрос конверта удален:', filePath);
+      // 2. Delete from DB if enabled
+      if (USE_DB) {
+        try {
+          await db.deleteById('envelope_questions', id);
+        } catch (dbErr) {
+          console.error('[Envelope] DB question delete error:', dbErr.message);
+        }
+      }
 
+      console.log('Вопрос конверта удален:', id);
       res.json({ success: true, message: 'Вопрос успешно удален' });
     } catch (error) {
       console.error('Ошибка удаления вопроса конверта:', error);

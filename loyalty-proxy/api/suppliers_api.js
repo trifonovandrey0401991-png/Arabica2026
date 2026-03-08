@@ -126,47 +126,48 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
 
       let supplier;
 
-      if (USE_DB) {
-        const row = await db.insert('suppliers', {
-          id,
-          referral_code: referralCode,
-          name: req.body.name.trim(),
-          inn: req.body.inn ? req.body.inn.trim() : null,
-          legal_type: req.body.legalType,
-          phone: req.body.phone ? req.body.phone.trim() : null,
-          email: req.body.email ? req.body.email.trim() : null,
-          contact_person: req.body.contactPerson ? req.body.contactPerson.trim() : null,
-          payment_type: req.body.paymentType,
-          shop_deliveries: req.body.shopDeliveries || null,
-          delivery_days: req.body.deliveryDays || [],
-          created_at: now,
-          updated_at: now
-        });
-        supplier = dbSupplierToCamel(row);
+      supplier = {
+        id,
+        referralCode,
+        name: req.body.name.trim(),
+        inn: req.body.inn ? req.body.inn.trim() : null,
+        legalType: req.body.legalType,
+        phone: req.body.phone ? req.body.phone.trim() : null,
+        email: req.body.email ? req.body.email.trim() : null,
+        contactPerson: req.body.contactPerson ? req.body.contactPerson.trim() : null,
+        paymentType: req.body.paymentType,
+        shopDeliveries: req.body.shopDeliveries || null,
+        deliveryDays: req.body.deliveryDays || [],
+        createdAt: now,
+        updatedAt: now,
+      };
 
-        // Dual-write: JSON backup
+      // 1. Always write JSON first
+      await ensureDir(SUPPLIERS_DIR);
+      await writeJsonFile(path.join(SUPPLIERS_DIR, `${id}.json`), supplier);
+
+      // 2. Write to DB if enabled
+      if (USE_DB) {
         try {
-          await ensureDir(SUPPLIERS_DIR);
-          await writeJsonFile(path.join(SUPPLIERS_DIR, `${id}.json`), supplier);
-        } catch (e) { console.error('Supplier JSON backup write error:', e.message); }
-      } else {
-        supplier = {
-          id,
-          referralCode,
-          name: req.body.name.trim(),
-          inn: req.body.inn ? req.body.inn.trim() : null,
-          legalType: req.body.legalType,
-          phone: req.body.phone ? req.body.phone.trim() : null,
-          email: req.body.email ? req.body.email.trim() : null,
-          contactPerson: req.body.contactPerson ? req.body.contactPerson.trim() : null,
-          paymentType: req.body.paymentType,
-          shopDeliveries: req.body.shopDeliveries || null,
-          deliveryDays: req.body.deliveryDays || [],
-          createdAt: now,
-          updatedAt: now,
-        };
-        const supplierFile = path.join(SUPPLIERS_DIR, `${id}.json`);
-        await writeJsonFile(supplierFile, supplier);
+          const row = await db.insert('suppliers', {
+            id,
+            referral_code: referralCode,
+            name: req.body.name.trim(),
+            inn: req.body.inn ? req.body.inn.trim() : null,
+            legal_type: req.body.legalType,
+            phone: req.body.phone ? req.body.phone.trim() : null,
+            email: req.body.email ? req.body.email.trim() : null,
+            contact_person: req.body.contactPerson ? req.body.contactPerson.trim() : null,
+            payment_type: req.body.paymentType,
+            shop_deliveries: req.body.shopDeliveries || null,
+            delivery_days: req.body.deliveryDays || [],
+            created_at: now,
+            updated_at: now
+          });
+          supplier = dbSupplierToCamel(row);
+        } catch (dbErr) {
+          console.error('[Suppliers] DB insert error:', dbErr.message);
+        }
       }
 
       console.log('✅ Поставщик создан:', id);
@@ -198,57 +199,62 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
 
       let supplier;
 
+      // Check existence in DB or JSON
+      let oldSupplier;
       if (USE_DB) {
         const existing = await db.findById('suppliers', id);
         if (!existing) return res.status(404).json({ success: false, error: 'Поставщик не найден' });
-
-        const row = await db.updateById('suppliers', id, {
-          referral_code: req.body.referralCode || existing.referral_code,
-          name: req.body.name.trim(),
-          inn: req.body.inn ? req.body.inn.trim() : null,
-          legal_type: req.body.legalType,
-          phone: req.body.phone ? req.body.phone.trim() : null,
-          email: req.body.email ? req.body.email.trim() : null,
-          contact_person: req.body.contactPerson ? req.body.contactPerson.trim() : null,
-          payment_type: req.body.paymentType,
-          shop_deliveries: req.body.shopDeliveries || null,
-          delivery_days: req.body.deliveryDays || [],
-          updated_at: new Date().toISOString()
-        });
-        supplier = dbSupplierToCamel(row);
-
-        // Dual-write: JSON backup
-        try {
-          await ensureDir(SUPPLIERS_DIR);
-          await writeJsonFile(path.join(SUPPLIERS_DIR, `${id}.json`), supplier);
-        } catch (e) { console.error('Supplier JSON backup update error:', e.message); }
+        oldSupplier = dbSupplierToCamel(existing);
       } else {
         const supplierFile = path.join(SUPPLIERS_DIR, `${id}.json`);
         if (!await fileExists(supplierFile)) {
           return res.status(404).json({ success: false, error: 'Поставщик не найден' });
         }
-
-        // Читаем существующие данные для сохранения createdAt
         const oldContent = await fsp.readFile(supplierFile, 'utf8');
-        const oldSupplier = JSON.parse(oldContent);
+        oldSupplier = JSON.parse(oldContent);
+      }
 
-        supplier = {
-          id,
-          referralCode: req.body.referralCode || oldSupplier.referralCode || (getNextReferralCode ? await getNextReferralCode() : null),
-          name: req.body.name.trim(),
-          inn: req.body.inn ? req.body.inn.trim() : null,
-          legalType: req.body.legalType,
-          phone: req.body.phone ? req.body.phone.trim() : null,
-          email: req.body.email ? req.body.email.trim() : null,
-          contactPerson: req.body.contactPerson ? req.body.contactPerson.trim() : null,
-          paymentType: req.body.paymentType,
-          shopDeliveries: req.body.shopDeliveries || null,
-          deliveryDays: req.body.deliveryDays || [],
-          createdAt: oldSupplier.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
+      // Build updated supplier object
+      supplier = {
+        id,
+        referralCode: req.body.referralCode || oldSupplier.referralCode || (getNextReferralCode ? await getNextReferralCode() : null),
+        name: req.body.name.trim(),
+        inn: req.body.inn ? req.body.inn.trim() : null,
+        legalType: req.body.legalType,
+        phone: req.body.phone ? req.body.phone.trim() : null,
+        email: req.body.email ? req.body.email.trim() : null,
+        contactPerson: req.body.contactPerson ? req.body.contactPerson.trim() : null,
+        paymentType: req.body.paymentType,
+        shopDeliveries: req.body.shopDeliveries || null,
+        deliveryDays: req.body.deliveryDays || [],
+        createdAt: oldSupplier.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-        await writeJsonFile(supplierFile, supplier);
+      // 1. Always write JSON first
+      await ensureDir(SUPPLIERS_DIR);
+      await writeJsonFile(path.join(SUPPLIERS_DIR, `${id}.json`), supplier);
+
+      // 2. Write to DB if enabled
+      if (USE_DB) {
+        try {
+          const row = await db.updateById('suppliers', id, {
+            referral_code: supplier.referralCode,
+            name: supplier.name,
+            inn: supplier.inn,
+            legal_type: supplier.legalType,
+            phone: supplier.phone,
+            email: supplier.email,
+            contact_person: supplier.contactPerson,
+            payment_type: supplier.paymentType,
+            shop_deliveries: supplier.shopDeliveries,
+            delivery_days: supplier.deliveryDays,
+            updated_at: supplier.updatedAt
+          });
+          supplier = dbSupplierToCamel(row);
+        } catch (dbErr) {
+          console.error('[Suppliers] DB update error:', dbErr.message);
+        }
       }
 
       console.log('✅ Поставщик обновлен:', id);
@@ -265,21 +271,33 @@ function setupSuppliersAPI(app, { getNextReferralCode } = {}) {
       const id = sanitizeId(req.params.id);
       console.log('DELETE /api/suppliers:', id);
 
-      if (USE_DB) {
-        const deleted = await db.deleteById('suppliers', id);
-        if (!deleted) return res.status(404).json({ success: false, error: 'Поставщик не найден' });
+      // Check existence in DB or JSON
+      const supplierFile = path.join(SUPPLIERS_DIR, `${id}.json`);
+      const jsonExists = await fileExists(supplierFile);
 
-        // Dual-write: remove JSON backup
-        try {
-          const supplierFile = path.join(SUPPLIERS_DIR, `${id}.json`);
-          if (await fileExists(supplierFile)) await fsp.unlink(supplierFile);
-        } catch (e) { console.error('Supplier JSON backup delete error:', e.message); }
-      } else {
-        const supplierFile = path.join(SUPPLIERS_DIR, `${id}.json`);
-        if (!await fileExists(supplierFile)) {
+      if (USE_DB) {
+        const existing = await db.findById('suppliers', id);
+        if (!existing && !jsonExists) {
           return res.status(404).json({ success: false, error: 'Поставщик не найден' });
         }
+      } else {
+        if (!jsonExists) {
+          return res.status(404).json({ success: false, error: 'Поставщик не найден' });
+        }
+      }
+
+      // 1. Delete JSON first
+      if (jsonExists) {
         await fsp.unlink(supplierFile);
+      }
+
+      // 2. Delete from DB if enabled
+      if (USE_DB) {
+        try {
+          await db.deleteById('suppliers', id);
+        } catch (dbErr) {
+          console.error('[Suppliers] DB delete error:', dbErr.message);
+        }
       }
 
       console.log('✅ Поставщик удален:', id);

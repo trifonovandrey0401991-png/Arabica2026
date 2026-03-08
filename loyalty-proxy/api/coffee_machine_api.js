@@ -201,8 +201,25 @@ function setupCoffeeMachineAPI(app, { sendPushToPhone } = {}) {
         template.referencePhotoUrl = `/coffee-machine-photos/${photoFileName}`;
       }
 
+      // 1. Always write JSON
       const filePath = path.join(TEMPLATES_DIR, `${sanitizeId(template.id)}.json`);
       await writeJsonFile(filePath, template);
+
+      // 2. Write to DB if enabled
+      if (USE_DB) {
+        try {
+          await db.upsert('coffee_machine_templates', {
+            id: template.id,
+            name: template.name || '',
+            preset: template.preset || null,
+            data: template,
+            created_at: template.createdAt,
+            updated_at: template.updatedAt,
+          });
+        } catch (dbErr) {
+          console.error('[CoffeeMachine] DB template save error:', dbErr.message);
+        }
+      }
 
       console.log(`[CoffeeMachine] ✅ Шаблон сохранён: ${template.name} (${template.id})`);
       res.json({ success: true, template });
@@ -234,7 +251,24 @@ function setupCoffeeMachineAPI(app, { sendPushToPhone } = {}) {
         updated.referencePhotoUrl = `/coffee-machine-photos/${photoFileName}`;
       }
 
+      // 1. Always write JSON
       await writeJsonFile(filePath, updated);
+
+      // 2. Write to DB if enabled
+      if (USE_DB) {
+        try {
+          await db.upsert('coffee_machine_templates', {
+            id,
+            name: updated.name || '',
+            preset: updated.preset || null,
+            data: updated,
+            updated_at: updated.updatedAt,
+          });
+        } catch (dbErr) {
+          console.error('[CoffeeMachine] DB template update error:', dbErr.message);
+        }
+      }
+
       console.log(`[CoffeeMachine] ✅ Шаблон обновлён: ${updated.name} (${id})`);
       res.json({ success: true, template: updated });
     } catch (error) {
@@ -248,11 +282,25 @@ function setupCoffeeMachineAPI(app, { sendPushToPhone } = {}) {
       const { id } = req.params;
       const filePath = path.join(TEMPLATES_DIR, `${sanitizeId(id)}.json`);
 
-      if (!(await fileExists(filePath))) {
+      // 1. Always delete JSON
+      if (await fileExists(filePath)) {
+        await fsp.unlink(filePath);
+      } else if (USE_DB) {
+        const dbRow = await db.findById('coffee_machine_templates', id);
+        if (!dbRow) return res.status(404).json({ success: false, error: 'Шаблон не найден' });
+      } else {
         return res.status(404).json({ success: false, error: 'Шаблон не найден' });
       }
 
-      await fsp.unlink(filePath);
+      // 2. Delete from DB if enabled
+      if (USE_DB) {
+        try {
+          await db.deleteById('coffee_machine_templates', id);
+        } catch (dbErr) {
+          console.error('[CoffeeMachine] DB template delete error:', dbErr.message);
+        }
+      }
+
       console.log(`[CoffeeMachine] ❌ Шаблон удалён: ${id}`);
       res.json({ success: true });
     } catch (error) {
@@ -574,19 +622,24 @@ function setupCoffeeMachineAPI(app, { sendPushToPhone } = {}) {
       report.confirmedByAdmin = confirmedByAdmin;
       report.rating = rating;
 
-      if (USE_DB) {
-        await db.updateById('coffee_machine_reports', id, {
-          status: 'confirmed',
-          confirmed_at: report.confirmedAt,
-          confirmed_by_admin: confirmedByAdmin,
-          rating: rating,
-          updated_at: new Date().toISOString()
-        });
-      }
-
-      // Dual-write: файл
+      // 1. Always write JSON first
       const filePath = path.join(REPORTS_DIR, `${id}.json`);
       await writeJsonFile(filePath, report);
+
+      // 2. Write to DB if enabled
+      if (USE_DB) {
+        try {
+          await db.updateById('coffee_machine_reports', id, {
+            status: 'confirmed',
+            confirmed_at: report.confirmedAt,
+            confirmed_by_admin: confirmedByAdmin,
+            rating: rating,
+            updated_at: new Date().toISOString()
+          });
+        } catch (dbErr) {
+          console.error('[CoffeeMachine] DB confirm error:', dbErr.message);
+        }
+      }
 
       console.log(`[CoffeeMachine] ✅ Отчёт подтверждён: ${id} (оценка: ${rating})`);
 
@@ -649,19 +702,24 @@ function setupCoffeeMachineAPI(app, { sendPushToPhone } = {}) {
       report.rejectedByAdmin = rejectedByAdmin;
       report.rejectReason = rejectReason;
 
-      if (USE_DB) {
-        await db.updateById('coffee_machine_reports', id, {
-          status: 'rejected',
-          rejected_at: report.rejectedAt,
-          rejected_by_admin: rejectedByAdmin,
-          reject_reason: rejectReason,
-          updated_at: new Date().toISOString()
-        });
-      }
-
-      // Dual-write: файл
+      // 1. Always write JSON first
       const filePath = path.join(REPORTS_DIR, `${id}.json`);
       await writeJsonFile(filePath, report);
+
+      // 2. Write to DB if enabled
+      if (USE_DB) {
+        try {
+          await db.updateById('coffee_machine_reports', id, {
+            status: 'rejected',
+            rejected_at: report.rejectedAt,
+            rejected_by_admin: rejectedByAdmin,
+            reject_reason: rejectReason,
+            updated_at: new Date().toISOString()
+          });
+        } catch (dbErr) {
+          console.error('[CoffeeMachine] DB reject error:', dbErr.message);
+        }
+      }
 
       console.log(`[CoffeeMachine] ❌ Отчёт отклонён: ${id}`);
 
