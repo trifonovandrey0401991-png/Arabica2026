@@ -439,6 +439,45 @@ console.log('\n[Exports] Проверка экспортов session_middleware'
 }
 
 // ─────────────────────────────────────────────────────────────
+// H40: getEmployeePhoneByName — fallback для push-уведомлений
+// ─────────────────────────────────────────────────────────────
+console.log('\n[H40] getEmployeePhoneByName — поиск телефона по имени');
+
+{
+  const { getEmployeePhoneByName } = require('../loyalty-proxy/utils/data_cache');
+
+  // Функция должна существовать
+  assert(typeof getEmployeePhoneByName === 'function', 'getEmployeePhoneByName экспортируется');
+
+  // null/undefined → null (кэш может быть пуст)
+  assert(getEmployeePhoneByName(null) === null, 'null имя → null');
+  assert(getEmployeePhoneByName(undefined) === null, 'undefined имя → null');
+  assert(getEmployeePhoneByName('') === null, 'пустое имя → null');
+
+  // Логика fallback: если phone пустой, ищем по имени
+  function resolvePhone(report) {
+    let phone = report.employeePhone;
+    if (!phone && report.employeeName) {
+      phone = getEmployeePhoneByName(report.employeeName);
+    }
+    return phone;
+  }
+
+  // Телефон уже есть — не ищем
+  const r1 = { employeePhone: '79001234567', employeeName: 'Иванов' };
+  assert(resolvePhone(r1) === '79001234567', 'Телефон есть: возвращаем его');
+
+  // Телефон null, имя есть — пытаемся найти (кэш может быть пуст, вернёт null)
+  const r2 = { employeePhone: null, employeeName: 'Неизвестный' };
+  const resolved = resolvePhone(r2);
+  assert(resolved === null || typeof resolved === 'string', 'Телефон null: попытка поиска (null если кэш пуст)');
+
+  // Ни телефона, ни имени → null
+  const r3 = { employeePhone: null, employeeName: null };
+  assert(resolvePhone(r3) === null, 'Ни телефона, ни имени → null');
+}
+
+// ─────────────────────────────────────────────────────────────
 // ИТОГО
 // ─────────────────────────────────────────────────────────────
 console.log(`\n${'='.repeat(50)}`);

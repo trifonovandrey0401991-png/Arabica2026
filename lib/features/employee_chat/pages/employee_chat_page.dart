@@ -104,7 +104,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
     final ws = ChatWebSocketService.instance;
     ws.connect(widget.userPhone);
 
-    _newMessageSub = ws.onNewMessage.listen((event) {
+    _newMessageSub = ws.onNewMessage.listen((event) async {
       if (event.chatId == widget.chat.id && mounted) {
         if (!_messages.any((m) => m.id == event.message.id)) {
           if (mounted) setState(() {
@@ -115,7 +115,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
                   _scrollController.position.maxScrollExtent - 100) {
             _scrollToBottom();
           }
-          EmployeeChatService.markAsRead(widget.chat.id, widget.userPhone);
+          await EmployeeChatService.markAsRead(widget.chat.id, widget.userPhone);
         }
       }
     });
@@ -225,7 +225,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage>
         });
 
         if (messages.isNotEmpty) {
-          EmployeeChatService.markAsRead(widget.chat.id, widget.userPhone);
+          await EmployeeChatService.markAsRead(widget.chat.id, widget.userPhone);
         }
 
         if (wasEmpty || (hadNewMessages && (isAtBottom || !silent))) {

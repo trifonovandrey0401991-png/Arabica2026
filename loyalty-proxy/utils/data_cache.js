@@ -257,6 +257,17 @@ function startPeriodicRebuild() {
 }
 
 /**
+ * Find employee phone by display name (from cache, no DB/file access)
+ * @param {string} employeeName - Display name to search for
+ * @returns {string|null} - Phone number or null if not found
+ */
+function getEmployeePhoneByName(employeeName) {
+  if (!employeeName || !employeesCache) return null;
+  const emp = employeesCache.find(e => e.name === employeeName);
+  return emp ? (emp.phone || null) : null;
+}
+
+/**
  * Статистика кэша
  */
 function getCacheStats() {
@@ -284,5 +295,6 @@ module.exports = {
   invalidateShiftHandoverQuestions,
   preload,
   startPeriodicRebuild,
-  getCacheStats
+  getCacheStats,
+  getEmployeePhoneByName
 };

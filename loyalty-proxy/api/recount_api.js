@@ -18,6 +18,7 @@ const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const { requireEmployee } = require('../utils/session_middleware');
 const { notifyCounterUpdate } = require('./counters_websocket');
 const { generateId } = require('../utils/id_generator');
+const { getEmployeePhoneByName } = require('../utils/data_cache');
 
 const USE_DB = process.env.USE_DB_RECOUNT === 'true';
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -816,7 +817,11 @@ function setupRecountAPI(app, { sendPushToPhone, calculateRecountPoints, sendPus
       }
 
       // Отправляем push-уведомление сотруднику
-      const employeePhone = report.employeePhone;
+      let employeePhone = report.employeePhone;
+      if (!employeePhone && report.employeeName) {
+        employeePhone = getEmployeePhoneByName(report.employeeName);
+        if (employeePhone) console.log(`[Recount] Phone resolved by name: ${report.employeeName} → ${employeePhone}`);
+      }
       if (employeePhone && sendPushToPhone) {
         try {
           const title = 'Пересчёт оценён';

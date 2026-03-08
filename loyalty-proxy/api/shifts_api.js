@@ -19,6 +19,7 @@ const db = require('../utils/db');
 const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const { requireEmployee } = require('../utils/session_middleware');
 const { generateId } = require('../utils/id_generator');
+const { getEmployeePhoneByName } = require('../utils/data_cache');
 
 const USE_DB_HANDOVER = process.env.USE_DB_SHIFT_HANDOVER === 'true';
 const USE_DB_SHIFTS = process.env.USE_DB_SHIFTS === 'true';
@@ -1039,7 +1040,11 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       if (previousStatus !== updatedReport.status &&
           (updatedReport.status === 'approved' || updatedReport.status === 'rejected')) {
 
-        const employeePhone = updatedReport.employeePhone;
+        let employeePhone = updatedReport.employeePhone;
+        if (!employeePhone && updatedReport.employeeName) {
+          employeePhone = getEmployeePhoneByName(updatedReport.employeeName);
+          if (employeePhone) console.log(`[ShiftHandover] Phone resolved by name: ${updatedReport.employeeName} → ${employeePhone}`);
+        }
         if (employeePhone && sendPushToPhone) {
           try {
             const isApproved = updatedReport.status === 'approved';
