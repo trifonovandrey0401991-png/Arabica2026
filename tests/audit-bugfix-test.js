@@ -478,6 +478,106 @@ console.log('\n[H40] getEmployeePhoneByName — поиск телефона по
 }
 
 // ─────────────────────────────────────────────────────────────
+// H42: client_prizes — DB mapping functions
+// ─────────────────────────────────────────────────────────────
+console.log('\n[H42] client_prizes — маппинг DB ↔ JSON');
+
+{
+  // Воссоздаём функции маппинга из loyalty_gamification_api.js
+  function dbRowToPrize(row) {
+    return {
+      id: row.id,
+      clientPhone: row.client_phone,
+      clientName: row.client_name,
+      prize: row.prize,
+      prizeType: row.prize_type,
+      prizeValue: row.prize_value,
+      spinDate: row.spin_date ? new Date(row.spin_date).toISOString() : null,
+      status: row.status,
+      qrToken: row.qr_token,
+      qrUsed: row.qr_used || false,
+      issuedBy: row.issued_by,
+      issuedByName: row.issued_by_name,
+      issuedAt: row.issued_at ? new Date(row.issued_at).toISOString() : null,
+    };
+  }
+
+  function prizeToDbRow(prize) {
+    return {
+      id: prize.id,
+      client_phone: prize.clientPhone,
+      client_name: prize.clientName,
+      prize: prize.prize,
+      prize_type: prize.prizeType,
+      prize_value: prize.prizeValue,
+      spin_date: prize.spinDate,
+      status: prize.status,
+      qr_token: prize.qrToken,
+      qr_used: prize.qrUsed || false,
+      issued_by: prize.issuedBy || null,
+      issued_by_name: prize.issuedByName || null,
+      issued_at: prize.issuedAt || null,
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  // Round-trip test: prize → DB → prize
+  const originalPrize = {
+    id: 'prize_test_123',
+    clientPhone: '79001234567',
+    clientName: 'Тестовый клиент',
+    prize: '+5 баллов',
+    prizeType: 'bonus_points',
+    prizeValue: 5,
+    spinDate: '2026-03-08T12:00:00.000Z',
+    status: 'pending',
+    qrToken: 'qr_abc123',
+    qrUsed: false,
+    issuedBy: null,
+    issuedByName: null,
+    issuedAt: null,
+  };
+
+  const dbRow = prizeToDbRow(originalPrize);
+  assert(dbRow.client_phone === '79001234567', 'prizeToDbRow: clientPhone → client_phone');
+  assert(dbRow.prize_type === 'bonus_points', 'prizeToDbRow: prizeType → prize_type');
+  assert(dbRow.qr_token === 'qr_abc123', 'prizeToDbRow: qrToken → qr_token');
+  assert(dbRow.qr_used === false, 'prizeToDbRow: qrUsed → qr_used');
+  assert(dbRow.updated_at !== undefined, 'prizeToDbRow: updated_at добавлен');
+
+  const restored = dbRowToPrize(dbRow);
+  assert(restored.id === originalPrize.id, 'Round-trip: id совпадает');
+  assert(restored.clientPhone === originalPrize.clientPhone, 'Round-trip: clientPhone совпадает');
+  assert(restored.prizeType === originalPrize.prizeType, 'Round-trip: prizeType совпадает');
+  assert(restored.qrToken === originalPrize.qrToken, 'Round-trip: qrToken совпадает');
+  assert(restored.status === 'pending', 'Round-trip: status совпадает');
+
+  // Issued prize round-trip
+  const issuedPrize = {
+    ...originalPrize,
+    status: 'issued',
+    qrUsed: true,
+    issuedBy: '79009876543',
+    issuedByName: 'Сотрудник',
+    issuedAt: '2026-03-08T13:00:00.000Z',
+  };
+
+  const issuedRow = prizeToDbRow(issuedPrize);
+  const issuedRestored = dbRowToPrize(issuedRow);
+  assert(issuedRestored.status === 'issued', 'Issued round-trip: status issued');
+  assert(issuedRestored.qrUsed === true, 'Issued round-trip: qrUsed true');
+  assert(issuedRestored.issuedBy === '79009876543', 'Issued round-trip: issuedBy');
+  assert(issuedRestored.issuedByName === 'Сотрудник', 'Issued round-trip: issuedByName');
+  assert(issuedRestored.issuedAt !== null, 'Issued round-trip: issuedAt не null');
+
+  // Edge case: null spinDate
+  const nullDateRow = { ...dbRow, spin_date: null, issued_at: null };
+  const nullRestored = dbRowToPrize(nullDateRow);
+  assert(nullRestored.spinDate === null, 'Null spinDate → null');
+  assert(nullRestored.issuedAt === null, 'Null issuedAt → null');
+}
+
+// ─────────────────────────────────────────────────────────────
 // ИТОГО
 // ─────────────────────────────────────────────────────────────
 console.log(`\n${'='.repeat(50)}`);

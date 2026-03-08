@@ -750,6 +750,26 @@ CREATE TABLE IF NOT EXISTS fortune_wheel_results (
 );
 CREATE INDEX IF NOT EXISTS idx_fortune_wheel_client ON fortune_wheel_results(client_phone);
 
+CREATE TABLE IF NOT EXISTS client_prizes (
+  id TEXT PRIMARY KEY,
+  client_phone TEXT NOT NULL,
+  client_name TEXT,
+  prize TEXT,
+  prize_type TEXT,
+  prize_value INTEGER DEFAULT 0,
+  spin_date TIMESTAMPTZ,
+  status TEXT DEFAULT 'pending',
+  qr_token TEXT UNIQUE,
+  qr_used BOOLEAN DEFAULT false,
+  issued_by TEXT,
+  issued_by_name TEXT,
+  issued_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_client_prizes_phone_status ON client_prizes(client_phone, status);
+CREATE INDEX IF NOT EXISTS idx_client_prizes_qr_token ON client_prizes(qr_token);
+
 CREATE TABLE IF NOT EXISTS employee_registrations (
   id TEXT PRIMARY KEY,
   data JSONB NOT NULL,

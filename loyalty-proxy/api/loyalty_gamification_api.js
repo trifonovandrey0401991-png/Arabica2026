@@ -160,8 +160,60 @@ async function sendPrizePushNotification(title, body, data = {}) {
   }
 }
 
+// DB row → prize object (camelCase)
+function dbRowToPrize(row) {
+  return {
+    id: row.id,
+    clientPhone: row.client_phone,
+    clientName: row.client_name,
+    prize: row.prize,
+    prizeType: row.prize_type,
+    prizeValue: row.prize_value,
+    spinDate: row.spin_date ? new Date(row.spin_date).toISOString() : null,
+    status: row.status,
+    qrToken: row.qr_token,
+    qrUsed: row.qr_used || false,
+    issuedBy: row.issued_by,
+    issuedByName: row.issued_by_name,
+    issuedAt: row.issued_at ? new Date(row.issued_at).toISOString() : null,
+  };
+}
+
+// Prize object → DB row (snake_case)
+function prizeToDbRow(prize) {
+  return {
+    id: prize.id,
+    client_phone: prize.clientPhone,
+    client_name: prize.clientName,
+    prize: prize.prize,
+    prize_type: prize.prizeType,
+    prize_value: prize.prizeValue,
+    spin_date: prize.spinDate,
+    status: prize.status,
+    qr_token: prize.qrToken,
+    qr_used: prize.qrUsed || false,
+    issued_by: prize.issuedBy || null,
+    issued_by_name: prize.issuedByName || null,
+    issued_at: prize.issuedAt || null,
+    updated_at: new Date().toISOString(),
+  };
+}
+
 // Find pending prize for client
 async function findPendingPrize(phone) {
+  // DB first
+  if (USE_DB) {
+    try {
+      const rows = await db.query(
+        'SELECT * FROM client_prizes WHERE client_phone = $1 AND status = $2 LIMIT 1',
+        [phone, 'pending']
+      );
+      if (rows.length > 0) return dbRowToPrize(rows[0]);
+    } catch (dbErr) {
+      console.error('[Prizes] DB findPendingPrize error:', dbErr.message);
+    }
+  }
+  // Fallback: JSON files
   try {
     if (!(await fileExists(CLIENT_PRIZES_DIR))) {
       return null;
@@ -184,6 +236,16 @@ async function findPendingPrize(phone) {
 
 // Load prize by ID
 async function loadPrize(prizeId) {
+  // DB first
+  if (USE_DB) {
+    try {
+      const row = await db.findById('client_prizes', prizeId);
+      if (row) return dbRowToPrize(row);
+    } catch (dbErr) {
+      console.error('[Prizes] DB loadPrize error:', dbErr.message);
+    }
+  }
+  // Fallback: JSON
   try {
     const filePath = path.join(CLIENT_PRIZES_DIR, `${prizeId}.json`);
     if (await fileExists(filePath)) {
@@ -196,14 +258,34 @@ async function loadPrize(prizeId) {
   return null;
 }
 
-// Save prize
+// Save prize (dual-write: JSON + DB)
 async function savePrize(prize) {
   const filePath = path.join(CLIENT_PRIZES_DIR, `${prize.id}.json`);
   await writeJsonFile(filePath, prize);
+  if (USE_DB) {
+    try {
+      await db.upsert('client_prizes', prizeToDbRow(prize));
+    } catch (dbErr) {
+      console.error('[Prizes] DB savePrize error:', dbErr.message);
+    }
+  }
 }
 
 // Find prize by QR token
 async function findPrizeByToken(qrToken) {
+  // DB first
+  if (USE_DB) {
+    try {
+      const rows = await db.query(
+        'SELECT * FROM client_prizes WHERE qr_token = $1 LIMIT 1',
+        [qrToken]
+      );
+      if (rows.length > 0) return dbRowToPrize(rows[0]);
+    } catch (dbErr) {
+      console.error('[Prizes] DB findPrizeByToken error:', dbErr.message);
+    }
+  }
+  // Fallback: JSON
   try {
     if (!(await fileExists(CLIENT_PRIZES_DIR))) {
       return null;
@@ -1096,6 +1178,47 @@ function setupLoyaltyGamificationAPI(app) {
       const { status, month, limit = 100 } = req.query;
       console.log('GET /api/loyalty-gamification/client-prizes-report:', { status, month });
 
+      // DB path
+      if (USE_DB) {
+        try {
+          let sql = 'SELECT * FROM client_prizes WHERE 1=1';
+          const params = [];
+          let paramIdx = 1;
+
+          if (status) {
+            sql += ` AND status = $${paramIdx++}`;
+            params.push(status);
+          }
+          if (month) {
+            sql += ` AND TO_CHAR(spin_date, 'YYYY-MM') = $${paramIdx++}`;
+            params.push(month);
+          }
+
+          sql += ' ORDER BY spin_date DESC';
+          sql += ` LIMIT $${paramIdx++}`;
+          params.push(parseInt(limit));
+
+          const rows = await db.query(sql, params);
+
+          // Get total count
+          let countSql = 'SELECT COUNT(*) as cnt FROM client_prizes WHERE 1=1';
+          const countParams = [];
+          let cIdx = 1;
+          if (status) { countSql += ` AND status = $${cIdx++}`; countParams.push(status); }
+          if (month) { countSql += ` AND TO_CHAR(spin_date, 'YYYY-MM') = $${cIdx++}`; countParams.push(month); }
+          const countResult = await db.query(countSql, countParams);
+
+          return res.json({
+            success: true,
+            prizes: rows.map(dbRowToPrize),
+            total: parseInt(countResult[0]?.cnt || 0)
+          });
+        } catch (dbErr) {
+          console.error('[Prizes] DB report error, falling back to JSON:', dbErr.message);
+        }
+      }
+
+      // Fallback: JSON files
       const prizes = [];
 
       if (!(await fileExists(CLIENT_PRIZES_DIR))) {
@@ -1110,22 +1233,18 @@ function setupLoyaltyGamificationAPI(app) {
         const content = await fsp.readFile(filePath, 'utf8');
         const prize = JSON.parse(content);
 
-        // Filter by status if specified
         if (status && prize.status !== status) continue;
 
-        // Filter by month if specified
         if (month) {
-          const prizeMonth = prize.spinDate.slice(0, 7);
+          const prizeMonth = prize.spinDate ? prize.spinDate.slice(0, 7) : '';
           if (prizeMonth !== month) continue;
         }
 
         prizes.push(prize);
       }
 
-      // Sort by date (newest first)
       prizes.sort((a, b) => new Date(b.spinDate) - new Date(a.spinDate));
 
-      // Apply limit
       const limitedPrizes = prizes.slice(0, parseInt(limit));
 
       res.json({
