@@ -147,8 +147,9 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
       final dest = File('${dir.path}/video_note_$ts.mp4');
       await file.copy(rawDest.path);
 
-      // Remux to fix broken timestamps from Samsung camera
-      final remuxed = await _remuxVideo(rawDest.path, dest.path);
+      // Remux to fix broken timestamps and front-camera mirroring on Samsung
+      final isFront = _cameraIndex == 1 && _cameras.length > 1;
+      final remuxed = await _remuxVideo(rawDest.path, dest.path, frontCamera: isFront);
       final finalFile = remuxed ? dest : rawDest;
 
       // Clean up raw file if remux succeeded
@@ -183,11 +184,12 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
   /// Remux video to fix broken timestamps from Samsung camera.
   /// Uses Android's MediaExtractor + MediaMuxer to produce clean MP4.
   static const _videoUtils = MethodChannel('video_utils');
-  Future<bool> _remuxVideo(String input, String output) async {
+  Future<bool> _remuxVideo(String input, String output, {bool frontCamera = false}) async {
     try {
       final result = await _videoUtils.invokeMethod('remux', {
         'input': input,
         'output': output,
+        'frontCamera': frontCamera,
       });
       return result == true;
     } catch (e) {

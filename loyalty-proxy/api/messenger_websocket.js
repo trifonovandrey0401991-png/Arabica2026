@@ -341,6 +341,14 @@ async function handleCallOffer(callerPhone, message) {
   const { targetPhone, offerSdp, callId, callerName } = message;
   if (!targetPhone || !offerSdp || !callId) return;
   const normalizedTarget = normalizePhone(targetPhone);
+  const normalizedCaller = normalizePhone(callerPhone);
+
+  // Self-call protection
+  if (normalizedCaller === normalizedTarget) {
+    console.log(`📞 Self-call blocked: ${maskPhone(callerPhone)} tried to call themselves [${callId}]`);
+    sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'self_call' });
+    return;
+  }
 
   // Check block status
   try {

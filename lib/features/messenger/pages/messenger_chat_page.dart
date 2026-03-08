@@ -3178,11 +3178,18 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
   void _startCall() {
     // Find the remote participant (not me)
+    // Normalize phones to digits-only for comparison (avoids +7 vs 7 mismatch)
+    final myPhoneNorm = widget.userPhone.replaceAll(RegExp(r'[^\d]'), '');
     final participants = widget.conversation.participants;
-    final remote = participants.firstWhere(
-      (p) => p.phone != widget.userPhone,
-      orElse: () => participants.first,
+    final remote = participants.cast<Participant?>().firstWhere(
+      (p) => p!.phone.replaceAll(RegExp(r'[^\d]'), '') != myPhoneNorm,
+      orElse: () => null,
     );
+
+    // Self-call protection: if no remote participant found, abort
+    if (remote == null) return;
+    final remotePhoneNorm = remote.phone.replaceAll(RegExp(r'[^\d]'), '');
+    if (remotePhoneNorm == myPhoneNorm || remotePhoneNorm.isEmpty) return;
 
     final callService = CallService.instance;
 

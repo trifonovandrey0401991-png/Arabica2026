@@ -70,6 +70,15 @@ Future<void> _firebaseBackgroundMessageHandler(RemoteMessage message) async {
       final callerName = message.data['callerName'] as String? ?? 'Неизвестный';
       final callerPhone = message.data['callerPhone'] as String? ?? '';
 
+      // Self-call protection: don't show CallKit if caller is the current user
+      final prefs = await SharedPreferences.getInstance();
+      final myPhone = prefs.getString('user_phone') ?? '';
+      if (myPhone.isNotEmpty && callerPhone.isNotEmpty) {
+        final myNorm = myPhone.replaceAll(RegExp(r'[^\d]'), '');
+        final callerNorm = callerPhone.replaceAll(RegExp(r'[^\d]'), '');
+        if (myNorm == callerNorm) return;
+      }
+
       final params = CallKitParams(
         id: callId,
         nameCaller: callerName,
@@ -328,7 +337,7 @@ class FirebaseService {
     // Обработка уведомлений в foreground (когда приложение открыто)
     try {
       _onMessageSub?.cancel();
-      _onMessageSub = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      _onMessageSub = FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
         Logger.debug('Получено сообщение в foreground: ${message.notification?.title}');
 
         // Проверяем тип уведомления - если верификация отозвана, сразу показываем диалог
@@ -347,6 +356,14 @@ class FirebaseService {
           final callerName = message.data['callerName'] as String?;
           final offerSdp = message.data['offerSdp'] as String?;
           if (callId != null && callerPhone != null && offerSdp != null) {
+            // Self-call protection
+            final prefsCheck = await SharedPreferences.getInstance();
+            final myPhone = (prefsCheck.getString('user_phone') ?? '').replaceAll(RegExp(r'[^\d]'), '');
+            final callerNorm = callerPhone.replaceAll(RegExp(r'[^\d]'), '');
+            if (myPhone.isNotEmpty && myPhone == callerNorm) {
+              Logger.debug('📞 Self-call blocked in FCM foreground handler');
+              return;
+            }
             // Set up call state so answer can proceed
             CallService.instance.handleFcmIncomingCall(
               callId: callId,
