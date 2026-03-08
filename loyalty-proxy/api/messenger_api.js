@@ -1647,6 +1647,11 @@ function setupMessengerAPI(app, uploadMedia) {
       const normalizedTarget = normalizePhone(targetPhone);
       const normalizedCaller = normalizePhone(req.user.phone);
 
+      // Self-call protection
+      if (normalizedCaller === normalizedTarget) {
+        return res.status(400).json({ success: false, error: 'Cannot call yourself' });
+      }
+
       // Check block status (either direction)
       const blockCheck = await db.query(
         `SELECT 1 FROM messenger_blocks
@@ -1754,6 +1759,43 @@ function setupMessengerAPI(app, uploadMedia) {
       console.error('[Messenger] Call record error:', error.message);
       res.status(500).json({ success: false, error: error.message });
     }
+  });
+
+  /**
+   * GET /api/messenger/ice-config
+   * Returns ICE servers config (STUN + TURN) for WebRTC calls.
+   * TURN credentials come from env vars — no secrets in client code.
+   */
+  app.get('/api/messenger/ice-config', requireAuth, (req, res) => {
+    const servers = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+    ];
+
+    const turnEnabled = process.env.TURN_ENABLED === 'true';
+    const turnHost = process.env.TURN_HOST || '';
+    const turnPort = process.env.TURN_PORT || '3478';
+    const turnUser = process.env.TURN_USER || '';
+    const turnPassword = process.env.TURN_PASSWORD || '';
+
+    if (turnEnabled && turnHost && turnUser && turnPassword) {
+      servers.push({
+        urls: `turn:${turnHost}:${turnPort}?transport=udp`,
+        username: turnUser,
+        credential: turnPassword,
+      });
+      servers.push({
+        urls: `turn:${turnHost}:${turnPort}?transport=tcp`,
+        username: turnUser,
+        credential: turnPassword,
+      });
+    }
+
+    res.json({
+      success: true,
+      iceServers: servers,
+      sdpSemantics: 'unified-plan',
+    });
   });
 
   /**

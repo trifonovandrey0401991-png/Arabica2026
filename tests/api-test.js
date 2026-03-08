@@ -236,6 +236,7 @@ const TESTS = [
   { path: '/api/messenger/conversations?phone=79001234567', name: 'Messenger conversations', expectedType: 'object' },
   { path: '/api/messenger/contacts/search?query=test', name: 'Messenger contact search', expectedType: 'object' },
   { path: '/api/messenger/unread?phone=79001234567', name: 'Messenger unread count', expectedType: 'object' },
+  { path: '/api/messenger/ice-config', name: 'Messenger ICE config (TURN/STUN)', expectedType: 'object' },
   // /api/messenger/profile — возвращает 404 если профиль не существует (ожидаемо для тестового телефона)
 
   // =============================================

@@ -38,14 +38,17 @@ class CallService {
   CallService._();
   static final CallService instance = CallService._();
 
-  // STUN servers — Google's free public servers
-  static const _rtcConfig = {
+  // Fallback STUN config (used if server ICE config is unavailable)
+  static const _fallbackRtcConfig = {
     'iceServers': [
       {'urls': 'stun:stun.l.google.com:19302'},
       {'urls': 'stun:stun1.l.google.com:19302'},
     ],
     'sdpSemantics': 'unified-plan',
   };
+
+  // Dynamic ICE config loaded from server (includes TURN if configured)
+  Map<String, dynamic>? _cachedRtcConfig;
 
   RTCPeerConnection? _pc;
   MediaStream? _localStream;
@@ -102,6 +105,38 @@ class CallService {
     _subscribeToCallKitEvents();
     // Request full-screen intent permission for Android 14+
     FlutterCallkitIncoming.requestFullIntentPermission();
+    // Pre-load ICE config (STUN + TURN) from server
+    _loadIceConfig();
+  }
+
+  /// Fetches ICE servers config from server. Falls back to STUN-only if unavailable.
+  Future<Map<String, dynamic>> _getRtcConfig() async {
+    if (_cachedRtcConfig != null) return _cachedRtcConfig!;
+    await _loadIceConfig();
+    return _cachedRtcConfig ?? Map<String, dynamic>.from(_fallbackRtcConfig);
+  }
+
+  Future<void> _loadIceConfig() async {
+    try {
+      final response = await BaseHttpService.getRaw(
+        endpoint: '/api/messenger/ice-config',
+      );
+      if (response != null && response['success'] == true) {
+        final List<dynamic> servers = response['iceServers'] ?? [];
+        _cachedRtcConfig = {
+          'iceServers': servers.map((s) {
+            final m = <String, dynamic>{'urls': s['urls']};
+            if (s['username'] != null) m['username'] = s['username'];
+            if (s['credential'] != null) m['credential'] = s['credential'];
+            return m;
+          }).toList(),
+          'sdpSemantics': response['sdpSemantics'] ?? 'unified-plan',
+        };
+        Logger.debug('📞 ICE config loaded: ${servers.length} servers');
+      }
+    } catch (e) {
+      Logger.error('📞 Failed to load ICE config, using fallback', e);
+    }
   }
 
   void _subscribeToWsEvents() {
@@ -298,7 +333,8 @@ class CallService {
       _localStream = await navigator.mediaDevices
           .getUserMedia({'audio': true, 'video': false});
 
-      _pc = await createPeerConnection(_rtcConfig);
+      final rtcConfig = await _getRtcConfig();
+      _pc = await createPeerConnection(rtcConfig);
       _setupPeerConnection(targetPhone);
 
       _localStream!.getAudioTracks().forEach((t) => _pc!.addTrack(t, _localStream!));
@@ -403,7 +439,8 @@ class CallService {
       _localStream = await navigator.mediaDevices
           .getUserMedia({'audio': true, 'video': false});
 
-      _pc = await createPeerConnection(_rtcConfig);
+      final rtcConfig = await _getRtcConfig();
+      _pc = await createPeerConnection(rtcConfig);
       _setupPeerConnection(_currentCall!.remotePhone);
 
       _localStream!.getAudioTracks().forEach((t) => _pc!.addTrack(t, _localStream!));

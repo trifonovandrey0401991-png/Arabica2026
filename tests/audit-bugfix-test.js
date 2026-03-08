@@ -701,6 +701,121 @@ console.log('\n[H31] shift_transfers — маппинг DB ↔ JSON');
 }
 
 // ─────────────────────────────────────────────────────────────
+// TURN/ICE Config — формат ответа и валидация
+// ─────────────────────────────────────────────────────────────
+console.log('\n[TURN] ICE Config — формат и валидация');
+
+{
+  // Simulate the ICE config builder that we will add to messenger_api.js
+  function buildIceConfig(env) {
+    const servers = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+    ];
+
+    const turnEnabled = env.TURN_ENABLED === 'true';
+    const turnHost = env.TURN_HOST || '';
+    const turnPort = env.TURN_PORT || '3478';
+    const turnUser = env.TURN_USER || '';
+    const turnPassword = env.TURN_PASSWORD || '';
+
+    if (turnEnabled && turnHost && turnUser && turnPassword) {
+      servers.push({
+        urls: `turn:${turnHost}:${turnPort}?transport=udp`,
+        username: turnUser,
+        credential: turnPassword,
+      });
+      servers.push({
+        urls: `turn:${turnHost}:${turnPort}?transport=tcp`,
+        username: turnUser,
+        credential: turnPassword,
+      });
+    }
+
+    return { iceServers: servers, sdpSemantics: 'unified-plan' };
+  }
+
+  // Test 1: without TURN enabled — only STUN servers
+  const configNoTurn = buildIceConfig({ TURN_ENABLED: 'false' });
+  assert(Array.isArray(configNoTurn.iceServers), 'ICE config: iceServers is array');
+  assert(configNoTurn.iceServers.length === 2, 'ICE config: 2 STUN servers when TURN disabled');
+  assert(configNoTurn.sdpSemantics === 'unified-plan', 'ICE config: sdpSemantics = unified-plan');
+  assert(configNoTurn.iceServers[0].urls.startsWith('stun:'), 'ICE config: first server is STUN');
+  assert(!configNoTurn.iceServers[0].username, 'ICE config: STUN has no username');
+  assert(!configNoTurn.iceServers[0].credential, 'ICE config: STUN has no credential');
+
+  // Test 2: with TURN enabled and all params — STUN + TURN servers
+  const configWithTurn = buildIceConfig({
+    TURN_ENABLED: 'true',
+    TURN_HOST: 'arabica26.ru',
+    TURN_PORT: '3478',
+    TURN_USER: 'turnuser',
+    TURN_PASSWORD: 'turnpass',
+  });
+  assert(configWithTurn.iceServers.length === 4, 'ICE config: 2 STUN + 2 TURN = 4 servers');
+  assert(configWithTurn.iceServers[2].urls === 'turn:arabica26.ru:3478?transport=udp', 'ICE config: TURN UDP url correct');
+  assert(configWithTurn.iceServers[3].urls === 'turn:arabica26.ru:3478?transport=tcp', 'ICE config: TURN TCP url correct');
+  assert(configWithTurn.iceServers[2].username === 'turnuser', 'ICE config: TURN username set');
+  assert(configWithTurn.iceServers[2].credential === 'turnpass', 'ICE config: TURN credential set');
+
+  // Test 3: TURN enabled but missing host → no TURN servers added
+  const configMissingHost = buildIceConfig({
+    TURN_ENABLED: 'true',
+    TURN_HOST: '',
+    TURN_USER: 'user',
+    TURN_PASSWORD: 'pass',
+  });
+  assert(configMissingHost.iceServers.length === 2, 'ICE config: TURN enabled but no host → only STUN');
+
+  // Test 4: TURN enabled but missing password → no TURN servers added
+  const configMissingPass = buildIceConfig({
+    TURN_ENABLED: 'true',
+    TURN_HOST: 'example.com',
+    TURN_USER: 'user',
+    TURN_PASSWORD: '',
+  });
+  assert(configMissingPass.iceServers.length === 2, 'ICE config: TURN enabled but no password → only STUN');
+
+  // Test 5: TURN enabled but missing user → no TURN servers added
+  const configMissingUser = buildIceConfig({
+    TURN_ENABLED: 'true',
+    TURN_HOST: 'example.com',
+    TURN_USER: '',
+    TURN_PASSWORD: 'pass',
+  });
+  assert(configMissingUser.iceServers.length === 2, 'ICE config: TURN enabled but no user → only STUN');
+
+  // Test 6: custom port
+  const configCustomPort = buildIceConfig({
+    TURN_ENABLED: 'true',
+    TURN_HOST: 'turn.example.com',
+    TURN_PORT: '5349',
+    TURN_USER: 'user1',
+    TURN_PASSWORD: 'pass1',
+  });
+  assert(configCustomPort.iceServers[2].urls === 'turn:turn.example.com:5349?transport=udp', 'ICE config: custom port 5349');
+
+  // Test 7: default port when not specified
+  const configDefaultPort = buildIceConfig({
+    TURN_ENABLED: 'true',
+    TURN_HOST: 'turn.example.com',
+    TURN_USER: 'u',
+    TURN_PASSWORD: 'p',
+  });
+  assert(configDefaultPort.iceServers[2].urls.includes(':3478'), 'ICE config: default port 3478');
+
+  // Test 8: response structure matches WebRTC expected format
+  const config = buildIceConfig({ TURN_ENABLED: 'true', TURN_HOST: 'h', TURN_USER: 'u', TURN_PASSWORD: 'p' });
+  for (const server of config.iceServers) {
+    assert(typeof server.urls === 'string', 'ICE config: each server has urls string');
+    if (server.urls.startsWith('turn:')) {
+      assert(typeof server.username === 'string', 'ICE config: TURN has username');
+      assert(typeof server.credential === 'string', 'ICE config: TURN has credential');
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // ИТОГО
 // ─────────────────────────────────────────────────────────────
 console.log(`\n${'='.repeat(50)}`);
