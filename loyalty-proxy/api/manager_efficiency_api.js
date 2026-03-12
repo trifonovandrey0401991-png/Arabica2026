@@ -761,9 +761,31 @@ async function calculateManagerEfficiency(phone, month) {
     }
   }
 
-  // Format shop breakdown for response
+  // Calculate avg min/max points (needed for per-shop and total percentage)
+  const avgMinPoints = (
+    (settings.shift?.minPoints || -5) +
+    (settings.recount?.minPoints || -5) +
+    (settings.handover?.minPoints || -5)
+  ) / 3;
+
+  const avgMaxPoints = (
+    (settings.shift?.maxPoints || 5) +
+    (settings.recount?.maxPoints || 5) +
+    (settings.handover?.maxPoints || 5)
+  ) / 3;
+
+  // Format shop breakdown for response (with per-shop percentage)
   const formattedShopBreakdown = shopBreakdown.map(shop => {
     const managedShop = managedShops.find(s => s.address === shop.shopAddress);
+
+    // Calculate per-shop percentage: avg points per record, normalized to 0-100%
+    let percentage = 0;
+    if (shop.recordsCount > 0 && avgMaxPoints !== avgMinPoints) {
+      const avgPts = shop.totalPoints / shop.recordsCount;
+      percentage = ((avgPts - avgMinPoints) / (avgMaxPoints - avgMinPoints)) * 100;
+      percentage = Math.max(0, Math.min(100, percentage));
+    }
+
     return {
       shopId: managedShop?.id || shop.shopAddress, // fallback to address so Flutter matching works
       shopName: managedShop?.name || shop.shopAddress,
@@ -772,7 +794,7 @@ async function calculateManagerEfficiency(phone, month) {
       earnedPoints: Math.round(shop.earnedPoints * 10) / 10,
       lostPoints: Math.round(shop.lostPoints * 10) / 10,
       recordsCount: shop.recordsCount,
-      percentage: 0 // Can be calculated if needed
+      percentage: Math.round(percentage * 10) / 10,
     };
   });
 
@@ -786,19 +808,6 @@ async function calculateManagerEfficiency(phone, month) {
   // Подсчитываем количество обработанных отчётов (с баллами != 0)
   const processedRecords = allRecords.filter(r => r.points !== 0);
   const totalRecordsCount = processedRecords.length;
-
-  // Получаем границы баллов из настроек (усреднённые по категориям)
-  const avgMinPoints = (
-    (settings.shift?.minPoints || -5) +
-    (settings.recount?.minPoints || -5) +
-    (settings.handover?.minPoints || -5)
-  ) / 3;
-
-  const avgMaxPoints = (
-    (settings.shift?.maxPoints || 5) +
-    (settings.recount?.maxPoints || 5) +
-    (settings.handover?.maxPoints || 5)
-  ) / 3;
 
   // Эффективность магазинов: средний балл за отчёт, нормализованный
   let shopEfficiencyPercentage = 0;

@@ -589,8 +589,8 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   double get _totalEnvelopeAmount => _oooEnvelopeAmount + _ipEnvelopeAmount;
 
   Future<void> _addOooExpense() async {
-    // Фильтруем поставщиков - для расходов ООО показываем только поставщиков ООО
-    final oooSuppliers = _suppliers.where((s) => s.legalType == 'ООО').toList();
+    // Фильтруем поставщиков - ООО + только наличная оплата (конверт = наличные)
+    final oooSuppliers = _suppliers.where((s) => s.legalType == 'ООО' && s.paymentType == 'Нал').toList();
 
     final result = await showDialog<ExpenseItem>(
       context: context,
@@ -606,8 +606,8 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   }
 
   Future<void> _addExpense() async {
-    // Фильтруем поставщиков - для расходов ИП показываем только поставщиков ИП
-    final ipSuppliers = _suppliers.where((s) => s.legalType == 'ИП').toList();
+    // Фильтруем поставщиков - ИП + только наличная оплата (конверт = наличные)
+    final ipSuppliers = _suppliers.where((s) => s.legalType == 'ИП' && s.paymentType == 'Нал').toList();
 
     final result = await showDialog<ExpenseItem>(
       context: context,

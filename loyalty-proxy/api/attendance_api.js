@@ -14,6 +14,7 @@ const { dbInsertPenalty } = require('./efficiency_penalties_api');
 const db = require('../utils/db');
 const { getMoscowTime, getMoscowDateString } = require('../utils/moscow_time');
 const { requireEmployee } = require('../utils/session_middleware');
+const { loadShopManagers, normalizePhone } = require('./shop_managers_api');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const USE_DB = process.env.USE_DB_ATTENDANCE === 'true';
@@ -339,6 +340,30 @@ function calculateGpsDistance(lat1, lon1, lat2, lon2) {
 }
 
 // ============================================
+// Helpers
+// ============================================
+
+/**
+ * Найти телефон управляющей, к которой привязан сотрудник
+ */
+async function findManagerForEmployee(employeePhone) {
+  try {
+    const data = await loadShopManagers();
+    const normalized = normalizePhone(employeePhone);
+    for (const manager of (data.managers || [])) {
+      const employees = manager.employees || [];
+      if (employees.some(e => normalizePhone(e) === normalized)) {
+        return normalizePhone(manager.phone);
+      }
+    }
+    return null;
+  } catch (e) {
+    console.error('Error finding manager for employee:', e.message);
+    return null;
+  }
+}
+
+// ============================================
 // Setup function
 // ============================================
 
@@ -357,7 +382,7 @@ function setupAttendanceAPI(app, {
 
       // Проверяем есть ли pending отчёт для этого магазина
       if (canMarkAttendance) {
-        const canMark = canMarkAttendance(req.body.shopAddress);
+        const canMark = await canMarkAttendance(req.body.shopAddress);
         if (!canMark) {
           console.log('Отметка отклонена: нет pending отчёта для', req.body.shopAddress);
           return res.status(400).json({
@@ -403,7 +428,7 @@ function setupAttendanceAPI(app, {
 
       // Удаляем pending отчёт после успешной отметки
       if (markAttendancePendingCompleted) {
-        markAttendancePendingCompleted(req.body.shopAddress, checkResult.shiftType);
+        await markAttendancePendingCompleted(req.body.shopAddress, checkResult.shiftType);
       }
 
       // Если время вне интервала - возвращаем флаг для диалога выбора смены
@@ -421,11 +446,23 @@ function setupAttendanceAPI(app, {
         await createOnTimeBonus(req.body.employeeName, req.body.shopAddress, checkResult.shiftType);
       }
 
-      // Отправляем push-уведомление админу
-      try {
-        console.log('Push-уведомление отправлено админу');
-      } catch (notifyError) {
-        console.log('Ошибка отправки уведомления:', notifyError);
+      // Отправляем push-уведомление управляющей
+      if (sendPushToPhone) {
+        try {
+          const employeePhone = normalizePhone(req.user?.phone || req.body.phone);
+          const managerPhone = await findManagerForEmployee(employeePhone);
+          if (managerPhone) {
+            const empName = req.body.employeeName || 'Сотрудник';
+            const shopName = req.body.shopAddress || '';
+            const lateStr = checkResult.lateMinutes > 0 ? ` (опоздание ${checkResult.lateMinutes} мин)` : '';
+            await sendPushToPhone(managerPhone, 'Я на работе', `${empName} отметился на ${shopName}${lateStr}`, {
+              type: 'attendance_marked',
+            });
+            console.log(`Push отправлен управляющей ${maskPhone(managerPhone)}: ${empName} на ${shopName}`);
+          }
+        } catch (notifyError) {
+          console.error('Ошибка отправки push управляющей:', notifyError.message);
+        }
       }
 
       res.json({
@@ -514,6 +551,25 @@ function setupAttendanceAPI(app, {
       const message = lateMinutes > 0
         ? `Вы опоздали на ${lateMinutes} мин (${shiftNames[selectedShift]} смена). Начислен штраф.`
         : `Отметка подтверждена (${shiftNames[selectedShift]} смена)`;
+
+      // Push управляющей
+      if (sendPushToPhone) {
+        try {
+          const employeePhone = normalizePhone(req.user?.phone || req.body.phone);
+          const managerPhone = await findManagerForEmployee(employeePhone);
+          if (managerPhone) {
+            const empName = record.employeeName || 'Сотрудник';
+            const shopName = record.shopAddress || '';
+            const lateStr = lateMinutes > 0 ? ` (опоздание ${lateMinutes} мин)` : '';
+            await sendPushToPhone(managerPhone, 'Я на работе', `${empName} отметился на ${shopName}${lateStr}`, {
+              type: 'attendance_marked',
+            });
+            console.log(`Push отправлен управляющей ${maskPhone(managerPhone)}: ${empName} на ${shopName}`);
+          }
+        } catch (notifyError) {
+          console.error('Ошибка отправки push управляющей:', notifyError.message);
+        }
+      }
 
       res.json({
         success: true,
@@ -696,7 +752,7 @@ function setupAttendanceAPI(app, {
   app.get('/api/attendance/pending', requireEmployee, async (req, res) => {
     try {
       console.log('GET /api/attendance/pending');
-      const reports = getPendingAttendanceReports ? getPendingAttendanceReports() : [];
+      const reports = getPendingAttendanceReports ? await getPendingAttendanceReports() : [];
       res.json({
         success: true,
         items: reports,
@@ -876,7 +932,7 @@ function setupAttendanceAPI(app, {
       }
 
       // 4. Проверяем есть ли pending отчёт для этого магазина
-      const pendingReports = getPendingAttendanceReports ? getPendingAttendanceReports() : [];
+      const pendingReports = getPendingAttendanceReports ? await getPendingAttendanceReports() : [];
       const hasPending = pendingReports.some(r =>
         r.shopAddress === nearestShop.address && r.status === 'pending'
       );

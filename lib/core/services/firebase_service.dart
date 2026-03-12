@@ -116,7 +116,6 @@ Future<void> _firebaseBackgroundMessageHandler(RemoteMessage message) async {
       await FlutterCallkitIncoming.showCallkitIncoming(params);
 
       // Save to SharedPreferences — used for cold start call handling + PIN bypass
-      final prefs = await SharedPreferences.getInstance();
       await prefs.setString('pending_incoming_call', jsonEncode(message.data));
       await prefs.setInt('pending_incoming_call_time', DateTime.now().millisecondsSinceEpoch);
     } catch (_) {}

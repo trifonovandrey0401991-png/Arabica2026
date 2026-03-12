@@ -11,6 +11,7 @@ import '../../employees/services/employee_registration_service.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
 import '../../../core/utils/cache_manager.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/services/base_http_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Страница списка эффективности по сотрудникам
@@ -109,16 +110,19 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
   }
 
   /// Загрузить Set имён верифицированных сотрудников (в нижнем регистре)
+  /// Исключает управляющих и разработчиков
   Future<Set<String>> _loadVerifiedEmployeeNames() async {
     try {
-      // Загружаем сотрудников и регистрации параллельно
+      // Загружаем сотрудников, регистрации и исключённые телефоны параллельно
       final results = await Future.wait([
         EmployeeService.getEmployees(),
         EmployeeRegistrationService.getAllRegistrations(),
+        _loadExcludedPhones(),
       ]);
 
       final employees = results[0] as List<dynamic>;
       final registrations = results[1] as List<dynamic>;
+      final excludedPhones = results[2] as Set<String>;
 
       // Создаём Map телефон -> isVerified
       final phoneToVerified = <String, bool>{};
@@ -129,18 +133,32 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
         }
       }
 
-      // Создаём Set верифицированных имён
+      // Создаём Set верифицированных имён (исключая управляющих и разработчиков)
       final verifiedNames = <String>{};
       for (final emp in employees) {
         final phone = emp.phone?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
-        if (phone.isNotEmpty && phoneToVerified[phone] == true) {
+        if (phone.isNotEmpty && phoneToVerified[phone] == true && !excludedPhones.contains(phone)) {
           verifiedNames.add(emp.name.toLowerCase());
         }
       }
 
       return verifiedNames;
     } catch (e) {
-      // При ошибке возвращаем пустой Set - не показываем никого
+      return <String>{};
+    }
+  }
+
+  /// Загрузить телефоны управляющих и разработчиков для исключения
+  Future<Set<String>> _loadExcludedPhones() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '/api/shop-managers/excluded-phones',
+      );
+      if (result != null && result['phones'] is List) {
+        return (result['phones'] as List).map((e) => e.toString()).toSet();
+      }
+      return <String>{};
+    } catch (e) {
       return <String>{};
     }
   }

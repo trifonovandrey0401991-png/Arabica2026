@@ -140,6 +140,8 @@ const { setupAiDashboardAPI } = require('./api/ai_dashboard_api');
 const { setupHealthMonitorAPI } = require('./api/health_monitor_api');
 const { startYoloRetrainScheduler, triggerManualRetrain, getRetrainStatus } = require('./api/yolo_retrain_scheduler');
 const { startMessengerMediaCleanupScheduler, getMediaStats } = require('./api/messenger_media_cleanup_scheduler');
+const { setupOosAPI } = require('./api/oos_api');
+const { startOosScheduler } = require('./api/oos_scheduler');
 const { getNextReferralCode } = require('./api/employees_api');
 const authApiRouter = require("./api/auth_api");
 const telegramBotService = require("./services/telegram_bot_service");
@@ -980,6 +982,7 @@ setupEmployeeChatAPI(app);
 setupMessengerAPI(app, uploadMessengerMedia);
 setupMediaAPI(app, uploadChatMedia);
 setupShopManagersAPI(app);
+setupOosAPI(app);
 setupLoyaltyGamificationAPI(app);
 setupCoffeeMachineAPI(app, { sendPushToPhone });
 setupExecutionChainAPI(app);
@@ -1059,6 +1062,9 @@ setTimeout(() => startYoloRetrainScheduler(), 15000);
 
 // Messenger media cleanup scheduler (daily at 4:00 MSK, if MESSENGER_MEDIA_CLEANUP_ENABLED=true)
 setTimeout(() => startMessengerMediaCleanupScheduler(), 16000);
+
+// OOS scheduler (checks stock levels at configurable interval, if OOS_SCHEDULER_ENABLED=true)
+setTimeout(() => startOosScheduler(), 18000);
 
 // ============================================
 // HEALTH CHECK ENDPOINT

@@ -78,6 +78,7 @@ import '../../features/efficiency/models/efficiency_data_model.dart';
 import '../../features/efficiency/services/efficiency_data_service.dart';
 import '../../features/network_management/pages/network_management_page.dart';
 import '../../features/network_management/services/network_management_service.dart';
+import '../../features/oos/pages/oos_page.dart';
 import 'manager_grid_page.dart';
 import 'developer_reports_page.dart';
 import 'staff_efficiency_page.dart';
@@ -998,6 +999,104 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
           ),
         ),
       ),
+      bottomNavigationBar: role == UserRole.developer
+          ? Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.emeraldDark,
+                    AppColors.night,
+                  ],
+                ),
+                border: Border(
+                  top: BorderSide(color: AppColors.gold.withOpacity(0.3), width: 0.5),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 12.w),
+                  child: Row(
+                    children: [
+                      _buildBottomTab(
+                        Icons.manage_accounts_rounded,
+                        'Управляющая',
+                        () => _openManagerPicker(),
+                      ),
+                      SizedBox(width: 8.w),
+                      _buildBottomTab(
+                        Icons.grid_view_rounded,
+                        'Сотрудник',
+                        () => _openEmployeePanelPicker(),
+                      ),
+                      SizedBox(width: 8.w),
+                      _buildBottomTab(
+                        Icons.person_rounded,
+                        'Клиент',
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => MainMenuPage(forceRole: UserRole.client))),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildBottomTab(IconData icon, String label, VoidCallback onTap) {
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14.r),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14.r),
+          splashColor: AppColors.gold.withOpacity(0.15),
+          highlightColor: AppColors.gold.withOpacity(0.08),
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: 10.h),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14.r),
+              color: AppColors.emerald.withOpacity(0.25),
+              border: Border.all(color: AppColors.gold.withOpacity(0.15)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36.w,
+                  height: 36.w,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10.r),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.gold.withOpacity(0.2),
+                        AppColors.emerald.withOpacity(0.3),
+                      ],
+                    ),
+                  ),
+                  child: Icon(icon, color: AppColors.gold.withOpacity(0.9), size: 20),
+                ),
+                SizedBox(height: 5.h),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.85),
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1138,8 +1237,8 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
         builder: (context, constraints) {
           final availableHeight = constraints.maxHeight;
 
-          // 3 кнопки + 2 отступа между ними
-          final buttonCount = 3;
+          // 4 кнопки + 3 отступа между ними
+          final buttonCount = 4;
           final spacing = 16.0;
           final totalSpacing = spacing * (buttonCount - 1);
           final buttonHeight = (availableHeight - totalSpacing) / buttonCount;
@@ -1156,6 +1255,14 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
                   _loadTotalReportsCount();
                 },
                 badge: _totalReportsCount,
+              ),
+              SizedBox(height: spacing),
+              _buildAdminRow(
+                Icons.remove_shopping_cart_outlined,
+                'OOS',
+                'Наличие товаров в магазинах',
+                buttonHeight,
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OosPage())),
               ),
               SizedBox(height: spacing),
               _buildAdminRow(
@@ -1400,27 +1507,11 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
           ),
           SizedBox(height: spacing),
           _buildAdminRow(
-            Icons.manage_accounts_outlined,
-            'Управляющая(ий)',
-            'Отчёты и управление',
+            Icons.remove_shopping_cart_outlined,
+            'OOS',
+            'Наличие товаров в магазинах',
             buttonHeight,
-            () => _openManagerPicker(),
-          ),
-          SizedBox(height: spacing),
-          _buildAdminRow(
-            Icons.grid_view_rounded,
-            'Панель сотрудника',
-            'Функции сотрудника',
-            buttonHeight,
-            () => _openEmployeePanelPicker(),
-          ),
-          SizedBox(height: spacing),
-          _buildAdminRow(
-            Icons.person_outline,
-            'Клиент',
-            'Клиентские функции',
-            buttonHeight,
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => MainMenuPage(forceRole: UserRole.client))),
+            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OosPage())),
           ),
           SizedBox(height: spacing),
           _buildAdminRow(

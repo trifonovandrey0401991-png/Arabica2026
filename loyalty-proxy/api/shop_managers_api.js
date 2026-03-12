@@ -526,6 +526,28 @@ function setupShopManagersAPI(app) {
     }
   });
 
+  // GET /api/shop-managers/excluded-phones - телефоны управляющих и разработчиков (для фильтрации эффективности)
+  app.get('/api/shop-managers/excluded-phones', requireEmployee, async (req, res) => {
+    try {
+      const data = await loadShopManagers();
+      const phones = new Set();
+
+      // Управляющие
+      for (const m of (data.managers || [])) {
+        if (m.phone) phones.add(normalizePhone(m.phone));
+      }
+      // Разработчики
+      for (const d of (data.developers || [])) {
+        phones.add(normalizePhone(d));
+      }
+
+      res.json({ success: true, phones: [...phones] });
+    } catch (error) {
+      console.error('Error in GET /api/shop-managers/excluded-phones:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   console.log(`✅ Shop Managers API initialized ${USE_DB ? '(DB mode)' : '(file mode)'}`);
 }
 

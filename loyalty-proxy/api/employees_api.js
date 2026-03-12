@@ -94,7 +94,18 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
             page: parseInt(req.query.page) || 1,
             pageSize: Math.min(parseInt(req.query.limit) || 50, 200),
           });
-          return res.json(createDbPaginatedResponse(result, 'employees', dbEmployeeToCamel));
+          const paginatedResp = createDbPaginatedResponse(result, 'employees', dbEmployeeToCamel);
+          // Dynamic role override for paginated response
+          try {
+            const smData = await loadShopManagers();
+            const managerPhones = new Set((smData.managers || []).map(m => normPhone(m.phone)).filter(Boolean));
+            const storeManagerPhones = new Set((smData.storeManagers || []).map(m => normPhone(m.phone)).filter(Boolean));
+            paginatedResp.employees = paginatedResp.employees.map(e => {
+              const phone = e.phone ? normPhone(e.phone) : '';
+              return { ...e, isAdmin: phone ? managerPhones.has(phone) : false, isManager: phone ? storeManagerPhones.has(phone) : false };
+            });
+          } catch (smErr) { /* keep original */ }
+          return res.json(paginatedResp);
         }
 
         const rows = await db.findAll('employees', { orderBy: 'created_at', orderDir: 'DESC' });
@@ -126,6 +137,25 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
           const dateB = new Date(b.createdAt || 0);
           return dateB - dateA;
         });
+      }
+
+      // Dynamic role override: derive isAdmin/isManager from shop_managers config
+      // (not from static is_admin column in DB)
+      try {
+        const smData = await loadShopManagers();
+        const managerPhones = new Set((smData.managers || []).map(m => normPhone(m.phone)).filter(Boolean));
+        const storeManagerPhones = new Set((smData.storeManagers || []).map(m => normPhone(m.phone)).filter(Boolean));
+        employees = employees.map(e => {
+          const phone = e.phone ? normPhone(e.phone) : '';
+          return {
+            ...e,
+            isAdmin: phone ? managerPhones.has(phone) : false,
+            isManager: phone ? storeManagerPhones.has(phone) : false,
+          };
+        });
+      } catch (smErr) {
+        console.error('Warning: could not load shop_managers for role override:', smErr.message);
+        // Keep original isAdmin/isManager from DB as fallback
       }
 
       // SCALABILITY: Поддержка поиска по имени/телефону
@@ -170,6 +200,18 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
         }
         const content = await fsp.readFile(employeeFile, 'utf8');
         employee = JSON.parse(content);
+      }
+
+      // Dynamic role override from shop_managers
+      try {
+        const smData = await loadShopManagers();
+        const phone = employee.phone ? normPhone(employee.phone) : '';
+        if (phone) {
+          employee.isAdmin = (smData.managers || []).some(m => normPhone(m.phone) === phone);
+          employee.isManager = (smData.storeManagers || []).some(m => normPhone(m.phone) === phone);
+        }
+      } catch (smErr) {
+        // Keep original values as fallback
       }
 
       res.json({ success: true, employee });
@@ -440,6 +482,16 @@ function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse
         invalidateCache(employee.phone);
       }
       dataCache.invalidateEmployees();
+
+      // Dynamic role override from shop_managers
+      try {
+        const smData = await loadShopManagers();
+        const phone = employee.phone ? normPhone(employee.phone) : '';
+        if (phone) {
+          employee.isAdmin = (smData.managers || []).some(m => normPhone(m.phone) === phone);
+          employee.isManager = (smData.storeManagers || []).some(m => normPhone(m.phone) === phone);
+        }
+      } catch (smErr) { /* keep original */ }
 
       res.json({ success: true, employee });
     } catch (error) {

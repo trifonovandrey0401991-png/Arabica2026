@@ -72,6 +72,15 @@ class AppColors {
   static const Color warmAmberLight = Color(0xFFE6B422);
 
   // ═══════════════════════════════════════════════════
+  // Surface / Background (для карточек, диалогов, меню)
+  // ═══════════════════════════════════════════════════
+  static const Color surfaceDark = Color(0xFF0A2A2A);
+  static const Color surfaceDarker = Color(0xFF0A2020);
+  static const Color surfaceMenu = Color(0xFF112E2E);
+  static const Color surfaceMenuDark = Color(0xFF0A2222);
+  static const Color surfaceMenuDarker = Color(0xFF081C1C);
+
+  // ═══════════════════════════════════════════════════
   // UI Misc
   // ═══════════════════════════════════════════════════
   static const Color darkGray = Color(0xFF333333);
