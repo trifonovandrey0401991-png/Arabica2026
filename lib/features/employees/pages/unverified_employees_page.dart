@@ -92,11 +92,9 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage>
             employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
         final registration = registrationsByPhone[normalizedPhone];
 
-        if (registration != null) {
-          if (registration.verifiedAt != null && !registration.isVerified) {
-            employees.add(employee);
-            regs[normalizedPhone] = registration;
-          }
+        if (registration != null && !registration.isVerified) {
+          employees.add(employee);
+          regs[normalizedPhone] = registration;
         }
       }
 

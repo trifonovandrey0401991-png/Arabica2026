@@ -40,7 +40,7 @@ function dbRecountToCamel(row) {
     adminRating: row.admin_rating,
     adminName: row.admin_name,
     ratedAt: row.rated_at,
-    date: row.date,
+    date: row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date,
     createdAt: row.created_at,
     deadline: row.deadline,
     submittedAt: row.submitted_at,

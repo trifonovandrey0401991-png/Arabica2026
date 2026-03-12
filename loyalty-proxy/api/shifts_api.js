@@ -140,7 +140,7 @@ function dbShiftReportToCamel(row) {
     status: row.status,
     answers: typeof row.answers === 'string' ? JSON.parse(row.answers) : (row.answers || []),
     rating: row.rating,
-    date: row.date,
+    date: row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date,
     createdAt: row.created_at,
     submittedAt: row.submitted_at,
     deadline: row.deadline,
@@ -201,7 +201,7 @@ function dbHandoverReportToCamel(row) {
     status: row.status,
     answers: typeof row.answers === 'string' ? JSON.parse(row.answers) : (row.answers || []),
     rating: row.rating,
-    date: row.date,
+    date: row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date,
     createdAt: row.created_at,
     submittedAt: row.submitted_at,
     reviewDeadline: row.review_deadline,
@@ -952,9 +952,9 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       const createdHour = (createdAt.getUTCHours() + 3) % 24;
       const shiftType = createdHour >= 14 ? 'evening' : 'morning';
 
-      // Гарантируем статус pending для новых отчётов (иначе таймаут авто-отклонения не сработает)
+      // Отчёт от сотрудника → статус 'review' (ожидает проверки управляющей)
       if (!report.status) {
-        report.status = 'pending';
+        report.status = 'review';
       }
 
       // Dual-write: JSON ПЕРВЫМ (GOLDEN RULE)

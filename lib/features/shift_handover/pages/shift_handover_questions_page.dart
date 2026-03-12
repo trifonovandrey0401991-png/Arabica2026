@@ -625,7 +625,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
         await ShiftHandoverReport.saveLocal(report);
       }
 
-      // Отправляем уведомление админу о новом отчёте (сдача смены)
+      // Отправляем уведомление админу о новом отчёте (сдать смену)
       await ReportNotificationService.createNotification(
         reportType: ReportType.shiftReport,
         reportId: reportId,

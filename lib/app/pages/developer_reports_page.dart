@@ -27,7 +27,7 @@ import '../../features/work_schedule/pages/work_schedule_page.dart';
 import '../../features/bonuses/pages/bonus_penalty_management_page.dart';
 import '../../features/tasks/pages/task_management_page.dart';
 import '../../features/efficiency/pages/employees_efficiency_page.dart';
-import '../../features/messenger/pages/messenger_shell_page.dart';
+
 
 // My efficiency
 import '../../features/efficiency/pages/my_efficiency_page.dart';
@@ -395,13 +395,13 @@ class _DeveloperReportsPageState extends State<DeveloperReportsPage> {
         badge: _reportCounts.rko),
     _DevReportItem(Icons.swap_horiz_rounded, 'Пересменки',
         (ctx) async {
-          await Navigator.push(ctx, MaterialPageRoute(builder: (_) => ShiftHandoverReportsListPage()));
+          await Navigator.push(ctx, MaterialPageRoute(builder: (_) => ShiftReportsListPage()));
           _loadReportCounts();
         },
         badge: _reportCounts.shiftHandover),
     _DevReportItem(Icons.check_circle_outline_rounded, 'Сдача смены',
         (ctx) async {
-          await Navigator.push(ctx, MaterialPageRoute(builder: (_) => ShiftReportsListPage()));
+          await Navigator.push(ctx, MaterialPageRoute(builder: (_) => ShiftHandoverReportsListPage()));
           _loadReportCounts();
         },
         badge: _reportCounts.shiftReport),
@@ -454,8 +454,6 @@ class _DeveloperReportsPageState extends State<DeveloperReportsPage> {
         (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => TaskManagementPage(createdBy: 'admin')))),
     _DevReportItem(Icons.trending_up_rounded, 'Эффективность',
         (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => EmployeesEfficiencyPage()))),
-    _DevReportItem(Icons.chat_outlined, 'Чат',
-        (ctx) => Navigator.push(ctx, MaterialPageRoute(builder: (_) => const MessengerShellPage()))),
   ];
 
   List<_DevReportItem> _myEfficiencyItems(BuildContext context) => [

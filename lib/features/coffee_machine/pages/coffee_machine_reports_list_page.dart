@@ -422,10 +422,14 @@ class _CoffeeMachineReportsListPageState extends State<CoffeeMachineReportsListP
                     style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12.sp),
                   ),
                   SizedBox(height: 2),
-                  Text(
-                    '${report.shiftTypeText} / ${report.date}',
-                    style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11.sp),
-                  ),
+                  Builder(builder: (_) {
+                    final lc = report.createdAt.toLocal();
+                    return Text(
+                      '${report.shiftTypeText} / ${lc.day.toString().padLeft(2, '0')}.${lc.month.toString().padLeft(2, '0')}.${lc.year}, '
+                      '${lc.hour.toString().padLeft(2, '0')}:${lc.minute.toString().padLeft(2, '0')}',
+                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11.sp),
+                    );
+                  }),
                   SizedBox(height: 4),
                   Row(
                     children: [

@@ -628,9 +628,9 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         await ShiftReport.saveReport(report);
       }
 
-      // Отправляем уведомление админу о новом отчёте (сдача смены)
+      // Отправляем уведомление админу о новом отчёте (пересменка)
       await ReportNotificationService.createNotification(
-        reportType: ReportType.shiftReport,
+        reportType: ReportType.shiftHandover,
         reportId: reportId,
         employeeName: widget.employeeName,
         shopName: widget.shopAddress,

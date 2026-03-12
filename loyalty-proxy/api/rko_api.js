@@ -177,7 +177,7 @@ function dbRkoToCamel(row) {
     employeePhone: row.employee_phone,
     shopAddress: row.shop_address,
     shopName: row.shop_name,
-    date: row.date,
+    date: row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date,
     amount: row.amount != null ? parseFloat(row.amount) : null,
     rkoType: row.rko_type,
     shiftType: row.shift_type,

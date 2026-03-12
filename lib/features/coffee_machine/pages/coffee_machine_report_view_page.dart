@@ -140,6 +140,15 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
           _buildInfoRow(Icons.store, 'Магазин', report.shopAddress),
           _buildInfoRow(Icons.schedule, 'Смена', report.shiftTypeText),
           _buildInfoRow(Icons.calendar_today, 'Дата', report.date),
+          Builder(builder: (_) {
+            final lc = report.createdAt.toLocal();
+            return _buildInfoRow(
+              Icons.access_time,
+              'Отправлен',
+              '${lc.day.toString().padLeft(2, '0')}.${lc.month.toString().padLeft(2, '0')}.${lc.year}, '
+              '${lc.hour.toString().padLeft(2, '0')}:${lc.minute.toString().padLeft(2, '0')}',
+            );
+          }),
           if (report.confirmedByAdmin != null)
             _buildInfoRow(Icons.verified, 'Проверил', report.confirmedByAdmin!),
           if (report.rating != null)

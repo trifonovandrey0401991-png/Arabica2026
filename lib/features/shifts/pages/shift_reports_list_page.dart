@@ -97,7 +97,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     _tabController.addListener(_onTabChanged);
     _loadData();
     // Отмечаем все уведомления этого типа как просмотренные
-    ReportNotificationService.markAllAsViewed(reportType: ReportType.shiftReport);
+    ReportNotificationService.markAllAsViewed(reportType: ReportType.shiftHandover);
   }
 
   void _onTabChanged() {

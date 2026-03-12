@@ -782,6 +782,7 @@ app.use('/messenger-media', express.static(`${DATA_DIR}/messenger-media`));
 app.use('/sticker-packs', express.static(`${DATA_DIR}/sticker-packs`));
 app.use('/custom-stickers', express.static(`${DATA_DIR}/custom-stickers`));
 app.use('/shop-product-photos', express.static(`${DATA_DIR}/shop-product-photos`));
+app.use('/passport-photos', express.static(`${DATA_DIR}/passport-photos`));
 
 // Настройка multer для загрузки фото сотрудников
 const employeePhotoStorage = multer.diskStorage({

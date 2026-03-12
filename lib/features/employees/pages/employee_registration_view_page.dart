@@ -356,7 +356,9 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
               ),
             ),
             // Контейнер с фото
-            Container(
+            GestureDetector(
+              onTap: () => _openFullScreenPhoto(photoUrl, label),
+              child: Container(
               width: double.infinity,
               height: 220,
               decoration: BoxDecoration(
@@ -411,8 +413,17 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                 ),
               ),
             ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _openFullScreenPhoto(String url, String title) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _FullScreenPhotoPage(imageUrl: url, title: title),
       ),
     );
   }
@@ -1415,6 +1426,54 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                           ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FullScreenPhotoPage extends StatefulWidget {
+  final String imageUrl;
+  final String title;
+
+  const _FullScreenPhotoPage({required this.imageUrl, required this.title});
+
+  @override
+  State<_FullScreenPhotoPage> createState() => _FullScreenPhotoPageState();
+}
+
+class _FullScreenPhotoPageState extends State<_FullScreenPhotoPage> {
+  final TransformationController _transformController = TransformationController();
+
+  @override
+  void dispose() {
+    _transformController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(widget.title, style: const TextStyle(fontSize: 16)),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          transformationController: _transformController,
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: AppCachedImage(
+            imageUrl: widget.imageUrl,
+            fit: BoxFit.contain,
+            errorWidget: (context, error, stackTrace) {
+              return const Center(
+                child: Icon(Icons.broken_image, color: Colors.white54, size: 64),
+              );
+            },
           ),
         ),
       ),

@@ -49,7 +49,7 @@ function dbCmReportToCamel(row) {
     employeePhone: row.employee_phone,
     shopAddress: row.shop_address,
     shiftType: row.shift_type,
-    date: row.date,
+    date: row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date,
     readings: typeof row.readings === 'string' ? JSON.parse(row.readings) : (row.readings || []),
     computerNumber: row.computer_number,
     computerPhotoUrl: row.computer_photo_url,
@@ -1288,7 +1288,7 @@ async function buildMachineIntelligence() {
           for (const row of rows) {
             allReports.push({
               readings: row.readings || [],
-              date: row.date,
+              date: row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date,
               createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
             });
           }

@@ -551,13 +551,25 @@ class _RegistrationPageState extends State<RegistrationPage> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
-            child: Column(
-              children: [
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final screenHeight = constraints.maxHeight;
+              final logoSize = (screenHeight * 0.1).clamp(60.0, 100.0);
+              final logoPadding = (screenHeight * 0.02).clamp(12.0, 20.0);
+              final gap = (screenHeight * 0.015).clamp(8.0, 16.0);
+
+              return SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - 32.h,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
                 // Логотип Arabica в золотой рамке
                 Container(
-                  padding: EdgeInsets.all(20.w),
+                  padding: EdgeInsets.all(logoPadding),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(24.r),
                     color: Colors.white.withOpacity(0.1),
@@ -568,23 +580,23 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   ),
                   child: Image.asset(
                     'assets/images/arabica_logo.png',
-                    width: 100,
-                    height: 100,
+                    width: logoSize,
+                    height: logoSize,
                     fit: BoxFit.contain,
                   ),
                 ),
-                SizedBox(height: 16),
+                SizedBox(height: gap),
 
                 // Приветственный текст
                 Text(
                   'Добро пожаловать!',
                   style: TextStyle(
-                    fontSize: 24.sp,
+                    fontSize: 22.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
-                SizedBox(height: 20),
+                SizedBox(height: gap * 1.2),
 
                 // Карточка формы
                 Container(
@@ -845,7 +857,10 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   ),
                 ),
               ],
+              ),
             ),
+          );
+            },
           ),
         ),
       ),
