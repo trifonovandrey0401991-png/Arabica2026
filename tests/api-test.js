@@ -234,10 +234,23 @@ const TESTS = [
   // MESSENGER — Мессенджер
   // =============================================
   { path: '/api/messenger/conversations?phone=79001234567', name: 'Messenger conversations', expectedType: 'object' },
+  { path: '/api/messenger/conversations/private_test/messages', name: 'Messenger messages', expectedType: 'object' },
   { path: '/api/messenger/contacts/search?query=test', name: 'Messenger contact search', expectedType: 'object' },
+  { path: '/api/messenger/search?query=test&phone=79001234567', name: 'Messenger global search', expectedType: 'object' },
   { path: '/api/messenger/unread?phone=79001234567', name: 'Messenger unread count', expectedType: 'object' },
+  { path: '/api/messenger/saved?phone=79001234567', name: 'Messenger saved messages', expectedType: 'object' },
+  { path: '/api/messenger/channels?phone=79001234567', name: 'Messenger channels', expectedType: 'object' },
+  { path: '/api/messenger/sticker-packs', name: 'Messenger sticker packs', expectedType: 'object' },
+  { path: '/api/messenger/gifs/trending', name: 'Messenger trending GIFs', expectedType: 'object' },
+  { path: '/api/messenger/templates?phone=79001234567', name: 'Messenger templates', expectedType: 'object' },
+  { path: '/api/messenger/folders?phone=79001234567', name: 'Messenger folders', expectedType: 'object' },
+  { path: '/api/messenger/blocks?phone=79001234567', name: 'Messenger blocks', expectedType: 'object' },
+  { path: '/api/messenger/favorite-stickers?phone=79001234567', name: 'Messenger favorite stickers', expectedType: 'object' },
+  { path: '/api/messenger/favorite-gifs?phone=79001234567', name: 'Messenger favorite GIFs', expectedType: 'object' },
+  { path: '/api/messenger/media-stats?phone=79001234567', name: 'Messenger media stats', expectedType: 'object' },
+  { path: '/api/messenger/profile?phone=79001234567', name: 'Messenger profile', expectedType: 'object' },
+  // Note: profile может вернуть 404 если профиль не существует (ожидаемо для тестового телефона)
   { path: '/api/messenger/ice-config', name: 'Messenger ICE config (TURN/STUN)', expectedType: 'object' },
-  // /api/messenger/profile — возвращает 404 если профиль не существует (ожидаемо для тестового телефона)
 
   // =============================================
   // EMPLOYEE CHAT — Чат сотрудников
