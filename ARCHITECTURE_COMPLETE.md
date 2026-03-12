@@ -1497,7 +1497,7 @@ curl -X POST http://arabica26.ru:3000/api/auth/register \
 | GET | `/api/shift-handover-reports` | Все отчёты | ✅ |
 | GET | `/api/shift-handover-reports/:id` | Один отчёт | ✅ |
 | POST | `/api/shift-handover-reports` | Создать отчёт | ✅ |
-| PUT | `/api/shift-handover-reports/:id` | Обновить | ✅ |
+| PUT | `/api/shift-handover-reports/:id` | Обновить (только админ: approve/reject/rate) | ✅ + isAdmin |
 | POST | `/api/shift-handover-reports/:id/confirm` | Подтвердить | ✅ |
 | POST | `/api/shift-handover-reports/:id/reject` | Отклонить | ✅ |
 | GET | `/api/shift-handover-reports/pending` | Pending | ✅ |
@@ -3405,7 +3405,7 @@ async function checkManagerAccess(phone, shopAddress) {
 |---|------|----------|---------|
 | N1 | `api_constants.dart:7` | API ключ захардкожен в исходниках — извлекается из APK | 🔴 |
 | N2 | `index.js:148` | `API_KEY_ENABLED=false` по умолчанию — если env не задан, API публичен | 🔴 |
-| N3 | Все API файлы | Нет проверки `req.user.isAdmin` на write-операциях | 🔴 |
+| N3 | Все API файлы | Нет проверки `req.user.isAdmin` на write-операциях | ⚠️ Частично: shifts_api.js PUT /shift-handover-reports/:id (2026-03-10) |
 | N4 | `auth_api.js:282` | Регистрация возвращает `pinHash` и `salt` в ответе | 🔴 |
 | N5 | `auth_api.js:657` | GET `/api/auth/session/:phone` без аутентификации | 🔴 |
 | N6 | ~~`product_questions_penalty_scheduler.js`~~ | ~~`getHours()` = LOCAL time~~ | ✅ **ИСПРАВЛЕНО** (2026-02-24): использует getMoscowTime() |

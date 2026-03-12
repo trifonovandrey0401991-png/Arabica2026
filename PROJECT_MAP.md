@@ -367,6 +367,19 @@ API эндпоинты:
 Зависит от: BaseHttpService, PhotoUploadService, MultitenancyFilterService, NotificationService
 От него зависят: kpi, efficiency, rko
 
+Исправления (2026-03-10):
+- shifts_api.js: PUT /shift-handover-reports/:id — добавлена проверка роли (isAdminPhone), только админы могут подтвердить/отклонить/оценить
+- shifts_api.js: POST /shift-handover-reports — исправлен dual-write (JSON first, DB second в try/catch)
+- shifts_api.js: LIMIT 1000 на два unbounded SELECT * запроса + maskPhone в логах
+- shift_transfers_api.js: исправлен db.query (rows → result.rows) — чтение из БД было сломано
+- shift_transfers_api.js: оптимизация saveShiftTransfers — upsert по одной записи вместо всех
+- shift_transfers_notifications.js: добавлен DB path (USE_DB_EMPLOYEES) для getEmployeeById/getAllEmployees/getAllAdmins
+- shift_report_service.dart: заменён raw http.post на BaseHttpService.postRawWithError
+- shift_handover_reports_list_page.dart: убран лишний loadAllLocal() на каждый onTap
+- ~205 hardcoded цветов заменены на AppColors в shifts/shift_handover файлах
+- 5 пустых catch заменены на Logger.warning
+- Тесты: shift_test.dart (50 тестов вместо 12 заглушек), shift_handover_model_test.dart (46 новых), shift_transfer_test.dart (35 новых)
+
 ЕСЛИ ИЗМЕНИТЬ SHIFTS:
 > KPI перестанет считать пересменки
 > Efficiency баллы за смены сломаются
@@ -470,6 +483,9 @@ API эндпоинты:
 
 Зависит от: BaseHttpService, PhotoUploadService, MultitenancyFilterService, EmployeePushService
 От него зависят: kpi, efficiency
+
+Исправления (2026-03-10): см. секцию SHIFTS выше — shifts_api.js обслуживает оба модуля.
+Ключевое: PUT /shift-handover-reports/:id теперь требует роль админа, POST dual-write исправлен.
 
 ЕСЛИ ИЗМЕНИТЬ SHIFT_HANDOVER:
 > KPI потеряет данные передач смен
