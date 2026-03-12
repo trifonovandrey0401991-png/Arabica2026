@@ -11,6 +11,7 @@ import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
 
 /// Circular video note widget for messenger chat (Telegram-style).
 ///
@@ -75,7 +76,7 @@ class _VideoNotePlayerState extends State<VideoNotePlayer> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('VideoNotePlayer init error: $e');
+      Logger.error('VideoNotePlayer init error: $e');
       if (mounted) {
         setState(() {
           _hasError = true;
@@ -161,7 +162,7 @@ class _VideoNotePlayerState extends State<VideoNotePlayer> {
                 height: size,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Color(0xFF0A2020),
+                  color: AppColors.surfaceDarker,
                 ),
                 child: _initialized && _controller != null
                     ? ClipOval(
@@ -289,7 +290,7 @@ class _ExpandedVideoNoteState extends State<_ExpandedVideoNote> {
         }
         break;
       case 'onError':
-        debugPrint('Expanded player error: ${call.arguments}');
+        Logger.info('Expanded player error: ${call.arguments}');
         break;
       case 'onThumbnailReady':
       case 'onSizeChanged':
@@ -384,7 +385,7 @@ class _ExpandedVideoNoteState extends State<_ExpandedVideoNote> {
                     progress: _progress,
                     strokeWidth: ringWidth,
                     backgroundColor: Colors.white.withOpacity(0.15),
-                    progressColor: const Color(0xFF1A4D4D),
+                    progressColor: AppColors.emerald,
                   ),
                   size: Size(expandedSize, expandedSize),
                 ),
@@ -453,7 +454,7 @@ class _ExpandedVideoNoteState extends State<_ExpandedVideoNote> {
     return Container(
       width: size,
       height: size,
-      color: const Color(0xFF0A2020),
+      color: AppColors.surfaceDarker,
     );
   }
 

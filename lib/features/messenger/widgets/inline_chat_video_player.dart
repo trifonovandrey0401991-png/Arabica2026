@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
 
 /// Telegram-style inline video player for messenger chat.
 /// Auto-loads and plays muted+looping when visible. Tap opens fullscreen.
@@ -69,7 +70,7 @@ class _InlineChatVideoPlayerState extends State<InlineChatVideoPlayer> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('InlineChatVideoPlayer error: $e');
+      Logger.error('InlineChatVideoPlayer error: $e');
       if (mounted) {
         setState(() {
           _hasError = true;

@@ -116,7 +116,7 @@ class _ContactProfileSheetState extends State<ContactProfileSheet> {
       builder: (context, scrollController) {
         return Container(
           decoration: const BoxDecoration(
-            color: Color(0xFF0A2A2A),
+            color: AppColors.surfaceDark,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: ListView(
@@ -632,7 +632,7 @@ class _ContactProfileSheetState extends State<ContactProfileSheet> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A2A2A),
+        backgroundColor: AppColors.surfaceDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Удалить чат?',

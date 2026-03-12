@@ -349,8 +349,7 @@ class _MessengerGlobalSearchPageState extends State<MessengerGlobalSearchPage> {
 
     String timeStr = '';
     if (createdAt != null) {
-      final local = createdAt.toLocal();
-      timeStr = '${local.day.toString().padLeft(2, '0')}.${local.month.toString().padLeft(2, '0')} ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+      timeStr = '${createdAt.day.toString().padLeft(2, '0')}.${createdAt.month.toString().padLeft(2, '0')} ${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}';
     }
 
     return ListTile(

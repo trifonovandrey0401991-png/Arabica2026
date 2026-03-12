@@ -190,23 +190,22 @@ class MessengerMessage {
     }
   }
 
-  /// Форматированное время
+  /// Форматированное время (сервер отдаёт UTC ISO, DateTime.parse конвертирует в локальное)
   String get formattedTime {
-    return DateFormat('HH:mm').format(createdAt.toLocal());
+    return DateFormat('HH:mm').format(createdAt);
   }
 
-  /// Форматированная дата
+  /// Форматированная дата (сервер отдаёт UTC ISO, DateTime.parse конвертирует в локальное)
   String get formattedDate {
     final now = DateTime.now();
-    final local = createdAt.toLocal();
-    if (local.year == now.year && local.month == now.month && local.day == now.day) {
+    if (createdAt.year == now.year && createdAt.month == now.month && createdAt.day == now.day) {
       return 'Сегодня';
     }
     final yesterday = now.subtract(const Duration(days: 1));
-    if (local.year == yesterday.year && local.month == yesterday.month && local.day == yesterday.day) {
+    if (createdAt.year == yesterday.year && createdAt.month == yesterday.month && createdAt.day == yesterday.day) {
       return 'Вчера';
     }
-    return DateFormat('dd.MM.yyyy').format(local);
+    return DateFormat('dd.MM.yyyy').format(createdAt);
   }
 
   bool get isMine => false; // будет вычисляться при отображении

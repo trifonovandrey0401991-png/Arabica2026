@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/logger.dart';
 import '../models/contact_model.dart';
 import '../models/conversation_model.dart';
 import '../services/messenger_service.dart';
@@ -162,7 +163,9 @@ class _MessengerListPageState extends State<MessengerListPage> {
           _hasMore = more.length >= _pageSize;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      Logger.error('messenger_list: Failed to load more conversations', e);
+    }
     _isLoadingMore = false;
   }
 
@@ -185,7 +188,9 @@ class _MessengerListPageState extends State<MessengerListPage> {
           _customFolders = raw.map((j) => ChatFolder.fromJson(j)).toList();
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      Logger.error('messenger_list: Failed to load folders', e);
+    }
   }
 
   List<Conversation> _filteredConversations() {
@@ -654,7 +659,7 @@ class _MessengerListPageState extends State<MessengerListPage> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0A2A2A),
+      backgroundColor: AppColors.surfaceDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -700,7 +705,7 @@ class _MessengerListPageState extends State<MessengerListPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF0A2A2A),
+      backgroundColor: AppColors.surfaceDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),

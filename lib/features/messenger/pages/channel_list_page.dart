@@ -91,7 +91,7 @@ class _ChannelListPageState extends State<ChannelListPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF0A2A2A),
+          backgroundColor: AppColors.surfaceDark,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text('Новый канал', style: TextStyle(color: Colors.white.withOpacity(0.9))),
           content: Column(

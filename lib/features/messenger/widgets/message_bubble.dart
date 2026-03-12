@@ -510,22 +510,22 @@ class MessageBubble extends StatelessWidget {
     switch (ext) {
       case 'pdf':
         icon = Icons.picture_as_pdf;
-        iconColor = Colors.redAccent;
+        iconColor = AppColors.error;
         break;
       case 'doc':
       case 'docx':
         icon = Icons.description;
-        iconColor = Colors.blueAccent;
+        iconColor = AppColors.info;
         break;
       case 'xls':
       case 'xlsx':
       case 'csv':
         icon = Icons.table_chart;
-        iconColor = Colors.green;
+        iconColor = AppColors.success;
         break;
       case 'zip':
         icon = Icons.folder_zip;
-        iconColor = Colors.amber;
+        iconColor = AppColors.gold;
         break;
       default:
         icon = Icons.insert_drive_file;
@@ -596,9 +596,9 @@ class MessageBubble extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 12, color: Colors.red.withOpacity(0.8)),
+            Icon(Icons.error_outline, size: 12, color: AppColors.error.withOpacity(0.8)),
             const SizedBox(width: 2),
-            Text('повтор', style: TextStyle(fontSize: 9, color: Colors.red.withOpacity(0.7))),
+            Text('повтор', style: TextStyle(fontSize: 9, color: AppColors.error.withOpacity(0.7))),
           ],
         ),
       );

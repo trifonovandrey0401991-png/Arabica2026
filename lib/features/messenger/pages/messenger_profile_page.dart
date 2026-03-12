@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
 import '../services/messenger_service.dart';
 import 'messenger_notification_settings_page.dart';
 
@@ -72,7 +73,7 @@ class _MessengerProfilePageState extends State<MessengerProfilePage> {
   Future<void> _pickAvatar() async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: const Color(0xFF0A2A2A),
+      backgroundColor: AppColors.surfaceDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -120,7 +121,7 @@ class _MessengerProfilePageState extends State<MessengerProfilePage> {
         setState(() => _newAvatarFile = File(picked.path));
       }
     } catch (e) {
-      // ignore
+      Logger.error('Failed to pick avatar: $e');
     }
   }
 

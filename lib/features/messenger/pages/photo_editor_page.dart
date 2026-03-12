@@ -7,6 +7,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/logger.dart';
 
 /// Stroke model for drawing on photo
 class DrawStroke {
@@ -104,7 +105,7 @@ class _PhotoEditorPageState extends State<PhotoEditorPage> {
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      color: const Color(0xFF0A2A2A),
+      color: AppColors.surfaceDark,
       child: Row(
         children: [
           IconButton(
@@ -208,7 +209,7 @@ class _PhotoEditorPageState extends State<PhotoEditorPage> {
   Widget _buildDrawToolbar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      color: const Color(0xFF0A2A2A),
+      color: AppColors.surfaceDark,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -294,7 +295,7 @@ class _PhotoEditorPageState extends State<PhotoEditorPage> {
   Widget _buildBottomBar() {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-      color: const Color(0xFF0A2A2A),
+      color: AppColors.surfaceDark,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -425,7 +426,7 @@ class _PhotoEditorPageState extends State<PhotoEditorPage> {
         });
       }
     } catch (e) {
-      debugPrint('Crop error: $e');
+      Logger.error('Crop error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Не удалось обрезать фото. Попробуйте ещё раз.')),
@@ -471,7 +472,7 @@ class _PhotoEditorPageState extends State<PhotoEditorPage> {
         });
       }
     } catch (e) {
-      debugPrint('Error flattening drawing: $e');
+      Logger.error('Error flattening drawing: $e');
     }
   }
 

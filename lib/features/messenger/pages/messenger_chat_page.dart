@@ -11,10 +11,12 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/logger.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/services/photo_upload_service.dart' show compressImageIsolate;
 import '../models/conversation_model.dart';
 import '../models/message_model.dart';
+import '../models/participant_model.dart';
 import '../services/messenger_service.dart';
 import '../services/messenger_ws_service.dart';
 import '../services/voice_recorder_service.dart';
@@ -595,7 +597,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       }
       if (changed && mounted) setState(() {});
     } catch (e) {
-      debugPrint('messenger_chat: Failed to refresh read times: $e');
+      Logger.error('messenger_chat: Failed to refresh read times', e);
     }
   }
 
@@ -855,7 +857,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     try {
       await result.file.delete();
     } catch (e) {
-      debugPrint('messenger_chat: Failed to delete temp voice file: $e');
+      Logger.info('messenger_chat: Failed to delete temp voice file: $e');
     }
   }
 
@@ -928,7 +930,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     try {
       await file.delete();
     } catch (e) {
-      debugPrint('messenger_chat: Failed to delete temp video file: $e');
+      Logger.info('messenger_chat: Failed to delete temp video file: $e');
     }
   }
 
@@ -1065,7 +1067,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0A2A2A),
+      backgroundColor: AppColors.surfaceDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1258,7 +1260,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       if (phones.length > 1 && mounted) {
         final result = await showModalBottomSheet<String>(
           context: context,
-          backgroundColor: const Color(0xFF0A2A2A),
+          backgroundColor: AppColors.surfaceDark,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
@@ -1338,7 +1340,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
   Widget _buildContactConfirmDialog(String name, String phone) {
     final letter = name.isNotEmpty ? name[0].toUpperCase() : '?';
     return AlertDialog(
-      backgroundColor: const Color(0xFF0A2A2A),
+      backgroundColor: AppColors.surfaceDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1454,7 +1456,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
         );
       }
     } catch (e) {
-      debugPrint('messenger_chat: Failed to open private chat: $e');
+      Logger.error('messenger_chat: Failed to open private chat', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Не удалось открыть чат')),
@@ -1471,7 +1473,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
         : phone;
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0A2A2A),
+      backgroundColor: AppColors.surfaceDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -2303,7 +2305,9 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       if (mounted) {
         setState(() => _isMuted = status['is_muted'] == true);
       }
-    } catch (_) {}
+    } catch (e) {
+      Logger.error('messenger_chat: Failed to load mute status', e);
+    }
   }
 
   void _showMuteDialog() {
@@ -2314,7 +2318,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
     }
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0A2A2A),
+      backgroundColor: AppColors.surfaceDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -2594,7 +2598,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
   PreferredSizeWidget _buildSearchAppBar() {
     return AppBar(
-      backgroundColor: const Color(0xFF0A2A2A),
+      backgroundColor: AppColors.surfaceDark,
       elevation: 1,
       foregroundColor: Colors.white,
       leading: IconButton(
@@ -2747,7 +2751,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
           if (!isSaved)
             PopupMenuButton<String>(
               icon: Icon(Icons.more_vert, color: Colors.white.withOpacity(0.6)),
-              color: const Color(0xFF0A2A2A),
+              color: AppColors.surfaceDark,
               onSelected: (value) {
                 if (value == 'block') _toggleBlock();
                 if (value == 'autoDelete') _showAutoDeleteDialog();

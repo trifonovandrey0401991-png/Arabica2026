@@ -39,7 +39,6 @@ class MessengerService {
       fromJson: (json) => Conversation.fromJson(json),
       itemKey: 'conversation',
       body: {
-        'phone1': phone1,
         'phone2': phone2,
         'name1': name1,
         'name2': name2,
@@ -58,7 +57,6 @@ class MessengerService {
       fromJson: (json) => Conversation.fromJson(json),
       itemKey: 'conversation',
       body: {
-        'creatorPhone': creatorPhone,
         'creatorName': creatorName,
         'name': name,
         'participants': participants,
@@ -78,7 +76,6 @@ class MessengerService {
     return await BaseHttpService.simplePut(
       endpoint: '$_base/conversations/$conversationId',
       body: {
-        'phone': phone,
         if (name != null) 'name': name,
         if (avatarUrl != null) 'avatarUrl': avatarUrl,
       },
@@ -97,7 +94,6 @@ class MessengerService {
     final result = await BaseHttpService.postRaw(
       endpoint: '$_base/conversations/$conversationId/participants',
       body: {
-        'requesterPhone': requesterPhone,
         'phones': phones,
       },
     );
@@ -106,14 +102,14 @@ class MessengerService {
 
   static Future<bool> removeParticipant(String conversationId, String targetPhone, {required String requesterPhone}) async {
     return await BaseHttpService.delete(
-      endpoint: '$_base/conversations/$conversationId/participants/$targetPhone?requesterPhone=$requesterPhone',
+      endpoint: '$_base/conversations/$conversationId/participants/$targetPhone',
     );
   }
 
   static Future<bool> leaveGroup(String conversationId, String phone) async {
     final result = await BaseHttpService.postRaw(
       endpoint: '$_base/conversations/$conversationId/leave',
-      body: {'phone': phone},
+      body: {},
     );
     return result?['success'] == true;
   }
@@ -151,7 +147,6 @@ class MessengerService {
       fromJson: (json) => MessengerMessage.fromJson(json),
       itemKey: 'message',
       body: {
-        'senderPhone': senderPhone,
         'senderName': senderName,
         'type': type == MessageType.text ? 'text'
             : type == MessageType.image ? 'image'
@@ -184,9 +179,8 @@ class MessengerService {
   }
 
   static Future<bool> unpinMessage(String conversationId, String messageId) async {
-    return await BaseHttpService.simplePut(
-      endpoint: '$_base/conversations/$conversationId/messages/$messageId/unpin',
-      body: {},
+    return await BaseHttpService.delete(
+      endpoint: '$_base/conversations/$conversationId/messages/$messageId/pin',
     );
   }
 
@@ -276,7 +270,7 @@ class MessengerService {
   static Future<bool> markAsRead(String conversationId, String phone) async {
     final result = await BaseHttpService.postRaw(
       endpoint: '$_base/conversations/$conversationId/read',
-      body: {'phone': phone},
+      body: {},
     );
     return result?['success'] == true;
   }
@@ -394,7 +388,8 @@ class MessengerService {
         return result['poll'] as Map<String, dynamic>;
       }
       return null;
-    } catch (_) {
+    } catch (e) {
+      Logger.error('getPoll error: $e');
       return null;
     }
   }
@@ -414,7 +409,8 @@ class MessengerService {
         return polls.map((k, v) => MapEntry(k, v as Map<String, dynamic>));
       }
       return {};
-    } catch (_) {
+    } catch (e) {
+      Logger.error('getPollsBatch error: $e');
       return {};
     }
   }
@@ -447,7 +443,8 @@ class MessengerService {
         return (result['channels'] as List).cast<Map<String, dynamic>>();
       }
       return [];
-    } catch (_) {
+    } catch (e) {
+      Logger.error('getChannels error: $e');
       return [];
     }
   }
@@ -487,7 +484,8 @@ class MessengerService {
         return (result['packs'] as List).cast<Map<String, dynamic>>();
       }
       return [];
-    } catch (_) {
+    } catch (e) {
+      Logger.error('getStickerPacks error: $e');
       return [];
     }
   }
@@ -501,7 +499,8 @@ class MessengerService {
         return result['pack'] as Map<String, dynamic>;
       }
       return null;
-    } catch (_) {
+    } catch (e) {
+      Logger.error('getStickerPack error: $e');
       return null;
     }
   }
@@ -517,7 +516,8 @@ class MessengerService {
         return (result['stickers'] as List).cast<String>();
       }
       return [];
-    } catch (_) {
+    } catch (e) {
+      Logger.error('getFavoriteStickers error: $e');
       return [];
     }
   }
@@ -529,7 +529,8 @@ class MessengerService {
         body: {'stickerUrl': stickerUrl},
       );
       return result?['success'] == true;
-    } catch (_) {
+    } catch (e) {
+      Logger.error('addFavoriteSticker error: $e');
       return false;
     }
   }
@@ -540,7 +541,8 @@ class MessengerService {
       return await BaseHttpService.delete(
         endpoint: '$_base/favorite-stickers?url=$encodedUrl',
       );
-    } catch (_) {
+    } catch (e) {
+      Logger.error('removeFavoriteSticker error: $e');
       return false;
     }
   }
@@ -596,7 +598,8 @@ class MessengerService {
         return (result['gifs'] as List).cast<Map<String, dynamic>>();
       }
       return [];
-    } catch (_) {
+    } catch (e) {
+      Logger.error('searchGifs error: $e');
       return [];
     }
   }
@@ -610,7 +613,8 @@ class MessengerService {
         return (result['gifs'] as List).cast<Map<String, dynamic>>();
       }
       return [];
-    } catch (_) {
+    } catch (e) {
+      Logger.error('getTrendingGifs error: $e');
       return [];
     }
   }
@@ -626,7 +630,8 @@ class MessengerService {
         return (result['gifs'] as List).cast<String>();
       }
       return [];
-    } catch (_) {
+    } catch (e) {
+      Logger.error('getFavoriteGifs error: $e');
       return [];
     }
   }
@@ -638,7 +643,8 @@ class MessengerService {
         body: {'gifUrl': gifUrl},
       );
       return result?['success'] == true;
-    } catch (_) {
+    } catch (e) {
+      Logger.error('addFavoriteGif error: $e');
       return false;
     }
   }
@@ -649,7 +655,8 @@ class MessengerService {
       return await BaseHttpService.delete(
         endpoint: '$_base/favorite-gifs?url=$encodedUrl',
       );
-    } catch (_) {
+    } catch (e) {
+      Logger.error('removeFavoriteGif error: $e');
       return false;
     }
   }
@@ -769,7 +776,8 @@ class MessengerService {
         return (result['blocks'] as List).cast<Map<String, dynamic>>();
       }
       return [];
-    } catch (_) {
+    } catch (e) {
+      Logger.error('getBlockedUsers error: $e');
       return [];
     }
   }
@@ -785,7 +793,8 @@ class MessengerService {
         return (result['folders'] as List).cast<Map<String, dynamic>>();
       }
       return [];
-    } catch (_) {
+    } catch (e) {
+      Logger.error('getFolders error: $e');
       return [];
     }
   }
@@ -904,7 +913,8 @@ class MessengerService {
         return (result['templates'] as List).cast<Map<String, dynamic>>();
       }
       return [];
-    } catch (_) {
+    } catch (e) {
+      Logger.error('getTemplates error: $e');
       return [];
     }
   }

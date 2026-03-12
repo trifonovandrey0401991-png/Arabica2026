@@ -9,6 +9,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/logger.dart';
 
 /// Full-screen page for recording circular video notes (max 30 sec).
 /// Returns the recorded [File] on confirm, or null on cancel.
@@ -59,7 +60,7 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
       _cameraIndex = _cameras.length > 1 ? 1 : 0;
       await _setupCamera(_cameraIndex);
     } catch (e) {
-      // Camera unavailable
+      Logger.error('video_note_recorder: Camera unavailable: $e');
     }
   }
 
@@ -71,7 +72,7 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
     try {
       await old?.dispose();
     } catch (e) {
-      debugPrint('video_note_recorder: Failed to dispose old camera: $e');
+      Logger.error('video_note_recorder: Failed to dispose old camera: $e');
     }
 
     if (index >= _cameras.length) return;
@@ -88,7 +89,7 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
       await ctrl.initialize();
       if (mounted) setState(() => _cameraReady = true);
     } catch (e) {
-      // ignore
+      Logger.error('video_note_recorder: Failed to initialize camera: $e');
     }
   }
 
@@ -155,7 +156,7 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
       // Clean up raw file if remux succeeded
       if (remuxed) {
         try { await rawDest.delete(); } catch (e) {
-          debugPrint('video_note_recorder: Failed to delete raw file: $e');
+          Logger.error('video_note_recorder: Failed to delete raw file: $e');
         }
       }
 
@@ -164,7 +165,7 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
       try {
         await _cameraCtrl?.dispose();
       } catch (e) {
-        debugPrint('video_note_recorder: Failed to dispose camera: $e');
+        Logger.error('video_note_recorder: Failed to dispose camera: $e');
       }
       _cameraCtrl = null;
       _cameraReady = false;
@@ -193,7 +194,7 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
       });
       return result == true;
     } catch (e) {
-      debugPrint('Remux failed: $e');
+      Logger.error('Remux failed: $e');
       return false;
     }
   }
@@ -214,7 +215,7 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
       case 'onCompleted':
         break;
       case 'onError':
-        debugPrint('Preview error: ${call.arguments}');
+        Logger.error('Preview error: ${call.arguments}');
         break;
     }
   }
@@ -377,7 +378,7 @@ class _VideoNoteRecorderPageState extends State<VideoNoteRecorderPage>
                     : Container(
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Color(0xFF111111),
+                          color: AppColors.night,
                         ),
                         child: const Center(
                           child: CircularProgressIndicator(

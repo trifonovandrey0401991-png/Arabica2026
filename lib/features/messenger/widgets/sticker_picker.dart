@@ -74,6 +74,7 @@ class _StickerPickerState extends State<StickerPicker> {
     if (detail != null && detail['sticker_urls'] is List && mounted) {
       final urls = (detail['sticker_urls'] as List).whereType<String>().toList();
       _stickerCache[packId] = urls;
+      if (!mounted) return;
       setState(() {});
     }
   }

@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
 import '../models/message_model.dart';
 import '../services/messenger_service.dart';
 
@@ -99,7 +100,7 @@ class MessageContextMenu {
         }
       }
     } catch (e) {
-      debugPrint('Share failed: $e');
+      Logger.info('Share failed: $e');
     }
   }
 
@@ -153,7 +154,7 @@ class MessageContextMenu {
             ...readers.map((r) {
               final name = r['name'] as String;
               final readAt = r['readAt'] as DateTime;
-              final timeStr = '${readAt.toLocal().hour.toString().padLeft(2, '0')}:${readAt.toLocal().minute.toString().padLeft(2, '0')}';
+              final timeStr = '${readAt.hour.toString().padLeft(2, '0')}:${readAt.minute.toString().padLeft(2, '0')}';
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: AppColors.emerald,
@@ -367,9 +368,9 @@ class _ContextMenuOverlay extends StatelessWidget {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Color(0xFF112E2E),
-                            Color(0xFF0A2222),
-                            Color(0xFF081C1C),
+                            AppColors.surfaceMenu,
+                            AppColors.surfaceMenuDark,
+                            AppColors.surfaceMenuDarker,
                           ],
                         ),
                         borderRadius: BorderRadius.circular(22),

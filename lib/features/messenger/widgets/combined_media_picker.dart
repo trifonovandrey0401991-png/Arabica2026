@@ -82,7 +82,7 @@ class _CombinedMediaPickerState extends State<CombinedMediaPicker> with SingleTi
                     indicatorColor: AppColors.turquoise,
                     iconColor: Colors.white.withOpacity(0.3),
                     backspaceColor: Colors.white.withOpacity(0.5),
-                    skinToneDialogBgColor: const Color(0xFF0A2A2A),
+                    skinToneDialogBgColor: AppColors.surfaceDark,
                     skinToneIndicatorColor: AppColors.turquoise,
                   ),
                 ),

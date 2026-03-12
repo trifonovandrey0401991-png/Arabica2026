@@ -44,7 +44,7 @@ class _ManageFoldersPageState extends State<ManageFoldersPage> {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A2A2A),
+        backgroundColor: AppColors.surfaceDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Новая папка', style: TextStyle(color: Colors.white.withOpacity(0.9))),
         content: TextField(
@@ -90,7 +90,7 @@ class _ManageFoldersPageState extends State<ManageFoldersPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A2A2A),
+        backgroundColor: AppColors.surfaceDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Удалить папку?', style: TextStyle(color: Colors.white.withOpacity(0.9))),
         content: Text(
@@ -247,7 +247,7 @@ class _ConversationSelectorDialogState extends State<_ConversationSelectorDialog
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: const Color(0xFF0A2A2A),
+      backgroundColor: AppColors.surfaceDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
         'Чаты в «${widget.folderName}»',

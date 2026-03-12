@@ -58,7 +58,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
   Future<void> _changeAvatar() async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: const Color(0xFF0A2A2A),
+      backgroundColor: AppColors.surfaceDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -126,7 +126,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A2A2A),
+        backgroundColor: AppColors.surfaceDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Удалить участника?',
@@ -180,7 +180,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     final newName = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A2A2A),
+        backgroundColor: AppColors.surfaceDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Название группы',
@@ -273,7 +273,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A2A2A),
+        backgroundColor: AppColors.surfaceDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Покинуть группу?',
@@ -304,7 +304,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A2A2A),
+        backgroundColor: AppColors.surfaceDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Удалить группу?',
@@ -656,11 +656,11 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       child: Row(
                         children: [
-                          Icon(Icons.exit_to_app, color: Colors.orange.withOpacity(0.8)),
+                          Icon(Icons.exit_to_app, color: AppColors.warning.withOpacity(0.8)),
                           const SizedBox(width: 16),
                           Text(
                             _isChannel ? 'Отписаться от канала' : 'Покинуть группу',
-                            style: TextStyle(color: Colors.orange.withOpacity(0.9), fontSize: 15),
+                            style: TextStyle(color: AppColors.warning.withOpacity(0.9), fontSize: 15),
                           ),
                         ],
                       ),
