@@ -116,8 +116,10 @@ class _CallPageState extends State<CallPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF051515),
+    return PopScope(
+      canPop: _state == CallState.ended || _state == CallState.idle,
+      child: Scaffold(
+      backgroundColor: AppColors.night,
       body: SafeArea(
         child: Column(
           children: [
@@ -191,6 +193,7 @@ class _CallPageState extends State<CallPage> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -201,14 +204,14 @@ class _CallPageState extends State<CallPage> {
         // Decline
         _CircleButton(
           icon: Icons.call_end,
-          color: Colors.red,
+          color: AppColors.error,
           label: 'Отклонить',
           onTap: () => CallService.instance.rejectCall(),
         ),
         // Answer
         _CircleButton(
           icon: Icons.call,
-          color: Colors.green,
+          color: AppColors.success,
           label: 'Ответить',
           onTap: () => CallService.instance.answerCall(),
         ),
@@ -235,7 +238,7 @@ class _CallPageState extends State<CallPage> {
             // Hang up
             _CircleButton(
               icon: Icons.call_end,
-              color: Colors.red,
+              color: AppColors.error,
               label: 'Завершить',
               onTap: CallService.instance.hangUp,
             ),

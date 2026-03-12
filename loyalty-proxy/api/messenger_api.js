@@ -15,8 +15,8 @@ const db = require('../utils/db');
 const { requireAuth } = require('../utils/session_middleware');
 const pushService = require('../utils/push_service');
 const dataCache = require('../utils/data_cache');
-const { getMoscowTime } = require('../utils/moscow_time');
-const { normalizePhone } = require('../utils/file_helpers');
+// getMoscowTime НЕ используется в мессенджере — время хранится в UTC, Flutter сам переводит в локальное
+const { normalizePhone, maskPhone } = require('../utils/file_helpers');
 
 // WebSocket уведомления (опционально)
 let wsNotify = null;
@@ -323,7 +323,7 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(403).json({ success: false, error: 'Only creator can update group' });
       }
 
-      const updates = { updated_at: getMoscowTime().toISOString() };
+      const updates = { updated_at: new Date().toISOString() };
       if (name !== undefined) updates.name = name;
       if (avatarUrl !== undefined) updates.avatar_url = avatarUrl;
 
@@ -612,7 +612,7 @@ function setupMessengerAPI(app, uploadMedia) {
         reply_to_id: replyToId || null,
         reactions: JSON.stringify({}),
         is_deleted: false,
-        created_at: getMoscowTime().toISOString(),
+        created_at: new Date().toISOString(),
         file_name: type === 'file' ? (fileName || null) : null,
         file_size: type === 'file' ? (fileSize || null) : null,
         media_group_id: (type === 'image' || type === 'video') ? (mediaGroupId || null) : null,
@@ -627,7 +627,7 @@ function setupMessengerAPI(app, uploadMedia) {
         );
         await client.query(
           'UPDATE messenger_conversations SET updated_at = $1 WHERE id = $2',
-          [getMoscowTime().toISOString(), conversationId]
+          [new Date().toISOString(), conversationId]
         );
         await client.query(
           'UPDATE messenger_participants SET last_read_at = NOW(), unread_count = 0 WHERE conversation_id = $1 AND phone = $2',
@@ -679,7 +679,7 @@ function setupMessengerAPI(app, uploadMedia) {
           // Не отправляем push онлайн-пользователям
           if (wsNotify && wsNotify.isUserOnline(p.phone)) continue;
           // Не отправляем push замьюченным пользователям
-          if (p.muted_until && new Date(p.muted_until) > getMoscowTime()) continue;
+          if (p.muted_until && new Date(p.muted_until) > new Date()) continue;
           pushService.sendPushToPhone(p.phone, pushTitle, pushPreview, {
             type: 'messenger_message',
             conversationId,
@@ -736,12 +736,12 @@ function setupMessengerAPI(app, uploadMedia) {
 
       // Within 5 minutes
       const createdAt = new Date(message.created_at);
-      const minutesAgo = (getMoscowTime().getTime() - createdAt.getTime()) / (1000 * 60);
+      const minutesAgo = (new Date().getTime() - createdAt.getTime()) / (1000 * 60);
       if (minutesAgo > 5) {
         return res.status(400).json({ success: false, error: 'Cannot edit messages older than 5 minutes' });
       }
 
-      const editedAt = getMoscowTime().toISOString();
+      const editedAt = new Date().toISOString();
       await db.updateById('messenger_messages', req.params.msgId, {
         content: content.trim(),
         edited_at: editedAt,
@@ -840,7 +840,7 @@ function setupMessengerAPI(app, uploadMedia) {
 
       // Check 1-hour limit for forAll
       const createdAt = new Date(message.created_at);
-      const minutesAgo = (getMoscowTime().getTime() - createdAt.getTime()) / (1000 * 60);
+      const minutesAgo = (new Date().getTime() - createdAt.getTime()) / (1000 * 60);
       if (minutesAgo > 60) {
         return res.status(400).json({ success: false, error: 'Cannot delete for all — older than 1 hour' });
       }
@@ -909,7 +909,7 @@ function setupMessengerAPI(app, uploadMedia) {
   app.post('/api/messenger/conversations/:id/read', requireAuth, async (req, res) => {
     try {
       const normalizedPhone = normalizePhone(req.user.phone);
-      const now = getMoscowTime().toISOString();
+      const now = new Date().toISOString();
 
       await db.query(
         'UPDATE messenger_participants SET last_read_at = $1, unread_count = 0 WHERE conversation_id = $2 AND phone = $3',
@@ -1046,7 +1046,7 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(404).json({ success: false, error: 'Message not found' });
       }
 
-      const pinnedAt = getMoscowTime().toISOString();
+      const pinnedAt = new Date().toISOString();
       await db.updateById('messenger_messages', req.params.msgId, {
         is_pinned: true,
         pinned_at: pinnedAt,
@@ -1061,7 +1061,7 @@ function setupMessengerAPI(app, uploadMedia) {
             messageId: req.params.msgId,
             pinnedBy: normalizedPhone,
             pinnedAt,
-            timestamp: getMoscowTime().toISOString(),
+            timestamp: new Date().toISOString(),
           });
         } catch (e) { console.error('WS pin notify error:', e.message); }
       }
@@ -1101,7 +1101,7 @@ function setupMessengerAPI(app, uploadMedia) {
             type: 'message_unpinned',
             conversationId: req.params.id,
             messageId: req.params.msgId,
-            timestamp: getMoscowTime().toISOString(),
+            timestamp: new Date().toISOString(),
           });
         } catch (e) { console.error('WS unpin notify error:', e.message); }
       }
@@ -1205,36 +1205,68 @@ function setupMessengerAPI(app, uploadMedia) {
 
       const forwardedFromName = source.sender_name || source.sender_phone;
       const results = [];
+      const limitedTargetIds = targetConversationIds.slice(0, 10);
 
-      for (const targetConvId of targetConversationIds.slice(0, 10)) {
-        // Check sender is a participant
-        const participant = await db.query(
-          'SELECT phone FROM messenger_participants WHERE conversation_id = $1 AND phone = $2',
-          [targetConvId, senderPhone]
+      // --- Batch pre-checks (4 queries instead of up to 50) ---
+
+      // 1. Batch: get all target conversations + check sender participation in one query
+      const convAndPartResult = await db.query(
+        `SELECT c.id, c.type,
+                EXISTS(SELECT 1 FROM messenger_participants p WHERE p.conversation_id = c.id AND p.phone = $1) AS is_participant
+         FROM messenger_conversations c
+         WHERE c.id = ANY($2)`,
+        [senderPhone, limitedTargetIds]
+      );
+      const convMap = new Map(); // convId → { type, is_participant }
+      for (const row of convAndPartResult.rows) {
+        convMap.set(row.id, { type: row.type, is_participant: row.is_participant });
+      }
+
+      // 2. Batch: get other participants for private chats where sender is a participant
+      const privateConvIds = [];
+      for (const [convId, info] of convMap) {
+        if (info.is_participant && info.type === 'private') privateConvIds.push(convId);
+      }
+      const otherParticipantMap = new Map(); // convId → otherPhone
+      if (privateConvIds.length > 0) {
+        const otherPartResult = await db.query(
+          `SELECT conversation_id, phone FROM messenger_participants
+           WHERE conversation_id = ANY($1) AND phone != $2`,
+          [privateConvIds, senderPhone]
         );
-        if (participant.rows.length === 0) continue;
-
-        // Check block status in private chats
-        const conv = await db.findById('messenger_conversations', targetConvId);
-        if (conv && conv.type === 'private') {
-          const otherPart = await db.query(
-            'SELECT phone FROM messenger_participants WHERE conversation_id = $1 AND phone != $2 LIMIT 1',
-            [targetConvId, senderPhone]
-          );
-          if (otherPart.rows.length > 0) {
-            const otherPhone = otherPart.rows[0].phone;
-            const blockCheck = await db.query(
-              `SELECT 1 FROM messenger_blocks
-               WHERE (blocker_phone = $1 AND blocked_phone = $2)
-                  OR (blocker_phone = $2 AND blocked_phone = $1) LIMIT 1`,
-              [senderPhone, otherPhone]
-            );
-            if (blockCheck.rows.length > 0) continue; // skip blocked conversation
-          }
+        for (const row of otherPartResult.rows) {
+          otherParticipantMap.set(row.conversation_id, row.phone);
         }
+      }
+
+      // 3. Batch: check blocks for all private chat pairs
+      const blockedConvIds = new Set();
+      const otherPhones = [...new Set(otherParticipantMap.values())];
+      if (otherPhones.length > 0) {
+        const blockResult = await db.query(
+          `SELECT blocker_phone, blocked_phone FROM messenger_blocks
+           WHERE (blocker_phone = $1 AND blocked_phone = ANY($2))
+              OR (blocked_phone = $1 AND blocker_phone = ANY($2))`,
+          [senderPhone, otherPhones]
+        );
+        const blockedPhones = new Set();
+        for (const row of blockResult.rows) {
+          const otherPhone = row.blocker_phone === senderPhone ? row.blocked_phone : row.blocker_phone;
+          blockedPhones.add(otherPhone);
+        }
+        for (const [convId, otherPhone] of otherParticipantMap) {
+          if (blockedPhones.has(otherPhone)) blockedConvIds.add(convId);
+        }
+      }
+
+      // --- Loop: only INSERT + UPDATE per conversation (pre-checks done above) ---
+      for (const targetConvId of limitedTargetIds) {
+        const convInfo = convMap.get(targetConvId);
+        if (!convInfo || !convInfo.is_participant) continue;
+        if (convInfo.type === 'private' && blockedConvIds.has(targetConvId)) continue;
 
         const msgId = generateId('msg');
-        const now = getMoscowTime().toISOString();
+        const now = new Date().toISOString();
         const message = {
           id: msgId,
           conversation_id: targetConvId,
@@ -1652,6 +1684,17 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(400).json({ success: false, error: 'Cannot call yourself' });
       }
 
+      // Check that caller and target share at least one conversation
+      const sharedConv = await db.query(
+        `SELECT 1 FROM messenger_participants p1
+         JOIN messenger_participants p2 ON p1.conversation_id = p2.conversation_id
+         WHERE p1.phone = $1 AND p2.phone = $2 LIMIT 1`,
+        [normalizedCaller, normalizedTarget]
+      );
+      if (sharedConv.rows.length === 0) {
+        return res.status(403).json({ success: false, error: 'No shared conversation' });
+      }
+
       // Check block status (either direction)
       const blockCheck = await db.query(
         `SELECT 1 FROM messenger_blocks
@@ -1663,19 +1706,22 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(403).json({ success: false, error: 'Call blocked' });
       }
 
+      // Sanitize callerName for FCM push
+      const safeName = String(callerName || normalizedCaller).slice(0, 100).replace(/[<>&"']/g, '');
+
       // ALWAYS send FCM for calls — WS may be connected on server but app
       // could be minimized/suspended by Android and unable to process WS messages.
       // FCM with high priority wakes the app and triggers CallKit incoming screen.
       try {
         await pushService.sendPushToPhone(
           normalizedTarget,
-          callerName || normalizedCaller,
+          safeName,
           'Входящий голосовой звонок',
           {
             type: 'incoming_call',
             callId,
             callerPhone: normalizedCaller,
-            callerName: callerName || normalizedCaller,
+            callerName: safeName,
             offerSdp,
           },
           'call_channel'
@@ -1712,7 +1758,7 @@ function setupMessengerAPI(app, uploadMedia) {
       }
 
       const callerName  = req.user.name || callerPhone;
-      const now = getMoscowTime().toISOString();
+      const now = new Date().toISOString();
       const msgId = `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
       const _dur = durationSeconds || 0;
@@ -1728,12 +1774,27 @@ function setupMessengerAPI(app, uploadMedia) {
       };
       const content = contentMap[status] || 'Звонок';
 
-      await db.query(
-        `INSERT INTO messenger_messages
-           (id, conversation_id, sender_phone, sender_name, type, content, voice_duration, created_at)
-         VALUES ($1, $2, $3, $4, 'call', $5, $6, $7)`,
-        [msgId, conversationId, callerPhone, callerName, content, durationSeconds || 0, now]
-      );
+      // Transaction: insert call message + update conversation + update unread counters
+      await db.transaction(async (client) => {
+        await client.query(
+          `INSERT INTO messenger_messages
+             (id, conversation_id, sender_phone, sender_name, type, content, voice_duration, created_at)
+           VALUES ($1, $2, $3, $4, 'call', $5, $6, $7)`,
+          [msgId, conversationId, callerPhone, callerName, content, durationSeconds || 0, now]
+        );
+        await client.query(
+          'UPDATE messenger_conversations SET updated_at = $1 WHERE id = $2',
+          [now, conversationId]
+        );
+        await client.query(
+          'UPDATE messenger_participants SET last_read_at = NOW(), unread_count = 0 WHERE conversation_id = $1 AND phone = $2',
+          [conversationId, callerPhone]
+        );
+        await client.query(
+          'UPDATE messenger_participants SET unread_count = unread_count + 1 WHERE conversation_id = $1 AND phone != $2',
+          [conversationId, callerPhone]
+        );
+      });
 
       // Notify participants via WebSocket
       if (wsNotify) {
@@ -2206,7 +2267,7 @@ function setupMessengerAPI(app, uploadMedia) {
           "INSERT INTO favorite_stickers (phone, sticker_url, type) VALUES ($1, $2, 'gif') ON CONFLICT (phone, sticker_url) DO NOTHING",
           [phone, stickerUrl]
         );
-        console.log(`[Messenger] Custom GIF uploaded: ${phone}/${req.file.filename}`);
+        console.log(`[Messenger] Custom GIF uploaded: ${maskPhone(phone)}/${req.file.filename}`);
         res.json({ success: true, stickerUrl });
       } else {
         // Sticker — resize to 512px max and convert to PNG
@@ -2232,7 +2293,7 @@ function setupMessengerAPI(app, uploadMedia) {
             [phone, stickerUrl]
           );
 
-          console.log(`[Messenger] Custom sticker uploaded: ${phone}/${finalFilename}`);
+          console.log(`[Messenger] Custom sticker uploaded: ${maskPhone(phone)}/${finalFilename}`);
           res.json({ success: true, stickerUrl });
         } else {
           const stickerUrl = `/custom-stickers/${phone}/${req.file.filename}`;
@@ -2652,7 +2713,7 @@ function setupMessengerAPI(app, uploadMedia) {
               pollId,
               messageId: pollMsgId,
               votes,
-              timestamp: getMoscowTime().toISOString()
+              timestamp: new Date().toISOString()
             });
           }
         } catch (_) { /* ws notification not critical */ }
@@ -2677,24 +2738,32 @@ function setupMessengerAPI(app, uploadMedia) {
         return res.status(403).json({ success: false, error: 'Not a participant' });
       }
 
-      const poll = await db.findById('messenger_polls', pollId);
-      if (!poll) return res.status(404).json({ success: false, error: 'Poll not found' });
-      if (poll.closed) return res.status(400).json({ success: false, error: 'Poll is closed' });
+      const votes = await db.transaction(async (client) => {
+        const result = await client.query(
+          'SELECT * FROM messenger_polls WHERE id = $1 FOR UPDATE',
+          [pollId]
+        );
+        if (result.rows.length === 0) throw { status: 404, message: 'Poll not found' };
+        const poll = result.rows[0];
+        if (poll.closed) throw { status: 400, message: 'Poll is closed' };
 
-      const votes = poll.votes || {};
-      for (const key of Object.keys(votes)) {
-        if (votes[key]) {
-          votes[key] = votes[key].filter(p => p !== phone);
+        const votes = poll.votes || {};
+        for (const key of Object.keys(votes)) {
+          if (votes[key]) {
+            votes[key] = votes[key].filter(p => p !== phone);
+          }
         }
-      }
 
-      await db.query(
-        'UPDATE messenger_polls SET votes = $1::jsonb WHERE id = $2',
-        [JSON.stringify(votes), pollId]
-      );
+        await client.query(
+          'UPDATE messenger_polls SET votes = $1::jsonb WHERE id = $2',
+          [JSON.stringify(votes), pollId]
+        );
+        return votes;
+      });
 
       res.json({ success: true, votes });
     } catch (error) {
+      if (error.status) return res.status(error.status).json({ success: false, error: error.message });
       console.error('[Messenger] DELETE poll vote error:', error.message);
       res.status(500).json({ success: false, error: error.message });
     }
@@ -2831,7 +2900,7 @@ function setupMessengerAPI(app, uploadMedia) {
         `INSERT INTO messenger_templates (phone, title, content, sort_order, created_at)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id, title, content, sort_order, created_at`,
-        [phone, title.slice(0, 100), content.slice(0, 2000), sortOrder, getMoscowTime().toISOString()]
+        [phone, title.slice(0, 100), content.slice(0, 2000), sortOrder, new Date().toISOString()]
       );
       res.json({ success: true, template: result.rows[0] });
     } catch (error) {
@@ -2951,7 +3020,7 @@ function setupMessengerAPI(app, uploadMedia) {
           // WS notification
           if (wsNotify && msgResult.rows[0]) {
             try {
-              const convPhones = await getConversationPhones(convId);
+              const convPhones = await wsNotify.getConversationPhones(convId);
               for (const phone of convPhones) {
                 if (phone !== senderPhone) {
                   wsNotify.sendToPhone(phone, {
@@ -3325,7 +3394,7 @@ function setupMessengerAPI(app, uploadMedia) {
       const { duration } = req.body;
 
       let mutedUntil;
-      const now = getMoscowTime();
+      const now = new Date();
       switch (duration) {
         case '1h': mutedUntil = new Date(now.getTime() + 60 * 60 * 1000); break;
         case '8h': mutedUntil = new Date(now.getTime() + 8 * 60 * 60 * 1000); break;
@@ -3380,7 +3449,7 @@ function setupMessengerAPI(app, uploadMedia) {
       );
 
       const mutedUntil = result.rows[0]?.muted_until;
-      const isMuted = mutedUntil && new Date(mutedUntil) > getMoscowTime();
+      const isMuted = mutedUntil && new Date(mutedUntil) > new Date();
 
       res.json({ success: true, is_muted: !!isMuted, muted_until: mutedUntil || null });
     } catch (error) {
@@ -3440,7 +3509,7 @@ function setupMessengerAPI(app, uploadMedia) {
         type: 'system',
         content: systemContent,
         is_deleted: false,
-        created_at: getMoscowTime().toISOString(),
+        created_at: new Date().toISOString(),
       };
       await db.upsert('messenger_messages', systemMsg);
 
@@ -3479,7 +3548,7 @@ function setupMessengerAPI(app, uploadMedia) {
       if (convs.rows.length === 0) return;
 
       for (const conv of convs.rows) {
-        const cutoff = new Date(getMoscowTime().getTime() - conv.auto_delete_seconds * 1000).toISOString();
+        const cutoff = new Date(new Date().getTime() - conv.auto_delete_seconds * 1000).toISOString();
         const deleted = await db.query(
           `UPDATE messenger_messages SET is_deleted = true
            WHERE conversation_id = $1 AND is_deleted = false AND created_at < $2 AND type != 'system'

@@ -13,6 +13,7 @@
 const WebSocket = require('ws');
 const db = require('../utils/db');
 const { maskPhone, normalizePhone } = require('../utils/file_helpers');
+// getMoscowTime НЕ используется в мессенджере — время хранится в UTC, Flutter сам переводит в локальное
 
 // Проверка session token
 let sessionMiddleware;
@@ -336,12 +337,73 @@ function sendToPhoneOnce(phone, data) {
   return true;
 }
 
+// Call rate limiting: max 5 outgoing calls per minute per user
+const callRateLimit = new Map(); // phone → { count, resetAt }
+const CALL_RATE_LIMIT = 5;
+const CALL_RATE_WINDOW = 60000; // 1 minute
+
+// K6: Call cooldown — min 5 seconds between calls per user
+const callCooldown = new Map(); // phone → lastCallTimestamp
+const CALL_COOLDOWN_MS = 5000; // 5 seconds
+
+// Active calls tracking (prevents simultaneous calls / glare)
+const activeCalls = new Map(); // phone → { callId, startedAt }
+const CALL_TIMEOUT_MS = 60 * 1000; // 60s server-side timeout
+const CALL_RING_TIMEOUT_MS = 50 * 1000; // 50s server-side ring timeout (slightly > 45s client timeout)
+
+// Server-side ring timeout timers: Map<callId, { timer, callerPhone, targetPhone }>
+const callRingTimers = new Map();
+
+// Max sizes for call signaling data
+const MAX_SDP_LENGTH = 10 * 1024; // 10KB
+const MAX_CALLID_LENGTH = 100;
+const MAX_CALLER_NAME_LENGTH = 100;
+
+function clearCallRingTimer(callId) {
+  const entry = callRingTimers.get(callId);
+  if (entry) {
+    clearTimeout(entry.timer);
+    callRingTimers.delete(callId);
+  }
+}
+
 // Caller → Server: start a call
 async function handleCallOffer(callerPhone, message) {
-  const { targetPhone, offerSdp, callId, callerName } = message;
+  const { targetPhone, offerSdp, callId, callerName, conversationId } = message;
   if (!targetPhone || !offerSdp || !callId) return;
+
+  // Validate data sizes
+  if (String(callId).length > MAX_CALLID_LENGTH || String(offerSdp).length > MAX_SDP_LENGTH) {
+    console.log(`📞 Call data too large from ${maskPhone(callerPhone)}`);
+    sendToPhone(callerPhone, { type: 'call_rejected', callId: String(callId).slice(0, 50), reason: 'invalid_data' });
+    return;
+  }
+
   const normalizedTarget = normalizePhone(targetPhone);
   const normalizedCaller = normalizePhone(callerPhone);
+
+  // Rate limiting
+  const now = Date.now();
+  const rl = callRateLimit.get(normalizedCaller);
+  if (rl && now < rl.resetAt) {
+    rl.count++;
+    if (rl.count > CALL_RATE_LIMIT) {
+      console.log(`📞 Call rate limit exceeded: ${maskPhone(callerPhone)}`);
+      sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'rate_limit' });
+      return;
+    }
+  } else {
+    callRateLimit.set(normalizedCaller, { count: 1, resetAt: now + CALL_RATE_WINDOW });
+  }
+
+  // K6: Cooldown — min 5 seconds between calls
+  const lastCallTime = callCooldown.get(normalizedCaller);
+  if (lastCallTime && now - lastCallTime < CALL_COOLDOWN_MS) {
+    console.log(`📞 Call cooldown active: ${maskPhone(callerPhone)} (wait ${CALL_COOLDOWN_MS - (now - lastCallTime)}ms)`);
+    sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'cooldown' });
+    return;
+  }
+  callCooldown.set(normalizedCaller, now);
 
   // Self-call protection
   if (normalizedCaller === normalizedTarget) {
@@ -350,6 +412,88 @@ async function handleCallOffer(callerPhone, message) {
     return;
   }
 
+  // K3: Verify caller is a participant of the conversation (if conversationId provided)
+  if (conversationId) {
+    try {
+      const partCheck = await db.query(
+        'SELECT 1 FROM messenger_participants WHERE conversation_id = $1 AND phone = $2',
+        [conversationId, normalizedCaller]
+      );
+      if (partCheck.rows.length === 0) {
+        console.log(`📞 Call blocked: ${maskPhone(callerPhone)} is not a participant of ${conversationId}`);
+        sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'not_participant' });
+        return;
+      }
+    } catch (err) {
+      console.error('📞 Participant check DB error:', err.message);
+      sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'server_error' });
+      return;
+    }
+
+    // K5: Verify conversation is private (calls only allowed in private chats)
+    try {
+      const convCheck = await db.query(
+        'SELECT type FROM messenger_conversations WHERE id = $1',
+        [conversationId]
+      );
+      if (convCheck.rows.length === 0 || convCheck.rows[0].type !== 'private') {
+        console.log(`📞 Call blocked: conversation ${conversationId} is not private (type: ${convCheck.rows[0]?.type || 'not_found'})`);
+        sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'group_call_not_allowed' });
+        return;
+      }
+    } catch (err) {
+      console.error('📞 Conversation type check DB error:', err.message);
+      sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'server_error' });
+      return;
+    }
+  }
+
+  // Glare detection: check if caller or target already in an active call
+  const callerActive = activeCalls.get(normalizedCaller);
+  if (callerActive && Date.now() - callerActive.startedAt < CALL_TIMEOUT_MS) {
+    console.log(`📞 Caller ${maskPhone(callerPhone)} already in call [${callerActive.callId}], rejecting new call`);
+    sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'already_in_call' });
+    return;
+  }
+  const targetActive = activeCalls.get(normalizedTarget);
+  if (targetActive && Date.now() - targetActive.startedAt < CALL_TIMEOUT_MS) {
+    console.log(`📞 Target ${maskPhone(targetPhone)} already in call, rejecting with busy`);
+    sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'busy' });
+    return;
+  }
+
+  // Register active call for both parties
+  const callEntry = { callId, startedAt: Date.now() };
+  activeCalls.set(normalizedCaller, callEntry);
+  activeCalls.set(normalizedTarget, callEntry);
+
+  // Server-side ring timeout: if call is not answered/rejected/hung up within 50s,
+  // server sends hangup to both parties (prevents infinite ringing if caller loses connection)
+  const ringTimer = setTimeout(() => {
+    callRingTimers.delete(callId);
+    const callerActive = activeCalls.get(normalizedCaller);
+    if (callerActive && callerActive.callId === callId) {
+      console.log(`📞 Server ring timeout for call [${callId}], sending hangup to both parties`);
+      activeCalls.delete(normalizedCaller);
+      activeCalls.delete(normalizedTarget);
+      sendToPhone(normalizedTarget, {
+        type: 'call_hangup',
+        callId,
+        fromPhone: normalizedCaller,
+        reason: 'timeout',
+        timestamp: new Date().toISOString(),
+      });
+      sendToPhone(normalizedCaller, {
+        type: 'call_hangup',
+        callId,
+        fromPhone: normalizedTarget,
+        reason: 'timeout',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }, CALL_RING_TIMEOUT_MS);
+  callRingTimers.set(callId, { timer: ringTimer, callerPhone: normalizedCaller, targetPhone: normalizedTarget });
+
   // Check block status
   try {
     const blockCheck = await db.query(
@@ -357,10 +501,16 @@ async function handleCallOffer(callerPhone, message) {
       [callerPhone, normalizedTarget]
     );
     if (blockCheck.rows.length > 0) {
+      clearCallRingTimer(callId);
       sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'blocked' });
       return;
     }
-  } catch (_) { /* non-critical, proceed with call */ }
+  } catch (err) {
+    console.error('📞 Block check DB error:', err.message);
+    clearCallRingTimer(callId);
+    sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'server_error' });
+    return;
+  }
 
   // Check that caller and target share at least one conversation
   try {
@@ -371,10 +521,19 @@ async function handleCallOffer(callerPhone, message) {
       [callerPhone, normalizedTarget]
     );
     if (sharedConv.rows.length === 0) {
+      clearCallRingTimer(callId);
       sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'no_shared_conversation' });
       return;
     }
-  } catch (_) { /* non-critical, proceed with call */ }
+  } catch (err) {
+    console.error('📞 Shared conversation check DB error:', err.message);
+    clearCallRingTimer(callId);
+    sendToPhone(callerPhone, { type: 'call_rejected', callId, reason: 'server_error' });
+    return;
+  }
+
+  // Sanitize callerName (prevent XSS in push notifications)
+  const safeName = String(callerName || callerPhone).slice(0, MAX_CALLER_NAME_LENGTH).replace(/[<>&"']/g, '');
 
   const hasWs = connections.has(normalizedTarget);
   const connCount = hasWs ? connections.get(normalizedTarget).size : 0;
@@ -384,7 +543,7 @@ async function handleCallOffer(callerPhone, message) {
     type: 'call_incoming',
     callId,
     callerPhone,
-    callerName: callerName || callerPhone,
+    callerName: safeName,
     offerSdp,
     timestamp: new Date().toISOString(),
   });
@@ -392,24 +551,72 @@ async function handleCallOffer(callerPhone, message) {
 }
 
 // Callee → Server: accept the call
-function handleCallAnswer(calleePhone, message) {
-  const { callId, answerSdp, callerPhone } = message;
+async function handleCallAnswer(calleePhone, message) {
+  const { callId, answerSdp, callerPhone, conversationId } = message;
   if (!callId || !answerSdp || !callerPhone) return;
+  // Validate data sizes
+  if (String(answerSdp).length > MAX_SDP_LENGTH || String(callId).length > MAX_CALLID_LENGTH) {
+    console.log(`📞 Call answer data too large from ${maskPhone(calleePhone)}`);
+    return;
+  }
+
+  // K4: Verify callee is a participant of the conversation
+  if (conversationId) {
+    try {
+      const partCheck = await db.query(
+        'SELECT 1 FROM messenger_participants WHERE conversation_id = $1 AND phone = $2',
+        [conversationId, normalizePhone(calleePhone)]
+      );
+      if (partCheck.rows.length === 0) {
+        console.log(`📞 Call answer blocked: ${maskPhone(calleePhone)} is not a participant of ${conversationId}`);
+        return;
+      }
+    } catch (err) {
+      console.error('📞 Call answer participant check DB error:', err.message);
+      return;
+    }
+  }
+
   console.log(`📞 Call answered: ${maskPhone(calleePhone)} → ${maskPhone(callerPhone)} [${callId}]`);
+  // Cancel server-side ring timeout — call was answered
+  clearCallRingTimer(callId);
   sendToPhone(callerPhone, {
     type: 'call_answered',
     callId,
     answerSdp,
-    calleePhone,
+    calleePhone: normalizePhone(calleePhone), // Use authenticated phone, not client-supplied
     timestamp: new Date().toISOString(),
   });
 }
 
 // Callee → Server: decline the call
-function handleCallReject(calleePhone, message) {
-  const { callId, callerPhone } = message;
+async function handleCallReject(calleePhone, message) {
+  const { callId, callerPhone, conversationId } = message;
   if (!callId || !callerPhone) return;
+
+  // K4: Verify callee is a participant of the conversation
+  if (conversationId) {
+    try {
+      const partCheck = await db.query(
+        'SELECT 1 FROM messenger_participants WHERE conversation_id = $1 AND phone = $2',
+        [conversationId, normalizePhone(calleePhone)]
+      );
+      if (partCheck.rows.length === 0) {
+        console.log(`📞 Call reject blocked: ${maskPhone(calleePhone)} is not a participant of ${conversationId}`);
+        return;
+      }
+    } catch (err) {
+      console.error('📞 Call reject participant check DB error:', err.message);
+      return;
+    }
+  }
+
   console.log(`📞 Call rejected: ${maskPhone(calleePhone)} → ${maskPhone(callerPhone)} [${callId}]`);
+  // Cancel server-side ring timeout — call was rejected
+  clearCallRingTimer(callId);
+  // Cleanup active call tracking
+  activeCalls.delete(normalizePhone(calleePhone));
+  activeCalls.delete(normalizePhone(callerPhone));
   sendToPhone(callerPhone, {
     type: 'call_rejected',
     callId,
@@ -422,6 +629,8 @@ function handleCallReject(calleePhone, message) {
 function handleCallIceCandidate(fromPhone, message) {
   const { callId, targetPhone, candidate } = message;
   if (!targetPhone || !candidate) return;
+  // Validate ICE candidate size (prevent DoS with oversized data)
+  if (JSON.stringify(candidate).length > 1024) return;
   sendToPhone(targetPhone, {
     type: 'call_ice_candidate',
     callId,
@@ -436,6 +645,11 @@ function handleCallHangup(fromPhone, message) {
   const { callId, targetPhone } = message;
   if (!targetPhone) return;
   console.log(`📞 Call hangup: ${maskPhone(fromPhone)} → ${maskPhone(targetPhone)} [${callId}]`);
+  // Cancel server-side ring timeout — call was hung up
+  clearCallRingTimer(callId);
+  // Cleanup active call tracking
+  activeCalls.delete(normalizePhone(fromPhone));
+  activeCalls.delete(normalizePhone(targetPhone));
   sendToPhone(targetPhone, {
     type: 'call_hangup',
     callId,
@@ -733,6 +947,20 @@ function cleanupStaleConnections() {
     }
   }
 
+  // Cleanup stale active calls (older than CALL_TIMEOUT_MS)
+  for (const [phone, entry] of activeCalls.entries()) {
+    if (now - entry.startedAt > CALL_TIMEOUT_MS) {
+      activeCalls.delete(phone);
+    }
+  }
+
+  // Cleanup expired call cooldowns
+  for (const [phone, ts] of callCooldown.entries()) {
+    if (now - ts > CALL_COOLDOWN_MS) {
+      callCooldown.delete(phone);
+    }
+  }
+
   // Очищаем устаревшие offline-очереди (старше 24 часов)
   for (const [phone, queue] of offlineQueue.entries()) {
     const fresh = queue.filter(item => now - item.timestamp < OFFLINE_QUEUE_TTL);
@@ -844,4 +1072,5 @@ module.exports = {
   getConnectionsCount,
   sendToPhone,
   broadcastToConversation,
+  getConversationPhones,
 };

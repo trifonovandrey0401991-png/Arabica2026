@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/utils/logger.dart';
@@ -201,7 +202,12 @@ class CallService {
     final extra = event.body['extra'] as Map<String, dynamic>?;
     if (_state == CallState.incoming && _currentCall != null) {
       // Already set up via WS — just answer
-      await ensureWsConnected();
+      final wsReady = await ensureWsConnected();
+      if (!wsReady) {
+        Logger.error('📞 CallKit Accept: WS not ready, rejecting');
+        rejectCall();
+        return;
+      }
       answerCall();
     } else if (extra != null && _myPhone != null) {
       // App was in background but alive — restore call, wait for WS, then answer
@@ -209,9 +215,11 @@ class CallService {
       final callerPhone = extra['callerPhone'] as String? ?? '';
       final callerName = extra['callerName'] as String? ?? '';
       final offerSdp = extra['offerSdp'] as String? ?? '';
-      if (callId.isNotEmpty && callerPhone.isNotEmpty && offerSdp.isNotEmpty) {
+      if (callId.isNotEmpty && callerPhone.isNotEmpty) {
         // Reconnect WS first (was likely frozen in background)
         MessengerWsService.instance.reconnectIfNeeded();
+        // offerSdp may be empty if FCM payload was too large — answerCall() will
+        // wait for it to arrive via WS call_incoming event
         handleFcmIncomingCall(
           callId: callId,
           callerPhone: callerPhone,
@@ -219,7 +227,12 @@ class CallService {
           offerSdp: offerSdp,
         );
         // Wait for WS to be ready before answering
-        await ensureWsConnected();
+        final wsReady = await ensureWsConnected();
+        if (!wsReady) {
+          Logger.error('📞 CallKit Accept: WS not ready after FCM restore, rejecting');
+          rejectCall();
+          return;
+        }
         // Small delay so _GlobalCallListener can show CallPage
         await Future.delayed(const Duration(milliseconds: 500));
         answerCall();
@@ -250,7 +263,9 @@ class CallService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('pending_incoming_call', jsonEncode(extra));
       await prefs.setBool('pending_call_accepted', true);
-    } catch (_) {}
+    } catch (e) {
+      Logger.error('_savePendingAcceptedCall error: $e');
+    }
   }
 
   void _onCallKitDecline(CallEvent event) {
@@ -294,7 +309,7 @@ class CallService {
           'offerSdp': offerSdp,
         },
         android: const AndroidParams(
-          isCustomNotification: true,
+          isCustomNotification: false,
           isShowLogo: false,
           ringtonePath: 'system_ringtone_default',
           backgroundColor: '#1A4D4D',
@@ -317,6 +332,20 @@ class CallService {
     }
   }
 
+  // ─── Microphone permission ───
+
+  /// Check and request microphone permission. Returns true if granted.
+  Future<bool> _ensureMicrophonePermission() async {
+    var status = await Permission.microphone.status;
+    if (status.isGranted) return true;
+
+    status = await Permission.microphone.request();
+    if (status.isGranted) return true;
+
+    Logger.warning('📞 CallService: microphone permission denied');
+    return false;
+  }
+
   // ─── Outgoing call ───
 
   Future<bool> startCall({
@@ -325,6 +354,9 @@ class CallService {
     required String conversationId,
   }) async {
     if (_state != CallState.idle) return false;
+
+    // Check microphone permission before starting
+    if (!await _ensureMicrophonePermission()) return false;
 
     Logger.debug('📞 CallService: starting call to $targetPhone');
     _conversationId = conversationId;
@@ -377,11 +409,21 @@ class CallService {
 
       // Ring timeout: 45 seconds
       _ringTimer = Timer(const Duration(seconds: 45), () {
-        if (_state == CallState.outgoing) {
+        if (_state == CallState.outgoing && _currentCall != null) {
           Logger.debug('📞 CallService: no answer, ending call');
+          // Save call info before cleanup nulls it
+          final remotePhone = _currentCall!.remotePhone;
+          final callId = _currentCall!.callId;
           _recordCall('missed');
           _cleanup();
           _setState(CallState.ended);
+          // Send hangup with retry AFTER cleanup — server-side is the safety net,
+          // but we still try to notify the remote side directly
+          MessengerWsService.instance.sendWithRetry({
+            'type': 'call_hangup',
+            'targetPhone': remotePhone,
+            'callId': callId,
+          });
           Future.delayed(const Duration(seconds: 1), () => _setState(CallState.idle));
         }
       });
@@ -435,6 +477,38 @@ class CallService {
     if (_state != CallState.incoming || _currentCall == null) return;
     Logger.debug('📞 CallService: answering call');
 
+    // Fix У5: ensure WebSocket is connected before answering
+    final wsReady = await ensureWsConnected();
+    if (!wsReady) {
+      Logger.error('📞 CallService: WS not connected, cannot answer call');
+      rejectCall();
+      return;
+    }
+
+    // Cancel ring timer (may exist if caller's timer propagated or edge case)
+    _ringTimer?.cancel();
+    _ringTimer = null;
+
+    // Check microphone permission before answering
+    if (!await _ensureMicrophonePermission()) {
+      Logger.error('📞 CallService: mic permission denied, rejecting call');
+      rejectCall();
+      return;
+    }
+
+    // If offer SDP is missing (FCM payload too large or WS not yet delivered),
+    // wait for it to arrive via WS call_incoming event (up to 5 seconds).
+    if (_pendingOfferSdp == null || _pendingOfferSdp!.isEmpty) {
+      Logger.debug('📞 CallService: offer SDP missing, waiting for WS delivery...');
+      final received = await _waitForOfferSdp();
+      if (!received) {
+        Logger.error('📞 CallService: offer SDP not received after timeout, rejecting');
+        rejectCall();
+        return;
+      }
+      Logger.debug('📞 CallService: offer SDP received via WS, proceeding');
+    }
+
     try {
       _localStream = await navigator.mediaDevices
           .getUserMedia({'audio': true, 'video': false});
@@ -445,17 +519,21 @@ class CallService {
 
       _localStream!.getAudioTracks().forEach((t) => _pc!.addTrack(t, _localStream!));
 
-      // The offer SDP was delivered in MsgrCallIncoming — we stored the event
-      // Re-fetch it from the stream isn't possible, so we store it on incoming.
-      // NOTE: we need to keep the offer SDP — update CallInfo or store separately.
-      // We need to re-design slightly: store offerSdp in CallInfo.
-      // For now, use the stored _pendingOfferSdp.
-      if (_pendingOfferSdp == null) return;
+      // The offer SDP was stored when incoming call arrived (or received via WS wait above)
+      if (_pendingOfferSdp == null || _pendingOfferSdp!.isEmpty) {
+        Logger.error('📞 CallService: no offer SDP available, rejecting call');
+        rejectCall();
+        return;
+      }
 
       await _pc!.setRemoteDescription(RTCSessionDescription(_pendingOfferSdp!, 'offer'));
 
+      // Fix У6: check if call was ended during async setRemoteDescription
+      if (_state == CallState.ended || _state == CallState.idle || _currentCall == null) return;
+
       // Apply buffered ICE candidates
       for (final c in _pendingCandidates) {
+        if (_pc == null || _state == CallState.ended || _currentCall == null) break;
         await _pc!.addCandidate(_mapToIceCandidate(c.candidate));
       }
       _pendingCandidates.clear();
@@ -488,6 +566,48 @@ class CallService {
     }
   }
 
+  /// Wait for offer SDP to arrive via WS call_incoming event (up to 5 seconds).
+  /// Returns true if SDP was received, false on timeout.
+  Future<bool> _waitForOfferSdp() async {
+    // Listen for call_incoming events that carry the offer SDP for our current call
+    final completer = Completer<bool>();
+    StreamSubscription? sub;
+    Timer? timeout;
+
+    sub = MessengerWsService.instance.onCallIncoming.listen((e) {
+      if (_currentCall != null && e.callId == _currentCall!.callId && e.offerSdp.isNotEmpty) {
+        _pendingOfferSdp = e.offerSdp;
+        if (!completer.isCompleted) completer.complete(true);
+      }
+    });
+
+    timeout = Timer(const Duration(seconds: 5), () {
+      if (!completer.isCompleted) {
+        // Check one more time — SDP might have arrived via another listener
+        if (_pendingOfferSdp != null && _pendingOfferSdp!.isNotEmpty) {
+          completer.complete(true);
+        } else {
+          completer.complete(false);
+        }
+      }
+    });
+
+    // Also poll in case SDP arrives via the existing _subIncoming listener
+    final pollTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+      if (_pendingOfferSdp != null && _pendingOfferSdp!.isNotEmpty && !completer.isCompleted) {
+        completer.complete(true);
+      }
+    });
+
+    try {
+      return await completer.future;
+    } finally {
+      sub.cancel();
+      timeout.cancel();
+      pollTimer.cancel();
+    }
+  }
+
   void rejectCall() {
     if (_currentCall == null) return;
     Logger.debug('📞 CallService: rejecting call');
@@ -495,6 +615,7 @@ class CallService {
       callerPhone: _currentCall!.remotePhone,
       callId: _currentCall!.callId,
     );
+    _pendingCandidates.clear(); // Fix У4: clear buffered candidates on reject
     _recordCall('rejected');
     _setState(CallState.ended);
     _cleanup();
@@ -507,15 +628,22 @@ class CallService {
     if (_state != CallState.outgoing || _pc == null) return;
     Logger.debug('📞 CallService: call answered');
 
+    // Cancel ring timer IMMEDIATELY — before async operations
+    _ringTimer?.cancel();
+    _ringTimer = null;
+
     _pc!.setRemoteDescription(
       RTCSessionDescription(event.answerSdp, 'answer'),
     ).then((_) async {
+      // Fix У6: check if call was ended during async setRemoteDescription
+      if (_pc == null || _state == CallState.ended || _state == CallState.idle || _currentCall == null) return;
       // Apply buffered ICE candidates
       for (final c in _pendingCandidates) {
+        if (_pc == null || _state == CallState.ended || _currentCall == null) break;
         await _pc!.addCandidate(_mapToIceCandidate(c.candidate));
       }
       _pendingCandidates.clear();
-      _ringTimer?.cancel();
+      if (_state == CallState.ended || _currentCall == null) return; // Final guard
       _setState(CallState.connected);
     });
   }
@@ -672,6 +800,8 @@ class CallService {
   // ─── Cleanup ───
 
   void _cleanup() {
+    _ringTimer?.cancel();
+    _ringTimer = null;
     _iceDisconnectTimer?.cancel();
     _iceDisconnectTimer = null;
     try { _pc?.close(); } catch (e) { Logger.error('📞 _cleanup: pc.close error', e); }
