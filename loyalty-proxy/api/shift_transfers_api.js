@@ -95,8 +95,8 @@ async function loadShiftTransfers() {
   // DB first
   if (USE_DB_SHIFT_TRANSFERS) {
     try {
-      const rows = await db.query('SELECT * FROM shift_transfers ORDER BY created_at DESC');
-      if (rows.length > 0) return rows.map(dbRowToTransfer);
+      const result = await db.query('SELECT * FROM shift_transfers ORDER BY created_at DESC');
+      if (result.rows.length > 0) return result.rows.map(dbRowToTransfer);
     } catch (dbErr) {
       console.error('[ShiftTransfers] DB load error:', dbErr.message);
     }
@@ -114,19 +114,10 @@ async function loadShiftTransfers() {
 }
 
 async function saveShiftTransfers(requests) {
-  // Always write JSON
+  // Always write JSON (full list)
   const data = { requests, updatedAt: new Date().toISOString() };
   await writeJsonFile(SHIFT_TRANSFERS_FILE, data);
-  // Dual-write to DB
-  if (USE_DB_SHIFT_TRANSFERS) {
-    try {
-      for (const t of requests) {
-        await db.upsert('shift_transfers', transferToDbRow(t));
-      }
-    } catch (dbErr) {
-      console.error('[ShiftTransfers] DB save error:', dbErr.message);
-    }
-  }
+  // Note: DB writes are done individually via saveOneTransferToDb
 }
 
 // Save single transfer to DB (for individual updates without re-saving all)
@@ -176,7 +167,7 @@ function cleanupExpiredTransfers(requests) {
 async function updateWorkSchedule(transfer, newEmployeeId, newEmployeeName) {
   try {
     const shiftDate = new Date(transfer.shiftDate);
-    const monthKey = `${shiftDate.getFullYear()}-${String(shiftDate.getMonth() + 1).padLeft(2, '0')}`;
+    const monthKey = `${shiftDate.getFullYear()}-${String(shiftDate.getMonth() + 1).padStart(2, '0')}`;
     const scheduleFile = path.join(WORK_SCHEDULES_DIR, `${monthKey}.json`);
 
     if (!(await fileExists(scheduleFile))) {
@@ -240,13 +231,6 @@ async function updateWorkSchedule(transfer, newEmployeeId, newEmployeeName) {
     console.error('[ShiftTransfer] Error updating schedule:', e);
     return false;
   }
-}
-
-// Polyfill for String.prototype.padLeft
-if (!String.prototype.padLeft) {
-  String.prototype.padLeft = function(length, char) {
-    return (char.repeat(length) + this).slice(-length);
-  };
 }
 
 function setupShiftTransfersAPI(app) {
@@ -447,6 +431,7 @@ function setupShiftTransfersAPI(app) {
 
       requests.push(transfer);
       await saveShiftTransfers(requests);
+      await saveOneTransferToDb(transfer);
 
       // ✅ Отправка уведомлений
       try {
@@ -544,6 +529,7 @@ function setupShiftTransfersAPI(app) {
 
       requests[index] = transfer;
       await saveShiftTransfers(requests);
+      await saveOneTransferToDb(transfer);
 
       // ✅ Отправка уведомлений
       try {
@@ -595,6 +581,7 @@ function setupShiftTransfersAPI(app) {
 
       requests[index] = transfer;
       await saveShiftTransfers(requests);
+      await saveOneTransferToDb(requests[index]);
 
       // ✅ Отправка уведомлений
       try {
@@ -662,6 +649,7 @@ function setupShiftTransfersAPI(app) {
 
       requests[index] = transfer;
       await saveShiftTransfers(requests);
+      await saveOneTransferToDb(transfer);
 
       // ✅ Обновляем график работы
       const scheduleUpdated = await updateWorkSchedule(
@@ -716,6 +704,7 @@ function setupShiftTransfersAPI(app) {
       requests[index].resolvedAt = new Date().toISOString();
 
       await saveShiftTransfers(requests);
+      await saveOneTransferToDb(requests[index]);
 
       // ✅ Отправка уведомлений всем участникам
       try {
@@ -758,6 +747,7 @@ function setupShiftTransfersAPI(app) {
       }
 
       await saveShiftTransfers(requests);
+      await saveOneTransferToDb(requests[index]);
       res.json({ success: true, request: requests[index] });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });

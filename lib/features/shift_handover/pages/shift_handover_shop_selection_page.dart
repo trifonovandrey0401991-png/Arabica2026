@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/logger.dart';
 import '../../shops/services/shop_service.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../employees/services/employee_service.dart';
@@ -34,8 +35,8 @@ class _ShiftHandoverShopSelectionPageState
         );
         _isManager = employee.isManager == true;
       }
-    } catch (_) {
-      // Manager status defaults to false
+    } catch (e) {
+      Logger.warning('Failed to load manager status: $e');
     }
   }
 

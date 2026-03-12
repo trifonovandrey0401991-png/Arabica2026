@@ -552,7 +552,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                 icon: Icons.schedule,
                 label: 'Не пройдены',
                 count: _pendingHandovers.length,
-                accentColor: Colors.orange,
+                accentColor: AppColors.warning,
               ),
               SizedBox(width: 6),
               ReportTabButton(
@@ -561,7 +561,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                 icon: Icons.warning_amber,
                 label: 'Не в срок',
                 count: _overdueHandovers.length,
-                accentColor: Colors.red,
+                accentColor: AppColors.error,
                 badge: _overdueUnviewedBadge,
               ),
               SizedBox(width: 6),
@@ -571,7 +571,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                 icon: Icons.hourglass_empty,
                 label: 'Ожидают',
                 count: _awaitingReports.length,
-                accentColor: Colors.blue,
+                accentColor: AppColors.info,
               ),
             ],
           ),
@@ -585,7 +585,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                 icon: Icons.check_circle,
                 label: 'Подтверждённые',
                 count: _allReports.where((r) => r.isConfirmed).length,
-                accentColor: Colors.green,
+                accentColor: AppColors.success,
               ),
               SizedBox(width: 6),
               ReportTabButton(
@@ -594,7 +594,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                 icon: Icons.timer_off,
                 label: 'Просроченные',
                 count: _expiredReports.length + _overdueUnconfirmedReports.length,
-                accentColor: Colors.orange.shade700,
+                accentColor: AppColors.warning,
               ),
             ],
           ),
@@ -665,15 +665,15 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
   Color _getGroupColor(HandoverReportGroupType type) {
     switch (type) {
       case HandoverReportGroupType.today:
-        return Colors.green;
+        return AppColors.success;
       case HandoverReportGroupType.yesterday:
-        return Colors.blue;
+        return AppColors.info;
       case HandoverReportGroupType.day:
-        return Colors.orange;
+        return AppColors.warning;
       case HandoverReportGroupType.week:
-        return Colors.purple;
+        return AppColors.purple;
       case HandoverReportGroupType.month:
-        return Colors.indigo;
+        return AppColors.indigo;
     }
   }
 
@@ -935,19 +935,13 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                 padding: EdgeInsets.only(left: 12.0.w * (depth + 1)),
                 child: HandoverReportCard(
                   report: child,
-                  onTap: () async {
-                    final allReports = await ShiftHandoverReport.loadAllLocal();
-                    if (!mounted) return;
-                    final updatedReport = allReports.firstWhere(
-                      (r) => r.id == child.id,
-                      orElse: () => child,
-                    );
+                  onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => ShiftHandoverReportViewPage(
-                          report: updatedReport,
-                          isReadOnly: updatedReport.status == 'rejected' || updatedReport.status == 'expired',
+                          report: child,
+                          isReadOnly: child.status == 'rejected' || child.status == 'expired',
                         ),
                       ),
                     ).then((_) => _loadData());

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/logger.dart';
 import '../models/shift_report_model.dart';
 import '../models/shift_question_model.dart';
 import '../services/shift_question_service.dart';
@@ -117,6 +118,7 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
         _isLoading = false;
       });
     } catch (e) {
+      Logger.warning('Failed to load shift summary data: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -162,11 +164,11 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
   Widget _buildAppBar(BuildContext context, bool isMorning) {
     final dateStr = '${widget.date.day} ${_months[widget.date.month]}';
     final shiftColor = isMorning
-        ? Colors.orange.withOpacity(0.25)
-        : Colors.indigo.withOpacity(0.25);
+        ? AppColors.warning.withOpacity(0.25)
+        : AppColors.indigo.withOpacity(0.25);
     final shiftBorderColor = isMorning
-        ? Colors.orange.withOpacity(0.3)
-        : Colors.indigo.withOpacity(0.3);
+        ? AppColors.warning.withOpacity(0.3)
+        : AppColors.indigo.withOpacity(0.3);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 4.h),
@@ -266,11 +268,11 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildStatItem(Icons.store, 'Всего', '$totalCount', Colors.blue.shade300),
+          _buildStatItem(Icons.store, 'Всего', '$totalCount', AppColors.info),
           Container(width: 1, height: 24, color: Colors.white.withOpacity(0.1)),
-          _buildStatItem(Icons.check_circle, 'Прошли', '$passedCount', Colors.green.shade300),
+          _buildStatItem(Icons.check_circle, 'Прошли', '$passedCount', AppColors.successLight),
           Container(width: 1, height: 24, color: Colors.white.withOpacity(0.1)),
-          _buildStatItem(Icons.cancel, 'Не прошли', '$notPassedCount', Colors.red.shade300),
+          _buildStatItem(Icons.cancel, 'Не прошли', '$notPassedCount', AppColors.errorLight),
         ],
       ),
     );
@@ -368,8 +370,8 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
       height: _headerHeight,
       decoration: BoxDecoration(
         color: hasPassed
-            ? Colors.green.withOpacity(0.12)
-            : Colors.red.withOpacity(0.12),
+            ? AppColors.success.withOpacity(0.12)
+            : AppColors.error.withOpacity(0.12),
         border: Border(
           right: BorderSide(color: Colors.white.withOpacity(0.08)),
         ),
@@ -381,7 +383,7 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
             padding: EdgeInsets.only(top: 2.h),
             child: Icon(
               hasPassed ? Icons.check_circle : Icons.cancel,
-              color: hasPassed ? Colors.green.shade300 : Colors.red.shade300,
+              color: hasPassed ? AppColors.successLight : AppColors.errorLight,
               size: 12,
             ),
           ),
@@ -396,7 +398,7 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 8.sp,
-                    color: hasPassed ? Colors.green.shade300 : Colors.red.shade300,
+                    color: hasPassed ? AppColors.successLight : AppColors.errorLight,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -501,8 +503,8 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
 
     if (report == null) {
       // Магазин не прошёл пересменку
-      bgColor = Colors.red.withOpacity(0.15);
-      textColor = Colors.red.shade300;
+      bgColor = AppColors.error.withOpacity(0.15);
+      textColor = AppColors.errorLight;
     } else {
       // Ищем ответ на этот вопрос
       final answer = report.answers.firstWhere(
@@ -514,11 +516,11 @@ class _ShiftSummaryReportPageState extends State<ShiftSummaryReportPage> {
         displayAnswer = answer.textAnswer!;
         // Если Да/Нет, подсвечиваем
         if (displayAnswer.toLowerCase() == 'да') {
-          bgColor = Colors.green.withOpacity(0.15);
-          textColor = Colors.green.shade300;
+          bgColor = AppColors.success.withOpacity(0.15);
+          textColor = AppColors.successLight;
         } else if (displayAnswer.toLowerCase() == 'нет') {
-          bgColor = Colors.orange.withOpacity(0.15);
-          textColor = Colors.orange.shade300;
+          bgColor = AppColors.warning.withOpacity(0.15);
+          textColor = AppColors.warningLight;
         }
       } else if (answer.numberAnswer != null) {
         displayAnswer = answer.numberAnswer!.toStringAsFixed(

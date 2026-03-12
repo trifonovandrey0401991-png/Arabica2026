@@ -15,10 +15,10 @@ class HandoverReportCard extends StatelessWidget {
   });
 
   static Color getRatingColor(int rating) {
-    if (rating <= 3) return Colors.red;
-    if (rating <= 5) return Colors.orange;
-    if (rating <= 7) return Colors.amber.shade700;
-    return Colors.green;
+    if (rating <= 3) return AppColors.error;
+    if (rating <= 5) return AppColors.warning;
+    if (rating <= 7) return AppColors.amber;
+    return AppColors.success;
   }
 
   @override
@@ -34,7 +34,7 @@ class HandoverReportCard extends StatelessWidget {
           color: Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(12.r),
           border: Border.all(
-            color: isConfirmed ? Colors.green.withOpacity(0.15) : Colors.white.withOpacity(0.1),
+            color: isConfirmed ? AppColors.success.withOpacity(0.15) : Colors.white.withOpacity(0.1),
           ),
         ),
         child: Row(
@@ -43,12 +43,12 @@ class HandoverReportCard extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: isConfirmed ? Colors.green.withOpacity(0.15) : AppColors.emerald.withOpacity(0.3),
+                color: isConfirmed ? AppColors.success.withOpacity(0.15) : AppColors.emerald.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(
                 isConfirmed ? Icons.check : Icons.assignment_turned_in,
-                color: isConfirmed ? Colors.green : AppColors.gold,
+                color: isConfirmed ? AppColors.success : AppColors.gold,
                 size: 22,
               ),
             ),

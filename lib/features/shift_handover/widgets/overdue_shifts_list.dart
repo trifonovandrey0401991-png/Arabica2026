@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/pending_shift_handover_model.dart';
 import '../../efficiency/models/points_settings_model.dart';
 
@@ -46,9 +47,9 @@ class OverdueShiftsList extends StatelessWidget {
             margin: EdgeInsets.only(bottom: 12.h),
             padding: EdgeInsets.all(12.w),
             decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.15),
+              color: AppColors.error.withOpacity(0.15),
               borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: Colors.red.withOpacity(0.4)),
+              border: Border.all(color: AppColors.error.withOpacity(0.4)),
             ),
             child: Row(
               children: [
@@ -82,12 +83,12 @@ class OverdueShiftsList extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
             borderRadius: BorderRadius.circular(14.r),
-            border: Border.all(color: Colors.red.withOpacity(0.3)),
+            border: Border.all(color: AppColors.error.withOpacity(0.3)),
           ),
           child: Row(
             children: [
               CircleAvatar(
-                backgroundColor: Colors.red,
+                backgroundColor: AppColors.error,
                 child: Icon(
                   Icons.warning_amber,
                   color: Colors.white,
@@ -108,7 +109,7 @@ class OverdueShiftsList extends StatelessWidget {
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.2),
+                            color: AppColors.error.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           child: Text(
@@ -116,7 +117,7 @@ class OverdueShiftsList extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12.sp,
                               fontWeight: FontWeight.bold,
-                              color: Colors.red.shade300,
+                              color: AppColors.errorLight,
                             ),
                           ),
                         ),
@@ -124,7 +125,7 @@ class OverdueShiftsList extends StatelessWidget {
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                           decoration: BoxDecoration(
-                            color: Colors.red,
+                            color: AppColors.error,
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Text(
@@ -144,11 +145,11 @@ class OverdueShiftsList extends StatelessWidget {
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error, color: Colors.red, size: 24),
+                  Icon(Icons.error, color: AppColors.error, size: 24),
                   Text(
                     '${settings.missedPenalty}',
                     style: TextStyle(
-                      color: Colors.red,
+                      color: AppColors.error,
                       fontWeight: FontWeight.bold,
                       fontSize: 12.sp,
                     ),

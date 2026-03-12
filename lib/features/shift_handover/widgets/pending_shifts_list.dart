@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
 import '../models/pending_shift_handover_model.dart';
 import '../../efficiency/models/points_settings_model.dart';
 
@@ -79,8 +80,8 @@ class PendingShiftsList extends StatelessWidget {
             children: [
               CircleAvatar(
                 backgroundColor: pending.shiftType == 'morning'
-                    ? Colors.orange.withOpacity(0.8)
-                    : Colors.indigo.withOpacity(0.8),
+                    ? AppColors.warning.withOpacity(0.8)
+                    : AppColors.indigo.withOpacity(0.8),
                 child: Icon(
                   pending.shiftType == 'morning' ? Icons.wb_sunny : Icons.nights_stay,
                   color: Colors.white,
@@ -102,8 +103,8 @@ class PendingShiftsList extends StatelessWidget {
                           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                           decoration: BoxDecoration(
                             color: pending.shiftType == 'morning'
-                                ? Colors.orange.withOpacity(0.2)
-                                : Colors.indigo.withOpacity(0.2),
+                                ? AppColors.warning.withOpacity(0.2)
+                                : AppColors.indigo.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           child: Text(
@@ -112,8 +113,8 @@ class PendingShiftsList extends StatelessWidget {
                               fontSize: 12.sp,
                               fontWeight: FontWeight.bold,
                               color: pending.shiftType == 'morning'
-                                  ? Colors.orange.shade300
-                                  : Colors.indigo.shade200,
+                                  ? AppColors.warningLight
+                                  : AppColors.indigo,
                             ),
                           ),
                         ),
@@ -129,7 +130,7 @@ class PendingShiftsList extends StatelessWidget {
               ),
               Icon(
                 Icons.schedule,
-                color: pending.shiftType == 'morning' ? Colors.orange.withOpacity(0.7) : Colors.indigo.withOpacity(0.7),
+                color: pending.shiftType == 'morning' ? AppColors.warning.withOpacity(0.7) : AppColors.indigo.withOpacity(0.7),
                 size: 28,
               ),
             ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/utils/logger.dart';
 import '../../../core/widgets/shop_icon.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
@@ -99,6 +100,7 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
         });
       }
     } catch (e) {
+      Logger.warning('Failed to load shift settings: $e');
       if (mounted) {
         setState(() {
           _isLoadingSettings = false;
@@ -117,7 +119,7 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
           .map((r) => r.shopAddress)
           .toSet();
     } catch (e) {
-      // Ошибка загрузки — показываем все магазины
+      Logger.warning('Failed to load submitted shops: $e');
       _submittedShops = {};
     }
   }
@@ -182,7 +184,7 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.error_outline, size: 64, color: Colors.red.withOpacity(0.8)),
+                                  Icon(Icons.error_outline, size: 64, color: AppColors.error.withOpacity(0.8)),
                                   SizedBox(height: 16),
                                   Text(
                                     'Что-то пошло не так, попробуйте позже',
@@ -228,7 +230,7 @@ class _ShiftShopSelectionPageState extends State<ShiftShopSelectionPage> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.check_circle_outline, size: 64, color: Colors.green.withOpacity(0.8)),
+                                    Icon(Icons.check_circle_outline, size: 64, color: AppColors.success.withOpacity(0.8)),
                                     SizedBox(height: 16),
                                     Text(
                                       'Все пересменки пройдены',

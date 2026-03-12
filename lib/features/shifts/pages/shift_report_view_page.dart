@@ -73,7 +73,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
             content: Text(serverSuccess
                 ? 'Отчет подтвержден с оценкой $rating'
                 : 'Отчет подтвержден локально с оценкой $rating'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
       }
@@ -83,7 +83,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Не удалось подтвердить отчет. Попробуйте ещё раз.'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -203,10 +203,10 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
   }
 
   Color _getRatingColor(int rating) {
-    if (rating <= 3) return Colors.red;
-    if (rating <= 5) return Colors.orange;
-    if (rating <= 7) return Colors.amber;
-    return Colors.green;
+    if (rating <= 3) return AppColors.error;
+    if (rating <= 5) return AppColors.warning;
+    if (rating <= 7) return AppColors.amber;
+    return AppColors.success;
   }
 
   /// Отображение фото сотрудника с приоритетом серверного URL
@@ -225,7 +225,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error, size: 48, color: Colors.red.withOpacity(0.7)),
+                Icon(Icons.error, size: 48, color: AppColors.error.withOpacity(0.7)),
                 SizedBox(height: 8),
                 Text(
                   'Ошибка загрузки фото',
@@ -245,7 +245,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
           imageUrl: answer.photoPath!,
           fit: fit,
           errorWidget: (context, error, stackTrace) {
-            return Center(child: Icon(Icons.error, color: Colors.red.withOpacity(0.7)));
+            return Center(child: Icon(Icons.error, color: AppColors.error.withOpacity(0.7)));
           },
         );
       }
@@ -413,7 +413,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                         child: Column(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            Icon(Icons.error, size: 48, color: Colors.red.withOpacity(0.7)),
+                                            Icon(Icons.error, size: 48, color: AppColors.error.withOpacity(0.7)),
                                             SizedBox(height: 8),
                                             Text(
                                               'Ошибка загрузки\nэталонного фото',
@@ -525,9 +525,9 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
             ? Container(
                 padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.15),
+                  color: AppColors.error.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(14.r),
-                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -535,12 +535,12 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.cancel, color: Colors.red.withOpacity(0.9)),
+                        Icon(Icons.cancel, color: AppColors.error.withOpacity(0.9)),
                         SizedBox(width: 8),
                         Text(
                           'Отчет просрочен',
                           style: TextStyle(
-                            color: Colors.red.withOpacity(0.9),
+                            color: AppColors.error.withOpacity(0.9),
                             fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
                           ),
@@ -572,9 +572,9 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
             ? Container(
                 padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.15),
+                  color: AppColors.warning.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(14.r),
-                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.warning.withOpacity(0.3)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -582,12 +582,12 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.access_time, color: Colors.orange.withOpacity(0.9)),
+                        Icon(Icons.access_time, color: AppColors.warning.withOpacity(0.9)),
                         SizedBox(width: 8),
                         Text(
                           'Отчет не подтвержден вовремя',
                           style: TextStyle(
-                            color: Colors.orange.withOpacity(0.9),
+                            color: AppColors.warning.withOpacity(0.9),
                             fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
                           ),
@@ -617,9 +617,9 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
             ? Container(
                 padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.15),
+                  color: AppColors.success.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(14.r),
-                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.success.withOpacity(0.3)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -627,12 +627,12 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_circle, color: Colors.green.withOpacity(0.9)),
+                        Icon(Icons.check_circle, color: AppColors.success.withOpacity(0.9)),
                         SizedBox(width: 8),
                         Text(
                           'Отчет подтвержден',
                           style: TextStyle(
-                            color: Colors.green.withOpacity(0.9),
+                            color: AppColors.success.withOpacity(0.9),
                             fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
                           ),

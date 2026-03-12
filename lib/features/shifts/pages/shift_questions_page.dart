@@ -153,7 +153,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Что-то пошло не так, попробуйте позже'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -250,7 +250,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
             duration: Duration(seconds: 5),
           ),
         );
@@ -599,7 +599,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                 backgroundColor: AppColors.emeraldDark,
                 title: Row(
                   children: [
-                    Icon(Icons.timer_off, color: Colors.red, size: 28),
+                    Icon(Icons.timer_off, color: AppColors.error, size: 28),
                     SizedBox(width: 8),
                     Text('Время истекло', style: TextStyle(color: Colors.white)),
                   ],
@@ -628,9 +628,9 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         await ShiftReport.saveReport(report);
       }
 
-      // Отправляем уведомление админу о новом отчёте (пересменка)
+      // Отправляем уведомление админу о новом отчёте (сдача смены)
       await ReportNotificationService.createNotification(
-        reportType: ReportType.shiftHandover,
+        reportType: ReportType.shiftReport,
         reportId: reportId,
         employeeName: widget.employeeName,
         shopName: widget.shopAddress,
@@ -640,7 +640,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Отчет успешно сохранен'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
         Navigator.of(context).popUntil((route) => route.isFirst);
@@ -652,7 +652,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Что-то пошло не так, попробуйте позже'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -735,7 +735,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        Icon(Icons.error_outline, size: 64, color: AppColors.error),
                         SizedBox(height: 16),
                         Text(
                           'Что-то пошло не так, попробуйте позже',
@@ -922,7 +922,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                               child: Column(
                                                 mainAxisAlignment: MainAxisAlignment.center,
                                                 children: [
-                                                  Icon(Icons.error, size: 64, color: Colors.red),
+                                                  Icon(Icons.error, size: 64, color: AppColors.error),
                                                   SizedBox(height: 8),
                                                   Text(
                                                     'Ошибка загрузки эталонного фото',
@@ -1029,7 +1029,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _selectedYesNo == 'Да'
-                                      ? Colors.green
+                                      ? AppColors.success
                                       : Colors.white.withOpacity(0.06),
                                   foregroundColor: _selectedYesNo == 'Да'
                                       ? Colors.white
@@ -1039,7 +1039,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                     borderRadius: BorderRadius.circular(12.r),
                                     side: BorderSide(
                                       color: _selectedYesNo == 'Да'
-                                          ? Colors.green
+                                          ? AppColors.success
                                           : Colors.white.withOpacity(0.1),
                                     ),
                                   ),
@@ -1064,7 +1064,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _selectedYesNo == 'Нет'
-                                      ? Colors.red
+                                      ? AppColors.error
                                       : Colors.white.withOpacity(0.06),
                                   foregroundColor: _selectedYesNo == 'Нет'
                                       ? Colors.white
@@ -1074,7 +1074,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                     borderRadius: BorderRadius.circular(12.r),
                                     side: BorderSide(
                                       color: _selectedYesNo == 'Нет'
-                                          ? Colors.red
+                                          ? AppColors.error
                                           : Colors.white.withOpacity(0.1),
                                     ),
                                   ),

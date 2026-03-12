@@ -9,7 +9,8 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { fileExists, sanitizeId, loadJsonFile } = require('../utils/file_helpers');
+const { fileExists, sanitizeId, loadJsonFile, maskPhone } = require('../utils/file_helpers');
+const { isAdminPhone } = require('../utils/admin_cache');
 const { getMoscowTime, getMoscowDateString } = require('../utils/moscow_time');
 const { isPaginationRequested, createPaginatedResponse, createDbPaginatedResponse } = require('../utils/pagination');
 const { withLock } = require('../utils/file_lock');
@@ -302,7 +303,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
           }
 
           // Non-paginated: return all matching
-          const sql = 'SELECT * FROM shift_reports' + (where ? ` WHERE ${where}` : '') + ' ORDER BY created_at DESC';
+          const sql = 'SELECT * FROM shift_reports' + (where ? ` WHERE ${where}` : '') + ' ORDER BY created_at DESC LIMIT 1000';
           const result = await db.query(sql, whereParams);
           const reports = result.rows.map(dbShiftReportToCamel);
           return res.json({ success: true, reports });
@@ -848,7 +849,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
           });
         }
 
-        const result = await db.query(`SELECT * FROM shift_handover_reports WHERE ${whereClause} ORDER BY created_at DESC`, params);
+        const result = await db.query(`SELECT * FROM shift_handover_reports WHERE ${whereClause} ORDER BY created_at DESC LIMIT 1000`, params);
         reports = result.rows.map(dbHandoverReportToCamel);
       } else {
         reports = [];
@@ -956,20 +957,24 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
         report.status = 'pending';
       }
 
-      if (USE_DB_HANDOVER) {
-        const dbData = camelToDbHandover(report);
-        dbData.id = report.id;
-        dbData.date = report.date || (report.createdAt ? report.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]);
-        if (!dbData.shift_type) dbData.shift_type = shiftType;
-        if (!dbData.status) dbData.status = 'pending';
-        dbData.updated_at = new Date().toISOString();
-        await db.upsert('shift_handover_reports', dbData);
-      }
-
-      // Dual-write: всегда сохраняем в файл (efficiency_penalties_api, execution_chain_api читают файлы)
+      // Dual-write: JSON ПЕРВЫМ (GOLDEN RULE)
       const safeId = sanitizeId(report.id);
       const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${safeId}.json`);
       await writeJsonFile(reportFile, report);
+
+      if (USE_DB_HANDOVER) {
+        try {
+          const dbData = camelToDbHandover(report);
+          dbData.id = report.id;
+          dbData.date = report.date || (report.createdAt ? report.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]);
+          if (!dbData.shift_type) dbData.shift_type = shiftType;
+          if (!dbData.status) dbData.status = 'pending';
+          dbData.updated_at = new Date().toISOString();
+          await db.upsert('shift_handover_reports', dbData);
+        } catch (dbErr) {
+          console.error('[ShiftHandover] DB write error:', dbErr.message);
+        }
+      }
 
       // Отмечаем pending как выполненный
       if (markShiftHandoverPendingCompleted) {
@@ -996,6 +1001,13 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
       const safeId = sanitizeId(rawId); // для файловых путей
       const updatedData = req.body;
       console.log('PUT /api/shift-handover-reports/:id', rawId, 'status:', updatedData.status);
+
+      // C-4: Только админы могут подтверждать/отклонять/оценивать отчёты
+      if (updatedData.status === 'approved' || updatedData.status === 'rejected' || updatedData.rating !== undefined) {
+        if (!req.user || !isAdminPhone(req.user.phone)) {
+          return res.status(403).json({ success: false, error: 'Только администраторы могут подтверждать/отклонять отчёты' });
+        }
+      }
 
       let existingReport;
 
@@ -1047,7 +1059,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
         let employeePhone = updatedReport.employeePhone;
         if (!employeePhone && updatedReport.employeeName) {
           employeePhone = getEmployeePhoneByName(updatedReport.employeeName);
-          if (employeePhone) console.log(`[ShiftHandover] Phone resolved by name: ${updatedReport.employeeName} → ${employeePhone}`);
+          if (employeePhone) console.log(`[ShiftHandover] Phone resolved by name: ${updatedReport.employeeName} → ${maskPhone(employeePhone)}`);
         }
         if (employeePhone && sendPushToPhone) {
           try {
@@ -1064,7 +1076,7 @@ function setupShiftsAPI(app, { sendPushToPhone, markShiftHandoverPendingComplete
               rating: rating ? String(rating) : '',
               reportId: rawId
             });
-            console.log(`[ShiftHandover] Push отправлен сотруднику ${employeePhone}: ${body}`);
+            console.log(`[ShiftHandover] Push отправлен сотруднику ${maskPhone(employeePhone)}: ${body}`);
           } catch (pushError) {
             console.error('[ShiftHandover] Ошибка отправки push:', pushError.message);
           }

@@ -77,7 +77,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка загрузки вопросов конверта: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -115,7 +115,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка загрузки вопросов: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -140,7 +140,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                 Text('Вопрос успешно добавлен'),
               ],
             ),
-            backgroundColor: Colors.green[600],
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
             margin: EdgeInsets.all(16.w),
@@ -168,7 +168,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                 Text('Вопрос успешно обновлен'),
               ],
             ),
-            backgroundColor: Colors.green[600],
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
             margin: EdgeInsets.all(16.w),
@@ -200,7 +200,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                   Text('Вопрос успешно удален'),
                 ],
               ),
-              backgroundColor: Colors.green[600],
+              backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
               margin: EdgeInsets.all(16.w),
@@ -218,7 +218,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                   Text('Ошибка удаления вопроса'),
                 ],
               ),
-              backgroundColor: Colors.red[600],
+              backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
               margin: EdgeInsets.all(16.w),
@@ -257,7 +257,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Вопрос успешно обновлен'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
       }
@@ -275,7 +275,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка обновления вопроса'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -707,7 +707,7 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                         SizedBox(height: 6),
                         _buildCardActionButton(
                           icon: Icons.delete_outline_rounded,
-                          color: Colors.red[400]!,
+                          color: AppColors.errorLight,
                           onTap: () => _deleteQuestion(question),
                         ),
                       ],
@@ -734,8 +734,8 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                         _buildMetadataBadge(
                           icon: Icons.store_rounded,
                           text: '${question.shops!.length} магазин${_getShopEnding(question.shops!.length)}',
-                          color: Colors.amber[700]!,
-                          bgColor: Colors.amber.withOpacity(0.12),
+                          color: AppColors.amber,
+                          bgColor: AppColors.amber.withOpacity(0.12),
                         ),
                       if (question.shops != null && question.shops!.isNotEmpty &&
                           question.isPhotoOnly && question.referencePhotos != null && question.referencePhotos!.isNotEmpty)
@@ -745,8 +745,8 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
                         _buildMetadataBadge(
                           icon: Icons.photo_library_rounded,
                           text: '${question.referencePhotos!.length} эталон${_getPhotoEnding(question.referencePhotos!.length)}',
-                          color: Colors.green[700]!,
-                          bgColor: Colors.green.withOpacity(0.12),
+                          color: AppColors.success,
+                          bgColor: AppColors.success.withOpacity(0.12),
                         ),
                     ],
                   ),
@@ -823,10 +823,10 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
   }
 
   Color _getAnswerTypeColor(ShiftHandoverQuestion question) {
-    if (question.isPhotoOnly) return Color(0xFF7B1FA2); // Purple
-    if (question.isYesNo) return Color(0xFF0288D1); // Blue
-    if (question.isNumberOnly) return Color(0xFFE65100); // Orange
-    return Color(0xFF2E7D32); // Green for text
+    if (question.isPhotoOnly) return AppColors.purple; // Purple
+    if (question.isYesNo) return AppColors.info; // Blue
+    if (question.isNumberOnly) return AppColors.warning; // Orange
+    return AppColors.success; // Green for text
   }
 
   String _getTargetRoleLabel(String? targetRole) {
@@ -1085,11 +1085,11 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
   Color _getSectionColor(String section) {
     switch (section) {
       case 'ooo':
-        return Colors.blue;
+        return AppColors.info;
       case 'ip':
-        return Colors.orange;
+        return AppColors.warning;
       case 'general':
-        return Colors.green;
+        return AppColors.success;
       default:
         return Colors.grey;
     }
@@ -1189,7 +1189,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка загрузки магазинов: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -1233,7 +1233,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка выбора фото: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -1261,7 +1261,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка загрузки эталонного фото'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -1272,7 +1272,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -1391,7 +1391,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка сохранения вопроса'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -1401,7 +1401,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -1540,11 +1540,11 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                   ),
                   errorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14.r),
-                    borderSide: BorderSide(color: Colors.red, width: 1),
+                    borderSide: BorderSide(color: AppColors.error, width: 1),
                   ),
                   focusedErrorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14.r),
-                    borderSide: BorderSide(color: Colors.red, width: 2),
+                    borderSide: BorderSide(color: AppColors.error, width: 2),
                   ),
                   contentPadding: EdgeInsets.all(16.w),
                 ),
@@ -1597,7 +1597,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
               _buildSectionHeader(
                 icon: Icons.format_list_bulleted,
                 title: 'Тип ответа',
-                color: Color(0xFFCE93D8),
+                color: AppColors.purple,
               ),
               SizedBox(height: 12),
               Row(
@@ -1607,7 +1607,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       icon: Icons.camera_alt_outlined,
                       label: 'Фото',
                       value: 'photo',
-                      color: Color(0xFF7B1FA2),
+                      color: AppColors.purple,
                     ),
                   ),
                   SizedBox(width: 10),
@@ -1616,7 +1616,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       icon: Icons.check_circle_outline,
                       label: 'Да/Нет',
                       value: 'yesno',
-                      color: Color(0xFF0288D1),
+                      color: AppColors.info,
                     ),
                   ),
                 ],
@@ -1629,7 +1629,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       icon: Icons.tag,
                       label: 'Число',
                       value: 'number',
-                      color: Color(0xFFE65100),
+                      color: AppColors.warning,
                     ),
                   ),
                   SizedBox(width: 10),
@@ -1638,7 +1638,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       icon: Icons.text_fields,
                       label: 'Текст',
                       value: 'text',
-                      color: Color(0xFF2E7D32),
+                      color: AppColors.success,
                     ),
                   ),
                 ],
@@ -1651,7 +1651,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       icon: Icons.screenshot,
                       label: 'Скриншот',
                       value: 'screenshot',
-                      color: Color(0xFF5E35B1),
+                      color: AppColors.purple,
                     ),
                   ),
                   SizedBox(width: 10),
@@ -1663,7 +1663,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
               _buildSectionHeader(
                 icon: Icons.store_mall_directory_outlined,
                 title: 'Магазины',
-                color: Color(0xFFFFB74D),
+                color: AppColors.amberLight,
               ),
               SizedBox(height: 12),
               if (_isLoadingShops)
@@ -1786,7 +1786,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                   _buildSectionHeader(
                     icon: Icons.photo_library_outlined,
                     title: 'Эталонные фото',
-                    color: Color(0xFF66BB6A),
+                    color: AppColors.successLight,
                   ),
                   SizedBox(height: 8),
                   Text(
@@ -2039,10 +2039,10 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                 Container(
                   padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.15),
+                    color: AppColors.warning.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
-                  child: Icon(Icons.store, size: 18, color: Colors.orange[700]),
+                  child: Icon(Icons.store, size: 18, color: AppColors.warning),
                 ),
                 SizedBox(width: 10),
                 Expanded(
@@ -2059,20 +2059,20 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.15),
+                      color: AppColors.success.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.check_circle, size: 14, color: Colors.green[600]),
+                        Icon(Icons.check_circle, size: 14, color: AppColors.success),
                         SizedBox(width: 4),
                         Text(
                           'Загружено',
                           style: TextStyle(
                             fontSize: 11.sp,
                             fontWeight: FontWeight.w600,
-                            color: Colors.green[700],
+                            color: AppColors.success,
                           ),
                         ),
                       ],
@@ -2100,7 +2100,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
                                 return Center(
-                                  child: Icon(Icons.error_outline, size: 40, color: Colors.red[300]),
+                                  child: Icon(Icons.error_outline, size: 40, color: AppColors.errorLight),
                                 );
                               },
                             )
@@ -2115,7 +2115,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                                       fit: BoxFit.cover,
                                       errorWidget: (context, error, stackTrace) {
                                         return Center(
-                                          child: Icon(Icons.error_outline, size: 40, color: Colors.red[300]),
+                                          child: Icon(Icons.error_outline, size: 40, color: AppColors.errorLight),
                                         );
                                       },
                                     )
@@ -2202,7 +2202,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
     bool isDestructive = false,
   }) {
     return Material(
-      color: isDestructive ? Colors.red[900]!.withOpacity(0.8) : AppColors.emeraldDark,
+      color: isDestructive ? AppColors.error.withOpacity(0.8) : AppColors.emeraldDark,
       borderRadius: BorderRadius.circular(8.r),
       child: InkWell(
         onTap: onPressed,
@@ -2222,7 +2222,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
           child: Icon(
             icon,
             size: 18,
-            color: isDestructive ? Colors.red[300] : Colors.white.withOpacity(0.8),
+            color: isDestructive ? AppColors.errorLight : Colors.white.withOpacity(0.8),
           ),
         ),
       ),
@@ -2389,7 +2389,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка выбора фото: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -2426,7 +2426,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка загрузки фото'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -2436,7 +2436,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -2482,7 +2482,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка сохранения вопроса'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -2492,7 +2492,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -2704,7 +2704,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                                               width: double.infinity,
                                               height: double.infinity,
                                               errorWidget: (_, __, ___) => Center(
-                                                child: Icon(Icons.error, size: 48, color: Colors.red),
+                                                child: Icon(Icons.error, size: 48, color: AppColors.error),
                                               ),
                                             )
                                           : SizedBox(),
@@ -2720,7 +2720,7 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
                                   top: 8.h,
                                   right: 8.w,
                                   child: IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    icon: Icon(Icons.delete, color: AppColors.error),
                                     onPressed: _isUploadingPhoto ? null : _removePhoto,
                                     style: IconButton.styleFrom(
                                       backgroundColor: AppColors.emeraldDark,
@@ -2835,11 +2835,11 @@ class _EnvelopeQuestionFormDialogState extends State<EnvelopeQuestionFormDialog>
   Color _getSectionColor(String section) {
     switch (section) {
       case 'ooo':
-        return Colors.blue;
+        return AppColors.info;
       case 'ip':
-        return Colors.orange;
+        return AppColors.warning;
       case 'general':
-        return Colors.green;
+        return AppColors.success;
       default:
         return Colors.grey;
     }

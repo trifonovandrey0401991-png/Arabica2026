@@ -107,7 +107,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка загрузки вопросов: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -132,7 +132,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                 Expanded(child: Text('Вопрос успешно добавлен')),
               ],
             ),
-            backgroundColor: Colors.green[600],
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
             margin: EdgeInsets.all(16.w),
@@ -160,7 +160,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                 Expanded(child: Text('Вопрос успешно обновлен')),
               ],
             ),
-            backgroundColor: Colors.green[600],
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
             margin: EdgeInsets.all(16.w),
@@ -192,7 +192,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                   Expanded(child: Text('Вопрос успешно удален')),
                 ],
               ),
-              backgroundColor: Colors.green[600],
+              backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
               margin: EdgeInsets.all(16.w),
@@ -210,7 +210,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                   Expanded(child: Text('Ошибка удаления вопроса')),
                 ],
               ),
-              backgroundColor: Colors.red[600],
+              backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
               margin: EdgeInsets.all(16.w),
@@ -295,28 +295,28 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
               icon: Icons.check_circle,
               label: 'Да/Нет',
               value: 'yesno',
-              color: Color(0xFF0288D1),
+              color: AppColors.info,
               count: _questions.where((q) => q.isYesNo).length,
             ),
             _buildFilterOption(
               icon: Icons.numbers,
               label: 'Число',
               value: 'number',
-              color: Color(0xFFE65100),
+              color: AppColors.warning,
               count: _questions.where((q) => q.isNumberOnly).length,
             ),
             _buildFilterOption(
               icon: Icons.camera_alt,
               label: 'Фото',
               value: 'photo',
-              color: Color(0xFF7B1FA2),
+              color: AppColors.purple,
               count: _questions.where((q) => q.isPhotoOnly).length,
             ),
             _buildFilterOption(
               icon: Icons.text_fields,
               label: 'Текст',
               value: 'text',
-              color: Color(0xFF2E7D32),
+              color: AppColors.success,
               count: _questions.where((q) => !q.isPhotoOnly && !q.isYesNo && !q.isNumberOnly).length,
             ),
             SizedBox(height: 10),
@@ -519,13 +519,13 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
   Color _getTypeFilterColor(String type) {
     switch (type) {
       case 'photo':
-        return Color(0xFF7B1FA2);
+        return AppColors.purple;
       case 'yesno':
-        return Color(0xFF0288D1);
+        return AppColors.info;
       case 'number':
-        return Color(0xFFE65100);
+        return AppColors.warning;
       case 'text':
-        return Color(0xFF2E7D32);
+        return AppColors.success;
       default:
         return AppColors.gold;
     }
@@ -738,7 +738,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             icon: Icons.check_circle_outline,
             label: 'Да/Нет',
             count: yesNoCount,
-            color: Color(0xFF0288D1),
+            color: AppColors.info,
             isSelected: _selectedTypeFilter == 'yesno',
             onTap: () => _toggleTypeFilter('yesno'),
           ),
@@ -747,7 +747,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             icon: Icons.camera_alt_outlined,
             label: 'Фото',
             count: photoCount,
-            color: Color(0xFF7B1FA2),
+            color: AppColors.purple,
             isSelected: _selectedTypeFilter == 'photo',
             onTap: () => _toggleTypeFilter('photo'),
           ),
@@ -756,7 +756,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             icon: Icons.tag,
             label: 'Число',
             count: numberCount,
-            color: Color(0xFFE65100),
+            color: AppColors.warning,
             isSelected: _selectedTypeFilter == 'number',
             onTap: () => _toggleTypeFilter('number'),
           ),
@@ -765,7 +765,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
             icon: Icons.text_fields,
             label: 'Текст',
             count: textCount,
-            color: Color(0xFF2E7D32),
+            color: AppColors.success,
             isSelected: _selectedTypeFilter == 'text',
             onTap: () => _toggleTypeFilter('text'),
           ),
@@ -844,7 +844,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Порядок сохранён', style: TextStyle(color: Colors.white)),
-            backgroundColor: Colors.green[700],
+            backgroundColor: AppColors.success,
             duration: Duration(seconds: 1),
             behavior: SnackBarBehavior.floating,
           ),
@@ -1177,7 +1177,7 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                         SizedBox(height: 6),
                         _buildCardActionButton(
                           icon: Icons.delete_outline_rounded,
-                          color: Colors.red[400]!,
+                          color: AppColors.errorLight,
                           onTap: () => _deleteQuestion(question),
                         ),
                       ],
@@ -1206,16 +1206,16 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
                         _buildMetadataBadge(
                           icon: Icons.store_rounded,
                           text: '${question.shops!.length} магазин${_getShopEnding(question.shops!.length)}',
-                          color: Colors.amber[700]!,
-                          bgColor: Colors.amber.withOpacity(0.12),
+                          color: AppColors.amber,
+                          bgColor: AppColors.amber.withOpacity(0.12),
                         ),
                       // Эталонные фото
                       if (question.isPhotoOnly && question.referencePhotos != null && question.referencePhotos!.isNotEmpty)
                         _buildMetadataBadge(
                           icon: Icons.photo_library_rounded,
                           text: '${question.referencePhotos!.length} эталон${_getPhotoEnding(question.referencePhotos!.length)}',
-                          color: Colors.green[700]!,
-                          bgColor: Colors.green.withOpacity(0.12),
+                          color: AppColors.success,
+                          bgColor: AppColors.success.withOpacity(0.12),
                         ),
                     ],
                   ),
@@ -1293,10 +1293,10 @@ class _ShiftQuestionsManagementPageState extends State<ShiftQuestionsManagementP
   }
 
   Color _getAnswerTypeColor(ShiftQuestion question) {
-    if (question.isPhotoOnly) return Color(0xFF7B1FA2); // Purple
-    if (question.isYesNo) return Color(0xFF0288D1); // Blue
-    if (question.isNumberOnly) return Color(0xFFE65100); // Orange
-    return Color(0xFF2E7D32); // Green for text
+    if (question.isPhotoOnly) return AppColors.purple; // Purple
+    if (question.isYesNo) return AppColors.info; // Blue
+    if (question.isNumberOnly) return AppColors.warning; // Orange
+    return AppColors.success; // Green for text
   }
 }
 
@@ -1375,7 +1375,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка загрузки магазинов: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -1417,7 +1417,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка выбора фото: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -1457,7 +1457,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Эталонное фото успешно загружено'),
-                backgroundColor: Colors.green,
+                backgroundColor: AppColors.success,
                 duration: Duration(seconds: 2),
               ),
             );
@@ -1469,7 +1469,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Фото загружено, но не удалось обновить вопрос'),
-                backgroundColor: Colors.orange,
+                backgroundColor: AppColors.warning,
               ),
             );
           }
@@ -1480,7 +1480,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка загрузки эталонного фото'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -1492,7 +1492,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -1618,7 +1618,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка сохранения вопроса'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -1628,7 +1628,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -1760,11 +1760,11 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                           ),
                           errorBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14.r),
-                            borderSide: BorderSide(color: Colors.red, width: 1),
+                            borderSide: BorderSide(color: AppColors.error, width: 1),
                           ),
                           focusedErrorBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14.r),
-                            borderSide: BorderSide(color: Colors.red, width: 2),
+                            borderSide: BorderSide(color: AppColors.error, width: 2),
                           ),
                           contentPadding: EdgeInsets.all(16.w),
                         ),
@@ -1783,7 +1783,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                       _buildSectionHeader(
                         icon: Icons.format_list_bulleted,
                         title: 'Тип ответа',
-                        color: Color(0xFF7B1FA2),
+                        color: AppColors.purple,
                       ),
                       SizedBox(height: 12),
                       Row(
@@ -1793,7 +1793,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                               icon: Icons.camera_alt_outlined,
                               label: 'Фото',
                               value: 'photo',
-                              color: Color(0xFF7B1FA2),
+                              color: AppColors.purple,
                             ),
                           ),
                           SizedBox(width: 10),
@@ -1802,7 +1802,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                               icon: Icons.check_circle_outline,
                               label: 'Да/Нет',
                               value: 'yesno',
-                              color: Color(0xFF0288D1),
+                              color: AppColors.info,
                             ),
                           ),
                         ],
@@ -1815,7 +1815,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                               icon: Icons.tag,
                               label: 'Число',
                               value: 'number',
-                              color: Color(0xFFE65100),
+                              color: AppColors.warning,
                             ),
                           ),
                           SizedBox(width: 10),
@@ -1824,7 +1824,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                               icon: Icons.text_fields,
                               label: 'Текст',
                               value: 'text',
-                              color: Color(0xFF2E7D32),
+                              color: AppColors.success,
                             ),
                           ),
                         ],
@@ -1834,7 +1834,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                       _buildSectionHeader(
                         icon: Icons.store_mall_directory_outlined,
                         title: 'Магазины',
-                        color: Color(0xFFEF6C00),
+                        color: AppColors.warning,
                       ),
                       SizedBox(height: 12),
                       if (_isLoadingShops)
@@ -2008,7 +2008,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                           _buildSectionHeader(
                             icon: Icons.photo_library_outlined,
                             title: 'Эталонные фото',
-                            color: Color(0xFF388E3C),
+                            color: AppColors.success,
                           ),
                           SizedBox(height: 8),
                           Text(
@@ -2244,10 +2244,10 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                 Container(
                   padding: EdgeInsets.all(8.w),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.15),
+                    color: AppColors.warning.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
-                  child: Icon(Icons.store, size: 18, color: Colors.orange[700]),
+                  child: Icon(Icons.store, size: 18, color: AppColors.warning),
                 ),
                 SizedBox(width: 10),
                 Expanded(
@@ -2264,20 +2264,20 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.15),
+                      color: AppColors.success.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.check_circle, size: 14, color: Colors.green[600]),
+                        Icon(Icons.check_circle, size: 14, color: AppColors.success),
                         SizedBox(width: 4),
                         Text(
                           'Загружено',
                           style: TextStyle(
                             fontSize: 11.sp,
                             fontWeight: FontWeight.w600,
-                            color: Colors.green[600],
+                            color: AppColors.success,
                           ),
                         ),
                       ],
@@ -2306,7 +2306,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                   fit: BoxFit.cover,
                                   errorWidget: (context, error, stackTrace) {
                                     return Center(
-                                      child: Icon(Icons.error_outline, size: 40, color: Colors.red[300]),
+                                      child: Icon(Icons.error_outline, size: 40, color: AppColors.errorLight),
                                     );
                                   },
                                 )
@@ -2320,7 +2320,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                                   fit: BoxFit.cover,
                                   errorWidget: (context, error, stackTrace) {
                                     return Center(
-                                      child: Icon(Icons.error_outline, size: 40, color: Colors.red[300]),
+                                      child: Icon(Icons.error_outline, size: 40, color: AppColors.errorLight),
                                     );
                                   },
                                 )
@@ -2406,7 +2406,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
     bool isDestructive = false,
   }) {
     return Material(
-      color: isDestructive ? Colors.red[900]!.withOpacity(0.8) : AppColors.emeraldDark.withOpacity(0.9),
+      color: isDestructive ? AppColors.error.withOpacity(0.8) : AppColors.emeraldDark.withOpacity(0.9),
       borderRadius: BorderRadius.circular(8.r),
       child: InkWell(
         onTap: onPressed,
@@ -2419,7 +2419,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           child: Icon(
             icon,
             size: 18,
-            color: isDestructive ? Colors.red[300] : Colors.white.withOpacity(0.8),
+            color: isDestructive ? AppColors.errorLight : Colors.white.withOpacity(0.8),
           ),
         ),
       ),

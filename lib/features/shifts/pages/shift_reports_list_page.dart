@@ -97,7 +97,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     _tabController.addListener(_onTabChanged);
     _loadData();
     // Отмечаем все уведомления этого типа как просмотренные
-    ReportNotificationService.markAllAsViewed(reportType: ReportType.shiftHandover);
+    ReportNotificationService.markAllAsViewed(reportType: ReportType.shiftReport);
   }
 
   void _onTabChanged() {
@@ -599,7 +599,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                 onTap: () { _tabController.animateTo(0); if (mounted) setState(() {}); },
                 label: 'Не пройдены',
                 count: _pendingShifts.length,
-                accentColor: Colors.orange,
+                accentColor: AppColors.warning,
                 icon: Icons.schedule,
               ),
               SizedBox(width: 6),
@@ -608,7 +608,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                 onTap: () { _tabController.animateTo(1); if (mounted) setState(() {}); },
                 label: 'Не в срок',
                 count: _failedShifts.length,
-                accentColor: Colors.red,
+                accentColor: AppColors.error,
                 icon: Icons.warning_amber,
                 badge: _failedShiftsBadgeCount,
               ),
@@ -618,7 +618,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                 onTap: () { _tabController.animateTo(2); if (mounted) setState(() {}); },
                 label: 'Ожидают',
                 count: _awaitingReports.length,
-                accentColor: Colors.blue,
+                accentColor: AppColors.info,
                 icon: Icons.hourglass_empty,
               ),
             ],
@@ -632,7 +632,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                 onTap: () { _tabController.animateTo(3); if (mounted) setState(() {}); },
                 label: 'Подтверждённые',
                 count: _allReports.where((r) => r.isConfirmed).length,
-                accentColor: Colors.green,
+                accentColor: AppColors.success,
                 icon: Icons.check_circle,
               ),
               SizedBox(width: 6),
@@ -641,7 +641,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                 onTap: () { _tabController.animateTo(4); if (mounted) setState(() {}); },
                 label: 'Просроченные',
                 count: _expiredReports.length + _overdueUnconfirmedReports.length,
-                accentColor: Colors.orange.shade700,
+                accentColor: AppColors.warning,
                 icon: Icons.timer_off,
               ),
             ],
@@ -655,7 +655,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                 onTap: () { _tabController.animateTo(5); if (mounted) setState(() {}); },
                 label: 'Отчёт',
                 count: _summaryItems.where((s) => s.passedCount > 0).length,
-                accentColor: Colors.deepPurple,
+                accentColor: AppColors.purple,
                 icon: Icons.table_chart,
               ),
             ],
@@ -740,7 +740,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         icon: Icons.check_circle_outline,
         title: 'Нет ожидающих пересменок',
         subtitle: 'Все пересменки пройдены или просрочены',
-        color: Colors.green.withOpacity(0.15),
+        color: AppColors.success.withOpacity(0.15),
       );
     }
 
@@ -750,7 +750,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       itemBuilder: (context, index) {
         final pending = _pendingShifts[index];
         final isMorning = pending.shiftType == 'morning';
-        final shiftColor = isMorning ? Colors.orange : Colors.indigo;
+        final shiftColor = isMorning ? AppColors.warning : AppColors.indigo;
 
         return Container(
           margin: EdgeInsets.only(bottom: 10.h),
@@ -776,8 +776,8 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: isMorning
-                              ? [Colors.orange.shade300, Colors.orange.shade600]
-                              : [Colors.indigo.shade300, Colors.indigo.shade600],
+                              ? [AppColors.warningLight, AppColors.warning]
+                              : [AppColors.indigo, AppColors.indigo],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -843,12 +843,12 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                     Container(
                       padding: EdgeInsets.all(8.w),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.15),
+                        color: AppColors.warning.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10.r),
                       ),
                       child: Icon(
                         Icons.schedule,
-                        color: Colors.orange,
+                        color: AppColors.warning,
                         size: 24,
                       ),
                     ),
@@ -869,7 +869,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         icon: Icons.thumb_up,
         title: 'Нет просроченных пересменок',
         subtitle: 'Все пересменки пройдены вовремя',
-        color: Colors.green.withOpacity(0.15),
+        color: AppColors.success.withOpacity(0.15),
       );
     }
 
@@ -883,9 +883,9 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         return Container(
           margin: EdgeInsets.only(bottom: 10.h),
           decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.08),
+            color: AppColors.error.withOpacity(0.08),
             borderRadius: BorderRadius.circular(14.r),
-            border: Border.all(color: Colors.red.withOpacity(0.3)),
+            border: Border.all(color: AppColors.error.withOpacity(0.3)),
           ),
           child: Padding(
             padding: EdgeInsets.all(14.w),
@@ -897,7 +897,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                   height: 50,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.red.shade400, Colors.red.shade700],
+                      colors: [AppColors.errorLight, AppColors.error],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -920,7 +920,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                             color: AppColors.emeraldDark,
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Icons.error, color: Colors.red, size: 14),
+                          child: Icon(Icons.error, color: AppColors.error, size: 14),
                         ),
                       ),
                     ],
@@ -948,7 +948,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                           Container(
                             padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                             decoration: BoxDecoration(
-                              color: isMorning ? Colors.orange.withOpacity(0.2) : Colors.indigo.withOpacity(0.2),
+                              color: isMorning ? AppColors.warning.withOpacity(0.2) : AppColors.indigo.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(6.r),
                             ),
                             child: Text(
@@ -956,7 +956,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                               style: TextStyle(
                                 fontSize: 11.sp,
                                 fontWeight: FontWeight.bold,
-                                color: isMorning ? Colors.orange : Colors.indigo.shade300,
+                                color: isMorning ? AppColors.warning : AppColors.indigo,
                               ),
                             ),
                           ),
@@ -964,7 +964,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                           Container(
                             padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                             decoration: BoxDecoration(
-                              color: Colors.red,
+                              color: AppColors.error,
                               borderRadius: BorderRadius.circular(6.r),
                             ),
                             child: Text(
@@ -981,11 +981,11 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                       SizedBox(height: 6),
                       Row(
                         children: [
-                          Icon(Icons.access_time, size: 14, color: Colors.red[400]),
+                          Icon(Icons.access_time, size: 14, color: AppColors.errorLight),
                           SizedBox(width: 4),
                           Text(
                             'Дедлайн: ${failed.deadline}',
-                            style: TextStyle(fontSize: 12.sp, color: Colors.red[400]),
+                            style: TextStyle(fontSize: 12.sp, color: AppColors.errorLight),
                           ),
                           if (_shiftSettings != null) ...[
                             Spacer(),
@@ -1019,10 +1019,10 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   }
 
   Color _getRatingColor(int rating) {
-    if (rating <= 3) return Colors.red;
-    if (rating <= 5) return Colors.orange;
-    if (rating <= 7) return Colors.amber.shade700;
-    return Colors.green;
+    if (rating <= 3) return AppColors.error;
+    if (rating <= 5) return AppColors.warning;
+    if (rating <= 7) return AppColors.amber;
+    return AppColors.success;
   }
 
   Widget _buildReportsList(List<ShiftReport> reports, {required bool isPending}) {
@@ -1044,7 +1044,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         if (status == 'confirmed') {
           statusIcon = Icon(
             Icons.check_circle,
-            color: Colors.green,
+            color: AppColors.success,
             size: 24,
           );
         } else if (status == 'not_verified') {
@@ -1053,14 +1053,14 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
             children: [
               Icon(
                 Icons.cancel,
-                color: Colors.red,
+                color: AppColors.error,
                 size: 24,
               ),
               SizedBox(width: 4),
               Text(
                 'не проверено',
                 style: TextStyle(
-                  color: Colors.red,
+                  color: AppColors.error,
                   fontSize: 12.sp,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1070,7 +1070,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         } else {
           statusIcon = Icon(
             Icons.hourglass_empty,
-            color: Colors.orange,
+            color: AppColors.warning,
             size: 24,
           );
         }
@@ -1084,7 +1084,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
           ),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: report.isConfirmed ? Colors.green : AppColors.emerald,
+              backgroundColor: report.isConfirmed ? AppColors.success : AppColors.emerald,
               child: Icon(
                 report.isConfirmed ? Icons.check : Icons.receipt_long,
                 color: Colors.white,
@@ -1112,13 +1112,13 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                     children: [
                       Text(
                         'Подтверждено: ',
-                        style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold),
                       ),
                       Flexible(
                         child: Text(
                           '${report.confirmedAt!.day}.${report.confirmedAt!.month}.${report.confirmedAt!.year} '
                           '${report.confirmedAt!.hour}:${report.confirmedAt!.minute.toString().padLeft(2, '0')}',
-                          style: TextStyle(color: Colors.green),
+                          style: TextStyle(color: AppColors.success),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -1389,15 +1389,15 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   Color _getGroupColor(ReportGroupType type) {
     switch (type) {
       case ReportGroupType.today:
-        return Colors.green;
+        return AppColors.success;
       case ReportGroupType.yesterday:
-        return Colors.blue;
+        return AppColors.info;
       case ReportGroupType.day:
-        return Colors.orange;
+        return AppColors.warning;
       case ReportGroupType.week:
-        return Colors.purple;
+        return AppColors.purple;
       case ReportGroupType.month:
-        return Colors.indigo;
+        return AppColors.indigo;
     }
   }
 
@@ -1428,7 +1428,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         subtitle: isConfirmed
             ? 'Подтверждённые отчёты появятся здесь'
             : 'Отклонённые отчёты появятся здесь',
-        color: isConfirmed ? Colors.green.withOpacity(0.15) : Colors.grey.withOpacity(0.15),
+        color: isConfirmed ? AppColors.success.withOpacity(0.15) : Colors.grey.withOpacity(0.15),
       );
     }
 
@@ -1577,7 +1577,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
           color: Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
-            color: isConfirmed ? Colors.green.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+            color: isConfirmed ? AppColors.success.withOpacity(0.3) : Colors.white.withOpacity(0.1),
           ),
         ),
         child: Row(
@@ -1587,12 +1587,12 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: isConfirmed ? Colors.green.withOpacity(0.15) : Colors.white.withOpacity(0.08),
+                color: isConfirmed ? AppColors.success.withOpacity(0.15) : Colors.white.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(10.r),
               ),
               child: Icon(
                 isConfirmed ? Icons.check_circle : Icons.receipt_long,
-                color: isConfirmed ? Colors.green : Colors.white.withOpacity(0.5),
+                color: isConfirmed ? AppColors.success : Colors.white.withOpacity(0.5),
                 size: 22,
               ),
             ),
@@ -1692,7 +1692,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
         icon: Icons.table_chart_outlined,
         title: 'Нет данных за последние 30 дней',
         subtitle: 'Сводные отчёты появятся здесь',
-        color: Colors.deepPurple.withOpacity(0.15),
+        color: AppColors.purple.withOpacity(0.15),
       );
     }
 
@@ -1710,16 +1710,16 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
           margin: EdgeInsets.only(bottom: 8.h),
           decoration: BoxDecoration(
             color: allPassed
-                ? Colors.green.withOpacity(0.08)
+                ? AppColors.success.withOpacity(0.08)
                 : nonePassed
-                    ? Colors.red.withOpacity(0.08)
+                    ? AppColors.error.withOpacity(0.08)
                     : Colors.white.withOpacity(0.06),
             borderRadius: BorderRadius.circular(14.r),
             border: Border.all(
               color: allPassed
-                  ? Colors.green.withOpacity(0.3)
+                  ? AppColors.success.withOpacity(0.3)
                   : nonePassed
-                      ? Colors.red.withOpacity(0.2)
+                      ? AppColors.error.withOpacity(0.2)
                       : Colors.white.withOpacity(0.1),
               width: isToday ? 2 : 1,
             ),
@@ -1741,8 +1741,8 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: isMorning
-                              ? [Colors.orange.shade300, Colors.orange.shade600]
-                              : [Colors.indigo.shade300, Colors.indigo.shade600],
+                              ? [AppColors.warningLight, AppColors.warning]
+                              : [AppColors.indigo, AppColors.indigo],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -1778,10 +1778,10 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                             style: TextStyle(
                               fontSize: 12.sp,
                               color: allPassed
-                                  ? Colors.green
+                                  ? AppColors.success
                                   : nonePassed
-                                      ? Colors.red
-                                      : Colors.orange,
+                                      ? AppColors.error
+                                      : AppColors.warning,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -1793,10 +1793,10 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                       decoration: BoxDecoration(
                         color: allPassed
-                            ? Colors.green
+                            ? AppColors.success
                             : nonePassed
-                                ? Colors.red.shade400
-                                : Colors.deepPurple,
+                                ? AppColors.errorLight
+                                : AppColors.purple,
                         borderRadius: BorderRadius.circular(10.r),
                       ),
                       child: Text(

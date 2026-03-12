@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../models/shift_report_model.dart';
 import '../../../core/services/base_report_service.dart';
 import '../../../core/services/base_http_service.dart';
@@ -42,31 +40,26 @@ class ShiftReportService {
     for (var attempt = 1; attempt <= 2; attempt++) {
       try {
         Logger.debug('📤 Попытка $attempt/2...');
-        final response = await http
-            .post(
-              Uri.parse('${ApiConstants.serverUrl}$baseEndpoint'),
-              headers: ApiConstants.jsonHeaders,
-              body: jsonEncode(report.toJson()),
-            )
-            .timeout(ApiConstants.longTimeout);
+        final httpResult = await BaseHttpService.postRawWithError(
+          endpoint: baseEndpoint,
+          body: report.toJson(),
+          timeout: ApiConstants.longTimeout,
+        );
 
-        final result = jsonDecode(response.body);
-
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          if (result['success'] == true) {
-            Logger.debug('✅ Отчёт успешно отправлен');
-            return ShiftSubmitResult(
-              success: true,
-              report: result['report'] != null
-                  ? ShiftReport.fromJson(result['report'])
-                  : null,
-            );
-          }
+        if (httpResult.success) {
+          Logger.debug('✅ Отчёт успешно отправлен');
+          final reportData = httpResult.data?['report'];
+          return ShiftSubmitResult(
+            success: true,
+            report: reportData != null && reportData is Map<String, dynamic>
+                ? ShiftReport.fromJson(reportData)
+                : null,
+          );
         }
 
         // Обработка ошибок сервера (не сетевых — повтор не поможет)
-        final errorType = result['error']?.toString();
-        final message = result['message']?.toString();
+        final errorType = httpResult.data?['error']?.toString() ?? httpResult.error;
+        final message = httpResult.data?['message']?.toString();
 
         Logger.warning('⚠️ Ошибка отправки: $errorType - $message');
         return ShiftSubmitResult(

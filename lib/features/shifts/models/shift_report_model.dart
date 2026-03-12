@@ -320,6 +320,7 @@ class ShiftReport {
         final existing = ShiftReport.fromJson(jsonDecode(jsonStr));
         return existing.id == report.id;
       } catch (e) {
+        Logger.warning('Failed to parse shift report during dedup: $e');
         return false;
       }
     });

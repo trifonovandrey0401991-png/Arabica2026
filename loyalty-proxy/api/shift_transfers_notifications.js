@@ -17,6 +17,10 @@ const fsp = require('fs').promises;
 const path = require('path');
 const { maskPhone, fileExists } = require('../utils/file_helpers');
 const pushService = require('../utils/push_service');
+const db = require('../utils/db');
+
+// Feature flag
+const USE_DB_EMPLOYEES = process.env.USE_DB_EMPLOYEES === 'true';
 
 // Константы
 const EMPLOYEES_DIR = process.env.DATA_DIR ? `${process.env.DATA_DIR}/employees` : '/var/www/employees';
@@ -29,6 +33,24 @@ const EMPLOYEES_DIR = process.env.DATA_DIR ? `${process.env.DATA_DIR}/employees`
  * @returns {Promise<Object|null>} Данные сотрудника или null
  */
 async function getEmployeeById(employeeId) {
+  // DB first
+  if (USE_DB_EMPLOYEES) {
+    try {
+      const row = await db.findById('employees', employeeId);
+      if (row) {
+        return {
+          id: row.id,
+          name: row.name,
+          phone: row.phone,
+          isAdmin: row.is_admin || false,
+          shopAddresses: row.shop_addresses || [],
+        };
+      }
+    } catch (dbErr) {
+      console.error(`[ShiftTransferNotif] DB error for employee ${employeeId}:`, dbErr.message);
+    }
+  }
+  // Fallback: JSON
   try {
     const employeeFile = path.join(EMPLOYEES_DIR, `${employeeId}.json`);
     if (await fileExists(employeeFile)) {
@@ -47,6 +69,26 @@ async function getEmployeeById(employeeId) {
  * @returns {Promise<Array>} Массив сотрудников
  */
 async function getAllEmployees(excludeEmployeeId = null) {
+  // DB first
+  if (USE_DB_EMPLOYEES) {
+    try {
+      const result = await db.query('SELECT * FROM employees');
+      if (result.rows.length > 0) {
+        return result.rows
+          .filter(row => !excludeEmployeeId || row.id !== excludeEmployeeId)
+          .map(row => ({
+            id: row.id,
+            name: row.name,
+            phone: row.phone,
+            isAdmin: row.is_admin || false,
+            shopAddresses: row.shop_addresses || [],
+          }));
+      }
+    } catch (dbErr) {
+      console.error('[ShiftTransferNotif] DB error for getAllEmployees:', dbErr.message);
+    }
+  }
+  // Fallback: JSON
   const employees = [];
   try {
     if (!(await fileExists(EMPLOYEES_DIR))) {
@@ -84,6 +126,25 @@ async function getAllEmployees(excludeEmployeeId = null) {
  * @returns {Promise<Array>} Массив администраторов
  */
 async function getAllAdmins() {
+  // DB first
+  if (USE_DB_EMPLOYEES) {
+    try {
+      const result = await db.query("SELECT * FROM employees WHERE is_admin = true");
+      if (result.rows.length > 0) {
+        console.log(`✅ Найдено ${result.rows.length} администраторов (DB)`);
+        return result.rows.map(row => ({
+          id: row.id,
+          name: row.name,
+          phone: row.phone,
+          isAdmin: true,
+          shopAddresses: row.shop_addresses || [],
+        }));
+      }
+    } catch (dbErr) {
+      console.error('[ShiftTransferNotif] DB error for getAllAdmins:', dbErr.message);
+    }
+  }
+  // Fallback: JSON
   const admins = [];
   try {
     if (!(await fileExists(EMPLOYEES_DIR))) {

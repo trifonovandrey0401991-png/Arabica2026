@@ -159,7 +159,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Что-то пошло не так, попробуйте позже'),
-            backgroundColor: Colors.red[700],
+            backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
@@ -271,7 +271,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: ${e.toString()}'),
-            backgroundColor: Colors.red[700],
+            backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             duration: Duration(seconds: 5),
@@ -638,7 +638,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Отчет успешно сохранен'),
-            backgroundColor: Color(0xFF43A047),
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
@@ -765,7 +765,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Что-то пошло не так, попробуйте позже'),
-            backgroundColor: Colors.red[700],
+            backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
           ),
@@ -853,13 +853,13 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                             width: 80,
                             height: 80,
                             decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.12),
+                              color: AppColors.warning.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(20.r),
                             ),
                             child: Icon(
                               Icons.quiz_outlined,
                               size: 40,
-                              color: Colors.orange.withOpacity(0.7),
+                              color: AppColors.warning.withOpacity(0.7),
                             ),
                           ),
                           SizedBox(height: 24),
@@ -1223,7 +1223,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
           child: _buildYesNoButton(
             label: 'Да',
             isSelected: _selectedYesNo == 'Да',
-            color: Color(0xFF43A047),
+            color: AppColors.success,
             icon: Icons.check_rounded,
             onTap: () {
               if (mounted) setState(() => _selectedYesNo = 'Да');
@@ -1238,7 +1238,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
           child: _buildYesNoButton(
             label: 'Нет',
             isSelected: _selectedYesNo == 'Нет',
-            color: Color(0xFFE53935),
+            color: AppColors.error,
             icon: Icons.close_rounded,
             onTap: () {
               if (mounted) setState(() => _selectedYesNo = 'Нет');
@@ -1399,9 +1399,9 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
             width: double.infinity,
             padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
-              color: Color(0xFF43A047).withOpacity(0.08),
+              color: AppColors.success.withOpacity(0.08),
               borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(color: Color(0xFF43A047).withOpacity(0.3), width: 1.5),
+              border: Border.all(color: AppColors.success.withOpacity(0.3), width: 1.5),
             ),
             child: Column(
               children: [
@@ -1409,20 +1409,20 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
                   decoration: BoxDecoration(
-                    color: Color(0xFF43A047).withOpacity(0.15),
+                    color: AppColors.success.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.check_circle_rounded, color: Color(0xFF43A047), size: 16),
+                      Icon(Icons.check_circle_rounded, color: AppColors.success, size: 16),
                       SizedBox(width: 8),
                       Text(
                         'Ваше фото',
                         style: TextStyle(
                           fontSize: 13.sp,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF43A047),
+                          color: AppColors.success,
                         ),
                       ),
                     ],

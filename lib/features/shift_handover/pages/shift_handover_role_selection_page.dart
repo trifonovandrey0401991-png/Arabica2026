@@ -89,12 +89,12 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
               Container(
                 padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.15),
+                  color: AppColors.warning.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.schedule,
-                  color: Colors.orange,
+                  color: AppColors.warning,
                   size: 44,
                 ),
               ),
@@ -228,7 +228,7 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
                               title: 'Формирование конверта',
                               icon: Icons.mail_rounded,
                               description: 'Выручка, расходы, итог',
-                              accentColor: Color(0xFF43A047),
+                              accentColor: AppColors.success,
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -344,13 +344,13 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
       decoration: BoxDecoration(
         color: hasPending
-            ? Color(0xFF43A047).withOpacity(0.12)
-            : Colors.orange.withOpacity(0.12),
+            ? AppColors.success.withOpacity(0.12)
+            : AppColors.warning.withOpacity(0.12),
         borderRadius: BorderRadius.circular(12.r),
         border: Border.all(
           color: hasPending
-              ? Color(0xFF43A047).withOpacity(0.3)
-              : Colors.orange.withOpacity(0.3),
+              ? AppColors.success.withOpacity(0.3)
+              : AppColors.warning.withOpacity(0.3),
         ),
       ),
       child: Row(
@@ -358,7 +358,7 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
         children: [
           Icon(
             hasPending ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
-            color: hasPending ? Color(0xFF43A047) : Colors.orange,
+            color: hasPending ? AppColors.success : AppColors.warning,
             size: 18,
           ),
           SizedBox(width: 10),
