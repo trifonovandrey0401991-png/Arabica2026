@@ -802,7 +802,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                   border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                 ),
                 child: Text(
-                  'Разрешить',
+                  'Продолжить',
                   style: TextStyle(
                     color: AppColors.gold,
                     fontWeight: FontWeight.bold,

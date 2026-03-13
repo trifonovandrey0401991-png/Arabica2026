@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/logger.dart';
@@ -32,20 +34,34 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
 
   Future<void> _checkPermissions() async {
     try {
-      // Check geolocation
+      // 1. Геолокация
       final geoStatus = await Geolocator.checkPermission();
       final geoGranted = geoStatus == LocationPermission.always ||
           geoStatus == LocationPermission.whileInUse;
 
-      // Check contacts
+      // 2. Контакты — используем permission_handler для проверки (не показывает диалог)
       final contactsStatus = await Permission.contacts.status;
-      final contactsGranted = contactsStatus.isGranted;
+      final contactsGranted = contactsStatus.isGranted || contactsStatus.isLimited;
+
+      // 3. Микрофон — только проверяем статус (не запрашиваем)
+      final micStatus = await Permission.microphone.status;
+      final micGranted = micStatus.isGranted;
+
+      // 4. Камера — только проверяем статус (не запрашиваем)
+      final cameraStatus = await Permission.camera.status;
+      final cameraGranted = cameraStatus.isGranted;
 
       if (!geoGranted) {
         _pendingSteps.add(_PermissionStep.geolocation);
       }
       if (!contactsGranted) {
         _pendingSteps.add(_PermissionStep.contacts);
+      }
+      if (!micGranted) {
+        _pendingSteps.add(_PermissionStep.microphone);
+      }
+      if (!cameraGranted) {
+        _pendingSteps.add(_PermissionStep.camera);
       }
 
       if (_pendingSteps.isEmpty) {
@@ -79,10 +95,22 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
             result == LocationPermission.whileInUse;
         Logger.debug(
             '[Onboarding] Geo permission result: $result, granted: $granted');
-      } else {
-        final result = await Permission.contacts.request();
+      } else if (step == _PermissionStep.contacts) {
+        // Используем FlutterContacts напрямую — корректно работает на iOS 18+
+        final granted = await FlutterContacts.requestPermission();
         Logger.debug(
-            '[Onboarding] Contacts permission result: $result, granted: ${result.isGranted}');
+            '[Onboarding] Contacts permission result: granted=$granted');
+      } else if (step == _PermissionStep.microphone) {
+        // Используем AudioRecorder — корректно запрашивает через нативный iOS API
+        final recorder = AudioRecorder();
+        final granted = await recorder.hasPermission();
+        recorder.dispose();
+        Logger.debug(
+            '[Onboarding] Microphone permission result: granted=$granted');
+      } else if (step == _PermissionStep.camera) {
+        final status = await Permission.camera.request();
+        Logger.debug(
+            '[Onboarding] Camera permission result: $status');
       }
     } catch (e) {
       Logger.warning('[Onboarding] Permission request error: $e');
@@ -133,7 +161,48 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
   }
 
   Widget _buildPermissionScreen(_PermissionStep step) {
-    final isGeo = step == _PermissionStep.geolocation;
+    final icon = switch (step) {
+      _PermissionStep.geolocation => Icons.location_on_rounded,
+      _PermissionStep.contacts => Icons.contacts_rounded,
+      _PermissionStep.microphone => Icons.mic_rounded,
+      _PermissionStep.camera => Icons.camera_alt_rounded,
+    };
+
+    final title = switch (step) {
+      _PermissionStep.geolocation => 'Разрешите доступ\nк геолокации',
+      _PermissionStep.contacts => 'Разрешите доступ\nк контактам',
+      _PermissionStep.microphone => 'Разрешите доступ\nк микрофону',
+      _PermissionStep.camera => 'Разрешите доступ\nк камере',
+    };
+
+    final description = switch (step) {
+      _PermissionStep.geolocation =>
+        'Мы сможем напоминать вам о накопленных '
+            'баллах и специальных акциях, когда вы '
+            'рядом с нашей кофейней.\n\n'
+            'Если вы откажетесь, некоторые акции '
+            'и персональные предложения будут недоступны.',
+      _PermissionStep.contacts =>
+        'Мы покажем в мессенджере только тех людей '
+            'из вашей телефонной книги, которые тоже '
+            'пользуются приложением.\n\n'
+            'Ваши контакты не хранятся на сервере.\n\n'
+            'Если вы откажетесь, мессенджер будет '
+            'работать, но без привязки к вашей '
+            'телефонной книге.',
+      _PermissionStep.microphone =>
+        'Микрофон нужен для записи голосовых '
+            'сообщений и звонков в мессенджере.\n\n'
+            'Если вы откажетесь, вы не сможете '
+            'отправлять голосовые сообщения и '
+            'совершать звонки.',
+      _PermissionStep.camera =>
+        'Камера нужна для отправки фото и видео '
+            'в мессенджере, а также для сканирования '
+            'QR-кодов программы лояльности.\n\n'
+            'Если вы откажетесь, вы не сможете '
+            'делать фото и снимать видео в приложении.',
+    };
 
     return Scaffold(
       body: Container(
@@ -166,9 +235,7 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
                     ),
                   ),
                   child: Icon(
-                    isGeo
-                        ? Icons.location_on_rounded
-                        : Icons.contacts_rounded,
+                    icon,
                     color: Colors.white,
                     size: 48.sp,
                   ),
@@ -177,9 +244,7 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
 
                 // Title
                 Text(
-                  isGeo
-                      ? 'Разрешите доступ\nк геолокации'
-                      : 'Разрешите доступ\nк контактам',
+                  title,
                   style: TextStyle(
                     fontSize: 24.sp,
                     fontWeight: FontWeight.bold,
@@ -194,19 +259,7 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8.w),
                   child: Text(
-                    isGeo
-                        ? 'Мы сможем напоминать вам о накопленных '
-                            'баллах и специальных акциях, когда вы '
-                            'рядом с нашей кофейней.\n\n'
-                            'Если вы откажетесь, некоторые акции '
-                            'и персональные предложения будут недоступны.'
-                        : 'Мы покажем в мессенджере только тех людей '
-                            'из вашей телефонной книги, которые тоже '
-                            'пользуются приложением.\n\n'
-                            'Ваши контакты не хранятся на сервере.\n\n'
-                            'Если вы откажетесь, мессенджер будет '
-                            'работать, но без привязки к вашей '
-                            'телефонной книге.',
+                    description,
                     style: TextStyle(
                       fontSize: 15.sp,
                       color: Colors.white.withOpacity(0.65),
@@ -218,7 +271,7 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
 
                 const Spacer(flex: 3),
 
-                // "Разрешить" button
+                // "Продолжить" button
                 SizedBox(
                   width: double.infinity,
                   child: Container(
@@ -249,7 +302,7 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
                               ),
                             )
                           : Text(
-                              'Разрешить',
+                              'Продолжить',
                               style: TextStyle(
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.w600,
@@ -282,4 +335,4 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
   }
 }
 
-enum _PermissionStep { geolocation, contacts }
+enum _PermissionStep { geolocation, contacts, microphone, camera }

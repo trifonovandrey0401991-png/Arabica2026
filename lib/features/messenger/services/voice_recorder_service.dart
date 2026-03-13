@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
+import '../../../core/utils/logger.dart';
 
 /// Сервис записи голосовых сообщений.
 /// Использует пакет `record` для захвата аудио с микрофона.
@@ -19,12 +19,11 @@ class VoiceRecorderService {
   /// Запрашивает разрешение на микрофон и начинает запись.
   /// Возвращает true если запись началась успешно.
   Future<bool> startRecording() async {
-    // Запрос разрешения
-    final status = await Permission.microphone.request();
-    if (!status.isGranted) return false;
-
-    // Проверяем что рекордер доступен
+    // Используем hasPermission() из пакета record — он корректно запрашивает
+    // разрешение на микрофон через нативный iOS API (работает на iOS 18+).
+    // permission_handler может некорректно возвращать статус на iOS 18+.
     final hasPermission = await _recorder.hasPermission();
+    Logger.debug('[VoiceRecorder] hasPermission: $hasPermission');
     if (!hasPermission) return false;
 
     // Временный файл для записи

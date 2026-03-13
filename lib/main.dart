@@ -67,66 +67,75 @@ class SharedContentHolder {
 /// (один ключ → один NavigatorState, нет рассинхронизации)
 final GlobalKey<NavigatorState> navigatorKey = FirebaseService.navigatorKey;
 
+/// Безопасная инициализация сервиса с таймаутом.
+/// Если сервис не успевает за [timeout] — пропускаем и продолжаем запуск.
+Future<T?> _safeInit<T>(
+  String name,
+  Future<T> Function() init, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  try {
+    return await init().timeout(timeout, onTimeout: () {
+      Logger.warning('⏱️ $name: таймаут ${timeout.inSeconds}с — пропускаем');
+      throw TimeoutException('$name timed out');
+    });
+  } catch (e) {
+    Logger.warning('⚠️ $name: ошибка — $e');
+    return null;
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Увеличиваем лимит TCP соединений к одному хосту (по умолчанию 6)
-  // 6 заняты семафором API + нужны слоты для Image.network и прочего
   HttpOverrides.global = _AppHttpOverrides();
 
-  // Инициализация Firebase (только для мобильных платформ)
-  try {
-    Logger.debug('🔵 Начало инициализации Firebase Core...');
+  // === Firebase (не блокирует запуск) ===
+  bool firebaseReady = false;
+  await _safeInit('Firebase Core', () async {
     await FirebaseWrapper.initializeApp();
+    firebaseReady = true;
     Logger.success('Firebase Core инициализирован');
+  }, timeout: const Duration(seconds: 8));
 
-    // Инициализация Crashlytics — перехват ошибок Flutter
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-    Logger.success('Firebase Crashlytics инициализирован');
-
-    // Проверяем готовность Firebase без задержки
-    Logger.debug('🔵 Проверка готовности Firebase...');
-
-    // Инициализация Firebase Messaging
-    Logger.debug('🔵 Начало инициализации Firebase Messaging...');
-    await FirebaseService.initialize();
-    Logger.success('Firebase Messaging инициализирован');
-
-    // Проверяем, разрешены ли уведомления
-    final notificationsEnabled = await FirebaseService.areNotificationsEnabled();
-    if (!notificationsEnabled) {
-      Logger.warning('Уведомления отключены - будет показан диалог');
-      _shouldShowNotificationDialog = true;
-    }
-  } catch (e) {
-    // Firebase недоступен (веб-платформа или пакеты не установлены)
-    Logger.warning('Firebase не доступен: $e');
-    Logger.info('Push-уведомления будут работать только на мобильных устройствах');
-    // Инициализируем заглушку для веб
+  // Crashlytics — только если Firebase готов
+  if (firebaseReady) {
     try {
-      await FirebaseService.initialize();
-    } catch (e2) {
-      Logger.warning('Ошибка инициализации Firebase Service: $e2');
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      Logger.success('Firebase Crashlytics инициализирован');
+    } catch (e) {
+      Logger.warning('⚠️ Crashlytics недоступен: $e');
     }
   }
-  
-  await NotificationService.initialize();
 
-  // Инициализация геозон для уведомлений "Я на работе"
-  try {
+  // Firebase Messaging
+  await _safeInit('Firebase Messaging', () async {
+    await FirebaseService.initialize();
+    final notificationsEnabled = await FirebaseService.areNotificationsEnabled();
+    if (!notificationsEnabled) {
+      _shouldShowNotificationDialog = true;
+    }
+    Logger.success('Firebase Messaging инициализирован');
+  }, timeout: const Duration(seconds: 5));
+
+  // === Уведомления ===
+  await _safeInit('NotificationService', () async {
+    await NotificationService.initialize();
+  }, timeout: const Duration(seconds: 3));
+
+  // === GPS/Geofence (не критично для запуска) ===
+  _safeInit('BackgroundGPS', () async {
     await BackgroundGpsService.initialize();
     await BackgroundGpsService.start();
     Logger.success('Geofence сервис запущен');
-  } catch (e) {
-    Logger.warning('Ошибка инициализации Geofence: $e');
-  }
+  }, timeout: const Duration(seconds: 5));
+  // НЕ ждём — пусть инициализируется в фоне
 
-  // Загрузка session token из хранилища (для API запросов)
-  try {
+  // === Session token ===
+  await _safeInit('SessionToken', () async {
     await AuthService().initSessionToken();
-  } catch (e) {
-    Logger.warning('Ошибка загрузки session token: $e');
-  }
+  }, timeout: const Duration(seconds: 3));
 
   // Синхронизация отчетов пересменки в фоне (не блокирует запуск)
   Future.microtask(() {
@@ -149,7 +158,11 @@ void main() async {
   };
 
   // Listen for shared content from external apps
-  SharedContentHolder.initialize();
+  try {
+    SharedContentHolder.initialize();
+  } catch (e) {
+    Logger.warning('⚠️ SharedContentHolder: $e');
+  }
 
   runApp(const ArabicaApp());
 }
@@ -325,8 +338,12 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
 
         if (isRecentCall) {
           Logger.info('📞 Recent pending call found — fast path, skipping PIN');
-          MessengerWsService.instance.connect(savedPhone);
-          CallService.instance.init(savedPhone, savedName);
+          try {
+            MessengerWsService.instance.connect(savedPhone);
+            CallService.instance.init(savedPhone, savedName);
+          } catch (e) {
+            Logger.warning('⚠️ Ошибка инициализации звонков (fast path): $e');
+          }
           await prefs.setBool('pending_call_accepted', true);
           if (mounted) {
             setState(() {
@@ -341,8 +358,12 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
         }
 
         // Инициализируем голосовые звонки + WebSocket мессенджера (для приёма звонков)
-        MessengerWsService.instance.connect(savedPhone);
-        CallService.instance.init(savedPhone, savedName);
+        try {
+          MessengerWsService.instance.connect(savedPhone);
+          CallService.instance.init(savedPhone, savedName);
+        } catch (e) {
+          Logger.warning('⚠️ Ошибка инициализации звонков: $e');
+        }
 
         // Проверяем, есть ли у пользователя PIN-код
         Logger.debug('🔐 Проверяем наличие PIN-кода...');
@@ -389,8 +410,12 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
           await prefs.setString('user_name', loyaltyInfo.name);
           await prefs.setString('user_phone', loyaltyInfo.phone);
           await LoyaltyStorage.save(loyaltyInfo);
-          MessengerWsService.instance.connect(loyaltyInfo.phone);
-          CallService.instance.init(loyaltyInfo.phone, loyaltyInfo.name);
+          try {
+            MessengerWsService.instance.connect(loyaltyInfo.phone);
+            CallService.instance.init(loyaltyInfo.phone, loyaltyInfo.name);
+          } catch (e) {
+            Logger.warning('⚠️ Ошибка инициализации звонков (loyalty): $e');
+          }
 
           // Сохраняем FCM токен (теперь когда phone известен)
           await FirebaseService.resaveToken();
@@ -459,14 +484,22 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
   /// Navigate to app through permission onboarding
   void _navigateToApp() async {
     // Ensure call service is initialized after successful login
-    final prefs = await SharedPreferences.getInstance();
-    final phone = prefs.getString('user_phone') ?? '';
-    final name = prefs.getString('user_name') ?? '';
-    if (phone.isNotEmpty) {
-      MessengerWsService.instance.connect(phone);
-      CallService.instance.init(phone, name);
-      // Always refresh role on app entry (fixes stale cached roles)
-      await _checkUserRole(phone);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('user_phone') ?? '';
+      final name = prefs.getString('user_name') ?? '';
+      if (phone.isNotEmpty) {
+        try {
+          MessengerWsService.instance.connect(phone);
+          CallService.instance.init(phone, name);
+        } catch (e) {
+          Logger.warning('⚠️ Ошибка инициализации звонков (navigate): $e');
+        }
+        // Always refresh role on app entry (fixes stale cached roles)
+        await _checkUserRole(phone);
+      }
+    } catch (e) {
+      Logger.warning('⚠️ Ошибка при подготовке навигации: $e');
     }
 
     if (!mounted) return;
@@ -551,11 +584,11 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
           NotificationService.setGlobalContext(context);
           FirebaseService.setGlobalContext(context);
 
-          // Показываем диалог об уведомлениях если нужно
+          // Показываем диалог об уведомлениях если нужно (но не блокируем вход)
           if (_shouldShowNotificationDialog) {
             _shouldShowNotificationDialog = false;
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              NotificationRequiredDialog.show(context, showBackButton: false);
+              NotificationRequiredDialog.show(context, showBackButton: true);
             });
           }
 

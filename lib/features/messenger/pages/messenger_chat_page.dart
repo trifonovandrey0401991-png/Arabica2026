@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
@@ -1223,18 +1222,15 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
 
   Future<void> _pickAndShareContact() async {
     try {
-      // Check contacts permission
-      var status = await Permission.contacts.status;
-      if (!status.isGranted) {
-        status = await Permission.contacts.request();
-        if (!status.isGranted) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Для отправки контакта необходим доступ к телефонной книге')),
-            );
-          }
-          return;
+      // Проверяем доступ к контактам через FlutterContacts (корректно на iOS 18+)
+      final contactsGranted = await FlutterContacts.requestPermission();
+      if (!contactsGranted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Для отправки контакта необходим доступ к телефонной книге')),
+          );
         }
+        return;
       }
 
       // Open native contact picker

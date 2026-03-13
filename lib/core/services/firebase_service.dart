@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 // Условный импорт Firebase Messaging: на веб - stub, на мобильных - реальный пакет
 import 'package:firebase_messaging/firebase_messaging.dart' if (dart.library.html) 'firebase_service_stub.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -152,6 +153,9 @@ class FirebaseService {
 
   /// Буфер для уведомления, пришедшего до готовности navigatorKey (BUG-01: cold start)
   static Map<String, dynamic>? _pendingNotificationData;
+
+  /// Кеш FCM токена — используется в resaveToken когда getToken() может вернуть null
+  static String? _cachedFcmToken;
   
   /// Получить экземпляр FirebaseMessaging (ленивая инициализация)
   static FirebaseMessaging _getMessaging() {
@@ -273,26 +277,14 @@ class FirebaseService {
         return;
       }
       
-      // Выполняем дальнейшую инициализацию в отдельной функции,
-      // чтобы ошибки не перехватывались общим catch блоком
-      // Используем Future.microtask для выполнения в следующем микротаске
+      // Инициализация слушателей и получение токена
       try {
-        Future.microtask(() async {
-          try {
-            Logger.debug('Начало инициализации после разрешений');
-            await _initializeAfterPermissions(messaging);
-            _initialized = true;
-            Logger.debug('Firebase Messaging инициализирован');
-          } catch (e) {
-            Logger.debug('Ошибка в _initializeAfterPermissions: $e');
-            Logger.debug('Приложение продолжит работу, но push-уведомления могут не работать');
-            _initialized = true; // Все равно помечаем как инициализированный
-            Logger.debug('Firebase Messaging инициализирован (с ограничениями)');
-          }
-        });
+        await _initializeAfterPermissions(messaging);
+        _initialized = true;
+        Logger.debug('Firebase Messaging полностью инициализирован');
       } catch (e) {
-        Logger.debug('Ошибка при создании Future.microtask: $e');
-        // Продолжаем работу
+        Logger.debug('Ошибка в _initializeAfterPermissions: $e');
+        Logger.debug('Приложение продолжит работу, но push-уведомления могут не работать');
         _initialized = true;
         Logger.debug('Firebase Messaging инициализирован (с ограничениями)');
       }
@@ -413,6 +405,7 @@ class FirebaseService {
       _onTokenRefreshSub?.cancel();
       _onTokenRefreshSub = messaging.onTokenRefresh.listen((newToken) {
         Logger.debug('FCM Token обновлен');
+        _cachedFcmToken = newToken;
         _saveTokenToServer(newToken);
       });
     } catch (e) {
@@ -423,21 +416,41 @@ class FirebaseService {
   /// Получить FCM токен с повторными попытками и обработкой ошибок
   static Future<String?> _getTokenWithRetries(FirebaseMessaging messaging) async {
     Logger.debug('Начало получения FCM токена с повторными попытками...');
+
+    // На iOS FCM требует APNS токен. Ждём его явно перед запросом FCM токена.
+    if (!kIsWeb && Platform.isIOS) {
+      Logger.debug('iOS: ожидание APNS токена...');
+      String? apnsToken;
+      for (int i = 0; i < 5; i++) {
+        apnsToken = await messaging.getAPNSToken();
+        if (apnsToken != null) {
+          Logger.debug('iOS: APNS токен получен');
+          break;
+        }
+        Logger.debug('iOS: APNS токен ещё не готов, попытка ${i + 1}/5...');
+        await Future.delayed(const Duration(seconds: 2));
+      }
+      if (apnsToken == null) {
+        Logger.warning('iOS: APNS токен не получен — FCM токен не будет доступен');
+      }
+    }
+
     String? token;
     int attempts = 0;
-    final maxAttempts = 3; // Уменьшено с 5 до 3
-    final delaySeconds = 2; // Уменьшено с 3 до 2
+    final maxAttempts = 3;
+    final delaySeconds = 2;
 
     while (token == null && attempts < maxAttempts) {
       try {
         attempts++;
         Logger.debug('Попытка $attempts/$maxAttempts получить FCM токен...');
-        
+
         // Пытаемся получить токен
         token = await messaging.getToken();
 
         if (token != null) {
           Logger.debug('FCM Token получен');
+          _cachedFcmToken = token;
           await _saveTokenToServer(token);
           return token;
         }
@@ -507,7 +520,10 @@ class FirebaseService {
       }
 
       final settings = await _messaging!.getNotificationSettings();
-      return settings.authorizationStatus == AuthorizationStatus.authorized;
+      final status = settings.authorizationStatus;
+      Logger.debug('[Firebase] Notification status: $status');
+      return status == AuthorizationStatus.authorized ||
+          status == AuthorizationStatus.provisional;
     } catch (e) {
       Logger.error('Ошибка проверки разрешений уведомлений', e);
       return false;
@@ -530,21 +546,62 @@ class FirebaseService {
   }
 
   /// Публичный метод для повторного сохранения токена после входа пользователя
-  /// Вызывается когда user_phone становится доступным в SharedPreferences
+  /// Вызывается когда user_phone становится доступным в SharedPreferences.
+  /// Критически важен при смене устройства — сервер мог удалить старый токен.
   static Future<void> resaveToken() async {
     try {
       Logger.debug('Повторное сохранение FCM токена после входа...');
 
-      if (_messaging == null) {
-        Logger.debug('FirebaseMessaging не инициализирован, пропускаем');
+      // Проверяем, что phone доступен
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('user_phone');
+      if (phone == null || phone.isEmpty) {
+        Logger.warning('resaveToken: user_phone не найден в SharedPreferences');
         return;
       }
+      Logger.debug('resaveToken: phone найден (${Logger.maskPhone(phone)})');
 
-      final token = await _messaging!.getToken();
+      // Если messaging не инициализирован — пробуем получить инстанс
+      if (_messaging == null) {
+        try {
+          _messaging = FirebaseMessaging.instance;
+          Logger.debug('FirebaseMessaging инстанс получен в resaveToken');
+        } catch (e) {
+          Logger.debug('FirebaseMessaging недоступен: $e');
+          return;
+        }
+      }
+
+      // На iOS ждём APNS токен перед запросом FCM токена
+      if (!kIsWeb && Platform.isIOS) {
+        String? apnsToken = await _messaging!.getAPNSToken();
+        if (apnsToken == null) {
+          Logger.debug('resaveToken: APNS токен не готов, ждём...');
+          for (int i = 0; i < 3; i++) {
+            await Future.delayed(const Duration(seconds: 2));
+            apnsToken = await _messaging!.getAPNSToken();
+            if (apnsToken != null) break;
+          }
+          if (apnsToken == null) {
+            Logger.warning('resaveToken: APNS токен не получен — FCM недоступен');
+          }
+        }
+      }
+
+      String? token = await _messaging!.getToken();
+
+      // Если getToken вернул null — используем кешированный токен
+      if (token == null && _cachedFcmToken != null) {
+        Logger.debug('resaveToken: getToken() вернул null, используем кешированный токен');
+        token = _cachedFcmToken;
+      }
+
       if (token != null) {
+        _cachedFcmToken = token;
+        Logger.debug('FCM токен получен для пересохранения');
         await _saveTokenToServer(token);
       } else {
-        Logger.debug('Токен не получен');
+        Logger.warning('FCM токен не получен при resaveToken (и кеш пуст)');
       }
     } catch (e) {
       Logger.error('Ошибка повторного сохранения токена', e);

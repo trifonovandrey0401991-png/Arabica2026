@@ -24,6 +24,9 @@ class SecureStorageService {
 
   // Настройки хранилища с максимальной защитой
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
     aOptions: AndroidOptions(
       encryptedSharedPreferences: true,
     ),

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/utils/logger.dart';
@@ -335,15 +335,18 @@ class CallService {
   // ─── Microphone permission ───
 
   /// Check and request microphone permission. Returns true if granted.
+  /// Используем AudioRecorder.hasPermission() — работает корректно на iOS 18+.
   Future<bool> _ensureMicrophonePermission() async {
-    var status = await Permission.microphone.status;
-    if (status.isGranted) return true;
-
-    status = await Permission.microphone.request();
-    if (status.isGranted) return true;
-
-    Logger.warning('📞 CallService: microphone permission denied');
-    return false;
+    final recorder = AudioRecorder();
+    try {
+      final granted = await recorder.hasPermission();
+      if (!granted) {
+        Logger.warning('📞 CallService: microphone permission denied');
+      }
+      return granted;
+    } finally {
+      recorder.dispose();
+    }
   }
 
   // ─── Outgoing call ───

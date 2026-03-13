@@ -81,8 +81,8 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
       } else {
         // matchedContacts == null may mean: (a) no permission, OR (b) permission granted
         // but shell page hasn't finished loading yet. Check actual status.
-        final status = await Permission.contacts.status;
-        if (status.isGranted) {
+        final hasAccess = await FlutterContacts.requestPermission();
+        if (hasAccess) {
           granted = true;
           // Load contacts ourselves — shell page is still loading
           contacts = await _loadContactsFromDevice();

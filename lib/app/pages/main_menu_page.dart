@@ -405,7 +405,7 @@ class _MainMenuPageState extends State<MainMenuPage> with WidgetsBindingObserver
             child: TextButton(
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text(
-                'Разрешить',
+                'Продолжить',
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
               ),
             ),

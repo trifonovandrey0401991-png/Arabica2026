@@ -13,14 +13,9 @@ class RegistrationService {
   }) async {
     try {
       Logger.debug('Регистрация пользователя: $name (${Logger.maskPhone(phone)})');
-      final info = await LoyaltyService.registerClient(
-        name: name,
-        phone: phone,
-        qr: qr,
-      );
-      Logger.success('Клиент зарегистрирован, QR: ${info.qr}');
 
-      // Сохраняем данные о клиенте на сервере
+      // 1. Сначала создаём клиента на сервере (POST /api/clients)
+      // Это нужно ДО registerClient, т.к. action=register ищет клиента в БД
       try {
         await _saveClientToServer(
           phone: phone,
@@ -30,8 +25,16 @@ class RegistrationService {
         Logger.debug('Данные клиента сохранены на сервере');
       } catch (e) {
         Logger.error('Не удалось сохранить данные клиента на сервере', e);
-        // Не прерываем регистрацию, если не удалось сохранить на сервере
+        // Продолжаем — registerClient может найти клиента другим способом
       }
+
+      // 2. Теперь регистрируем в системе лояльности
+      final info = await LoyaltyService.registerClient(
+        name: name,
+        phone: phone,
+        qr: qr,
+      );
+      Logger.success('Клиент зарегистрирован, QR: ${info.qr}');
 
       return info;
     } catch (e) {

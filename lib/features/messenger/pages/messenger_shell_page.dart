@@ -72,9 +72,9 @@ class _MessengerShellPageState extends State<MessengerShellPage> with WidgetsBin
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Re-check contacts permission when app returns from background (e.g. user just granted in Settings)
     if (state == AppLifecycleState.resumed && !_contactsGranted && _userPhone != null && _userPhone!.isNotEmpty) {
-      Permission.contacts.status.then((status) {
-        if (status.isGranted) {
-          _initContacts(_userPhone!);
+      FlutterContacts.requestPermission().then((granted) {
+        if (granted) {
+          _loadContacts(_userPhone!);
         }
       });
     }
@@ -131,21 +131,48 @@ class _MessengerShellPageState extends State<MessengerShellPage> with WidgetsBin
   }
 
   Future<void> _initContacts(String myPhone) async {
-    var status = await Permission.contacts.status;
+    Logger.debug('📇 Контакты: проверяем доступ через FlutterContacts...');
 
-    // Если ещё не спрашивали — показываем объяснение
-    if (status.isDenied && mounted) {
-      final wantsToShare = await _showContactsExplanationDialog();
-      if (wantsToShare == true) {
-        status = await Permission.contacts.request();
-      }
-    }
+    // 1. Сначала проверяем — может доступ уже есть (например, дали в онбоардинге)
+    var granted = await FlutterContacts.requestPermission();
+    Logger.debug('📇 Контакты: FlutterContacts.requestPermission() = $granted');
 
-    if (!status.isGranted) {
-      if (mounted) setState(() => _contactsGranted = false);
+    // 2. Если доступ уже есть — сразу загружаем, без диалогов
+    if (granted) {
+      Logger.debug('📇 Контакты: доступ уже есть, загружаем...');
+      if (mounted) setState(() => _contactsGranted = true);
+      await _loadContacts(myPhone);
       return;
     }
 
+    // 3. Доступа нет — показываем объяснение (только один раз)
+    final prefs = await SharedPreferences.getInstance();
+    final wasAsked = prefs.getBool('contacts_explanation_shown') ?? false;
+    if (!wasAsked && mounted) {
+      final wantsToShare = await _showContactsExplanationDialog();
+      await prefs.setBool('contacts_explanation_shown', true);
+      if (wantsToShare == true) {
+        // Пользователь согласился — запрашиваем ещё раз
+        granted = await FlutterContacts.requestPermission();
+        Logger.debug('📇 Контакты: после объяснения requestPermission() = $granted');
+      }
+    }
+
+    if (granted) {
+      Logger.debug('📇 Контакты: доступ получен, загружаем...');
+      if (mounted) setState(() => _contactsGranted = true);
+      await _loadContacts(myPhone);
+    } else {
+      Logger.warning('📇 Контакты: доступ не предоставлен');
+      if (mounted) {
+        setState(() => _contactsGranted = false);
+        await _showOpenSettingsDialog();
+      }
+    }
+  }
+
+  /// Загрузка контактов (вызывается когда разрешение уже получено)
+  Future<void> _loadContacts(String myPhone) async {
     if (mounted) setState(() => _contactsGranted = true);
 
     // Читаем контакты телефона
@@ -172,6 +199,7 @@ class _MessengerShellPageState extends State<MessengerShellPage> with WidgetsBin
     // Push notifications: resolve sender name from phone book
     FirebaseService.resolveMessengerName = (phone) => bookNames[phone];
 
+    Logger.debug('📇 Контакты: найдено ${deviceContacts.length} контактов, ${phones.length} номеров');
     if (phones.isEmpty) return;
 
     // Сверяем с сервером: кто из них зарегистрирован в системе?
@@ -204,6 +232,105 @@ class _MessengerShellPageState extends State<MessengerShellPage> with WidgetsBin
       if (digits.startsWith('7')) return digits;
     }
     return null;
+  }
+
+  Future<void> _showOpenSettingsDialog() {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.orange.withOpacity(0.15),
+              ),
+              child: const Icon(Icons.contacts, color: Colors.orange, size: 36),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Нет доступа к контактам',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white.withOpacity(0.95),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Доступ к контактам был отклонён. Чтобы видеть контакты в мессенджере, откройте настройки iPhone и включите доступ к контактам для Arabica.',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.6),
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Настройки → Arabica → Контакты',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.turquoise.withOpacity(0.9),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    'Позже',
+                    style: TextStyle(color: Colors.white.withOpacity(0.4)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.turquoise, AppColors.emerald],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      openAppSettings();
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text(
+                      'Открыть настройки',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Future<bool?> _showContactsExplanationDialog() {
