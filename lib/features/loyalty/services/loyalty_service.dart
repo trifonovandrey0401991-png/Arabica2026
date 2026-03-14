@@ -71,7 +71,9 @@ class LoyaltyInfo {
     return LoyaltyInfo(
       name: (json['name'] ?? '').toString(),
       phone: (json['phone'] ?? '').toString(),
-      qr: (json['qr'] ?? '').toString(),
+      qr: (json['qr'] ?? '').toString().isNotEmpty
+          ? (json['qr']).toString()
+          : (json['phone'] ?? '').toString(),
       points: points,
       freeDrinks: int.tryParse(json['freeDrinks']?.toString() ?? '') ?? 0,
       promoText: settings.promoText.isNotEmpty ? settings.promoText : (json['promoText'] ?? '').toString(),
@@ -285,13 +287,9 @@ class LoyaltyService {
 
       final info = LoyaltyInfo.fromJson(clientJson, settings: settings);
 
-      // Синхронизируем freeDrinksGiven в нашей базе клиентов (only when authenticated)
+      // Синхронизируем freeDrinksGiven в нашей базе клиентов (fire-and-forget)
       if (ApiConstants.sessionToken != null) {
-        try {
-          await syncFreeDrinksGiven(normalizedPhone, info.freeDrinks);
-        } catch (e) {
-          Logger.error('Ошибка синхронизации freeDrinksGiven', e);
-        }
+        syncFreeDrinksGiven(normalizedPhone, info.freeDrinks);
       }
 
       return info;
@@ -306,8 +304,13 @@ class LoyaltyService {
 
   static Future<LoyaltyInfo> fetchByQr(String qr) async {
     try {
+      // If QR looks like a phone number, search by phone instead
+      final digits = qr.replaceAll(RegExp(r'\D'), '');
+      final isPhone = digits.length >= 10 && digits.length <= 11;
+      final param = isPhone ? 'phone=$digits' : 'qr=${Uri.encodeQueryComponent(qr)}';
+
       final result = await BaseHttpService.getRaw(
-        endpoint: '?action=getClient&qr=${Uri.encodeQueryComponent(qr)}',
+        endpoint: '?action=getClient&$param',
         timeout: ApiConstants.longTimeout,
       );
 

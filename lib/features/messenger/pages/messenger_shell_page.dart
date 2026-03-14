@@ -30,10 +30,23 @@ class MessengerShellPage extends StatefulWidget {
     Map<String, String> phoneBookNames,
     {bool isGroupContext = false}
   ) {
-    final bookName = phoneBookNames[phone];
+    // Normalize phone for lookup (strip non-digits, ensure 7XXXXXXXXXX)
+    final normalized = _normalizePhoneStatic(phone);
+    final bookName = phoneBookNames[normalized] ?? phoneBookNames[phone];
     if (bookName != null) return bookName;
     if (serverName != null && serverName.isNotEmpty && serverName != phone) return serverName;
     return phone;
+  }
+
+  /// Static phone normalizer for use in resolveDisplayName
+  static String _normalizePhoneStatic(String raw) {
+    final digits = raw.replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 10) return '7$digits';
+    if (digits.length == 11) {
+      if (digits.startsWith('8')) return '7${digits.substring(1)}';
+      if (digits.startsWith('7')) return digits;
+    }
+    return raw;
   }
 
   @override
@@ -121,17 +134,15 @@ class _MessengerShellPageState extends State<MessengerShellPage> with WidgetsBin
     // Сообщаем WS-сервису роль для фильтрации уведомлений
     MessengerWsService.isClientUser = isClient;
 
-    // 3. Разработчик видит всех — пропускаем фильтрацию по контактам
-    if (isDeveloper) return;
-
-    // 4. Запрашиваем контакты после показа основного UI
+    // 3. Загружаем контакты для отображения имён из телефонной книги
+    // (для разработчиков тоже — им нужны имена из телефонной книги)
     if (phone.isNotEmpty) {
-      await _initContacts(phone);
+      await _initContacts(phone, skipFiltering: isDeveloper);
     }
   }
 
-  Future<void> _initContacts(String myPhone) async {
-    Logger.debug('📇 Контакты: проверяем доступ через FlutterContacts...');
+  Future<void> _initContacts(String myPhone, {bool skipFiltering = false}) async {
+    Logger.debug('📇 Контакты: проверяем доступ через FlutterContacts... (skipFiltering=$skipFiltering)');
 
     // 1. Сначала проверяем — может доступ уже есть (например, дали в онбоардинге)
     var granted = await FlutterContacts.requestPermission();
@@ -142,6 +153,12 @@ class _MessengerShellPageState extends State<MessengerShellPage> with WidgetsBin
       Logger.debug('📇 Контакты: доступ уже есть, загружаем...');
       if (mounted) setState(() => _contactsGranted = true);
       await _loadContacts(myPhone);
+      return;
+    }
+
+    // Для разработчиков — не показываем диалоги, просто выходим
+    if (skipFiltering) {
+      Logger.debug('📇 Контакты: разработчик без доступа к контактам, пропускаем');
       return;
     }
 
@@ -192,12 +209,16 @@ class _MessengerShellPageState extends State<MessengerShellPage> with WidgetsBin
     }
 
     // Сохраняем телефонную книгу для фильтрации имён
+    Logger.debug('📇 phoneBookNames: ${bookNames.length} entries, samples: ${bookNames.entries.take(3).map((e) => "${e.key} → ${e.value}").join(", ")}');
     if (mounted) setState(() => _phoneBookNames = bookNames);
     MessengerWsService.phoneBookNames = bookNames;
     MessengerWsService.phoneBookPhones = bookNames.keys.toSet();
 
     // Push notifications: resolve sender name from phone book
-    FirebaseService.resolveMessengerName = (phone) => bookNames[phone];
+    FirebaseService.resolveMessengerName = (phone) {
+      final normalized = MessengerShellPage._normalizePhoneStatic(phone);
+      return bookNames[normalized] ?? bookNames[phone];
+    };
 
     Logger.debug('📇 Контакты: найдено ${deviceContacts.length} контактов, ${phones.length} номеров');
     if (phones.isEmpty) return;
@@ -309,15 +330,12 @@ class _MessengerShellPageState extends State<MessengerShellPage> with WidgetsBin
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: TextButton(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      openAppSettings();
-                    },
+                    onPressed: () => Navigator.pop(ctx),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     child: const Text(
-                      'Открыть настройки',
+                      'Понятно',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -475,6 +493,7 @@ class _MessengerShellPageState extends State<MessengerShellPage> with WidgetsBin
             userName: _userName ?? _userPhone!,
             matchedContacts: _contactsGranted ? _matchedContacts : null,
             embeddedMode: true,
+            phoneBookNames: _phoneBookNames,
           ),
           MessengerGlobalSearchPage(
             userPhone: _userPhone!,

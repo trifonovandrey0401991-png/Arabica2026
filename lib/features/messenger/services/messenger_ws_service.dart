@@ -269,7 +269,8 @@ class MessengerWsService {
             // Show local notification if user is not currently in this chat
             if (_activeConversationId != convId) {
               // Name priority: phone book → profile name (group) / phone (private)
-              final bookName = phoneBookNames[msg.senderPhone];
+              final normalizedSender = _normalizePhone(msg.senderPhone);
+              final bookName = phoneBookNames[normalizedSender] ?? phoneBookNames[msg.senderPhone];
               String senderName;
               if (bookName != null) {
                 senderName = bookName;
@@ -571,6 +572,16 @@ class MessengerWsService {
     phoneBookNames = {};
     phoneBookPhones = {};
     _connectionStatusController.add(false);
+  }
+
+  static String _normalizePhone(String raw) {
+    final digits = raw.replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 10) return '7$digits';
+    if (digits.length == 11) {
+      if (digits.startsWith('8')) return '7${digits.substring(1)}';
+      if (digits.startsWith('7')) return digits;
+    }
+    return raw;
   }
 
   void dispose() {

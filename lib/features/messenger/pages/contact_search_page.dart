@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../models/contact_model.dart';
 import '../services/messenger_service.dart';
 import 'messenger_chat_page.dart';
+import 'messenger_shell_page.dart';
 import 'group_create_page.dart';
 
 class ContactSearchPage extends StatefulWidget {
@@ -27,6 +28,9 @@ class ContactSearchPage extends StatefulWidget {
   /// Embedded mode: used as a tab in bottom navigation (no back button, push instead of pushReplacement)
   final bool embeddedMode;
 
+  /// Карта: нормализованный телефон → имя из телефонной книги
+  final Map<String, String> phoneBookNames;
+
   const ContactSearchPage({
     super.key,
     required this.userPhone,
@@ -36,6 +40,7 @@ class ContactSearchPage extends StatefulWidget {
     this.excludePhones = const {},
     this.singleSelectMode = false,
     this.embeddedMode = false,
+    this.phoneBookNames = const {},
   });
 
   @override
@@ -59,6 +64,28 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
     super.initState();
     if (widget.selectMode) _isMultiSelect = true;
     _loadContacts();
+  }
+
+  @override
+  void didUpdateWidget(ContactSearchPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Обновляем список когда matchedContacts изменились в parent (shell page)
+    if (widget.matchedContacts != oldWidget.matchedContacts && widget.matchedContacts != null) {
+      final contacts = widget.matchedContacts!
+          .where((c) => c.phone != widget.userPhone && !widget.excludePhones.contains(c.phone))
+          .toList();
+      if (mounted) {
+        setState(() {
+          _permissionGranted = true;
+          _allContacts = contacts;
+          _contacts = _searchController.text.isEmpty ? contacts : contacts.where((c) {
+            final lower = _searchController.text.toLowerCase();
+            return _resolveContactName(c).toLowerCase().contains(lower) || c.phone.contains(_searchController.text);
+          }).toList();
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -134,6 +161,15 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
     return null;
   }
 
+  /// Возвращает имя контакта с приоритетом телефонной книги
+  String _resolveContactName(MessengerContact contact) {
+    return MessengerShellPage.resolveDisplayName(
+      contact.phone,
+      contact.name,
+      widget.phoneBookNames,
+    );
+  }
+
   void _onSearchChanged(String query) {
     if (query.isEmpty) {
       if (mounted) setState(() => _contacts = _allContacts);
@@ -143,7 +179,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
     if (mounted) {
       setState(() {
         _contacts = _allContacts.where((c) {
-          return c.displayName.toLowerCase().contains(lower) ||
+          return _resolveContactName(c).toLowerCase().contains(lower) ||
               c.phone.contains(query);
         }).toList();
       });
@@ -155,7 +191,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
       phone1: widget.userPhone,
       phone2: contact.phone,
       name1: widget.userName,
-      name2: contact.name,
+      name2: _resolveContactName(contact),
     );
 
     if (conversation != null && mounted) {
@@ -167,6 +203,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
               conversation: conversation,
               userPhone: widget.userPhone,
               userName: widget.userName,
+              phoneBookNames: widget.phoneBookNames,
             ),
           ),
         );
@@ -178,6 +215,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
               conversation: conversation,
               userPhone: widget.userPhone,
               userName: widget.userName,
+              phoneBookNames: widget.phoneBookNames,
             ),
           ),
         );
@@ -392,7 +430,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
                     padding: const EdgeInsets.only(right: 8),
                     child: Chip(
                       label: Text(
-                        contact.displayName,
+                        _resolveContactName(contact),
                         style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9)),
                       ),
                       deleteIcon: Icon(Icons.close, size: 16, color: Colors.white.withOpacity(0.5)),
@@ -438,6 +476,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
                           final contactIndex = (_isMultiSelect || widget.singleSelectMode) ? index : index - 1;
                           final contact = _contacts[contactIndex];
                           final isSelected = _selectedPhones.contains(contact.phone);
+                          final resolvedName = _resolveContactName(contact);
 
                           return Material(
                             color: Colors.transparent,
@@ -472,7 +511,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
                                       ),
                                       child: Center(
                                         child: Text(
-                                          contact.displayName[0].toUpperCase(),
+                                          resolvedName[0].toUpperCase(),
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.bold,
@@ -487,7 +526,7 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            contact.displayName,
+                                            resolvedName,
                                             style: TextStyle(
                                               color: Colors.white.withOpacity(0.9),
                                               fontWeight: FontWeight.w500,
@@ -592,13 +631,10 @@ class _ContactSearchPageState extends State<ContactSearchPage> {
               style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.35)),
             ),
             const SizedBox(height: 28),
-            TextButton.icon(
-              onPressed: () => openAppSettings(),
-              icon: Icon(Icons.settings_outlined, color: AppColors.turquoise, size: 18),
-              label: const Text(
-                'Открыть настройки',
-                style: TextStyle(color: AppColors.turquoise, fontWeight: FontWeight.w600),
-              ),
+            Text(
+              'Вы можете разрешить доступ в настройках устройства',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.3)),
             ),
           ],
         ),

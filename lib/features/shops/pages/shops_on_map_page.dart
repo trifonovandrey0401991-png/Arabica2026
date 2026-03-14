@@ -258,7 +258,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
         }
       }
 
-      // Обработка deniedForever с кнопкой для открытия настроек
+      // Обработка deniedForever — только информируем, не перенаправляем
       if (permission == LocationPermission.deniedForever) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -267,18 +267,13 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
                 children: [
                   Icon(Icons.location_disabled, color: Colors.white),
                   SizedBox(width: 12),
-                  Expanded(child: Text('Разрешите доступ к геолокации в настройках')),
+                  Expanded(child: Text('Геолокация недоступна. Вы можете включить её в настройках устройства.')),
                 ],
               ),
               backgroundColor: Colors.red[600],
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
               duration: Duration(seconds: 5),
-              action: SnackBarAction(
-                label: 'Настройки',
-                textColor: Colors.white,
-                onPressed: () => Geolocator.openAppSettings(),
-              ),
             ),
           );
         }

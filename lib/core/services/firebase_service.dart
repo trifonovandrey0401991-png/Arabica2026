@@ -276,7 +276,17 @@ class FirebaseService {
         Logger.debug('Firebase Messaging инициализирован (без разрешений)');
         return;
       }
-      
+
+      // iOS: показывать уведомления даже когда приложение на переднем плане
+      if (!kIsWeb && Platform.isIOS) {
+        await messaging.setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        Logger.debug('iOS foreground notification options установлены');
+      }
+
       // Инициализация слушателей и получение токена
       try {
         await _initializeAfterPermissions(messaging);

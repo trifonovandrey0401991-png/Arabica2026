@@ -3,13 +3,14 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/logger.dart';
 
 /// Permission onboarding page shown after login/registration.
-/// Requests geolocation and contacts permissions sequentially.
-/// Skips already-granted permissions. Shows again on next login if denied.
+/// Requests geolocation, contacts, microphone and camera permissions sequentially.
+/// Saves completion flag — shows only once per installation.
 class PermissionOnboardingPage extends StatefulWidget {
   final VoidCallback onComplete;
 
@@ -26,6 +27,8 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
   bool _isRequesting = false;
   bool _initialized = false;
 
+  static const _onboardingCompleteKey = 'permission_onboarding_complete';
+
   @override
   void initState() {
     super.initState();
@@ -34,22 +37,33 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
 
   Future<void> _checkPermissions() async {
     try {
-      // 1. Геолокация
+      // Если онбординг уже пройден — сразу пропускаем
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_onboardingCompleteKey) == true) {
+        Logger.debug('[Onboarding] Already completed, skipping');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          widget.onComplete();
+        });
+        return;
+      }
+
+      // 1. Геолокация — проверяем через Geolocator (тот же пакет что и запрашивает)
       final geoStatus = await Geolocator.checkPermission();
       final geoGranted = geoStatus == LocationPermission.always ||
           geoStatus == LocationPermission.whileInUse;
 
-      // 2. Контакты — используем permission_handler для проверки (не показывает диалог)
-      final contactsStatus = await Permission.contacts.status;
-      final contactsGranted = contactsStatus.isGranted || contactsStatus.isLimited;
+      // 2. Контакты — проверяем через FlutterContacts (тот же пакет что и запрашивает)
+      final contactsGranted = await FlutterContacts.requestPermission(readonly: true);
 
-      // 3. Микрофон — только проверяем статус (не запрашиваем)
+      // 3. Микрофон — проверяем через permission_handler
       final micStatus = await Permission.microphone.status;
       final micGranted = micStatus.isGranted;
 
-      // 4. Камера — только проверяем статус (не запрашиваем)
+      // 4. Камера — проверяем через permission_handler
       final cameraStatus = await Permission.camera.status;
       final cameraGranted = cameraStatus.isGranted;
+
+      Logger.debug('[Onboarding] Permissions: geo=$geoGranted, contacts=$contactsGranted, mic=$micGranted, camera=$cameraGranted');
 
       if (!geoGranted) {
         _pendingSteps.add(_PermissionStep.geolocation);
@@ -65,7 +79,8 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
       }
 
       if (_pendingSteps.isEmpty) {
-        // All already granted — skip onboarding
+        // All already granted — mark complete and skip
+        await prefs.setBool(_onboardingCompleteKey, true);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           widget.onComplete();
         });
@@ -96,12 +111,10 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
         Logger.debug(
             '[Onboarding] Geo permission result: $result, granted: $granted');
       } else if (step == _PermissionStep.contacts) {
-        // Используем FlutterContacts напрямую — корректно работает на iOS 18+
         final granted = await FlutterContacts.requestPermission();
         Logger.debug(
             '[Onboarding] Contacts permission result: granted=$granted');
       } else if (step == _PermissionStep.microphone) {
-        // Используем AudioRecorder — корректно запрашивает через нативный iOS API
         final recorder = AudioRecorder();
         final granted = await recorder.hasPermission();
         recorder.dispose();
@@ -125,10 +138,14 @@ class _PermissionOnboardingPageState extends State<PermissionOnboardingPage> {
     _goToNextOrFinish();
   }
 
-  void _goToNextOrFinish() {
+  Future<void> _goToNextOrFinish() async {
     if (_currentIndex < _pendingSteps.length - 1) {
       setState(() => _currentIndex++);
     } else {
+      // Сохраняем флаг что онбординг пройден (независимо от результата)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_onboardingCompleteKey, true);
+      Logger.debug('[Onboarding] Completed, saved flag');
       widget.onComplete();
     }
   }

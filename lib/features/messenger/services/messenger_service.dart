@@ -684,16 +684,24 @@ class MessengerService {
   }
 
   static Future<List<MessengerContact>> matchPhones(List<String> phones) async {
-    final result = await BaseHttpService.postRaw(
-      endpoint: '$_base/contacts/by-phones',
-      body: {'phones': phones},
-    );
-    if (result != null && result['contacts'] is List) {
-      return (result['contacts'] as List)
-          .map((json) => MessengerContact.fromJson(json as Map<String, dynamic>))
-          .toList();
+    // Сервер принимает максимум 1000 номеров — разбиваем на чанки
+    const chunkSize = 500;
+    final allContacts = <MessengerContact>[];
+
+    for (var i = 0; i < phones.length; i += chunkSize) {
+      final chunk = phones.sublist(i, i + chunkSize > phones.length ? phones.length : i + chunkSize);
+      final result = await BaseHttpService.postRaw(
+        endpoint: '$_base/contacts/by-phones',
+        body: {'phones': chunk},
+      );
+      if (result != null && result['contacts'] is List) {
+        allContacts.addAll(
+          (result['contacts'] as List)
+              .map((json) => MessengerContact.fromJson(json as Map<String, dynamic>)),
+        );
+      }
     }
-    return [];
+    return allContacts;
   }
 
   // ==================== USER PROFILE ====================
