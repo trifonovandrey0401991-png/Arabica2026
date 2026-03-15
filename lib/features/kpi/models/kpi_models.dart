@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель KPI данных для одного дня работы сотрудника
 class KPIDayData {
   final DateTime date;
@@ -66,12 +68,10 @@ class KPIDayData {
   };
 
   factory KPIDayData.fromJson(Map<String, dynamic> json) => KPIDayData(
-    date: DateTime.parse(json['date']),
+    date: parseServerDateOrNow(json['date']),
     employeeName: json['employeeName'] ?? '',
     shopAddress: json['shopAddress'] ?? '',
-    attendanceTime: json['attendanceTime'] != null
-        ? DateTime.parse(json['attendanceTime'])
-        : null,
+    attendanceTime: parseServerDate(json['attendanceTime']),
     hasMorningAttendance: json['hasMorningAttendance'] ?? false,
     hasEveningAttendance: json['hasEveningAttendance'] ?? false,
     hasShift: json['hasShift'] ?? false,
@@ -82,9 +82,7 @@ class KPIDayData {
     // Поля графика
     isScheduled: json['isScheduled'] ?? false,
     scheduledShiftType: json['scheduledShiftType'],
-    scheduledStartTime: json['scheduledStartTime'] != null
-        ? DateTime.parse(json['scheduledStartTime'])
-        : null,
+    scheduledStartTime: parseServerDate(json['scheduledStartTime']),
     isLate: json['isLate'] ?? false,
     lateMinutes: json['lateMinutes'],
   );
@@ -420,10 +418,10 @@ class KPIEmployeeShopDayData {
   };
 
   factory KPIEmployeeShopDayData.fromJson(Map<String, dynamic> json) => KPIEmployeeShopDayData(
-    date: DateTime.parse(json['date']),
+    date: parseServerDateOrNow(json['date']),
     shopAddress: json['shopAddress'] ?? '',
     employeeName: json['employeeName'] ?? '',
-    attendanceTime: json['attendanceTime'] != null ? DateTime.parse(json['attendanceTime']) : null,
+    attendanceTime: parseServerDate(json['attendanceTime']),
     hasShift: json['hasShift'] ?? false,
     hasRecount: json['hasRecount'] ?? false,
     hasRKO: json['hasRKO'] ?? false,
@@ -437,9 +435,7 @@ class KPIEmployeeShopDayData {
     // Поля графика
     isScheduled: json['isScheduled'] ?? false,
     scheduledShiftType: json['scheduledShiftType'],
-    scheduledStartTime: json['scheduledStartTime'] != null
-        ? DateTime.parse(json['scheduledStartTime'])
-        : null,
+    scheduledStartTime: parseServerDate(json['scheduledStartTime']),
     isLate: json['isLate'] ?? false,
     lateMinutes: json['lateMinutes'],
   );

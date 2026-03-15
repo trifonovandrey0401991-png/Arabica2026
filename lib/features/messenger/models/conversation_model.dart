@@ -1,3 +1,4 @@
+import '../../../core/utils/date_formatter.dart';
 import 'participant_model.dart';
 import 'message_model.dart';
 
@@ -66,11 +67,9 @@ class Conversation {
       participants: participants,
       unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
       lastMessage: lastMessage,
-      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
-      lastReadAt: json['last_read_at'] != null
-          ? DateTime.tryParse(json['last_read_at'].toString())
-          : null,
+      createdAt: parseServerDateOrNow(json['created_at']),
+      updatedAt: parseServerDateOrNow(json['updated_at']),
+      lastReadAt: parseServerDate(json['last_read_at']),
       autoDeleteSeconds: (json['auto_delete_seconds'] as num?)?.toInt() ?? 0,
     );
   }

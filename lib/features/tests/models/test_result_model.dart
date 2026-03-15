@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель результата теста
 class TestResult {
   final String id;
@@ -33,12 +35,8 @@ class TestResult {
       score: json['score'] ?? 0,
       totalQuestions: json['totalQuestions'] ?? 20,
       timeSpent: json['timeSpent'] ?? 0,
-      completedAt: json['completedAt'] != null
-          ? DateTime.parse(json['completedAt'])
-          : DateTime.now(),
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
+      completedAt: parseServerDateOrNow(json['completedAt']),
+      createdAt: parseServerDate(json['createdAt']),
       points: json['points'] != null ? (json['points'] as num).toDouble() : null,
       shopAddress: json['shopAddress'] as String?,
     );

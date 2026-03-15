@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель регистрации сотрудника
 class EmployeeRegistration {
   final String phone; // Ключ для связи с "Лист11"
@@ -61,10 +63,10 @@ class EmployeeRegistration {
       passportRegistrationPhotoUrl: json['passportRegistrationPhotoUrl'],
       additionalPhotoUrl: json['additionalPhotoUrl'],
       isVerified: json['isVerified'] ?? false,
-      verifiedAt: json['verifiedAt'] != null ? DateTime.parse(json['verifiedAt']) : null,
+      verifiedAt: parseServerDate(json['verifiedAt']),
       verifiedBy: json['verifiedBy'],
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : DateTime.now(),
+      createdAt: parseServerDateOrNow(json['createdAt']),
+      updatedAt: parseServerDateOrNow(json['updatedAt']),
     );
   }
 

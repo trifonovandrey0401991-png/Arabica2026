@@ -1,3 +1,4 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
 import '../../models/efficiency_data_model.dart';
 import '../efficiency_calculation_service.dart';
 import '../../../../core/utils/logger.dart';
@@ -17,8 +18,8 @@ Future<List<EfficiencyRecord>> parseShiftReportsFromBatch(
 
   for (final json in rawReports) {
     try {
-      final createdAt = json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null;
-      final timestamp = json['timestamp'] != null ? DateTime.parse(json['timestamp']) : null;
+      final createdAt = parseServerDate(json['createdAt']);
+      final timestamp = parseServerDate(json['timestamp']);
       final reportDate = createdAt ?? timestamp;
 
       if (reportDate == null) continue;
@@ -38,7 +39,7 @@ Future<List<EfficiencyRecord>> parseShiftReportsFromBatch(
         shopAddress: json['shopAddress'] ?? '',
         employeeName: json['employeeName'] ?? '',
         employeePhone: json['employeePhone'] ?? '',
-        date: json['confirmedAt'] != null ? DateTime.parse(json['confirmedAt']) : reportDate,
+        date: parseServerDate(json['confirmedAt']) ?? reportDate,
         rating: rating,
       );
 
@@ -63,8 +64,8 @@ Future<List<EfficiencyRecord>> parseRecountReportsFromBatch(
 
   for (final json in rawReports) {
     try {
-      final completedAt = json['completedAt'] != null ? DateTime.parse(json['completedAt']) : null;
-      final createdAt = json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null;
+      final completedAt = parseServerDate(json['completedAt']);
+      final createdAt = parseServerDate(json['createdAt']);
       final reportDate = completedAt ?? createdAt;
 
       if (reportDate == null) continue;
@@ -84,7 +85,7 @@ Future<List<EfficiencyRecord>> parseRecountReportsFromBatch(
         shopAddress: json['shopAddress'] ?? '',
         employeeName: json['employeeName'] ?? '',
         employeePhone: json['employeePhone'] ?? '',
-        date: json['ratedAt'] != null ? DateTime.parse(json['ratedAt']) : reportDate,
+        date: parseServerDate(json['ratedAt']) ?? reportDate,
         adminRating: adminRating,
       );
 
@@ -109,7 +110,7 @@ Future<List<EfficiencyRecord>> parseHandoverReportsFromBatch(
 
   for (final json in rawReports) {
     try {
-      final createdAt = json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null;
+      final createdAt = parseServerDate(json['createdAt']);
 
       if (createdAt == null) continue;
 
@@ -128,7 +129,7 @@ Future<List<EfficiencyRecord>> parseHandoverReportsFromBatch(
         shopAddress: json['shopAddress'] ?? '',
         employeeName: json['employeeName'] ?? '',
         employeePhone: json['employeePhone'] ?? '',
-        date: json['confirmedAt'] != null ? DateTime.parse(json['confirmedAt']) : createdAt,
+        date: parseServerDate(json['confirmedAt']) ?? createdAt,
         rating: rating,
       );
 
@@ -153,8 +154,8 @@ Future<List<EfficiencyRecord>> parseAttendanceFromBatch(
 
   for (final json in rawRecords) {
     try {
-      final timestamp = json['timestamp'] != null ? DateTime.parse(json['timestamp']) : null;
-      final createdAt = json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null;
+      final timestamp = parseServerDate(json['timestamp']);
+      final createdAt = parseServerDate(json['createdAt']);
       final recordDate = timestamp ?? createdAt;
 
       if (recordDate == null) continue;

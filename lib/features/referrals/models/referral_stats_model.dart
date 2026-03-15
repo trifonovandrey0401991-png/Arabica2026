@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель статистики приглашений сотрудника
 class EmployeeReferralStats {
   final String employeeId;
@@ -50,9 +52,7 @@ class ReferredClient {
     return ReferredClient(
       phone: json['phone'] ?? '',
       name: json['name'] ?? '',
-      referredAt: json['referredAt'] != null
-          ? DateTime.parse(json['referredAt'])
-          : DateTime.now(),
+      referredAt: parseServerDateOrNow(json['referredAt']),
     );
   }
 

@@ -1,3 +1,4 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
 import 'work_schedule_model.dart';
 
 /// Статус запроса на передачу смены
@@ -27,7 +28,7 @@ class AcceptedByEmployee {
     return AcceptedByEmployee(
       employeeId: json['employeeId'] ?? '',
       employeeName: json['employeeName'] ?? '',
-      acceptedAt: DateTime.parse(json['acceptedAt']),
+      acceptedAt: parseServerDateOrNow(json['acceptedAt']),
     );
   }
 
@@ -189,7 +190,7 @@ class ShiftTransferRequest {
       toEmployeeId: json['toEmployeeId'],
       toEmployeeName: json['toEmployeeName'],
       scheduleEntryId: json['scheduleEntryId'] ?? '',
-      shiftDate: DateTime.parse(json['shiftDate']),
+      shiftDate: parseServerDateOrNow(json['shiftDate']),
       shopAddress: json['shopAddress'] ?? '',
       shopName: json['shopName'] ?? '',
       shiftType: ShiftTypeExtension.fromString(json['shiftType'] ?? 'morning') ?? ShiftType.morning,
@@ -200,9 +201,9 @@ class ShiftTransferRequest {
       acceptedBy: acceptedByList,
       approvedEmployeeId: json['approvedEmployeeId'],
       approvedEmployeeName: json['approvedEmployeeName'],
-      createdAt: DateTime.parse(json['createdAt']),
-      acceptedAt: json['acceptedAt'] != null ? DateTime.parse(json['acceptedAt']) : null,
-      resolvedAt: json['resolvedAt'] != null ? DateTime.parse(json['resolvedAt']) : null,
+      createdAt: parseServerDateOrNow(json['createdAt']),
+      acceptedAt: parseServerDate(json['acceptedAt']),
+      resolvedAt: parseServerDate(json['resolvedAt']),
       isReadByRecipient: json['isReadByRecipient'] ?? false,
       isReadByAdmin: json['isReadByAdmin'] ?? false,
     );

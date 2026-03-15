@@ -1,3 +1,5 @@
+import '../../../core/utils/date_formatter.dart';
+
 /// Модель группы товаров магазина
 class ShopProductGroup {
   final String id;
@@ -23,7 +25,7 @@ class ShopProductGroup {
       visibility: json['visibility'] ?? 'all',
       sortOrder: json['sortOrder'] ?? 0,
       isActive: json['isActive'] ?? true,
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
+      createdAt: parseServerDate(json['createdAt']),
     );
   }
 

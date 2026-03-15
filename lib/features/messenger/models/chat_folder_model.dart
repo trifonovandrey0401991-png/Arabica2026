@@ -1,3 +1,5 @@
+import '../../../core/utils/date_formatter.dart';
+
 /// Model for a user-defined chat folder.
 class ChatFolder {
   final String id;
@@ -30,9 +32,7 @@ class ChatFolder {
       sortOrder: (json['sort_order'] as num?)?.toInt() ?? 0,
       filterType: json['filter_type'] as String? ?? 'manual',
       conversationIds: ids,
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'].toString())
-          : null,
+      createdAt: parseServerDate(json['created_at']),
     );
   }
 

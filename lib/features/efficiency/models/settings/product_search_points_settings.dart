@@ -1,3 +1,4 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
 import 'points_settings_base.dart';
 
 /// Настройки баллов за поиск товара (ответы на вопросы клиентов)
@@ -42,12 +43,8 @@ class ProductSearchPointsSettings extends PointsSettingsBase {
       answeredPoints: (json['answeredPoints'] ?? 0.2).toDouble(),
       notAnsweredPoints: (json['notAnsweredPoints'] ?? -3).toDouble(),
       answerTimeoutMinutes: json['answerTimeoutMinutes'] ?? 30,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
+      createdAt: parseServerDate(json['createdAt']),
+      updatedAt: parseServerDate(json['updatedAt']),
     );
   }
 

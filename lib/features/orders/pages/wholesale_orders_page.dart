@@ -552,7 +552,7 @@ class _WholesaleOrdersPageState extends State<WholesaleOrdersPage>
     try {
       if (createdAt == null) return '';
       final dt = createdAt is int
-          ? DateTime.fromMillisecondsSinceEpoch(createdAt)
+          ? DateTime.fromMillisecondsSinceEpoch(createdAt).toLocal()
           : DateTime.parse(createdAt.toString()).toLocal();
       final diff = DateTime.now().difference(dt);
       if (diff.inMinutes < 1) return 'только что';

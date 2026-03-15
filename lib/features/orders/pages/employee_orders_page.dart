@@ -93,9 +93,9 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
     try {
       DateTime dt;
       if (createdAt is String) {
-        dt = DateTime.parse(createdAt);
+        dt = DateTime.parse(createdAt).toLocal();
       } else if (createdAt is num) {
-        dt = DateTime.fromMillisecondsSinceEpoch(createdAt.toInt());
+        dt = DateTime.fromMillisecondsSinceEpoch(createdAt.toInt()).toLocal();
       } else {
         return '';
       }

@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Продукт мастер-каталога
 class MasterProduct {
   final String id;
@@ -42,13 +44,9 @@ class MasterProduct {
       shopCodes: json['shopCodes'] != null
           ? Map<String, String>.from(json['shopCodes'])
           : {},
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
+      createdAt: parseServerDate(json['createdAt']),
       createdBy: json['createdBy'] ?? 'admin',
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
+      updatedAt: parseServerDate(json['updatedAt']),
       // AI Training fields
       recountPhotosCount: json['recountPhotosCount'] ?? 0,
       displayPhotosCount: json['displayPhotosCount'] ?? 0,

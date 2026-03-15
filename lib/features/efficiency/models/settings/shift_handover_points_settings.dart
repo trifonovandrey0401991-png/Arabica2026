@@ -1,3 +1,4 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
 import 'points_settings_base.dart';
 
 /// Настройки баллов за сдачу смены (Shift Handover)
@@ -84,12 +85,8 @@ class ShiftHandoverPointsSettings extends PointsSettingsBase
       eveningEndTime: json['eveningEndTime'] ?? '23:00',
       missedPenalty: (json['missedPenalty'] ?? -3.0).toDouble(),
       adminReviewTimeout: json['adminReviewTimeout'] ?? 4,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
+      createdAt: parseServerDate(json['createdAt']),
+      updatedAt: parseServerDate(json['updatedAt']),
     );
   }
 

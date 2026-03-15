@@ -1,3 +1,4 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
 import 'points_settings_base.dart';
 
 /// Настройки баллов за конверт (сдача наличных)
@@ -64,12 +65,8 @@ class EnvelopePointsSettings extends PointsSettingsBase {
       adminReviewTimeout: (json['adminReviewTimeout'] ?? 0) is int
           ? json['adminReviewTimeout'] ?? 0
           : (json['adminReviewTimeout'] ?? 0).toInt(),
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
+      createdAt: parseServerDate(json['createdAt']),
+      updatedAt: parseServerDate(json['updatedAt']),
     );
   }
 

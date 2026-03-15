@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Источник pending-кода (из какого магазина пришёл)
 class PendingCodeSource {
   final String shopId;
@@ -20,9 +22,7 @@ class PendingCodeSource {
       shopName: json['shopName'] ?? '',
       name: json['name'] ?? '',
       group: json['group'] ?? '',
-      firstSeenAt: json['firstSeenAt'] != null
-          ? DateTime.parse(json['firstSeenAt'])
-          : DateTime.now(),
+      firstSeenAt: parseServerDateOrNow(json['firstSeenAt']),
     );
   }
 
@@ -55,9 +55,7 @@ class PendingCode {
       sources: (json['sources'] as List?)
           ?.map((s) => PendingCodeSource.fromJson(s))
           .toList() ?? [],
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
+      createdAt: parseServerDateOrNow(json['createdAt']),
       notificationSent: json['notificationSent'] ?? false,
     );
   }

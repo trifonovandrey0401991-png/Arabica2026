@@ -337,7 +337,7 @@ class _MessengerGlobalSearchPageState extends State<MessengerGlobalSearchPage> {
     final content = msg['content'] as String? ?? '';
     final convName = msg['conversation_name'] as String?;
     final convType = msg['conversation_type'] as String? ?? 'private';
-    final createdAt = DateTime.tryParse(msg['created_at']?.toString() ?? '');
+    final createdAt = DateTime.tryParse(msg['created_at']?.toString() ?? '')?.toLocal();
 
     String subtitle = content;
     if (subtitle.length > 80) subtitle = '${subtitle.substring(0, 80)}...';

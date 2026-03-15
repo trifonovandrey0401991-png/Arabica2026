@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель баланса кассы магазина
 class ShopCashBalance {
   final String shopAddress;
@@ -75,7 +77,7 @@ class DayTurnover {
 
   factory DayTurnover.fromJson(Map<String, dynamic> json) {
     return DayTurnover(
-      date: DateTime.parse(json['date'] as String),
+      date: parseServerDateOrNow(json['date']),
       oooRevenue: (json['oooRevenue'] as num).toDouble(),
       ipRevenue: (json['ipRevenue'] as num).toDouble(),
     );

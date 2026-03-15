@@ -1,3 +1,4 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
 import 'recount_answer_model.dart';
 
 /// Статусы отчёта пересчёта (аналог ShiftReportStatus)
@@ -154,7 +155,7 @@ class RecountReport {
       }
       if (value is String) {
         try {
-          return DateTime.parse(value);
+          return DateTime.parse(value).toLocal();
         } catch (e) {
           return fallback ?? DateTime.now();
         }
@@ -162,12 +163,8 @@ class RecountReport {
       return fallback ?? DateTime.now();
     }
 
-    final createdAt = json['createdAt'] != null 
-        ? (json['createdAt'] is String ? DateTime.parse(json['createdAt']) : null)
-        : null;
-    final savedAt = json['savedAt'] != null
-        ? (json['savedAt'] is String ? DateTime.parse(json['savedAt']) : null)
-        : null;
+    final createdAt = json['createdAt'] is String ? parseServerDate(json['createdAt']) : null;
+    final savedAt = json['savedAt'] is String ? parseServerDate(json['savedAt']) : null;
 
     final startedAt = parseDateTime(json['startedAt'], createdAt);
     final completedAt = parseDateTime(json['completedAt'], savedAt ?? createdAt);
@@ -193,29 +190,17 @@ class RecountReport {
           .toList() ?? [],
       adminRating: json['adminRating'] is int ? json['adminRating'] : null,
       adminName: json['adminName']?.toString(),
-      ratedAt: json['ratedAt'] != null && json['ratedAt'] is String
-          ? DateTime.tryParse(json['ratedAt'])
-          : null,
+      ratedAt: parseServerDate(json['ratedAt']),
       status: json['status']?.toString(),
-      expiredAt: json['expiredAt'] != null && json['expiredAt'] is String
-          ? DateTime.tryParse(json['expiredAt'])
-          : null,
+      expiredAt: parseServerDate(json['expiredAt']),
       photoVerifications: (json['photoVerifications'] as List<dynamic>?)
           ?.map((v) => v as Map<String, dynamic>)
           .toList(),
       shiftType: json['shiftType']?.toString(),
-      submittedAt: json['submittedAt'] != null && json['submittedAt'] is String
-          ? DateTime.tryParse(json['submittedAt'])
-          : null,
-      reviewDeadline: json['reviewDeadline'] != null && json['reviewDeadline'] is String
-          ? DateTime.tryParse(json['reviewDeadline'])
-          : null,
-      failedAt: json['failedAt'] != null && json['failedAt'] is String
-          ? DateTime.tryParse(json['failedAt'])
-          : null,
-      rejectedAt: json['rejectedAt'] != null && json['rejectedAt'] is String
-          ? DateTime.tryParse(json['rejectedAt'])
-          : null,
+      submittedAt: parseServerDate(json['submittedAt']),
+      reviewDeadline: parseServerDate(json['reviewDeadline']),
+      failedAt: parseServerDate(json['failedAt']),
+      rejectedAt: parseServerDate(json['rejectedAt']),
     );
   }
 

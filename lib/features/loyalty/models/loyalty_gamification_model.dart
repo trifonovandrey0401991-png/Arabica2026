@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/date_formatter.dart';
 
 /// Значок уровня - может быть иконкой или картинкой
 class LevelBadge {
@@ -396,7 +397,7 @@ class WheelSpinResult {
       prize: json['prize'] ?? '',
       prizeType: json['prizeType'] ?? '',
       prizeValue: json['prizeValue'] ?? 0,
-      spunAt: DateTime.tryParse(json['spunAt'] ?? '') ?? DateTime.now(),
+      spunAt: parseServerDateOrNow(json['spunAt']),
       isProcessed: json['isProcessed'] ?? false,
       prizeId: json['prizeId'],
     );
@@ -449,7 +450,7 @@ class ClientPrize {
       prize: json['prize'] ?? '',
       prizeType: json['prizeType'] ?? '',
       prizeValue: json['prizeValue'] ?? 0,
-      spinDate: DateTime.tryParse(json['spinDate'] ?? '') ?? DateTime.now(),
+      spinDate: parseServerDateOrNow(json['spinDate']),
       status: json['status'] == 'issued'
           ? ClientPrizeStatus.issued
           : ClientPrizeStatus.pending,
@@ -457,9 +458,7 @@ class ClientPrize {
       qrUsed: json['qrUsed'] ?? false,
       issuedBy: json['issuedBy'],
       issuedByName: json['issuedByName'],
-      issuedAt: json['issuedAt'] != null
-          ? DateTime.tryParse(json['issuedAt'])
-          : null,
+      issuedAt: parseServerDate(json['issuedAt']),
     );
   }
 

@@ -164,7 +164,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
 
   bool _isExpired(ProductQuestion question) {
     try {
-      final questionTime = DateTime.parse(question.timestamp);
+      final questionTime = DateTime.parse(question.timestamp).toLocal();
       final now = DateTime.now();
       final difference = now.difference(questionTime);
       return difference.inMinutes >= _expiredMinutes;
@@ -348,7 +348,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
 
   String _formatTimestamp(String timestamp) {
     try {
-      final date = DateTime.parse(timestamp);
+      final date = DateTime.parse(timestamp).toLocal();
       return '${date.day}.${date.month}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     } catch (e) {
       return timestamp;
@@ -357,7 +357,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
 
   String _formatTimeRemaining(ProductQuestion question) {
     try {
-      final questionTime = DateTime.parse(question.timestamp);
+      final questionTime = DateTime.parse(question.timestamp).toLocal();
       final expireTime = questionTime.add(Duration(minutes: _expiredMinutes));
       final now = DateTime.now();
       final remaining = expireTime.difference(now);

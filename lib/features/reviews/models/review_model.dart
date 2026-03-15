@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель сообщения в диалоге
 class ReviewMessage {
   final String id;
@@ -22,7 +24,7 @@ class ReviewMessage {
       sender: json['sender'] ?? 'client',
       senderName: json['senderName'] ?? '',
       text: json['text'] ?? '',
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt: parseServerDateOrNow(json['createdAt']),
       isRead: json['isRead'] ?? false,
     );
   }
@@ -68,7 +70,7 @@ class Review {
   factory Review.fromJson(Map<String, dynamic> json) {
     return Review(
       id: json['id'] ?? '',
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt: parseServerDateOrNow(json['createdAt']),
       clientPhone: json['clientPhone'] ?? '',
       clientName: json['clientName'] ?? '',
       shopAddress: json['shopAddress'] ?? '',

@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Статус заявки на трудоустройство
 enum ApplicationStatus {
   newStatus,   // Новая (не просмотрена)
@@ -131,13 +133,9 @@ class JobApplication {
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
+      createdAt: parseServerDateOrNow(json['createdAt']),
       isViewed: json['isViewed'] ?? false,
-      viewedAt: json['viewedAt'] != null
-          ? DateTime.parse(json['viewedAt'])
-          : null,
+      viewedAt: parseServerDate(json['viewedAt']),
       viewedBy: json['viewedBy'],
       status: ApplicationStatusExtension.fromCode(json['status'] ?? 'new'),
       adminNotes: json['adminNotes'],

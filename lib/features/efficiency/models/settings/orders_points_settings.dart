@@ -1,3 +1,4 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
 import 'points_settings_base.dart';
 
 /// Настройки баллов за заказы клиентов
@@ -37,12 +38,8 @@ class OrdersPointsSettings extends PointsSettingsBase {
       category: json['category'] ?? 'orders',
       acceptedPoints: (json['acceptedPoints'] ?? 0.2).toDouble(),
       rejectedPoints: (json['rejectedPoints'] ?? -3).toDouble(),
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
+      createdAt: parseServerDate(json['createdAt']),
+      updatedAt: parseServerDate(json['updatedAt']),
     );
   }
 

@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель недостачи товара при пересменке
 /// Записывается когда сотрудник подтверждает что товар отсутствует,
 /// но на остатках (DBF) он есть
@@ -24,9 +26,7 @@ class ShiftShortage {
       barcode: json['barcode'] ?? '',
       productName: json['productName'] ?? '',
       stockQuantity: json['stockQuantity'] ?? 0,
-      confirmedAt: json['confirmedAt'] != null
-          ? DateTime.parse(json['confirmedAt'])
-          : DateTime.now(),
+      confirmedAt: parseServerDateOrNow(json['confirmedAt']),
       employeeName: json['employeeName'] ?? '',
     );
   }

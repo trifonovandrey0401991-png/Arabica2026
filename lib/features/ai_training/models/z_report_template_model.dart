@@ -1,4 +1,5 @@
 import 'dart:ui';
+import '../../../core/utils/date_formatter.dart';
 
 /// Область на изображении для распознавания поля
 class FieldRegion {
@@ -200,10 +201,8 @@ class ZReportTemplate {
       cashRegisterType: json['cashRegisterType'],
       regionSets: sets,
       customPatterns: List<String>.from(json['customPatterns'] ?? []),
-      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.tryParse(json['updatedAt'])
-          : null,
+      createdAt: parseServerDateOrNow(json['createdAt']),
+      updatedAt: parseServerDate(json['updatedAt']),
       usageCount: json['usageCount'] ?? 0,
       successRate: (json['successRate'] ?? 0).toDouble(),
     );

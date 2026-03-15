@@ -236,7 +236,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
     // Форматирование даты
     String dateStr = '';
     try {
-      final dt = DateTime.parse(createdAt);
+      final dt = DateTime.parse(createdAt).toLocal();
       dateStr = '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {
       dateStr = createdAt;

@@ -1,3 +1,5 @@
+import '../../../core/utils/date_formatter.dart';
+
 /// Модель ответа на вопрос пересчета
 class RecountAnswer {
   final String question;
@@ -211,9 +213,7 @@ class RecountAnswer {
     employeeReportedAiError: json['employeeReportedAiError'],
     aiErrorAdminDecision: json['aiErrorAdminDecision'],
     aiErrorDecisionBy: json['aiErrorDecisionBy'],
-    aiErrorDecisionAt: json['aiErrorDecisionAt'] != null
-        ? DateTime.tryParse(json['aiErrorDecisionAt'])
-        : null,
+    aiErrorDecisionAt: parseServerDate(json['aiErrorDecisionAt']),
   );
 
   /// Копия с изменениями

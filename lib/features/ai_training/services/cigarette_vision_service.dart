@@ -1016,8 +1016,8 @@ class ProductAiStatus {
       isDisabled: json['isDisabled'] == true,
       consecutiveErrors: json['consecutiveErrors'] ?? 0,
       totalErrors: json['totalErrors'] ?? 0,
-      lastErrorAt: json['lastErrorAt'] != null ? DateTime.tryParse(json['lastErrorAt']) : null,
-      disabledAt: json['disabledAt'] != null ? DateTime.tryParse(json['disabledAt']) : null,
+      lastErrorAt: json['lastErrorAt'] != null ? DateTime.tryParse(json['lastErrorAt'])?.toLocal() : null,
+      disabledAt: json['disabledAt'] != null ? DateTime.tryParse(json['disabledAt'])?.toLocal() : null,
       threshold: json['threshold'] ?? 20,
       resetDays: json['resetDays'] ?? 7,
     );
@@ -1049,7 +1049,7 @@ class ProblematicProduct {
       isDisabled: json['isDisabled'] == true,
       consecutiveErrors: json['consecutiveErrors'] ?? 0,
       totalErrors: json['totalErrors'] ?? 0,
-      lastErrorAt: json['lastErrorAt'] != null ? DateTime.tryParse(json['lastErrorAt']) : null,
+      lastErrorAt: json['lastErrorAt'] != null ? DateTime.tryParse(json['lastErrorAt'])?.toLocal() : null,
     );
   }
 }

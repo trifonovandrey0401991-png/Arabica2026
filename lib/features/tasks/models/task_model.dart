@@ -121,7 +121,7 @@ DateTime? parseTaskDateTime(String? dateStr) {
     cleanStr = cleanStr.substring(0, cleanStr.length - 1);
   }
 
-  return DateTime.tryParse(cleanStr);
+  return DateTime.tryParse(cleanStr)?.toLocal();
 }
 
 /// Задача (создается админом)

@@ -339,7 +339,7 @@ Future<List<EfficiencyRecord>> loadProductSearchRecords(
     final records = <EfficiencyRecord>[];
     for (final question in questions) {
       // Парсим дату вопроса
-      final questionDate = DateTime.tryParse(question.timestamp);
+      final questionDate = DateTime.tryParse(question.timestamp)?.toLocal();
       if (questionDate == null) continue;
 
       // Проверяем период
@@ -361,7 +361,7 @@ Future<List<EfficiencyRecord>> loadProductSearchRecords(
 
           final answerTimeStr = shop['lastAnswerTime'] as String?;
           final answerDate = answerTimeStr != null
-              ? DateTime.tryParse(answerTimeStr)
+              ? DateTime.tryParse(answerTimeStr)?.toLocal()
               : questionDate;
 
           final record = await EfficiencyCalculationService.createProductSearchRecord(
@@ -380,7 +380,7 @@ Future<List<EfficiencyRecord>> loadProductSearchRecords(
           question.answeredByName != null &&
           question.answeredByName!.isNotEmpty) {
         final answerDate = question.lastAnswerTime != null
-            ? DateTime.tryParse(question.lastAnswerTime!)
+            ? DateTime.tryParse(question.lastAnswerTime!)?.toLocal()
             : questionDate;
 
         final record = await EfficiencyCalculationService.createProductSearchRecord(
@@ -423,7 +423,7 @@ Future<List<EfficiencyRecord>> loadOrderRecords(
       final createdAtStr = order['createdAt'] as String?;
       if (createdAtStr == null) continue;
 
-      final orderDate = DateTime.tryParse(createdAtStr);
+      final orderDate = DateTime.tryParse(createdAtStr)?.toLocal();
       if (orderDate == null) continue;
 
       // Проверяем период
@@ -495,7 +495,7 @@ Future<List<EfficiencyRecord>> loadRkoRecords(
       final dateStr = rko['date'] as String?;
       if (dateStr == null) continue;
 
-      final rkoDate = DateTime.tryParse(dateStr);
+      final rkoDate = DateTime.tryParse(dateStr)?.toLocal();
       if (rkoDate == null) continue;
 
       // Проверяем период

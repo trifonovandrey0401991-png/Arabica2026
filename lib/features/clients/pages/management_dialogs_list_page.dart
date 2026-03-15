@@ -92,7 +92,7 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
 
   String _formatTimestamp(String timestamp) {
     try {
-      final date = DateTime.parse(timestamp);
+      final date = DateTime.parse(timestamp).toLocal();
       final now = DateTime.now();
       final difference = now.difference(date);
 

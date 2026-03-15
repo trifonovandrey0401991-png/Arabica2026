@@ -1,4 +1,5 @@
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/date_formatter.dart';
 
 /// Модель товара магазина
 class ShopProduct {
@@ -45,8 +46,8 @@ class ShopProduct {
       isActive: json['isActive'] ?? true,
       isWholesale: json['isWholesale'] ?? false,
       sortOrder: json['sortOrder'] ?? 0,
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'].toString()) : null,
+      createdAt: parseServerDate(json['createdAt']),
+      updatedAt: parseServerDate(json['updatedAt']),
     );
   }
 

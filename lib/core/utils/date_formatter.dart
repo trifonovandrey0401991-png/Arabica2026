@@ -1,3 +1,22 @@
+/// Парсит дату с сервера (UTC) и конвертирует в локальное время.
+/// Использовать ВЕЗДЕ вместо DateTime.parse() при парсинге серверных дат.
+DateTime? parseServerDate(dynamic value) {
+  if (value == null) return null;
+  if (value is String) {
+    try {
+      return DateTime.parse(value).toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+  return null;
+}
+
+/// Парсит дату с сервера с fallback значением.
+DateTime parseServerDateOrNow(dynamic value) {
+  return parseServerDate(value) ?? DateTime.now();
+}
+
 /// Утилиты для форматирования дат
 class DateFormatter {
   static const List<String> _monthNamesRu = [

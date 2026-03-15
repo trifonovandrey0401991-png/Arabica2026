@@ -764,7 +764,7 @@ class _PrizeScannerPageState extends State<PrizeScannerPage> {
   String _formatDate(String? dateStr) {
     if (dateStr == null) return '';
     try {
-      final date = DateTime.parse(dateStr);
+      final date = DateTime.parse(dateStr).toLocal();
       return DateFormat('dd.MM.yyyy HH:mm').format(date);
     } catch (_) {
       return dateStr;

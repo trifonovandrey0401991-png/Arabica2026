@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель баллов сотрудника для пересчёта
 /// Используется для расчёта требуемого количества фотографий
 class RecountPoints {
@@ -28,9 +30,7 @@ class RecountPoints {
       points: (json['points'] is int)
           ? (json['points'] as int).toDouble()
           : (json['points'] ?? 85.0).toDouble(),
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : DateTime.now(),
+      updatedAt: parseServerDateOrNow(json['updatedAt']),
       updatedBy: json['updatedBy'],
     );
   }

@@ -710,7 +710,7 @@ class _RKOReportsPageState extends State<RKOReportsPage>
     String deadlineText = '';
     if (deadline.isNotEmpty) {
       try {
-        final dt = DateTime.parse(deadline);
+        final dt = DateTime.parse(deadline).toLocal();
         deadlineText = 'до ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
       } catch (_) {}
     }

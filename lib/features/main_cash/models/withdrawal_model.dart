@@ -1,3 +1,4 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
 import 'package:uuid/uuid.dart';
 import 'withdrawal_expense_model.dart';
 
@@ -65,12 +66,10 @@ class Withdrawal {
       totalAmount: totalAmount,
       expenses: expenses,
       adminName: json['adminName'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: parseServerDateOrNow(json['createdAt']),
       confirmed: json['confirmed'] as bool? ?? false,
       status: json['status'] as String?,
-      cancelledAt: json['cancelledAt'] != null
-        ? DateTime.parse(json['cancelledAt'] as String)
-        : null,
+      cancelledAt: parseServerDate(json['cancelledAt']),
       cancelledBy: json['cancelledBy'] as String?,
       cancelReason: json['cancelReason'] as String?,
       category: json['category'] as String? ?? 'withdrawal',

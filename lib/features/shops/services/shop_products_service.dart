@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/logger.dart';
 
 /// Модель товара магазина (из DBF синхронизации)
@@ -30,7 +31,7 @@ class ShopProduct {
       group: json['group']?.toString() ?? '',
       stock: json['stock'] is int ? json['stock'] : int.tryParse(json['stock']?.toString() ?? '0') ?? 0,
       sales: json['sales'] is int ? json['sales'] : int.tryParse(json['sales']?.toString() ?? '0') ?? 0,
-      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
+      updatedAt: parseServerDate(json['updatedAt']),
       shopId: json['shopId']?.toString() ?? '',
     );
   }
@@ -72,7 +73,7 @@ class ShopSyncInfo {
     return ShopSyncInfo(
       shopId: json['shopId']?.toString() ?? '',
       productCount: json['productCount'] ?? 0,
-      lastSync: json['lastSync'] != null ? DateTime.tryParse(json['lastSync']) : null,
+      lastSync: parseServerDate(json['lastSync']),
     );
   }
 }

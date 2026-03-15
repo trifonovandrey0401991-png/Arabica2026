@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Model for pending attendance report
 class PendingAttendanceReport {
   final String id;
@@ -37,20 +39,12 @@ class PendingAttendanceReport {
       shopName: json['shopName'] ?? '',
       shiftType: json['shiftType'] ?? 'morning',
       status: json['status'] ?? 'pending',
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
-      deadline: json['deadline'] != null
-          ? DateTime.parse(json['deadline'])
-          : DateTime.now(),
+      createdAt: parseServerDateOrNow(json['createdAt']),
+      deadline: parseServerDateOrNow(json['deadline']),
       employeeName: json['employeeName'],
       employeePhone: json['employeePhone'],
-      markedAt: json['markedAt'] != null
-          ? DateTime.parse(json['markedAt'])
-          : null,
-      failedAt: json['failedAt'] != null
-          ? DateTime.parse(json['failedAt'])
-          : null,
+      markedAt: parseServerDate(json['markedAt']),
+      failedAt: parseServerDate(json['failedAt']),
       isOnTime: json['isOnTime'],
       lateMinutes: json['lateMinutes'],
     );

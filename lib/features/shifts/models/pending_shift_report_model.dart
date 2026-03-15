@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель непройденной пересменки
 class PendingShiftReport {
   final String id;
@@ -52,12 +54,8 @@ class PendingShiftReport {
       deadline: json['deadline'] ?? '',
       status: json['status'] ?? 'pending',
       completedBy: json['completedBy'],
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
-      completedAt: json['completedAt'] != null
-          ? DateTime.parse(json['completedAt'])
-          : null,
+      createdAt: parseServerDateOrNow(json['createdAt']),
+      completedAt: parseServerDate(json['completedAt']),
     );
   }
 

@@ -1,3 +1,4 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
 import 'points_settings_base.dart';
 
 /// Настройки баллов за тестирование
@@ -53,12 +54,8 @@ class TestPointsSettings extends PointsSettingsBase {
       maxPoints: (json['maxPoints'] ?? 1).toDouble(),
       totalQuestions: json['totalQuestions'] ?? 20,
       passingScore: json['passingScore'] ?? 16,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
+      createdAt: parseServerDate(json['createdAt']),
+      updatedAt: parseServerDate(json['updatedAt']),
     );
   }
 

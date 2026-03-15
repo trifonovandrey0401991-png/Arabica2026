@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:arabica_app/core/utils/date_formatter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 import 'shift_shortage_model.dart';
@@ -191,33 +192,21 @@ class ShiftReport {
     employeeId: json['employeeId'],
     shopAddress: json['shopAddress'] ?? '',
     shopName: json['shopName'],
-    createdAt: DateTime.parse(json['createdAt']),
+    createdAt: parseServerDateOrNow(json['createdAt']),
     answers: (json['answers'] as List<dynamic>?)
         ?.map((a) => ShiftAnswer.fromJson(a))
         .toList() ?? [],
     isSynced: json['isSynced'] ?? false,
-    confirmedAt: json['confirmedAt'] != null
-        ? DateTime.parse(json['confirmedAt'])
-        : null,
+    confirmedAt: parseServerDate(json['confirmedAt']),
     rating: json['rating'],
     confirmedByAdmin: json['confirmedByAdmin'],
     status: json['status'],
-    expiredAt: json['expiredAt'] != null
-        ? DateTime.parse(json['expiredAt'])
-        : null,
+    expiredAt: parseServerDate(json['expiredAt']),
     shiftType: json['shiftType'],
-    submittedAt: json['submittedAt'] != null
-        ? DateTime.parse(json['submittedAt'])
-        : null,
-    reviewDeadline: json['reviewDeadline'] != null
-        ? DateTime.parse(json['reviewDeadline'])
-        : null,
-    failedAt: json['failedAt'] != null
-        ? DateTime.parse(json['failedAt'])
-        : null,
-    rejectedAt: json['rejectedAt'] != null
-        ? DateTime.parse(json['rejectedAt'])
-        : null,
+    submittedAt: parseServerDate(json['submittedAt']),
+    reviewDeadline: parseServerDate(json['reviewDeadline']),
+    failedAt: parseServerDate(json['failedAt']),
+    rejectedAt: parseServerDate(json['rejectedAt']),
     shortages: json['shortages'] != null
         ? (json['shortages'] as List<dynamic>)
             .map((s) => ShiftShortage.fromJson(s))

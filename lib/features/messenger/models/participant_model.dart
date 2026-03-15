@@ -1,3 +1,5 @@
+import '../../../core/utils/date_formatter.dart';
+
 class Participant {
   final String phone;
   final String? name;
@@ -20,12 +22,8 @@ class Participant {
       phone: (json['phone'] as String?) ?? '',
       name: json['name'] as String?,
       role: (json['role'] as String?) ?? 'member',
-      joinedAt: json['joined_at'] != null
-          ? DateTime.tryParse(json['joined_at'].toString())
-          : null,
-      lastReadAt: json['last_read_at'] != null
-          ? DateTime.tryParse(json['last_read_at'].toString())
-          : null,
+      joinedAt: parseServerDate(json['joined_at']),
+      lastReadAt: parseServerDate(json['last_read_at']),
       avatarUrl: json['avatar_url'] as String?,
     );
   }

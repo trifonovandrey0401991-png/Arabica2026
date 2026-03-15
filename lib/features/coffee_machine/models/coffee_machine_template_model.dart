@@ -1,3 +1,4 @@
+import '../../../core/utils/date_formatter.dart';
 import '../../ai_training/models/z_report_template_model.dart';
 
 /// Шаблон кофемашины (тип машины с эталонным фото и областью счётчика)
@@ -44,10 +45,8 @@ class CoffeeMachineTemplate {
           ? FieldRegion.fromJson(json['counterRegion'])
           : null,
       ocrPreset: preset,
-      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.tryParse(json['updatedAt'])
-          : null,
+      createdAt: parseServerDateOrNow(json['createdAt']),
+      updatedAt: parseServerDate(json['updatedAt']),
     );
   }
 
@@ -113,12 +112,8 @@ class CoffeeMachineShopConfig {
           .toList() ?? [],
       hasComputerVerification: json['hasComputerVerification'] ?? true,
       computerTemplateId: json['computerTemplateId'],
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.tryParse(json['updatedAt'])
-          : null,
+      createdAt: parseServerDate(json['createdAt']),
+      updatedAt: parseServerDate(json['updatedAt']),
     );
   }
 

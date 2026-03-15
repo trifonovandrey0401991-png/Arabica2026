@@ -1,3 +1,4 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
 import '../services/recipe_service.dart';
 import '../../../core/constants/api_constants.dart';
 
@@ -43,12 +44,8 @@ class Recipe {
       recipe: json['recipe'], // Для обратной совместимости
       price: json['price'],
       pointsPrice: json['pointsPrice'] != null ? (json['pointsPrice'] is int ? json['pointsPrice'] : int.tryParse(json['pointsPrice'].toString())) : null,
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']) 
-          : null,
-      updatedAt: json['updatedAt'] != null 
-          ? DateTime.parse(json['updatedAt']) 
-          : null,
+      createdAt: parseServerDate(json['createdAt']),
+      updatedAt: parseServerDate(json['updatedAt']),
     );
   }
 

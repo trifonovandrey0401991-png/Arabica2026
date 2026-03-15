@@ -1,3 +1,4 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
 import 'points_settings_base.dart';
 
 /// Настройки баллов за счётчик кофемашин
@@ -62,12 +63,8 @@ class CoffeeMachinePointsSettings extends PointsSettingsBase {
       eveningStartTime: json['eveningStartTime'] ?? '14:00',
       eveningEndTime: json['eveningEndTime'] ?? '22:00',
       adminReviewTimeoutHours: json['adminReviewTimeoutHours'] ?? 4,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
+      createdAt: parseServerDate(json['createdAt']),
+      updatedAt: parseServerDate(json['updatedAt']),
     );
   }
 

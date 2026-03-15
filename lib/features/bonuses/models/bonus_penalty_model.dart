@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель для премий и штрафов
 class BonusPenalty {
   final String id;
@@ -37,9 +39,7 @@ class BonusPenalty {
       amount: (json['amount'] ?? 0).toDouble(),
       comment: json['comment'] ?? '',
       adminName: json['adminName'] ?? '',
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
+      createdAt: parseServerDateOrNow(json['createdAt']),
       month: json['month'] ?? '',
     );
   }

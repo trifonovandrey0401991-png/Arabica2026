@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель pending отчёта по счётчику кофемашин (ожидающего или не сданного)
 class PendingCoffeeMachineReport {
   final String id;
@@ -28,8 +30,8 @@ class PendingCoffeeMachineReport {
       status: json['status'] ?? 'pending',
       date: json['date'] ?? '',
       deadline: json['deadline'] ?? '',
-      createdAt: DateTime.parse(json['createdAt']),
-      failedAt: json['failedAt'] != null ? DateTime.parse(json['failedAt']) : null,
+      createdAt: parseServerDateOrNow(json['createdAt']),
+      failedAt: parseServerDate(json['failedAt']),
     );
   }
 

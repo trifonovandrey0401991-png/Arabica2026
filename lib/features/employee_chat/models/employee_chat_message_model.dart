@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель пересланного сообщения
 class ForwardedFrom {
   final String chatId;
@@ -17,9 +19,7 @@ class ForwardedFrom {
       chatId: json['chatId'] ?? '',
       messageId: json['messageId'] ?? '',
       originalSenderName: json['originalSenderName'] ?? '',
-      originalTimestamp: json['originalTimestamp'] != null
-          ? DateTime.parse(json['originalTimestamp'])
-          : DateTime.now(),
+      originalTimestamp: parseServerDateOrNow(json['originalTimestamp']),
     );
   }
 
@@ -76,9 +76,7 @@ class EmployeeChatMessage {
       senderName: json['senderName'] ?? '',
       text: json['text'] ?? '',
       imageUrl: json['imageUrl'],
-      timestamp: json['timestamp'] != null
-          ? DateTime.parse(json['timestamp'])
-          : DateTime.now(),
+      timestamp: parseServerDateOrNow(json['timestamp']),
       readBy: json['readBy'] != null
           ? List<String>.from(json['readBy'])
           : [],

@@ -149,7 +149,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
 
   String _formatTimestamp(String timestamp) {
     try {
-      final date = DateTime.parse(timestamp);
+      final date = DateTime.parse(timestamp).toLocal();
       final now = DateTime.now();
       final difference = now.difference(date);
 
@@ -290,7 +290,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       DateTime? timestamp;
       if (lastMessage != null) {
         try {
-          timestamp = DateTime.parse(lastMessage.timestamp);
+          timestamp = DateTime.parse(lastMessage.timestamp).toLocal();
         } catch (e) { debugPrint('my_dialogs: Failed to parse timestamp: $e'); }
       }
       items.add(_DialogItem(
@@ -307,7 +307,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       DateTime? broadcastTimestamp;
       if (lastBroadcast != null) {
         try {
-          broadcastTimestamp = DateTime.parse(lastBroadcast.timestamp);
+          broadcastTimestamp = DateTime.parse(lastBroadcast.timestamp).toLocal();
         } catch (e) { debugPrint('my_dialogs: Failed to parse timestamp: $e'); }
       }
       items.add(_DialogItem(
@@ -324,7 +324,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       DateTime? timestamp;
       if (lastMessage != null) {
         try {
-          timestamp = DateTime.parse(lastMessage.timestamp);
+          timestamp = DateTime.parse(lastMessage.timestamp).toLocal();
         } catch (e) { debugPrint('my_dialogs: Failed to parse timestamp: $e'); }
       }
       items.add(_DialogItem(
@@ -359,7 +359,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       DateTime? timestamp;
       if (lastMessage != null) {
         try {
-          timestamp = DateTime.parse(lastMessage.timestamp);
+          timestamp = DateTime.parse(lastMessage.timestamp).toLocal();
         } catch (e) { debugPrint('my_dialogs: Failed to parse timestamp: $e'); }
       }
       items.add(_DialogItem(

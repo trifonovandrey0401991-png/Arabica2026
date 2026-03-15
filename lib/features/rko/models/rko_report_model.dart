@@ -36,7 +36,7 @@ class RKOMetadata {
         return DateTime.now();
       }
       try {
-        final parsed = DateTime.parse(dateStr);
+        final parsed = DateTime.parse(dateStr).toLocal();
         // Нормализуем дату (убираем время и часовой пояс)
         return DateTime(parsed.year, parsed.month, parsed.day);
       } catch (e) {

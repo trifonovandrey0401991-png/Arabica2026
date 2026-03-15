@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../../../core/utils/date_formatter.dart';
 
 enum MessageType { text, image, video, voice, emoji, call, videoNote, file, poll, sticker, gif, contact }
 
@@ -84,8 +85,8 @@ class MessengerMessage {
       replyToId: json['reply_to_id'] as String?,
       reactions: reactions,
       isDeleted: json['is_deleted'] == true,
-      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
-      editedAt: json['edited_at'] != null ? DateTime.tryParse(json['edited_at'].toString()) : null,
+      createdAt: parseServerDateOrNow(json['created_at']),
+      editedAt: parseServerDate(json['edited_at']),
       deliveredTo: json['delivered_to'] is List
           ? (json['delivered_to'] as List).map((e) => e.toString()).toList()
           : const [],
@@ -94,7 +95,7 @@ class MessengerMessage {
       forwardedFromId: json['forwarded_from_id'] as String?,
       forwardedFromName: json['forwarded_from_name'] as String?,
       isPinned: json['is_pinned'] == true,
-      pinnedAt: json['pinned_at'] != null ? DateTime.tryParse(json['pinned_at'].toString()) : null,
+      pinnedAt: parseServerDate(json['pinned_at']),
       pinnedBy: json['pinned_by'] as String?,
       mediaGroupId: json['media_group_id'] as String?,
     );

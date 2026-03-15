@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель записи прихода на работу
 class AttendanceRecord {
   final String id;
@@ -56,15 +58,7 @@ class AttendanceRecord {
 
     // Безопасный парсинг timestamp
     DateTime parseTimestamp(dynamic value) {
-      if (value == null) return DateTime.now();
-      if (value is String) {
-        try {
-          return DateTime.parse(value);
-        } catch (e) {
-          return DateTime.now();
-        }
-      }
-      return DateTime.now();
+      return parseServerDateOrNow(value);
     }
 
     return AttendanceRecord(

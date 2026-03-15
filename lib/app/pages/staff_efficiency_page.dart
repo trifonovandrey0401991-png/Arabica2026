@@ -4,6 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/logger.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/employees/services/employee_service.dart';
+import '../../features/employees/services/employee_registration_service.dart';
 import '../../features/efficiency/models/efficiency_data_model.dart';
 import '../../features/efficiency/models/manager_efficiency_model.dart';
 import '../../features/efficiency/services/efficiency_data_service.dart';
@@ -73,7 +74,26 @@ class _StaffEfficiencyPageState extends State<StaffEfficiencyPage>
   Future<void> _load() async {
     if (mounted) setState(() => _isLoading = true);
     try {
-      final employees = await EmployeeService.getEmployees();
+      var employees = await EmployeeService.getEmployees();
+
+      // Фильтруем только верифицированных сотрудников
+      try {
+        final registrations = await EmployeeRegistrationService.getAllRegistrations();
+        final verifiedPhones = <String>{};
+        for (var reg in registrations) {
+          if (reg.isVerified) {
+            verifiedPhones.add(reg.phone.replaceAll(RegExp(r'[\s\+]'), ''));
+          }
+        }
+        employees = employees.where((e) {
+          if (e.phone == null || e.phone!.isEmpty) return false;
+          final phone = e.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+          return verifiedPhones.contains(phone);
+        }).toList();
+      } catch (e) {
+        Logger.error('Ошибка фильтрации верификации', e);
+      }
+
       _admins = employees.where((e) => e.isAdmin == true && e.isManager != true).toList();
       _managers = employees.where((e) => e.isManager == true).toList();
       _employees = employees.where((e) => e.isAdmin != true && e.isManager != true).toList();

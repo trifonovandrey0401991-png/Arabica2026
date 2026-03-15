@@ -1,3 +1,5 @@
+import '../../../core/utils/date_formatter.dart';
+
 /// Модель категории данных для очистки.
 class CleanupCategory {
   final String id;
@@ -22,12 +24,8 @@ class CleanupCategory {
       name: json['name'] as String,
       count: json['count'] as int? ?? 0,
       sizeBytes: json['sizeBytes'] as int? ?? 0,
-      oldestDate: json['oldestDate'] != null
-          ? DateTime.tryParse(json['oldestDate'] as String)
-          : null,
-      newestDate: json['newestDate'] != null
-          ? DateTime.tryParse(json['newestDate'] as String)
-          : null,
+      oldestDate: parseServerDate(json['oldestDate']),
+      newestDate: parseServerDate(json['newestDate']),
     );
   }
 

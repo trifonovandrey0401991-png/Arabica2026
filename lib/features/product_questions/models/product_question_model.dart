@@ -315,7 +315,7 @@ class ProductQuestionShopGroup {
     for (final q in questions) {
       final msg = q.getLastMessage();
       if (msg != null) {
-        final msgTime = DateTime.tryParse(msg.timestamp);
+        final msgTime = DateTime.tryParse(msg.timestamp)?.toLocal();
         if (msgTime != null && (lastTime == null || msgTime.isAfter(lastTime))) {
           lastMessage = msg;
           lastTime = msgTime;
@@ -327,7 +327,7 @@ class ProductQuestionShopGroup {
     for (final d in dialogs) {
       final msg = d.getLastMessage();
       if (msg != null) {
-        final msgTime = DateTime.tryParse(msg.timestamp);
+        final msgTime = DateTime.tryParse(msg.timestamp)?.toLocal();
         if (msgTime != null && (lastTime == null || msgTime.isAfter(lastTime))) {
           lastMessage = msg;
           lastTime = msgTime;
@@ -382,8 +382,8 @@ class ProductQuestionGroupedData {
       if (aMsg == null) return 1;
       if (bMsg == null) return -1;
 
-      final aTime = DateTime.tryParse(aMsg.timestamp);
-      final bTime = DateTime.tryParse(bMsg.timestamp);
+      final aTime = DateTime.tryParse(aMsg.timestamp)?.toLocal();
+      final bTime = DateTime.tryParse(bMsg.timestamp)?.toLocal();
 
       if (aTime == null || bTime == null) return 0;
       return bTime.compareTo(aTime); // Новые сверху

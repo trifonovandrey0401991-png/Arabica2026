@@ -525,7 +525,7 @@ class ShopQuestionStats {
 
     final now = DateTime.now();
     try {
-      final questionDate = DateTime.parse(question.timestamp);
+      final questionDate = DateTime.parse(question.timestamp).toLocal();
       if (questionDate.year == now.year && questionDate.month == now.month) {
         totalMonth++;
         if (hasAnswer) {

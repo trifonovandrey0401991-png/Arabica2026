@@ -5,6 +5,7 @@ import '../services/work_schedule_service.dart';
 import '../services/shift_transfer_service.dart';
 import '../services/schedule_pdf_service.dart';
 import '../../employees/services/employee_service.dart';
+import '../../employees/services/employee_registration_service.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/models/shop_settings_model.dart';
 import '../../shops/services/shop_service.dart';
@@ -195,6 +196,9 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         }(),
       ]);
 
+      // Фильтруем только верифицированных сотрудников
+      employees = await _filterVerifiedEmployees(employees);
+
       // Загружаем настройки магазинов (зависит от shops)
       await _loadShopSettings(shops);
 
@@ -231,6 +235,27 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// Фильтрует список сотрудников, оставляя только верифицированных
+  Future<List<Employee>> _filterVerifiedEmployees(List<Employee> employees) async {
+    try {
+      final registrations = await EmployeeRegistrationService.getAllRegistrations();
+      final verifiedPhones = <String>{};
+      for (var reg in registrations) {
+        if (reg.isVerified) {
+          verifiedPhones.add(reg.phone.replaceAll(RegExp(r'[\s\+]'), ''));
+        }
+      }
+      return employees.where((e) {
+        if (e.phone == null || e.phone!.isEmpty) return false;
+        final phone = e.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+        return verifiedPhones.contains(phone);
+      }).toList();
+    } catch (e) {
+      Logger.error('Ошибка фильтрации верификации', e);
+      return employees; // При ошибке показываем всех
     }
   }
 

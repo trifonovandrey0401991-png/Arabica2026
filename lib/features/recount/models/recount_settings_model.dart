@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель общих настроек пересчёта
 /// Определяет пороги для количества фотографий и бонусы/штрафы
 class RecountSettings {
@@ -124,9 +126,7 @@ class PhotoVerification {
       photoIndex: json['photoIndex'] ?? 0,
       status: json['status'] ?? 'pending',
       adminName: json['adminName'],
-      verifiedAt: json['verifiedAt'] != null
-          ? DateTime.parse(json['verifiedAt'])
-          : null,
+      verifiedAt: parseServerDate(json['verifiedAt']),
       pointsChange: json['pointsChange'] != null
           ? (json['pointsChange'] is int)
               ? (json['pointsChange'] as int).toDouble()

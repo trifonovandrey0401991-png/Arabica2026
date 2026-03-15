@@ -41,9 +41,9 @@ class AuthSession {
   /// Парсит дату из JSON (поддерживает timestamp и ISO строку)
   static DateTime _parseDate(dynamic value) {
     if (value is int) {
-      return DateTime.fromMillisecondsSinceEpoch(value);
+      return DateTime.fromMillisecondsSinceEpoch(value).toLocal();
     } else if (value is String) {
-      return DateTime.parse(value);
+      return DateTime.parse(value).toLocal();
     }
     throw FormatException('Invalid date format: $value');
   }

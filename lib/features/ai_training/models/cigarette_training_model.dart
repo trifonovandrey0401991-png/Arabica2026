@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 // Модели данных для обучения ИИ подсчёту сигарет
 
 /// Статистика фото выкладки для конкретного магазина
@@ -390,9 +392,7 @@ class TrainingSample {
       shopAddress: json['shopAddress'],
       employeeName: json['employeeName'],
       employeeAnswer: json['employeeAnswer']?.toString(),
-      createdAt: json['createdAt'] != null
-        ? DateTime.parse(json['createdAt'])
-        : DateTime.now(),
+      createdAt: parseServerDateOrNow(json['createdAt']),
       type: TrainingSampleType.fromString(json['type']),
       templateId: json['templateId'] is int ? json['templateId'] : null,
       boundingBoxes: (json['boundingBoxes'] as List?)

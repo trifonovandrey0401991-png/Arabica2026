@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель учётных данных авторизации (PIN-код)
 ///
 /// Хранит информацию о PIN-коде пользователя:
@@ -47,11 +49,9 @@ class AuthCredentials {
       pinHash: json['pinHash'] as String,
       salt: json['salt'] as String,
       biometricEnabled: json['biometricEnabled'] as bool? ?? false,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: parseServerDateOrNow(json['createdAt']),
       failedAttempts: json['failedAttempts'] as int? ?? 0,
-      lockedUntil: json['lockedUntil'] != null
-          ? DateTime.parse(json['lockedUntil'] as String)
-          : null,
+      lockedUntil: parseServerDate(json['lockedUntil']),
     );
   }
 
@@ -128,8 +128,8 @@ class OtpCode {
     return OtpCode(
       phone: json['phone'] as String,
       code: json['code'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      expiresAt: DateTime.parse(json['expiresAt'] as String),
+      createdAt: parseServerDateOrNow(json['createdAt']),
+      expiresAt: parseServerDateOrNow(json['expiresAt']),
       attempts: json['attempts'] as int? ?? 0,
       verified: json['verified'] as bool? ?? false,
     );

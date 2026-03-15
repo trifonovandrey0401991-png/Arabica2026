@@ -412,7 +412,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       if (event.conversationId == widget.conversation.id &&
           event.phone != widget.userPhone &&
           mounted) {
-        final ts = DateTime.tryParse(event.readAt);
+        final ts = DateTime.tryParse(event.readAt)?.toLocal();
         if (ts != null) {
           setState(() => _participantLastRead[event.phone] = ts);
         }
@@ -423,7 +423,7 @@ class _MessengerChatPageState extends State<MessengerChatPage> with WidgetsBindi
       if (event.conversationId == widget.conversation.id && mounted) {
         _updateMessage(event.messageId, (msg) => msg.copyWith(
           content: event.newContent,
-          editedAt: DateTime.tryParse(event.editedAt),
+          editedAt: DateTime.tryParse(event.editedAt)?.toLocal(),
         ));
       }
     });

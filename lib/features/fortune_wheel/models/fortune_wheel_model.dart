@@ -1,4 +1,5 @@
 import 'dart:ui';
+import '../../../core/utils/date_formatter.dart';
 
 /// Модель сектора колеса удачи
 class FortuneWheelSector {
@@ -187,12 +188,10 @@ class WheelSpinRecord {
       position: json['position'] ?? 0,
       sectorIndex: json['sectorIndex'] ?? 0,
       prize: json['prize'] ?? '',
-      spunAt: DateTime.tryParse(json['spunAt'] ?? '') ?? DateTime.now(),
+      spunAt: parseServerDateOrNow(json['spunAt']),
       isProcessed: json['isProcessed'] ?? false,
       processedBy: json['processedBy'],
-      processedAt: json['processedAt'] != null
-          ? DateTime.tryParse(json['processedAt'])
-          : null,
+      processedAt: parseServerDate(json['processedAt']),
     );
   }
 

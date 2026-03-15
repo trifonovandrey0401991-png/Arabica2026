@@ -1,3 +1,5 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
+
 /// Модель доставки поставщика в конкретный магазин
 class SupplierShopDelivery {
   final String shopId;
@@ -137,12 +139,8 @@ class Supplier {
       paymentType: json['paymentType'],
       shopDeliveries: shopDeliveries,
       deliveryDays: deliveryDays,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
+      createdAt: parseServerDateOrNow(json['createdAt']),
+      updatedAt: parseServerDate(json['updatedAt']),
     );
   }
 

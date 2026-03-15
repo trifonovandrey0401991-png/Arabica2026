@@ -300,7 +300,7 @@ class AuthService {
           deviceId: deviceId,
           deviceName: deviceName,
           createdAt: DateTime.now(),
-          expiresAt: DateTime.fromMillisecondsSinceEpoch(expiresValue),
+          expiresAt: DateTime.fromMillisecondsSinceEpoch(expiresValue).toLocal(),
           isVerified: true,
         );
         await _storage.saveSession(session);
@@ -600,7 +600,7 @@ class AuthService {
           deviceId: deviceId,
           deviceName: deviceName,
           createdAt: DateTime.now(),
-          expiresAt: DateTime.fromMillisecondsSinceEpoch(expiresValue),
+          expiresAt: DateTime.fromMillisecondsSinceEpoch(expiresValue).toLocal(),
           isVerified: true,
         );
         await _storage.saveSession(session);
@@ -742,7 +742,7 @@ class AuthService {
           deviceId: deviceId,
           deviceName: deviceName,
           createdAt: DateTime.now(),
-          expiresAt: DateTime.fromMillisecondsSinceEpoch(expiresValue),
+          expiresAt: DateTime.fromMillisecondsSinceEpoch(expiresValue).toLocal(),
           isVerified: true,
         );
         await _storage.saveSession(session);

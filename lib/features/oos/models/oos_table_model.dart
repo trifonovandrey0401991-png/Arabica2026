@@ -1,3 +1,5 @@
+import '../../../core/utils/date_formatter.dart';
+
 /// A row in the OOS table: product + stock per shop
 class OosTableRow {
   final String barcode;
@@ -41,9 +43,7 @@ class OosShopInfo {
     return OosShopInfo(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
-      lastSync: json['lastSync'] != null
-          ? DateTime.tryParse(json['lastSync'])
-          : null,
+      lastSync: parseServerDate(json['lastSync']),
     );
   }
 }

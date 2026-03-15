@@ -1,3 +1,4 @@
+import 'package:arabica_app/core/utils/date_formatter.dart';
 import 'points_settings_base.dart';
 
 /// Настройки баллов за РКО (расходные кассовые ордера)
@@ -63,12 +64,8 @@ class RkoPointsSettings extends PointsSettingsBase with TimeWindowSettings {
       eveningStartTime: json['eveningStartTime'] ?? '14:00',
       eveningEndTime: json['eveningEndTime'] ?? '23:00',
       missedPenalty: (json['missedPenalty'] ?? -3.0).toDouble(),
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
+      createdAt: parseServerDate(json['createdAt']),
+      updatedAt: parseServerDate(json['updatedAt']),
     );
   }
 
